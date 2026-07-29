@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.tiaInfo.build.ui.MainController"
+      alignment="CENTER"
+      spacing="20"
+      styleClass="root-container">
+
+    <padding>
+        <Insets top="40" right="40" bottom="40" left="40"/>
+    </padding>
+
+    <Label fx:id="welcomeLabel" text="Chargement..." styleClass="title-label"/>
+    <Button text="Demarrer" onAction="#onStartClick" styleClass="primary-button"/>
+
+</VBox>
