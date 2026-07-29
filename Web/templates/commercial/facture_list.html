@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Factures — TIA INFO BUILD{% endblock %}
+{% block page_titre %}Factures{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <div class="eyebrow mb-1">Module commercial</div>
+        <p class="text-secondary mb-0">{{ factures.count }} facture{{ factures.count|pluralize }}.</p>
+    </div>
+    <a href="{% url 'commercial:facture_creer' %}" class="btn btn-tia-primary"><i class="fa-solid fa-plus me-1"></i>
+        Nouvelle facture</a>
+</div>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr class="text-secondary small text-uppercase">
+                    <th class="ps-3">N°</th>
+                    <th>Date</th>
+                    <th class="text-end pe-3">Montant</th>
+                    <th>Statut</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in factures %}
+                <tr>
+                    <td class="ps-3">#{{ f.id }}</td>
+                    <td>{{ f.date_emission|date:"d/m/Y" }}</td>
+                    <td class="text-end pe-3 font-mono">{{ f.montant }} Ar</td>
+                    <td><span class="badge bg-tia-amber-dark text-white fw-semibold">{{ f.get_statut_display }}</span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-secondary py-4">Aucune facture.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

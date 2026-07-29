@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Nouveau devis — TIA INFO BUILD{% endblock %}
+{% block page_titre %}Nouveau devis{% endblock %}
+{% block content %}
+<div class="card" style="max-width:700px;">
+    <div class="card-body p-4">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+            <div class="row g-3">
+                <div class="col-md-6"><label class="form-label fw-semibold">Client *</label>{{ form.client }}</div>
+                <div class="col-md-6"><label class="form-label fw-semibold">Date de création</label>{{
+                    form.date_creation }}</div>
+                <div class="col-md-6"><label class="form-label fw-semibold">Date de validité</label>{{
+                    form.date_validite }}</div>
+                <div class="col-md-6"><label class="form-label fw-semibold">Montant total (Ar)</label>{{
+                    form.montant_total }}</div>
+                <div class="col-md-6"><label class="form-label fw-semibold">Statut</label>{{ form.statut }}</div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-tia-primary px-4">Créer</button>
+                <a href="{% url 'commercial:devis_liste' %}" class="btn btn-outline-secondary">Annuler</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

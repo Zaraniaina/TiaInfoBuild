@@ -1,0 +1,77 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Déconnexion — TIA INFO BUILD</title>
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/tia-design.css' %}">
+</head>
+
+<body>
+    <div class="auth-shell">
+        <div class="auth-visual blueprint-pattern">
+            <div class="d-flex align-items-center gap-2">
+                <div class="mark"
+                    style="background:var(--tia-amber);color:var(--tia-navy);width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:800;">
+                    TB</div>
+                <div class="font-display fw-bold fs-5">TIA INFO BUILD</div>
+            </div>
+
+            <div>
+                <div class="eyebrow mb-2" style="color:var(--tia-amber);">Plateforme de gestion BTP</div>
+                <h2 class="font-display fw-bold mb-3" style="font-size:2rem;line-height:1.15;">
+                    Fin de session sécurisée
+                </h2>
+                <p class="mb-0" style="color:#B9C3D9;max-width:26rem;">
+                    Vous êtes sur le point d'être déconnecté. Assurez-vous d'avoir sauvegardé
+                    votre travail avant de quitter la plateforme.
+                </p>
+            </div>
+
+            <div class="small" style="color:#7C87A0;">© {% now "Y" %} TIA INFO BUILD — Madagascar</div>
+        </div>
+
+        <div class="auth-form-side">
+            <div class="auth-card">
+                <div class="mb-4">
+                    <div class="eyebrow mb-1">Confirmation de déconnexion</div>
+                    <h1 class="font-display fw-bold" style="font-size:1.6rem;">Déconnexion</h1>
+                    <p class="text-secondary mb-0">
+                        Vous allez vous déconnecter de votre compte.
+                    </p>
+                </div>
+
+                <div class="alert alert-info d-flex align-items-center gap-2" role="alert"
+                    style="background:var(--tia-warning-soft);border-color:var(--tia-amber);color:var(--tia-navy);">
+                    <i class="fa-solid fa-circle-info fa-lg mb-0"></i>
+                    <div class="small mb-0">
+                        <span class="fw-semibold">Compte :</span>
+                        {{ user.get_full_name|default:user.email }}
+                    </div>
+                </div>
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-tia-primary py-2">
+                            <i class="fa-solid fa-arrow-right-from-bracket me-2"></i>Confirmer la déconnexion
+                        </button>
+                        <a href="{% url 'core:dashboard' %}" class="btn btn-outline-secondary py-2">
+                            <i class="fa-solid fa-xmark me-2"></i>Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

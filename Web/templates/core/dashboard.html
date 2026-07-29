@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord — TIA INFO BUILD{% endblock %}
+{% block page_titre %}Tableau de bord{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <div class="eyebrow mb-1">Vue d'ensemble</div>
+    <p class="text-secondary mb-0">
+        Bonjour {{ user.get_full_name|default:user.email }}, voici l'état de vos activités.
+        {% if entreprise %}
+        <span class="badge bg-tia-amber-dark text-white fw-semibold ms-2">{{ entreprise.get_abonnement_display }}</span>
+        {% endif %}
+    </p>
+</div>
+
+{# ─── KPIs principaux ─── #}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card card-kpi h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Chantiers actifs</div>
+                <div class="kpi-value font-mono">{{ chantiers_actifs|default:"0" }}</div>
+                <div class="small text-secondary mt-1">{{ chantiers_total|default:"0" }} chantier{{
+                    chantiers_total|pluralize }} au total</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card card-kpi h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Budget total</div>
+                <div class="kpi-value font-mono">{{ budget_total|default:"0" }} Ar</div>
+                <div class="small text-secondary mt-1">Sur tous les chantiers</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card card-kpi h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Alertes</div>
+                <div class="kpi-value {% if total_alertes > 0 %}text-danger{% else %}font-mono{% endif %}">
+                    {{ total_alertes|default:"0" }}
+                </div>
+                <div class="small text-secondary mt-1">
+                    {{ materiels_en_panne|default:"0" }} matériel{{ materiels_en_panne|pluralize }} en panne
+                    · {{ articles_en_alerte|default:"0" }} stock bas
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card card-kpi h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Utilisateurs actifs</div>
+                <div class="kpi-value font-mono">{{ total_utilisateurs|default:"0" }}</div>
+                <div class="small text-secondary mt-1">
+                    <a href="{% url 'accounts:utilisateur_liste' %}">Voir la liste →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ─── KPIs secondaires (modules BTP) ─── #}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card card-kpi h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Employés</div>
+                <div class="kpi-value font-mono">{{ total_employes|default:"0" }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card card-kpi h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Matériels</div>
+                <div class="kpi-value font-mono">{{ total_materiels|default:"0" }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card card-kpi h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Articles stock</div>
+                <div class="kpi-value font-mono">{{ total_articles|default:"0" }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card card-kpi h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Clients / Devis</div>
+                <div class="kpi-value font-mono">{{ total_clients|default:"0" }} / {{ devis_en_cours|default:"0" }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ─── Message d'accueil / modules à venir ─── #}
+{% if not chantiers_total and not total_employes and not total_materiels %}
+<div class="card">
+    <div class="card-body py-5 text-center">
+        <i class="fa-solid fa-diagram-project mb-3" style="font-size:2rem;color:var(--tia-steel);"></i>
+        <h5 class="font-display fw-bold">Bienvenue sur votre espace entreprise</h5>
+        <p class="text-secondary mb-0">
+            Les modules Chantiers, Ressources Humaines, Matériels, Stocks et Commercial
+            seront activés ici au fur et à mesure de leur développement.
+        </p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
