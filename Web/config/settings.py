@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'materiels',
     'stocks',
     'commercial',
+    'api',
 ]
 
 AUTH_USER_MODEL = 'accounts.Utilisateur'

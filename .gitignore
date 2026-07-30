@@ -7,3 +7,5 @@ __pycache__/
 /staticfiles/
 .DS_Store
 *.log
+node_modules/
+plan.md
