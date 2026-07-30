@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Créer mon entreprise — TIA INFO BUILD</title>
+    <link rel="stylesheet" href="../public/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../public/bootstrap/bootstrap-icons/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../public/tia-design.css">
+</head>
+
+<body>
+    <div class="auth-shell">
+        <div class="auth-visual blueprint-pattern">
+            <div class="d-flex align-items-center gap-2">
+                <div class="mark"
+                    style="background:var(--tia-amber);color:var(--tia-navy);width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:800;">
+                    TB
+                </div>
+                <div class="font-display fw-bold fs-5">
+                    TIA INFO BUILD
+                </div>
+            </div>
+
+            <div>
+                <div class="eyebrow mb-2" style="color:var(--tia-amber);">
+                    Création de compte entreprise
+                </div>
+                <h2 class="font-display fw-bold mb-3" style="font-size:2rem;line-height:1.15;">
+                    Créez votre entreprise en 1 minute,
+                    <br>
+                    vous gérez le reste depuis votre espace local.
+                </h2>
+                <p class="mb-0" style="color:#B9C3D9;max-width:26rem;">
+                    Inscrivez votre entreprise et devenez administrateur.
+                    Vous pourrez ensuite ajouter vos employés,
+                    créer des chantiers, gérer vos matériels et suivre
+                    vos finances — le tout depuis un espace sécurisé.
+                </p>
+            </div>
+            <div class="small" style="color:#7C87A0;">
+                © 2026 TIA INFO BUILD — Madagascar
+            </div>
+        </div>
+
+        <div class="auth-form-side" style="overflow-y: auto;">
+            <div class="auth-card">
+                <div class="mb-4">
+                    <div class="eyebrow mb-1">
+                        Créer une entreprise
+                    </div>
+                    <h1 class="font-display fw-bold" style="font-size:1.6rem;">
+                        Inscription
+                    </h1>
+                    <p class="text-secondary mb-0">
+                        Créez votre compte administrateur en même temps que votre entreprise.
+                    </p>
+                </div>
+
+                <div id="statusMessage" class="alert d-none"></div>
+
+                <form id="registerForm">
+                    <div class="eyebrow mb-2" style="font-size:0.65rem;">
+                        Entreprise
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nom de l'entreprise *</label>
+                        <input type="text" id="nom" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Email de l'entreprise</label>
+                        <input type="email" id="entreprise_email" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Adresse</label>
+                        <input type="text" id="adresse" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Téléphone</label>
+                        <input type="text" id="telephone" class="form-control">
+                    </div>
+
+                    <hr style="border-color:var(--tia-line);margin:1.5rem 0;">
+
+                    <div class="eyebrow mb-2" style="font-size:0.65rem;">
+                        Responsable (administrateur)
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Prénom *</label>
+                            <input type="text" id="admin_prenom" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Nom *</label>
+                            <input type="text" id="admin_nom" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Email du responsable *</label>
+                        <input type="email" id="admin_email" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Mot de passe *</label>
+                        <input type="password" id="password" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Confirmation *</label>
+                        <input type="password" id="password_confirm" class="form-control" required>
+                    </div>
+
+                    <div class="alert alert-info d-flex align-items-center gap-2"
+                        style="background:var(--tia-warning-soft); border-color:var(--tia-amber); color:var(--tia-navy);">
+                        <i class="bi bi-info-circle fs-5"></i>
+                        <div class="small">
+                            Vous serez connecté automatiquement après la création.
+                            Plan offert : <strong>Essai gratuit</strong> (30 jours).
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-tia-primary w-100 py-2 mt-2">
+                        <i class="bi bi-rocket me-2"></i> Créer mon entreprise
+                    </button>
+                </form>
+
+                <div class="text-center mt-3 small">
+                    Vous avez déjà un compte ?
+                    <a href="index.html" class="text-decoration-none fw-semibold" style="color:var(--tia-amber);">
+                        Se connecter
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="../public/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="register.js"></script>
+</body>
+
+</html>
