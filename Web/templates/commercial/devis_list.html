@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Devis — TIA INFO BUILD{% endblock %}
+{% block page_titre %}Devis{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <div class="eyebrow mb-1">Module commercial</div>
+        <p class="text-secondary mb-0">{{ devis.count }} devis.</p>
+    </div>
+    <a href="{% url 'commercial:devis_creer' %}" class="btn btn-tia-primary"><i class="fa-solid fa-plus me-1"></i>
+        Nouveau devis</a>
+</div>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr class="text-secondary small text-uppercase">
+                    <th class="ps-3">N°</th>
+                    <th>Client</th>
+                    <th>Date</th>
+                    <th class="text-end pe-3">Montant</th>
+                    <th>Statut</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in devis %}
+                <tr>
+                    <td class="ps-3">#{{ d.id }}</td>
+                    <td>{{ d.client.nom }}</td>
+                    <td>{{ d.date_creation|date:"d/m/Y" }}</td>
+                    <td class="text-end pe-3 font-mono">{{ d.montant_total }} Ar</td>
+                    <td><span class="badge bg-tia-amber-dark text-white fw-semibold">{{ d.get_statut_display }}</span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-secondary py-4">Aucun devis.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

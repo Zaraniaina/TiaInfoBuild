@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Mon profil — TIA INFO BUILD{% endblock %}
+{% block page_titre %}Mon profil{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body p-4">
+                <div class="eyebrow mb-3">Informations personnelles</div>
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Prénom</label>
+                            {{ form.first_name }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Nom</label>
+                            {{ form.last_name }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Téléphone</label>
+                            {{ form.telephone }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Photo</label>
+                            {{ form.photo }}
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-tia-primary mt-4">Enregistrer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body p-4">
+                <div class="eyebrow mb-3">Sécurité</div>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Mot de passe actuel</label>
+                        {{ password_form.old_password }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nouveau mot de passe</label>
+                        {{ password_form.new_password1 }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Confirmation</label>
+                        {{ password_form.new_password2 }}
+                    </div>
+                    <button type="submit" name="changer_mdp" value="1" class="btn btn-tia-navy">Changer le mot de passe</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

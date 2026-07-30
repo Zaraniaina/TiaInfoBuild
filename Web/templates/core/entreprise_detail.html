@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}{{ entreprise.nom }} — TIA INFO BUILD{% endblock %}
+{% block page_titre %}{{ entreprise.nom }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{% url 'core:entreprise_liste' %}" class="text-decoration-none small">
+        <i class="fa-solid fa-arrow-left me-1"></i> Retour à la liste
+    </a>
+</div>
+
+{# ─── En-tête entreprise ─── #}
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="mark" style="width:54px;height:54px;font-size:1.3rem;">{{ entreprise.nom|first|upper }}
+                </div>
+                <div>
+                    <div class="fw-bold fs-5">{{ entreprise.nom }}</div>
+                    <div class="small text-secondary">{{ entreprise.email|default:"—" }}</div>
+                </div>
+            </div>
+            <span class="badge-role {% if entreprise.est_active %}badge-actif{% else %}badge-inactif{% endif %}">
+                {{ entreprise.est_active|yesno:"Active,Inactive" }}
+            </span>
+        </div>
+    </div>
+</div>
+
+{# ─── Infos & Actions ─── #}
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Informations</div>
+                <div class="row g-3 small">
+                    <div class="col-md-6">
+                        <div class="text-secondary">Adresse</div>
+                        <div>{{ entreprise.adresse|default:"—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-secondary">Téléphone</div>
+                        <div>{{ entreprise.telephone|default:"—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-secondary">Plan d'abonnement</div>
+                        <div>
+                            <form method="post" action="{% url 'core:entreprise_abonnement' entreprise.pk %}"
+                                class="d-inline">
+                                {% csrf_token %}
+                                <select name="abonnement" class="form-select form-select-sm d-inline-block"
+                                    style="width:auto;">
+                                    <option value="essai" {% if entreprise.abonnement=="essai" %}selected{% endif %}>
+                                        Essai gratuit</option>
+                                    <option value="standard" {% if entreprise.abonnement=="standard" %}selected{% endif
+                                        %}>Standard</option>
+                                    <option value="premium" {% if entreprise.abonnement=="premium" %}selected{% endif
+                                        %}>Premium</option>
+                                </select>
+                                <button type="submit" class="btn btn-tia-primary btn-sm">Changer</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-secondary">Créée le</div>
+                        <div>{{ entreprise.date_creation|date:"d/m/Y H:i" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Actions</div>
+                <div class="d-grid gap-2">
+                    <form method="post" action="{% url 'core:entreprise_statut' entreprise.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-secondary w-100">
+                            {% if entreprise.est_active %}
+                            <i class="fa-solid fa-pause me-1"></i> Désactiver l'entreprise
+                            {% else %}
+                            <i class="fa-solid fa-play me-1"></i> Activer l'entreprise
+                            {% endif %}
+                        </button>
+                    </form>
+                    <a href="{% url 'accounts:utilisateur_liste' %}" class="btn btn-outline-secondary w-100">
+                        <i class="fa-solid fa-users me-1"></i> Gérer les utilisateurs
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ─── Statistiques BTP ─── #}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card card-kpi h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Chantiers</div>
+                <div class="kpi-value">{{ total_chantiers|default:"0" }}</div>
+                <div class="small text-secondary mt-1">{{ chantiers_actifs|default:"0" }} actif{{
+                    chantiers_actifs|pluralize }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card card-kpi h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Employés</div>
+                <div class="kpi-value">{{ total_employes|default:"0" }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card card-kpi h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Matériels</div>
+                <div class="kpi-value">{{ total_materiels|default:"0" }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card card-kpi h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Articles stock</div>
+                <div class="kpi-value">{{ total_articles|default:"0" }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ─── Utilisateurs de l'entreprise ─── #}
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="eyebrow mb-0">Utilisateurs ({{ total_utilisateurs }})</div>
+        </div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr class="text-secondary small text-uppercase">
+                        <th class="ps-3">Utilisateur</th>
+                        <th>Rôle</th>
+                        <th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in utilisateurs %}
+                    <tr>
+                        <td class="ps-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="avatar-badge">{{ u.initiales }}</div>
+                                <div>
+                                    <div class="fw-semibold">{{ u.get_full_name|default:"—" }}</div>
+                                    <div class="small text-secondary">{{ u.email }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ u.role.nom|default:"—" }}</td>
+                        <td>
+                            <span
+                                class="badge-role {% if u.statut == 'actif' %}badge-actif{% else %}badge-inactif{% endif %}">
+                                {{ u.get_statut_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="text-center text-secondary py-4">Aucun utilisateur.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{# ─── Derniers chantiers ─── #}
+{% if chantiers %}
+<div class="card">
+    <div class="card-body">
+        <div class="eyebrow mb-2">Derniers chantiers</div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr class="text-secondary small text-uppercase">
+                        <th class="ps-3">Chantier</th>
+                        <th>Statut</th>
+                        <th class="text-end pe-3">Budget</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in chantiers %}
+                    <tr>
+                        <td class="ps-3">
+                            <div class="fw-semibold">{{ c.nom }}</div>
+                            <div class="small text-secondary">{{ c.adresse|default:"—" }}</div>
+                        </td>
+                        <td>
+                            <span
+                                class="badge-role {% if c.statut == 'actif' %}badge-actif{% else %}badge-inactif{% endif %}">
+                                {{ c.get_statut_display|default:c.statut }}
+                            </span>
+                        </td>
+                        <td class="text-end pe-3 font-mono">{{ c.budget_prevu|default:"0" }} Ar</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

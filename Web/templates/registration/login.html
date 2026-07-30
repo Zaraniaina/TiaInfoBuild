@@ -1,0 +1,86 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion — TIA INFO BUILD</title>
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/tia-design.css' %}">
+</head>
+
+<body>
+    <div class="auth-shell">
+        <div class="auth-visual blueprint-pattern">
+            <div class="d-flex align-items-center gap-2">
+                <div class="mark"
+                    style="background:var(--tia-amber);color:var(--tia-navy);width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:800;">
+                    TB</div>
+                <div class="font-display fw-bold fs-5">TIA INFO BUILD</div>
+            </div>
+
+            <div>
+                <div class="eyebrow mb-2" style="color:var(--tia-amber);">Plateforme de gestion BTP</div>
+                <h2 class="font-display fw-bold mb-3" style="font-size:2rem;line-height:1.15;">
+                    Un seul plan de suivi<br>pour tous vos chantiers.
+                </h2>
+                <p class="mb-0" style="color:#B9C3D9;max-width:26rem;">
+                    Chantiers, ressources humaines, matériels, stocks et finances —
+                    pilotés depuis un tableau de bord unique, accessible du bureau au terrain.
+                </p>
+            </div>
+
+            <div class="small" style="color:#7C87A0;">© {% now "Y" %} TIA INFO BUILD — Madagascar</div>
+        </div>
+
+        <div class="auth-form-side">
+            <div class="auth-card">
+                <div class="mb-4">
+                    <div class="eyebrow mb-1">Espace de connexion</div>
+                    <h1 class="font-display fw-bold" style="font-size:1.6rem;">Bienvenue</h1>
+                    <p class="text-secondary mb-0">Connectez-vous pour accéder à votre tableau de bord.</p>
+                </div>
+
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                {% endif %}
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="{{ form.username.id_for_label }}" class="form-label fw-semibold">Adresse
+                            email</label>
+                        {{ form.username }}
+                        {% if form.username.errors %}<div class="text-danger small mt-1">{{
+                            form.username.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.password.id_for_label }}" class="form-label fw-semibold">Mot de
+                            passe</label>
+                        {{ form.password }}
+                        {% if form.password.errors %}<div class="text-danger small mt-1">{{
+                            form.password.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <button type="submit" class="btn btn-tia-primary w-100 py-2 mt-2">Se connecter</button>
+                    <input type="hidden" name="next" value="{{ next }}">
+                </form>
+
+                <div class="text-center mt-3 small">
+                    Pas encore d'entreprise ?
+                    <a href="{% url 'accounts:inscription' %}" class="text-decoration-none fw-semibold"
+                        style="color:var(--tia-amber);">
+                        Créer mon entreprise
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

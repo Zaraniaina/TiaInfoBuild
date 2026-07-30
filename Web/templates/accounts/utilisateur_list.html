@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Utilisateurs — TIA INFO BUILD{% endblock %}
+{% block page_titre %}Utilisateurs{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <div class="eyebrow mb-1">Administration</div>
+        <p class="text-secondary mb-0">{{ total_actifs }} utilisateur{{ total_actifs|pluralize }} actif{{ total_actifs|pluralize }}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <form method="get" class="d-flex" role="search">
+            <input type="search" name="q" value="{{ recherche }}" class="form-control" placeholder="Rechercher un utilisateur…">
+        </form>
+        <a href="{% url 'accounts:utilisateur_creer' %}" class="btn btn-tia-primary text-nowrap">
+            <i class="fa-solid fa-plus me-1"></i> Nouvel utilisateur
+        </a>
+    </div>
+</div>
+
+<!-- Vue tableau (desktop / tablette large) -->
+<div class="card d-none d-lg-block">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr class="text-secondary small text-uppercase">
+                    <th class="ps-3">Utilisateur</th>
+                    <th>Rôle</th>
+                    <th>Entreprise</th>
+                    <th>Statut</th>
+                    <th class="text-end pe-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in utilisateurs %}
+                <tr>
+                    <td class="ps-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar-badge">{{ u.initiales }}</div>
+                            <div>
+                                <div class="fw-semibold">{{ u.get_full_name|default:"—" }}</div>
+                                <div class="small text-secondary">{{ u.email }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ u.role.nom|default:"—" }}</td>
+                    <td>{{ u.entreprise.nom|default:"—" }}</td>
+                    <td>
+                        <span class="badge-role {% if u.statut == 'actif' %}badge-actif{% else %}badge-inactif{% endif %}">
+                            {{ u.get_statut_display }}
+                        </span>
+                    </td>
+                    <td class="text-end pe-3">
+                        <a href="{% url 'accounts:utilisateur_modifier' u.pk %}" class="btn btn-sm btn-outline-secondary">
+                            <i class="fa-solid fa-pen"></i>
+                        </a>
+                        <form method="post" action="{% url 'accounts:utilisateur_statut' u.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Activer / désactiver">
+                                <i class="fa-solid fa-power-off"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-secondary py-4">Aucun utilisateur trouvé.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Vue cartes (mobile / tablette) -->
+<div class="d-lg-none d-flex flex-column gap-2">
+    {% for u in utilisateurs %}
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar-badge">{{ u.initiales }}</div>
+                    <div>
+                        <div class="fw-semibold">{{ u.get_full_name|default:"—" }}</div>
+                        <div class="small text-secondary">{{ u.email }}</div>
+                    </div>
+                </div>
+                <span class="badge-role {% if u.statut == 'actif' %}badge-actif{% else %}badge-inactif{% endif %}">
+                    {{ u.get_statut_display }}
+                </span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-3 small text-secondary">
+                <span>{{ u.role.nom|default:"—" }} · {{ u.entreprise.nom|default:"—" }}</span>
+            </div>
+            <div class="d-flex gap-2 mt-3">
+                <a href="{% url 'accounts:utilisateur_modifier' u.pk %}" class="btn btn-sm btn-outline-secondary flex-fill">Modifier</a>
+                <form method="post" action="{% url 'accounts:utilisateur_statut' u.pk %}" class="flex-fill">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Activer/Désactiver</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <p class="text-center text-secondary py-4">Aucun utilisateur trouvé.</p>
+    {% endfor %}
+</div>
+
+{% if is_paginated %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Précédent</a></li>
+        {% endif %}
+        <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Suivant</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

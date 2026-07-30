@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Employés — TIA INFO BUILD{% endblock %}
+{% block page_titre %}Employés{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <div class="eyebrow mb-1">Ressources humaines</div>
+        <p class="text-secondary mb-0">{{ employes.count }} employé{{ employes.count|pluralize }}.</p>
+    </div>
+    <a href="{% url 'rh:employe_creer' %}" class="btn btn-tia-primary"><i class="fa-solid fa-plus me-1"></i> Nouvel
+        employé</a>
+</div>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr class="text-secondary small text-uppercase">
+                    <th class="ps-3">Employé</th>
+                    <th>Matricule</th>
+                    <th>Poste</th>
+                    <th>Statut</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in employes %}
+                <tr>
+                    <td class="ps-3">
+                        <div class="fw-semibold">{{ e.nom_complet }}</div>
+                    </td>
+                    <td>{{ e.matricule }}</td>
+                    <td>{{ e.poste|default:"—" }}</td>
+                    <td><span
+                            class="badge-role {% if e.statut == 'actif' %}badge-actif{% else %}badge-inactif{% endif %}">{{
+                            e.get_statut_display }}</span></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-secondary py-4">Aucun employé.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

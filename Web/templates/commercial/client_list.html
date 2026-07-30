@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Clients — TIA INFO BUILD{% endblock %}
+{% block page_titre %}Clients{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <div class="eyebrow mb-1">Module commercial</div>
+        <p class="text-secondary mb-0">{{ clients.count }} client{{ clients.count|pluralize }}.</p>
+    </div>
+    <a href="{% url 'commercial:client_creer' %}" class="btn btn-tia-primary"><i class="fa-solid fa-plus me-1"></i>
+        Nouveau client</a>
+</div>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr class="text-secondary small text-uppercase">
+                    <th class="ps-3">Client</th>
+                    <th>Type</th>
+                    <th>Téléphone</th>
+                    <th>Email</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in clients %}
+                <tr>
+                    <td class="ps-3">
+                        <div class="fw-semibold">{{ c.nom }}</div>
+                    </td>
+                    <td>{{ c.get_type_display }}</td>
+                    <td>{{ c.telephone|default:"—" }}</td>
+                    <td>{{ c.email|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-secondary py-4">Aucun client.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

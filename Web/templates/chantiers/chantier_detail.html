@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}{{ chantier.nom }} — TIA INFO BUILD{% endblock %}
+{% block page_titre %}{{ chantier.nom }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{% url 'chantiers:chantier_liste' %}" class="text-decoration-none small">
+        <i class="fa-solid fa-arrow-left me-1"></i> Retour à la liste
+    </a>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h2 class="fw-bold mb-0">{{ chantier.nom }}</h2>
+                    <span
+                        class="badge-role {% if chantier.statut == 'actif' %}badge-actif{% else %}badge-inactif{% endif %}">
+                        {{ chantier.get_statut_display }}
+                    </span>
+                </div>
+                <p class="text-secondary">{{ chantier.adresse|default:"—" }}</p>
+                <p>{{ chantier.description|default:"Aucune description." }}</p>
+                <div class="row g-3 small mt-3">
+                    <div class="col-md-6">
+                        <div class="text-secondary">Client</div>
+                        <div>{{ chantier.client.nom|default:"—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-secondary">Chef de chantier</div>
+                        <div>{{ chantier.chef_chantier.get_full_name|default:"—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-secondary">Date début</div>
+                        <div>{{ chantier.date_debut|date:"d/m/Y"|default:"—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-secondary">Date fin prévue</div>
+                        <div>{{ chantier.date_fin_prevue|date:"d/m/Y"|default:"—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-secondary">Budget prévu</div>
+                        <div class="font-mono">{{ chantier.budget_prevu }} Ar</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-secondary">Budget réel</div>
+                        <div class="font-mono">{{ chantier.budget_reel }} Ar</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Actions</div>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'chantiers:chantier_modifier' chantier.pk %}" class="btn btn-tia-navy">
+                        <i class="fa-solid fa-pen me-1"></i> Modifier
+                    </a>
+                    <a href="{% url 'chantiers:phase_creer' chantier.pk %}" class="btn btn-outline-secondary">
+                        <i class="fa-solid fa-layer-group me-1"></i> Ajouter une phase
+                    </a>
+                    <a href="{% url 'chantiers:incident_creer' chantier.pk %}" class="btn btn-outline-secondary">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Déclarer un incident
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Phases ({{ phases.count }})</div>
+                {% if phases %}
+                <div class="d-flex flex-column gap-2">
+                    {% for p in phases %}
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-semibold">{{ p.nom }}</div>
+                            <div class="small text-secondary">{{ p.date_debut|date:"d/m/Y"|default:"—" }} → {{
+                                p.date_fin|date:"d/m/Y"|default:"—" }}</div>
+                        </div>
+                        <span class="badge bg-tia-amber text-dark fw-semibold">{{ p.avancement_pct }}%</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-secondary small mb-0">Aucune phase pour ce chantier.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="eyebrow mb-2">Incidents ({{ incidents.count }})</div>
+                {% if incidents %}
+                <div class="d-flex flex-column gap-2">
+                    {% for i in incidents %}
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="fw-semibold">{{ i.titre }}</div>
+                            <div class="small text-secondary">{{ i.date_incident|date:"d/m/Y" }}</div>
+                        </div>
+                        <span
+                            class="badge-role {% if i.gravite == 'critique' %}badge-inactif{% elif i.gravite == 'elevee' %}badge-actif{% else %}bg-secondary bg-opacity-10 text-secondary{% endif %}">
+                            {{ i.get_gravite_display }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-secondary small mb-0">Aucun incident pour ce chantier.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

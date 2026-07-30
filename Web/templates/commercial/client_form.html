@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{% if view.object %}Modifier{% else %}Nouveau{% endif %} client — TIA INFO BUILD{% endblock %}
+{% block page_titre %}{% if view.object %}Modifier{% else %}Nouveau{% endif %} client{% endblock %}
+{% block content %}
+<div class="card" style="max-width:700px;">
+    <div class="card-body p-4">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+            <div class="row g-3">
+                <div class="col-md-6"><label class="form-label fw-semibold">Type</label>{{ form.type }}</div>
+                <div class="col-md-6"><label class="form-label fw-semibold">Nom *</label>{{ form.nom }}</div>
+                <div class="col-12"><label class="form-label fw-semibold">Adresse</label>{{ form.adresse }}</div>
+                <div class="col-md-6"><label class="form-label fw-semibold">Téléphone</label>{{ form.telephone }}</div>
+                <div class="col-md-6"><label class="form-label fw-semibold">Email</label>{{ form.email }}</div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-tia-primary px-4">{% if view.object %}Enregistrer{% else %}Créer{%
+                    endif %}</button>
+                <a href="{% url 'commercial:client_liste' %}" class="btn btn-outline-secondary">Annuler</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
