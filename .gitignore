@@ -9,3 +9,5 @@ __pycache__/
 *.log
 node_modules/
 plan.md
+tia_info_build.sqlite-shm
+tia_info_build.sqlite-wal
