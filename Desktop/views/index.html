@@ -12,6 +12,7 @@
 
 <body>
   <div class="auth-shell">
+    <!-- Panneau visuel gauche -->
     <div class="auth-visual blueprint-pattern">
       <div class="d-flex align-items-center gap-2">
         <div class="mark"
@@ -34,6 +35,7 @@
       <div class="small" style="color:#7C87A0;">© 2026 TIA INFO BUILD — Madagascar</div>
     </div>
 
+    <!-- Formulaire de connexion -->
     <div class="auth-form-side">
       <div class="auth-card">
         <div class="mb-4">
@@ -42,18 +44,41 @@
           <p class="text-secondary mb-0">Connectez-vous pour accéder à votre espace local.</p>
         </div>
 
-        <div id="statusMessage" class="alert d-none"></div>
+        <div id="statusMessage" class="alert d-none" role="alert"></div>
 
         <form id="loginForm" novalidate>
           <div class="mb-3">
             <label for="email" class="form-label fw-semibold">Adresse email</label>
-            <input type="email" name="email" id="email" class="form-control" required>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+              <input type="email" name="email" id="email" class="form-control"
+                placeholder="votre@email.com" required autocomplete="email">
+            </div>
           </div>
+
           <div class="mb-3">
             <label for="password" class="form-label fw-semibold">Mot de passe</label>
-            <input type="password" name="password" id="password" class="form-control" required>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-lock"></i></span>
+              <input type="password" name="password" id="password" class="form-control"
+                placeholder="••••••••" required autocomplete="current-password">
+              <button class="btn btn-outline-secondary" type="button" id="togglePassword"
+                aria-label="Afficher/masquer le mot de passe">
+                <i class="bi bi-eye" id="togglePasswordIcon"></i>
+              </button>
+            </div>
           </div>
-          <button type="submit" class="btn btn-tia-primary w-100 py-2 mt-2">Se connecter</button>
+
+          <div class="mb-3 d-flex align-items-center justify-content-between">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="rememberMe" name="remember">
+              <label class="form-check-label small" for="rememberMe">Se souvenir de moi</label>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-tia-primary w-100 py-2 mt-1" id="btnLogin">
+            <i class="bi bi-box-arrow-in-right me-2"></i>Se connecter
+          </button>
         </form>
 
         <div class="text-center mt-3 small">

@@ -1,0 +1,94 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0 text-gray-800">Fournisseurs</h1>
+        <p class="text-muted">Annuaire de vos fournisseurs et partenaires</p>
+    </div>
+    <button class="btn btn-tia-primary" id="btnNouveauFournisseur">
+        <i class="bi bi-building-add me-2"></i>Nouveau Fournisseur
+    </button>
+</div>
+
+<!-- Barre de recherche -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" id="searchFournisseur" class="form-control border-start-0" placeholder="Rechercher par nom, contact ou email...">
+                </div>
+            </div>
+            <div class="col-md-6 d-flex justify-content-end align-items-center">
+                <span class="text-muted small" id="totalFournisseurs">0 fournisseur(s)</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Grille des Fournisseurs -->
+<div class="row g-4" id="fournisseursGrid">
+    <!-- Les cartes des fournisseurs seront injectées ici -->
+</div>
+
+<!-- Empty State -->
+<div class="card border-0 shadow-sm d-none" id="fournisseursEmpty">
+    <div class="card-body text-center py-5">
+        <div class="display-1 text-muted mb-3"><i class="bi bi-buildings"></i></div>
+        <h5 class="text-muted">Aucun fournisseur trouvé</h5>
+        <p class="text-muted small">Ajoutez un fournisseur pour commencer à passer des commandes.</p>
+        <button class="btn btn-outline-primary mt-3" onclick="document.getElementById('btnNouveauFournisseur').click()">
+            <i class="bi bi-plus-lg me-1"></i> Ajouter un fournisseur
+        </button>
+    </div>
+</div>
+
+<!-- Modale Saisie Fournisseur -->
+<div class="modal fade" id="modalFournisseur" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title"><i class="bi bi-building me-2"></i>Détails du Fournisseur</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formFournisseur">
+                <input type="hidden" id="fournisseurId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nom de l'entreprise <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="fournisseurNom" required placeholder="Ex: Point P">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nom du contact</label>
+                        <input type="text" class="form-control" id="fournisseurContact" placeholder="Ex: Jean Dupont">
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Téléphone</label>
+                            <input type="tel" class="form-control" id="fournisseurTelephone">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Email</label>
+                            <input type="email" class="form-control" id="fournisseurEmail">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Adresse</label>
+                        <textarea class="form-control" id="fournisseurAdresse" rows="2" placeholder="Adresse complète..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Notes</label>
+                        <textarea class="form-control" id="fournisseurNotes" rows="2" placeholder="Conditions de paiement, livraison..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-tia-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
