@@ -39,6 +39,21 @@ class Router {
      */
     afterEach(hook) {
         this.afterEachHooks.push(hook);
+                window.router.afterEach(async (to, from) => {
+        // Mettre à jour les symboles de devise
+        if (window.updateCurrencySymbols) {
+            window.updateCurrencySymbols();
+        }
+
+        // Fermer les dropdowns ouverts
+        document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+            menu.classList.remove('show');
+        });
+
+        // Scroll en haut
+        const contentArea = document.getElementById('contentArea');
+        if (contentArea) contentArea.scrollTop = 0;
+        });
     }
 
     /**

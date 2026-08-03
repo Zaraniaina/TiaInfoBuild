@@ -36,6 +36,14 @@ class PaiementsController {
         } catch (error) { console.error('Erreur factures:', error); }
     }
 
+    formatCurrency(amount) {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: window.getAppCurrency ? window.getAppCurrency() : 'MGA',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount || 0);
+}
     async loadClients() {
         try {
             const entrepriseId = window.AppState?.entreprise?.id || 1;

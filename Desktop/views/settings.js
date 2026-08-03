@@ -429,7 +429,7 @@ class ParametresController {
                 document.getElementById('themeAuto').checked = prefs.theme === 'auto' || !prefs.theme;
                 document.getElementById('prefLangue').value = prefs.langue || 'fr';
                 document.getElementById('prefDateFormat').value = prefs.dateFormat || 'DD/MM/YYYY';
-                document.getElementById('prefDevise').value = prefs.devise || 'EUR';
+                document.getElementById('prefDevise').value = prefs.devise || 'MGA';
                 document.getElementById('notifEmail').checked = prefs.notifEmail !== false;
                 document.getElementById('notifPush').checked = prefs.notifPush !== false;
                 document.getElementById('notifFacturesRetard').checked = prefs.notifFacturesRetard !== false;
@@ -462,6 +462,8 @@ class ParametresController {
         if (document.getElementById('themeLight').checked) data.theme = 'light';
         else if (document.getElementById('themeDark').checked) data.theme = 'dark';
         else data.theme = 'auto';
+        // Persister la devise globalement
+        localStorage.setItem('tia_devise', data.devise || 'MGA');
 
         const userId = window.AppState?.user?.id;
         if (!userId) return;

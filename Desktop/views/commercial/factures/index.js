@@ -88,6 +88,14 @@ class FacturesController {
         });
     }
 
+    formatCurrency(amount) {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: window.getAppCurrency ? window.getAppCurrency() : 'MGA',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount || 0);
+}
     async loadFactures() {
         const entrepriseId = window.AppState?.entreprise?.id || 1;
         const tbody = document.getElementById('facturesTbody');
@@ -146,8 +154,11 @@ class FacturesController {
             return new Date(dateStr).toLocaleDateString('fr-FR');
         };
 
-        const formatMoney = (amount) => {
-            return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount || 0);
+       const formatMoney = (amount) => {
+        return new Intl.NumberFormat('fr-FR', { 
+            style: 'currency', 
+            currency: window.getAppCurrency ? window.getAppCurrency() : 'MGA' 
+        }).format(amount || 0);
         };
 
         tbody.innerHTML = items.map(f => {
@@ -285,10 +296,10 @@ class FacturesController {
         document.getElementById('paiementDate').value = new Date().toISOString().split('T')[0];
         document.getElementById('paiementMontant').value = resteAPayer;
         
-        const resteLabel = document.getElementById('paiementResteLabel');
-        if (resteLabel) {
-            resteLabel.textContent = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(resteAPayer);
-        }
+        resteLabel.textContent = new Intl.NumberFormat('fr-FR', { 
+        style: 'currency', 
+        currency: window.getAppCurrency ? window.getAppCurrency() : 'MGA' 
+        }).format(resteAPayer);
 
         new bootstrap.Modal(document.getElementById('modalPaiement')).show();
     }

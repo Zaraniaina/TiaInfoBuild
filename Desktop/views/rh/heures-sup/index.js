@@ -42,7 +42,14 @@ class HeuresSupController {
             console.error('Erreur chargement employés:', error);
         }
     }
-
+    formatCurrency(amount) {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: window.getAppCurrency ? window.getAppCurrency() : 'MGA',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount || 0);
+}
     async loadChantiers() {
         try {
             const entrepriseId = window.AppState?.entreprise?.id || 1;

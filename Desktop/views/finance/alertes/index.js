@@ -29,6 +29,14 @@ class AlertesController {
         document.getElementById('btnMarquerToutesLues')?.addEventListener('click', () => this.marquerToutesLues());
     }
 
+    formatCurrency(amount) {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: window.getAppCurrency ? window.getAppCurrency() : 'MGA',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount || 0);
+}
     async loadAlertes() {
         this.showLoader(true);
         try {
