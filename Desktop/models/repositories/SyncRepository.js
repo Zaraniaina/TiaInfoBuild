@@ -3,7 +3,30 @@ const db = require('../db');
 
 class SyncRepository extends BaseRepository {
     constructor() {
-        super('SyncLog'); // Table de log de synchronisation
+        super('SyncQueue'); // Utilise la table SyncQueue (existant dans init.js)
+    }
+
+    /**
+     * Configuration locale pour le main process (remplace localStorage)
+     */
+    static _config = {
+        apiUrl: 'http://localhost:8000/api',
+        autoSync: true,
+        interval: 300000
+    };
+
+    /**
+     * Obtenir la config (main-process safe)
+     */
+    getConfig() {
+        return SyncRepository._config;
+    }
+
+    /**
+     * Mettre à jour la config (main-process safe)
+     */
+    setConfig(config) {
+        SyncRepository._config = { ...SyncRepository._config, ...config };
     }
 
     /**
@@ -26,13 +49,13 @@ class SyncRepository extends BaseRepository {
 
         for (const table of tables) {
             try {
-                // Récupérer tous les éléments non synchronisés
-                const pendingRows = db.prepare(`SELECT * FROM ${table} WHERE is_synced = 0`).all();
-                
+                // Récupérer tous les éléments non synchronisés (is_deleted = 0 pour éviter les suppressions)
+                const pendingRows = db.prepare(`SELECT * FROM ${table} WHERE is_synced = 0 AND is_deleted = 0`).all();
+
                 if (pendingRows.length > 0) {
                     // Envoi en batch vers l'API Endpoint du serveur Django
                     const response = await apiClient.post(`/api/sync/push/${table.toLowerCase()}/`, { items: pendingRows });
-                    
+
                     if (response && response.syncedIds && Array.isArray(response.syncedIds)) {
                         for (const id of response.syncedIds) {
                             this.markSynced(table, id);
@@ -81,7 +104,11 @@ class SyncRepository extends BaseRepository {
      */
     async pull() {
         const apiClient = require('../../services/apiClient');
-        const lastSync = localStorage?.getItem('tia_last_sync') || '1970-01-01T00:00:00.000Z';
+        // Utiliser la table SyncQueue pour stocker le lastSync
+        const lastSyncRecord = db.prepare(`
+            SELECT MAX(createdAt) as lastSync FROM SyncQueue WHERE status = 'synced'
+        `).get();
+        const lastSync = lastSyncRecord?.lastSync || '1970-01-01T00:00:00.000Z';
         let totalPulled = 0;
 
         try {
@@ -118,10 +145,12 @@ class SyncRepository extends BaseRepository {
                 }
             }
 
+            // Enregistrer le dernier sync dans SyncQueue
             const now = new Date().toISOString();
-            if (typeof localStorage !== 'undefined') {
-                localStorage.setItem('tia_last_sync', now);
-            }
+            db.prepare(`
+                INSERT INTO SyncQueue (tableName, recordId, operation, status, createdAt)
+                VALUES ('__sync_meta__', 0, 'pull', 'synced', ?)
+            `).run(now);
 
             return {
                 success: true,
@@ -143,13 +172,19 @@ class SyncRepository extends BaseRepository {
      * @returns {Object} - Statut
      */
     getStatus() {
-        const lastSync = localStorage?.getItem('tia_last_sync') || null;
+        const lastSyncRecord = db.prepare(`
+            SELECT MAX(createdAt) as lastSync FROM SyncQueue WHERE status = 'synced'
+        `).get();
+        const lastSync = lastSyncRecord?.lastSync || null;
         const pendingCount = this.getPendingCount();
+        // En main process, on ne peut pas utiliser navigator.onLine
+        // On utilise une variable d'état ou on suppose en ligne si pas packagé
+        const isOnline = true; // Par défaut, ou utiliser un état géré par l'app
 
         return {
             lastSync,
             pendingChanges: pendingCount,
-            isOnline: navigator?.onLine ?? true,
+            isOnline,
             status: pendingCount > 0 ? 'pending' : 'synced'
         };
     }
@@ -197,30 +232,30 @@ class SyncRepository extends BaseRepository {
     }
 
     /**
-     * Enregistrer un log de sync
+     * Enregistrer un log de sync dans SyncQueue
      * @param {Object} data - { type, table, recordId, action, status, details }
      */
     logSync(data) {
         return this.create({
             type: data.type, // 'push' | 'pull' | 'conflict'
             tableName: data.table,
-            recordId: data.recordId,
-            action: data.action, // 'create' | 'update' | 'delete'
+            recordId: data.recordId || 0,
+            operation: data.action, // 'create' | 'update' | 'delete'
             status: data.status, // 'success' | 'error' | 'conflict'
             details: JSON.stringify(data.details || {}),
-            dateSync: new Date().toISOString()
         });
     }
 
     /**
-     * Obtenir l'historique des syncs
+     * Obtenir l'historique des syncs depuis SyncQueue
      * @param {number} limit - Limite
      * @returns {Array} - Logs
      */
     getHistory(limit = 50) {
         const stmt = db.prepare(`
-            SELECT * FROM SyncLog
-            ORDER BY dateSync DESC
+            SELECT * FROM SyncQueue
+            WHERE tableName != '__sync_meta__'
+            ORDER BY createdAt DESC
             LIMIT ?
         `);
         return stmt.all(limit);

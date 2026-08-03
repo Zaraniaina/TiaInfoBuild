@@ -194,7 +194,7 @@ function setupRouterGuards() {
                 roleLabel.toLowerCase().includes(r)
             );
             if (!isAdmin) {
-                try { showToast('Accès non autorisé', 'error'); } catch (e) {}
+                try { showToast('Accès non autorisé', 'error'); } catch (e) { }
                 return false; // Annuler navigation
             }
         }
@@ -296,7 +296,7 @@ async function performSync() {
 /**
  * Mettre à jour l'UI de statut de synchronisation
  */
-function updateSyncUI() {
+async function updateSyncUI() {
     const syncText = document.querySelector('.sync-text');
     const syncIndicator = document.getElementById('syncIndicator');
     const syncIcon = document.getElementById('syncIcon');
@@ -323,9 +323,10 @@ function updateSyncUI() {
     }
 
     // Badge notifications (alertes non lues)
-    if (notifBtn && AppState.entreprise && window.api && window.api.getAlertCount) {
+    if (notifBtn && AppState.entreprise && window.api && window.api.alertes) {
         try {
-            const count = window.api.getAlertCount(AppState.entreprise.id);
+            const result = await window.api.alertes.invoke('countNonLues', AppState.entreprise.id);
+            const count = result?.data || 0;
             const badge = document.getElementById('notifBadge');
             if (badge) {
                 badge.textContent = count;

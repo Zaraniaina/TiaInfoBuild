@@ -91,7 +91,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true
     },
-    icon: path.join(__dirname, 'public', 'icon.png'),
+    // icon: path.join(__dirname, 'public', 'icon.png'), // TODO: ajouter icon.png
     titleBarStyle: 'default',
     show: false
   })
@@ -115,13 +115,28 @@ function createWindow() {
 // ============================================================
 
 // --- Auth & Session ---
+let _session = null;
+
 ipcMain.handle('auth:login', handleLogin)
-ipcMain.handle('auth:logout', async () => ({ success: true }))
-ipcMain.handle('auth:check', async () => ({ authenticated: false }))
+ipcMain.handle('auth:logout', async () => {
+  _session = null;
+  return { success: true };
+})
+ipcMain.handle('auth:check', async () => {
+  return { authenticated: !!_session, user: _session };
+})
 ipcMain.handle('auth:register', handleRegister)
-ipcMain.handle('session:get', async () => null)
-ipcMain.handle('session:set', async () => ({ success: true }))
-ipcMain.handle('session:clear', async () => ({ success: true }))
+ipcMain.handle('session:get', async () => {
+  return { success: true, data: _session };
+})
+ipcMain.handle('session:set', async (e, data) => {
+  _session = data;
+  return { success: true };
+})
+ipcMain.handle('session:clear', async () => {
+  _session = null;
+  return { success: true };
+})
 
 // --- Chantiers, Phases & Incidents ---
 ipcMain.handle('chantiers:list', (e, params) => chantierCtrl.getList(e, params))
@@ -276,7 +291,13 @@ ipcMain.handle('dialog:showSaveDialog', async (e, options) => {
     return { canceled: true, filePath: '' }
   }
 })
-ipcMain.handle('notification:show', async () => ({ success: true }))
+ipcMain.handle('notification:show', async (e, title, body) => {
+  const { Notification } = require('electron');
+  if (Notification.isSupported()) {
+    new Notification({ title, body }).show();
+  }
+  return { success: true };
+})
 
 // ============================================================
 // APP LIFECYCLE
