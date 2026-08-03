@@ -42,20 +42,20 @@ class DashboardRepository extends BaseRepository {
         const stocksAlerte = db.prepare(`
             SELECT COUNT(*) as count FROM Article
             WHERE entrepriseId = ? AND is_deleted = 0
-            AND stockActuel <= seuilAlerte
+            AND COALESCE(stockActuel, quantiteStock, 0) <= COALESCE(seuilAlerte, 0)
         `).get(entrepriseId);
         stats.stocksAlerte = stocksAlerte.count;
 
         // Stocks - valeur totale
         const stocksValeur = db.prepare(`
-            SELECT SUM(stockActuel * prixUnitaire) as total FROM Article
+            SELECT SUM(COALESCE(stockActuel, quantiteStock, 0) * COALESCE(prixUnitaire, 0)) as total FROM Article
             WHERE entrepriseId = ? AND is_deleted = 0
         `).get(entrepriseId);
         stats.stocksValeur = stocksValeur.total || 0;
 
         // Finances - factures en retard
         const facturesRetard = db.prepare(`
-            SELECT COUNT(*) as count, SUM(montantTTC - montantPaye) as montantDu
+            SELECT COUNT(*) as count, SUM(COALESCE(montantTTC, montant, 0) - COALESCE(montantPaye, 0)) as montantDu
             FROM Facture
             WHERE entrepriseId = ? AND is_deleted = 0
             AND statut IN ('emise', 'envoyee', 'partiellement_payee')
@@ -69,7 +69,7 @@ class DashboardRepository extends BaseRepository {
         const debutMoisStr = debutMois.toISOString().split('T')[0];
 
         const caMois = db.prepare(`
-            SELECT SUM(montantTTC) as total FROM Facture
+            SELECT SUM(COALESCE(montantTTC, montant, 0)) as total FROM Facture
             WHERE entrepriseId = ? AND is_deleted = 0
             AND dateEmission >= ?
         `).get(entrepriseId, debutMoisStr);
@@ -117,7 +117,7 @@ class DashboardRepository extends BaseRepository {
         // Nouveaux chantiers
         const nouveauxChantiers = db.prepare(`
             SELECT 'chantier' as type, id, nom as titre, 'Nouveau chantier' as description, 
-                   dateCreation as date, 'primary' as couleur
+                   created_at as date, 'primary' as couleur
             FROM Chantier
             WHERE entrepriseId = ? AND is_deleted = 0
             ORDER BY dateCreation DESC
@@ -127,7 +127,7 @@ class DashboardRepository extends BaseRepository {
         // Nouveaux devis
         const nouveauxDevis = db.prepare(`
             SELECT 'devis' as type, id, numero as titre, 'Nouveau devis' as description,
-                   dateCreation as date, 'info' as couleur
+                   created_at as date, 'info' as couleur
             FROM Devis
             WHERE entrepriseId = ? AND is_deleted = 0
             ORDER BY dateCreation DESC
@@ -174,7 +174,7 @@ class DashboardRepository extends BaseRepository {
         const stmt = db.prepare(`
             SELECT 
                 strftime('%Y-%m', dateEmission) as mois,
-                SUM(montantTTC) as ca
+                SUM(COALESCE(montantTTC, montant, 0)) as ca
             FROM Facture
             WHERE entrepriseId = ? AND is_deleted = 0
             AND dateEmission >= date('now', '-12 months')
@@ -191,11 +191,11 @@ class DashboardRepository extends BaseRepository {
      */
     getTopChantiersBudget(entrepriseId) {
         const stmt = db.prepare(`
-            SELECT id, nom, budgetPrevisionnel, budgetReel, 
-                   (budgetReel / NULLIF(budgetPrevisionnel, 0) * 100) as pctBudget
+            SELECT id, nom, COALESCE(budgetPrevisionnel, budgetPrevu, 0) as budgetPrevisionnel, budgetReel,
+                   (budgetReel / NULLIF(COALESCE(budgetPrevisionnel, budgetPrevu, 0), 0) * 100) as pctBudget
             FROM Chantier
             WHERE entrepriseId = ? AND is_deleted = 0
-            AND budgetPrevisionnel > 0
+            AND COALESCE(budgetPrevisionnel, budgetPrevu, 0) > 0
             ORDER BY budgetPrevisionnel DESC
             LIMIT 5
         `);
