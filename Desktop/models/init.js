@@ -1,5 +1,16 @@
 const db = require('./db');
 
+function columnExists(tableName, columnName) {
+    const rows = db.prepare(`PRAGMA table_info(${tableName})`).all();
+    return rows.some(row => row.name === columnName);
+}
+
+function ensureColumn(tableName, columnName, definition) {
+    if (!columnExists(tableName, columnName)) {
+        db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`).run();
+    }
+}
+
 function initDatabase() {
     // Activer les clés étrangères
     db.pragma('foreign_keys = ON');
@@ -644,6 +655,35 @@ function initDatabase() {
             END
         `).run();
     });
+
+    // Compatibilité avec la base existante (ajout de colonnes manquantes)
+    ensureColumn('Chantier', 'budgetPrevisionnel', 'REAL DEFAULT 0');
+    ensureColumn('Phase', 'budget', 'REAL DEFAULT 0');
+    ensureColumn('Article', 'stockActuel', 'REAL DEFAULT 0');
+    ensureColumn('Article', 'prixUnitaire', 'REAL DEFAULT 0');
+    ensureColumn('Facture', 'montantTTC', 'REAL DEFAULT 0');
+    ensureColumn('Facture', 'montantPaye', 'REAL DEFAULT 0');
+    ensureColumn('Employe', 'photo', 'TEXT');
+
+    const tablesWithTimestamps = [
+        'Entreprise', 'Role', 'Utilisateur',
+        'Chantier', 'Phase', 'Incident', 'AffectationRessource',
+        'Employe', 'Equipe', 'MembreEquipe', 'AffectationChantier', 'Pointage', 'HeureSupplementaire',
+        'Materiel', 'AffectationMateriel', 'Maintenance', 'AlerteMateriel',
+        'Article', 'Fournisseur', 'MouvementStock',
+        'Client', 'Devis', 'LigneDevis', 'Contrat', 'Facture', 'Paiement',
+        'Depense', 'RapportFinancier', 'Alerte'
+    ];
+
+    tablesWithTimestamps.forEach(tableName => {
+        ensureColumn(tableName, 'created_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP');
+        ensureColumn(tableName, 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP');
+    });
+
+    db.prepare(`UPDATE Chantier SET budgetPrevisionnel = COALESCE(budgetPrevisionnel, budgetPrevu, 0) WHERE COALESCE(budgetPrevisionnel, 0) = 0`).run();
+    db.prepare(`UPDATE Article SET stockActuel = COALESCE(stockActuel, quantiteStock, 0) WHERE COALESCE(stockActuel, 0) = 0`).run();
+    db.prepare(`UPDATE Facture SET montantTTC = COALESCE(montantTTC, montant, 0) WHERE COALESCE(montantTTC, 0) = 0`).run();
+    db.prepare(`UPDATE Facture SET montantPaye = COALESCE(montantPaye, 0)`).run();
 
     // Initial Seed Data si base vide (Permet la première connexion immédiate)
     const entCount = db.prepare('SELECT COUNT(*) as count FROM Entreprise').get().count;

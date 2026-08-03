@@ -87,6 +87,11 @@ class ChantierRepository extends BaseRepository {
             params.push(searchParam, searchParam, searchParam);
         }
 
+        let tenantWhere = this._entrepriseWhere(entrepriseId);
+        if (whereClause) {
+            tenantWhere += whereClause;
+        }
+
         const sql = `
             SELECT c.*, 
                 cl.nom as clientNom,
@@ -97,8 +102,7 @@ class ChantierRepository extends BaseRepository {
             FROM Chantier c
             LEFT JOIN Client cl ON c.clientId = cl.id AND cl.is_deleted = 0
             LEFT JOIN Utilisateur u ON c.chefChantierId = u.id AND u.is_deleted = 0
-            ${this._entrepriseWhere(entrepriseId).replace('WHERE', '')}
-            ${whereClause}
+            ${tenantWhere}
             ORDER BY c.created_at DESC
             LIMIT ? OFFSET ?
         `;
@@ -129,11 +133,15 @@ class ChantierRepository extends BaseRepository {
             params.push(searchParam, searchParam, searchParam);
         }
 
+        let tenantWhere = this._entrepriseWhere(entrepriseId);
+        if (whereClause) {
+            tenantWhere += whereClause;
+        }
+
         const sql = `
             SELECT COUNT(*) as total 
             FROM Chantier 
-            ${this._entrepriseWhere(entrepriseId).replace('WHERE', '')}
-            ${whereClause}
+            ${tenantWhere}
         `;
 
         const stmt = db.prepare(sql);
@@ -222,12 +230,14 @@ class ChantierRepository extends BaseRepository {
             throw new Error('Un chantier avec ce nom existe déjà pour cette entreprise');
         }
 
+        const budgetPrevisionnel = parseFloat(data.budgetPrevisionnel ?? data.budgetPrevu ?? 0) || 0;
         const chantierData = {
             ...data,
             nom: data.nom.trim(),
             entrepriseId,
-            budgetPrevu: data.budgetPrevu || 0,
-            budgetReel: 0,
+            budgetPrevu: budgetPrevisionnel,
+            budgetPrevisionnel,
+            budgetReel: parseFloat(data.budgetReel) || 0,
             statut: data.statut || 'planification'
         };
 
@@ -278,6 +288,7 @@ class ChantierRepository extends BaseRepository {
             chantierId,
             ordre,
             avancementPct: phaseData.avancementPct || 0,
+            budget: phaseData.budget || 0,
             statut: phaseData.statut || 'non_commencee'
         });
     }

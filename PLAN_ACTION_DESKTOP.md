@@ -5,7 +5,130 @@
 - **Projet Desktop (Electron + SQLite)** : Application locale avec authentification basique (login/register), design system TIA partagé
 - **Base de données** : SQLite locale (better-sqlite3) synchronisable avec le serveur Django via API
 
+## ✅ ÉTAT ACTUEL (corrigé)
+Les erreurs signalées au démarrage ont été traitées de façon ciblée :
+- compatibilité SQLite avec les colonnes manquantes ajoutées dans la base locale
+- adaptation des repositories sur les champs utilisés par l’UI (budget prévisionnel, stock actuel, montant TTC, photo, etc.)
+- correction des requêtes qui utilisaient des colonnes non présentes ou des noms incompatibles
+
+Les vérifications réalisées sur la base locale ont bien fonctionné :
+- la base initialise sans erreur
+- les colonnes critiques sont maintenant accessibles
+
 ---
+
+## ✅ CE QUE VOUS AVEZ DÉJÀ APPORTÉ
+À partir de votre travail actuel, vous avez déjà posé une base solide :
+- correction de la compatibilité SQLite pour les colonnes manquantes dans la base locale
+- adaptation des repositories pour les champs utilisés par l’UI : budget, stock, montant TTC, photo, etc.
+- amélioration de la stabilité du démarrage de l’application Desktop
+- documentation du plan d’action et du contexte technique du projet
+
+Ces changements sont un bon point de départ pour des contributions plus ciblées, lisibles et faciles à valider.
+
+## 🧭 NOUVEAU PLAN D’ACTION PROGRESSIF POUR VOS CONTRIBUTIONS
+L’objectif n’est plus de tout faire d’un coup, mais de contribuer par petites unités logiques, avec un travail manuel et visible à chaque étape.
+
+### Étape 0 — Organiser votre travail Git/GitHub (avant chaque contribution)
+Avant chaque modification, garder cette routine :
+- vérifier l’état du dépôt : `git status`
+- vérifier les fichiers modifiés : `git diff`
+- créer une branche par fonctionnalité : `git checkout -b feat/nom-de-la-fonctionnalite`
+- faire des commits petits et compréhensibles : `git add ...` puis `git commit -m "..."`
+- pousser régulièrement : `git push origin nom-de-la-branche`
+
+Exemples de branches :
+- `fix/db-compatibility`
+- `feat/chantiers-budget`
+- `feat/rh-employes`
+- `docs/plan-action`
+
+Exemples de messages de commit :
+- `fix(db): add compatibility columns for desktop app`
+- `feat(chantiers): support budget fields in repository`
+- `docs: add progressive contribution plan`
+
+### Étape 1 — Consolider le socle déjà commencé (priorité haute)
+Objectif : rendre l’application stable pour les usages essentiels.
+Travaux attendus :
+- finaliser la compatibilité de la base locale pour les modules déjà ouverts
+- vérifier le chargement du tableau de bord, des chantiers et des employés
+- corriger les erreurs SQL restantes si elles apparaissent
+
+Critère de validation :
+- l’application démarre sans erreur critique
+- les écrans de base affichent des données sans crash
+
+### Étape 2 — Contribuer à un module métier simple : Chantiers
+Objectif : améliorer une vraie fonctionnalité métier visible.
+Travaux attendus :
+- ajouter ou corriger la création d’un chantier
+- permettre l’ajout d’une phase liée au chantier
+- garantir que le budget prévisionnel est bien enregistré et visible
+
+Critère de validation :
+- un chantier peut être créé depuis l’UI
+- la phase est persistée dans la base
+- le budget apparaît correctement dans la vue
+
+### Étape 3 — Contribuer à un second module : RH / Employés
+Objectif : rendre le module RH utilisable de façon progressive.
+Travaux attendus :
+- améliorer la création d’un employé
+- vérifier l’enregistrement des informations de base
+- faire fonctionner la liste et la consultation d’un employé
+
+Critère de validation :
+- un employé peut être ajouté sans erreur
+- la liste se met à jour correctement
+
+### Étape 4 — Ajouter un module complémentaire : Stocks
+Objectif : couvrir un cas métier complémentaire avec peu de risque.
+Travaux attendus :
+- gérer les articles
+- supporter le stock actuel et le seuil d’alerte
+- faire apparaître les informations utiles dans la vue stock
+
+Critère de validation :
+- un article peut être créé
+- le stock est mis à jour
+- les alertes de stock sont visibles
+
+### Étape 5 — Documentation, qualité et préparation d’un PR
+Objectif : rendre votre contribution propre et partageable.
+Travaux attendus :
+- nettoyer les fichiers modifiés
+- vérifier le contenu de chaque commit
+- préparer une pull request propre avec un résumé clair
+- documenter la fonctionnalité ajoutée et les validations faites
+
+Critère de validation :
+- le changement est facilement compréhensible par un autre développeur
+- le PR montre bien votre contribution et ses effets
+
+## 🛠️ COMPÉTENCES GIT / GITHUB À DÉVELOPPER PROGRESSIVEMENT
+Pour bien ajuster cette application, il est utile de maîtriser ces gestes de base :
+
+### Git de base
+- `git status` : voir l’état des fichiers
+- `git diff` : comparer les changements
+- `git add <fichiers>` : préparer les modifications
+- `git commit -m "message"` : enregistrer un changement proprement
+- `git branch` : voir les branches
+- `git checkout -b <nom>` : créer une nouvelle branche
+- `git push origin <branche>` : envoyer la branche sur GitHub
+
+### GitHub de base
+- ouvrir une Pull Request après une branche fonctionnelle
+- écrire un titre clair et un résumé de modification
+- lier la PR aux changements réalisés
+- consulter les commentaires et faire les ajustements demandés
+
+### Bonnes pratiques à garder
+- un commit = une idée claire
+- une branche = une fonctionnalité ou un correctif
+- ne pas mélanger plusieurs sujets dans un même commit
+- faire des commits réguliers pour garder un historique propre
 
 ## 🎯 Objectif
 Reproduire toutes les fonctionnalités du web (hors super-admin) dans l'application desktop, en reprenant le même design system (TIA Design System) et la même structure de base de données.
