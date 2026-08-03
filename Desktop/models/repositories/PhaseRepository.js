@@ -30,7 +30,7 @@ class PhaseRepository extends BaseRepository {
      * @returns {Object|null}
      */
     updateAvancement(id, pct) {
-        const stmt = this.db.prepare(`UPDATE ${this.tableName} SET avancement = ?, updated_at = CURRENT_TIMESTAMP WHERE ${this.primaryKey} = ? AND is_deleted = 0`);
+        const stmt = this.db.prepare(`UPDATE ${this.tableName} SET avancementPct = ?, updated_at = CURRENT_TIMESTAMP WHERE ${this.primaryKey} = ? AND is_deleted = 0`);
         stmt.run(pct, id);
         return this.getById(id);
     }
@@ -56,7 +56,7 @@ class PhaseRepository extends BaseRepository {
      * @returns {number}
      */
     getAvancementGlobal(chantierId) {
-        const stmt = this.db.prepare(`SELECT AVG(avancement) as avg FROM ${this.tableName} WHERE chantierId = ? AND is_deleted = 0`);
+        const stmt = this.db.prepare(`SELECT AVG(avancementPct) as avg FROM ${this.tableName} WHERE chantierId = ? AND is_deleted = 0`);
         const row = stmt.get(chantierId);
         return row?.avg ?? 0;
     }

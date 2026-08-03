@@ -83,13 +83,17 @@ class EmployeRepository extends BaseRepository {
             params.push(searchParam, searchParam, searchParam, searchParam);
         }
 
+        let tenantWhere = this._entrepriseWhere(entrepriseId);
+        if (whereClause) {
+            tenantWhere += whereClause;
+        }
+
         const sql = `
             SELECT e.*,
                 (SELECT COUNT(*) FROM Pointage WHERE employeId = e.id AND is_deleted = 0 AND dateJour >= date('now', '-30 days')) as nbPointagesMois,
                 (SELECT COUNT(*) FROM HeureSupplementaire WHERE employeId = e.id AND is_deleted = 0 AND dateJour >= date('now', '-30 days')) as nbHeuresSupMois
             FROM Employe e
-            ${this._entrepriseWhere(entrepriseId).replace('WHERE', '')}
-            ${whereClause}
+            ${tenantWhere}
             ORDER BY e.nom, e.prenom
             LIMIT ? OFFSET ?
         `;
@@ -113,7 +117,7 @@ class EmployeRepository extends BaseRepository {
             FROM Employe e
             LEFT JOIN Pointage p ON e.id = p.employeId AND p.dateJour = ? AND p.is_deleted = 0
             LEFT JOIN Chantier c ON p.chantierId = c.id AND c.is_deleted = 0
-            ${this._entrepriseWhere(entrepriseId).replace('WHERE', '')}
+            ${this._entrepriseWhere(entrepriseId)}
             AND e.statut = 'actif'
             ORDER BY e.nom, e.prenom
         `;
