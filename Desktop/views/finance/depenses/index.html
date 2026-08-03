@@ -1,0 +1,262 @@
+<!-- Vue Dépenses -->
+<div class="depenses-view" data-view="depenses">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-cash-stack me-2"></i>Dépenses</h2>
+            <p class="text-secondary mb-0">Suivi des dépenses par chantier et catégorie</p>
+        </div>
+        <button class="btn btn-primary" id="btnNouvelleDepense">
+            <i class="bi bi-plus-circle me-1"></i>Nouvelle dépense
+        </button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="text-danger mb-2"><i class="bi bi-cash-stack fs-2"></i></div>
+                    <div class="fs-3 fw-bold" id="kpiDepensesTotal">—</div>
+                    <div class="text-secondary small">Total dépenses (mois)</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="text-warning mb-2"><i class="bi bi-hourglass-split fs-2"></i></div>
+                    <div class="fs-3 fw-bold" id="kpiDepensesEnAttente">—</div>
+                    <div class="text-secondary small">En attente validation</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="text-success mb-2"><i class="bi bi-check-circle fs-2"></i></div>
+                    <div class="fs-3 fw-bold" id="kpiDepensesValidees">—</div>
+                    <div class="text-secondary small">Validées ce mois</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="text-primary mb-2"><i class="bi bi-building fs-2"></i></div>
+                    <div class="fs-3 fw-bold" id="kpiNbChantiers">—</div>
+                    <div class="text-secondary small">Chantiers concernés</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchDepense" placeholder="Rechercher une dépense...">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" id="filterCategorieDepense">
+                        <option value="">Toutes catégories</option>
+                        <option value="materiaux">Matériaux</option>
+                        <option value="materiel">Matériel</option>
+                        <option value="main_oeuvre">Main d'œuvre</option>
+                        <option value="transport">Transport</option>
+                        <option value="sous_traitance">Sous-traitance</option>
+                        <option value="autre">Autre</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" id="filterStatutDepense">
+                        <option value="">Tous les statuts</option>
+                        <option value="en_attente">En attente</option>
+                        <option value="validee">Validée</option>
+                        <option value="refusee">Refusée</option>
+                        <option value="payee">Payée</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" id="filterChantierDepense">
+                        <option value="">Tous les chantiers</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input type="month" class="form-control" id="filterMoisDepense">
+                </div>
+                <div class="col-auto d-flex gap-2">
+                    <button class="btn btn-outline-secondary" id="btnExportDepenses">
+                        <i class="bi bi-download me-1"></i>Exporter
+                    </button>
+                    <button class="btn btn-outline-secondary" id="btnRefreshDepenses">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tableau -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="depensesTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:40px;">#</th>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Catégorie</th>
+                            <th>Montant</th>
+                            <th>Chantier</th>
+                            <th>Fournisseur</th>
+                            <th>Statut</th>
+                            <th style="width:120px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="depensesTbody"></tbody>
+                </table>
+            </div>
+            <div class="card-footer bg-white border-0 px-4 py-3" id="depensesPagination"></div>
+        </div>
+        <div class="text-center py-5 d-none" id="depensesEmpty">
+            <i class="bi bi-cash-stack display-1 text-secondary"></i>
+            <h4 class="mt-3">Aucune dépense</h4>
+            <p class="text-secondary">Commencez par saisir une dépense</p>
+            <button class="btn btn-primary" id="btnFirstDepense">
+                <i class="bi bi-plus-circle me-1"></i>Nouvelle dépense
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modale Dépense -->
+<div class="modal fade" id="modalDepense" tabindex="-1" aria-labelledby="modalDepenseLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalDepenseLabel"><i class="bi bi-cash-stack me-2"></i>Nouvelle dépense</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formDepense" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="depenseId">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="depenseDescription">Description *</label>
+                            <input type="text" class="form-control" name="description" id="depenseDescription" required placeholder="Ex: Achat ciment Portland 50kg">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="depenseMontant">Montant HT *</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" name="montant" id="depenseMontant" step="0.01" min="0.01" required>
+                                <span class="input-group-text">€</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="depenseDate">Date *</label>
+                            <input type="date" class="form-control" name="date" id="depenseDate" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="depenseCategorie">Catégorie *</label>
+                            <select class="form-select" name="categorie" id="depenseCategorie" required>
+                                <option value="">Sélectionner</option>
+                                <option value="materiaux">Matériaux</option>
+                                <option value="materiel">Matériel / Outillage</option>
+                                <option value="main_oeuvre">Main d'œuvre</option>
+                                <option value="transport">Transport / Carburant</option>
+                                <option value="sous_traitance">Sous-traitance</option>
+                                <option value="location">Location</option>
+                                <option value="autre">Autre</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="depenseStatut">Statut</label>
+                            <select class="form-select" name="statut" id="depenseStatut">
+                                <option value="en_attente">En attente</option>
+                                <option value="validee">Validée</option>
+                                <option value="refusee">Refusée</option>
+                                <option value="payee">Payée</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="depenseChantier">Chantier *</label>
+                            <select class="form-select" name="chantierId" id="depenseChantier" required>
+                                <option value="">Sélectionner un chantier</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="depenseFournisseur">Fournisseur</label>
+                            <input type="text" class="form-control" name="fournisseur" id="depenseFournisseur" placeholder="Nom du fournisseur">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="depenseTVA">Taux TVA (%)</label>
+                            <select class="form-select" name="tauxTVA" id="depenseTVA">
+                                <option value="0">0% (exonéré)</option>
+                                <option value="5.5">5,5%</option>
+                                <option value="10">10%</option>
+                                <option value="20" selected>20%</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="depenseNumFacture">N° facture fournisseur</label>
+                            <input type="text" class="form-control" name="numeroFacture" id="depenseNumFacture">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="depenseModePaiement">Mode de paiement</label>
+                            <select class="form-select" name="modePaiement" id="depenseModePaiement">
+                                <option value="">Choisir</option>
+                                <option value="virement">Virement</option>
+                                <option value="cheque">Chèque</option>
+                                <option value="especes">Espèces</option>
+                                <option value="carte">Carte bancaire</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="depenseNotes">Notes</label>
+                            <textarea class="form-control" name="notes" id="depenseNotes" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-outline-danger" id="btnDeleteDepense" style="display:none;">
+                        <i class="bi bi-trash me-1"></i>Supprimer
+                    </button>
+                    <button type="button" class="btn btn-outline-success" id="btnValiderDepense" style="display:none;">
+                        <i class="bi bi-check me-1"></i>Valider
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i>Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Suppression -->
+<div class="modal fade" id="modalConfirmDeleteDepense" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Confirmer la suppression</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer cette dépense ?</p>
+                <p class="text-danger small"><i class="bi bi-info-circle me-1"></i>Cette action est irréversible.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmDeleteDepense">
+                    <i class="bi bi-trash me-1"></i>Supprimer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

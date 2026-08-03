@@ -1,71 +1,64 @@
 const BaseRepository = require('./BaseRepository');
 const db = require('../db');
 
+/**
+ * PhaseRepository
+ *
+ * Handles CRUD for Phase entities and provides helper methods used by
+ * ChantierController.  The repository follows the same pattern as the
+ * other repositories in the project.
+ */
 class PhaseRepository extends BaseRepository {
     constructor() {
         super('Phase');
     }
 
     /**
-     * Récupérer les phases d'un chantier
-     * @param {number} chantierId - ID du chantier
-     * @returns {Array} - Liste des phases
+     * Get all phases for a given chantier.
+     * @param {number} chantierId
+     * @returns {Array}
      */
     getByChantier(chantierId) {
-        const stmt = db.prepare(`
-            SELECT * FROM Phase 
-            WHERE chantierId = ? AND is_deleted = 0 
-            ORDER BY ordre
-        `);
+        const stmt = this.db.prepare(`SELECT * FROM ${this.tableName} WHERE chantierId = ? AND is_deleted = 0 ORDER BY ordre`);
         return stmt.all(chantierId);
     }
 
     /**
-     * Mettre à jour l'avancement d'une phase
-     * @param {number} id - ID de la phase
-     * @param {number} avancementPct - Pourcentage d'avancement (0-100)
-     * @returns {Object|null} - Phase mise à jour
+     * Update the avancement percentage of a phase.
+     * @param {number} id
+     * @param {number} pct
+     * @returns {Object|null}
      */
-    updateAvancement(id, avancementPct) {
-        if (avancementPct < 0 || avancementPct > 100) {
-            throw new Error('L\'avancement doit être entre 0 et 100');
-        }
-
-        const newStatut = avancementPct === 100 ? 'terminee' :
-            avancementPct > 0 ? 'en_cours' : 'non_commencee';
-
-        return this.update(id, { avancementPct, statut: newStatut });
+    updateAvancement(id, pct) {
+        const stmt = this.db.prepare(`UPDATE ${this.tableName} SET avancement = ?, updated_at = CURRENT_TIMESTAMP WHERE ${this.primaryKey} = ? AND is_deleted = 0`);
+        stmt.run(pct, id);
+        return this.getById(id);
     }
 
     /**
-     * Réorganiser l'ordre des phases
-     * @param {number} chantierId - ID du chantier
-     * @param {Array} phaseIds - Tableau des IDs dans le nouvel ordre
-     * @returns {boolean} - Succès
+     * Reorder phases for a chantier.
+     * @param {number} chantierId
+     * @param {Array<number>} ids - Ordered list of phase ids
      */
-    reorder(chantierId, phaseIds) {
-        const transaction = db.transaction((ids) => {
+    reorder(chantierId, ids) {
+        const stmt = this.db.prepare(`UPDATE ${this.tableName} SET ordre = ?, updated_at = CURRENT_TIMESTAMP WHERE chantierId = ? AND ${this.primaryKey} = ? AND is_deleted = 0`);
+        const tx = this.db.transaction(() => {
             ids.forEach((id, index) => {
-                db.prepare('UPDATE Phase SET ordre = ?, is_synced = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND chantierId = ?')
-                    .run(index + 1, id, chantierId);
+                stmt.run(index + 1, chantierId, id);
             });
         });
-
-        transaction(phaseIds);
-        return true;
+        tx();
     }
 
     /**
-     * Obtenir le pourcentage d'avancement global d'un chantier
-     * @param {number} chantierId - ID du chantier
-     * @returns {number} - Pourcentage global
+     * Get global avancement for a chantier.
+     * @param {number} chantierId
+     * @returns {number}
      */
     getAvancementGlobal(chantierId) {
-        const phases = this.getByChantier(chantierId);
-        if (!phases.length) return 0;
-
-        const total = phases.reduce((sum, p) => sum + (p.avancementPct || 0), 0);
-        return Math.round(total / phases.length);
+        const stmt = this.db.prepare(`SELECT AVG(avancement) as avg FROM ${this.tableName} WHERE chantierId = ? AND is_deleted = 0`);
+        const row = stmt.get(chantierId);
+        return row?.avg ?? 0;
     }
 }
 
