@@ -81,6 +81,24 @@ function initDatabase() {
         )
     `).run();
 
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS Preference (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            userId INTEGER UNIQUE NOT NULL,
+            theme TEXT DEFAULT 'auto',
+            langue TEXT DEFAULT 'fr',
+            dateFormat TEXT DEFAULT 'DD/MM/YYYY',
+            devise TEXT DEFAULT 'MGA',
+            notifEmail INTEGER DEFAULT 1,
+            notifPush INTEGER DEFAULT 1,
+            notifFacturesRetard INTEGER DEFAULT 1,
+            notifStockBas INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (userId) REFERENCES Utilisateur(id)
+        )
+    `).run();
+
     // 2. MODULE COMMERCIAL — Client
     db.prepare(`
         CREATE TABLE IF NOT EXISTS Client (
@@ -625,7 +643,7 @@ function initDatabase() {
 
     // Migrations de colonnes
     const allTables = [
-        'Entreprise', 'Role', 'Utilisateur',
+        'Entreprise', 'Role', 'Utilisateur', 'Preference',
         'Chantier', 'Phase', 'Incident', 'AffectationRessource',
         'Employe', 'Equipe', 'MembreEquipe', 'AffectationChantier', 'Pointage', 'HeureSupplementaire',
         'Materiel', 'AffectationMateriel', 'Maintenance', 'AlerteMateriel',
@@ -644,6 +662,18 @@ function initDatabase() {
     ensureColumn('Entreprise', 'devise', "TEXT DEFAULT '€'");
     ensureColumn('Entreprise', 'codePostal', 'TEXT');
     ensureColumn('Entreprise', 'ville', 'TEXT');
+    ensureColumn('Entreprise', 'nomCommercial', 'TEXT');
+    ensureColumn('Entreprise', 'siret', 'TEXT');
+    ensureColumn('Entreprise', 'numeroTVA', 'TEXT');
+    ensureColumn('Entreprise', 'codeAPE', 'TEXT');
+    ensureColumn('Entreprise', 'siteWeb', 'TEXT');
+    ensureColumn('Entreprise', 'prefixeDevis', "TEXT DEFAULT 'DEV'");
+    ensureColumn('Entreprise', 'prefixeFacture', "TEXT DEFAULT 'FAC'");
+    ensureColumn('Entreprise', 'prefixeContrat', "TEXT DEFAULT 'CTR'");
+    ensureColumn('Entreprise', 'tvaDefaut', "TEXT DEFAULT '20'");
+    ensureColumn('Entreprise', 'delaiPaiementDefaut', "TEXT DEFAULT '30 jours'");
+    ensureColumn('Entreprise', 'validiteDevis', 'INTEGER DEFAULT 30');
+    ensureColumn('Entreprise', 'mentionsLegales', 'TEXT');
 
     ensureColumn('Chantier', 'budgetPrevisionnel', 'REAL DEFAULT 0');
     ensureColumn('Chantier', 'codePostal', 'TEXT');
