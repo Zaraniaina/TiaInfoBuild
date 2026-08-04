@@ -365,8 +365,8 @@ ipcMain.handle('fournisseurs:delete', (e, id) => stockCtrl.deleteFournisseur(e, 
 
 ipcMain.handle('mouvements:byArticle', (e, id) => stockCtrl.getMouvementsByArticle(e, id))
 ipcMain.handle('mouvements:byChantier', (e, id) => stockCtrl.getMouvementsByChantier(e, id))
-ipcMain.handle('mouvements:byPeriode', (e, entrepriseId, d1, d2) => stockCtrl.getMouvementsByPeriode(e, entrepriseId, d1, d2))
-ipcMain.handle('mouvements:stats', (e, entrepriseId, d1, d2) => stockCtrl.getMouvementsStats(e, entrepriseId, d1, d2))
+ipcMain.handle('mouvements:byPeriode', (e, params) => stockCtrl.getMouvementsByPeriode(e, params.entrepriseId, params.dateDebut, params.dateFin))
+ipcMain.handle('mouvements:stats', (e, params) => stockCtrl.getMouvementsStats(e, params.entrepriseId, params.dateDebut, params.dateFin))
 
 // --- Matériels ---
 ipcMain.handle('materiels:list', (e, params) => materielCtrl.getListMateriels(e, params))

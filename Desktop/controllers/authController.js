@@ -58,7 +58,16 @@ async function handleLogin(event, data) {
 
   try {
     // 1. Vérifier si l'utilisateur existe dans la BDD locale SQLite
-    const stmt = db.prepare('SELECT * FROM Utilisateur WHERE email = ? AND is_deleted = 0');
+    // Inclure le rôle via jointure pour avoir roleNom et roleCode
+    const stmt = db.prepare(`
+          SELECT u.id, u.server_id, u.entrepriseId, u.roleId, u.nom, u.prenom, u.email, 
+                 u.telephone, u.statut, u.dateCreation, u.derniereConnexion, u.is_synced,
+                 u.motDePasseHash,
+                 r.nom as roleNom, r.code as roleCode
+          FROM Utilisateur u
+          LEFT JOIN Role r ON u.roleId = r.id AND r.is_deleted = 0
+          WHERE u.email = ? AND u.is_deleted = 0
+      `);
     const localUser = stmt.get(email);
 
     if (localUser) {

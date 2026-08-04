@@ -154,7 +154,10 @@ function updateUserUI(user, entreprise) {
 
     const initiales = (user.prenom?.[0] || '') + (user.nom?.[0] || '') || 'TB';
     const nomComplet = `${user.prenom || ''} ${user.nom || ''}`.trim() || 'Utilisateur';
-    const roleLabel = user.role?.nom || user.roleId || 'Employé';
+
+    // Le user object a roleNom et roleCode (ex: 'Administrateur', 'ADMIN') depuis la BDD
+    // Pas de nested role object
+    const roleLabel = user.roleNom || user.roleCode || 'Employé';
 
     // Sidebar
     document.getElementById('userAvatar').textContent = initiales.toUpperCase();
@@ -189,7 +192,8 @@ function setupRouterGuards() {
 
         // Vérifier autorisation admin pour les routes protégées
         if (to.path.startsWith('utilisateurs') || to.path.startsWith('parametres')) {
-            const roleLabel = AppState.user.role?.nom || String(AppState.user.roleId || '');
+            // Le user object a roleNom et roleCode (ex: 'Administrateur', 'ADMIN') depuis la BDD
+            const roleLabel = AppState.user.roleNom || AppState.user.roleCode || String(AppState.user.roleId || '');
             const isAdmin = ['administrateur', 'directeur', 'admin'].some(r =>
                 roleLabel.toLowerCase().includes(r)
             );
@@ -369,11 +373,11 @@ function startAutoSync() {
  * @returns {string} Code ISO devise (MGA, EUR, USD...)
  */
 function getAppCurrency() {
-  try {
-    return localStorage.getItem('tia_devise') || 'MGA';
-  } catch {
-    return 'MGA';
-  }
+    try {
+        return localStorage.getItem('tia_devise') || 'MGA';
+    } catch {
+        return 'MGA';
+    }
 }
 
 /**
@@ -382,18 +386,128 @@ function getAppCurrency() {
  * @returns {string} Montant formaté
  */
 function formatCurrencyGlobal(amount) {
-  const currency = getAppCurrency();
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: currency === 'MGA' ? 0 : 2
-  }).format(amount || 0);
+    const currency = getAppCurrency();
+    return new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: currency === 'MGA' ? 0 : 2
+    }).format(amount || 0);
 }
 
 window.getAppCurrency = getAppCurrency;
 window.formatCurrencyGlobal = formatCurrencyGlobal;
 
+// ============================================================
+// SYSTÈME DE DEVISE DYNAMIQUE
+// ============================================================
+
+/**
+ * Récupérer la devise active de l'application
+ * @returns {string} Code ISO devise (MGA, EUR, USD)
+ */
+function getAppCurrency() {
+    try {
+        return localStorage.getItem('tia_devise') || 'MGA';
+    } catch {
+        return 'MGA';
+    }
+}
+
+/**
+ * Récupérer le symbole de la devise active
+ * @returns {string} Symbole (Ar, €, $)
+ */
+function getCurrencySymbol() {
+    const symbols = {
+        'MGA': 'Ar',
+        'EUR': '€',
+        'USD': '$'
+    };
+    return symbols[getAppCurrency()] || 'Ar';
+}
+
+/**
+ * Formater un montant avec le symbole de la devise active
+ * @param {number} amount - Montant
+ * @returns {string} Montant formaté avec symbole
+ */
+function formatCurrency(amount) {
+    const symbol = getCurrencySymbol();
+    const formatted = new Intl.NumberFormat('fr-FR', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(amount || 0);
+    return `${formatted} ${symbol}`;
+}
+
+/**
+ * Mettre à jour tous les symboles de devise dans le DOM
+ * Appeler après chaque navigation et après changement de devise
+ */
+function updateCurrencySymbols() {
+    const symbol = getCurrencySymbol();
+
+    // Mettre à jour les labels avec classe .currency-symbol
+    document.querySelectorAll('.currency-symbol').forEach(el => {
+        el.textContent = symbol;
+    });
+
+    // Mettre à jour les input-group-text avec classe .currency-symbol
+    document.querySelectorAll('.input-group-text.currency-symbol').forEach(el => {
+        el.textContent = symbol;
+    });
+
+    // Mettre à jour les labels contenant "(€)" ou "($)" ou "(Ar)"
+    document.querySelectorAll('label.form-label').forEach(label => {
+        const text = label.textContent;
+        if (text.includes('(€)') || text.includes('($)') || text.includes('(Ar)')) {
+            label.textContent = text.replace(/\(€\)|\(\$\)|\(Ar\)/g, `(${symbol})`);
+        }
+    });
+
+    // Mettre à jour les headers de tableaux contenant € ou $
+    document.querySelectorAll('th').forEach(th => {
+        const text = th.textContent;
+        if (text.includes('€') || text.includes('$') || text.includes('Ar')) {
+            th.textContent = text.replace(/€|\$|Ar/g, symbol);
+        }
+    });
+
+    // Mettre à jour les placeholders
+    document.querySelectorAll('input[placeholder]').forEach(input => {
+        const ph = input.getAttribute('placeholder');
+        if (ph && (ph.includes('€') || ph.includes('$') || ph.includes('Ar'))) {
+            input.setAttribute('placeholder', ph.replace(/€|\$|Ar/g, symbol));
+        }
+    });
+
+    // Mettre à jour les titles/aria-labels
+    document.querySelectorAll('[title]').forEach(el => {
+        const title = el.getAttribute('title');
+        if (title && (title.includes('€') || title.includes('$') || title.includes('Ar'))) {
+            el.setAttribute('title', title.replace(/€|\$|Ar/g, symbol));
+        }
+    });
+}
+
+/**
+ * Appeler après changement de devise dans les préférences
+ */
+function onCurrencyChanged(newCurrency) {
+    localStorage.setItem('tia_devise', newCurrency);
+    updateCurrencySymbols();
+    if (window.showToast) {
+        window.showToast(`Devise mise à jour : ${getCurrencySymbol()}`, 'success');
+    }
+}
+
+// Exposer globalement
+window.getAppCurrency = getAppCurrency;
+window.getCurrencySymbol = getCurrencySymbol;
+window.formatCurrency = formatCurrency;
+window.updateCurrencySymbols = updateCurrencySymbols;
+window.onCurrencyChanged = onCurrencyChanged;
 
 // Démarrer auto-sync après chargement
 setTimeout(startAutoSync, 5000);

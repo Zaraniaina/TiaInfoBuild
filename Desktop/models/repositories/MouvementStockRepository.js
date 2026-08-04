@@ -42,6 +42,30 @@ class MouvementStockRepository extends BaseRepository {
     }
 
     /**
+     * Récupérer les mouvements par période pour une entreprise
+     * @param {number} entrepriseId - ID entreprise
+     * @param {string} dateDebut - Date début (YYYY-MM-DD)
+     * @param {string} dateFin - Date fin (YYYY-MM-DD)
+     * @returns {Array} - Liste des mouvements avec infos liées
+     */
+    getByPeriode(entrepriseId, dateDebut, dateFin) {
+        const stmt = db.prepare(`
+            SELECT ms.*, 
+                a.nom as articleNom, a.unite, a.prixUnitaire,
+                f.nom as fournisseurNom,
+                c.nom as chantierNom
+            FROM MouvementStock ms
+            JOIN Article a ON ms.articleId = a.id AND a.is_deleted = 0
+            LEFT JOIN Fournisseur f ON ms.fournisseurId = f.id AND f.is_deleted = 0
+            LEFT JOIN Chantier c ON ms.chantierId = c.id AND c.is_deleted = 0
+            WHERE a.entrepriseId = ? AND ms.is_deleted = 0 AND a.is_deleted = 0
+            AND ms.dateMouvement BETWEEN ? AND ?
+            ORDER BY ms.dateMouvement DESC, ms.id DESC
+        `);
+        return stmt.all(entrepriseId, dateDebut, dateFin);
+    }
+
+    /**
      * Statistiques mouvements par période
      * @param {number} entrepriseId - ID entreprise
      * @param {string} dateDebut - Date début (YYYY-MM-DD)

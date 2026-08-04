@@ -185,7 +185,7 @@ class ParametresController {
     /**
      * Charger la liste des utilisateurs
      */
-   async loadUtilisateurs() {
+    async loadUtilisateurs() {
         try {
             const entrepriseId = window.AppState?.entreprise?.id || 1;
             const response = await window.api.utilisateurs.invoke('list', { entrepriseId });
@@ -210,23 +210,36 @@ class ParametresController {
         }
 
         tbody.innerHTML = this.utilisateurs.map((u, index) => {
+            // Le backend renvoie roleNom et roleCode (ex: 'Administrateur', 'ADMIN')
+            // On normalise en minuscules pour correspondre à nos mappings
+            const roleCode = (u.roleCode || u.roleNom || '').toLowerCase();
+
             const roleLabels = {
                 'admin': 'Administrateur',
+                'administrateur': 'Administrateur',
                 'manager': 'Manager',
                 'commercial': 'Commercial',
                 'conducteur': 'Conducteur de travaux',
+                'conducteur de travaux': 'Conducteur de travaux',
                 'employe': 'Employé',
+                'employé': 'Employé',
                 'comptable': 'Comptable'
             };
 
             const roleBadges = {
                 'admin': 'bg-danger',
+                'administrateur': 'bg-danger',
                 'manager': 'bg-warning text-dark',
                 'commercial': 'bg-primary',
                 'conducteur': 'bg-info',
+                'conducteur de travaux': 'bg-info',
                 'employe': 'bg-secondary',
+                'employé': 'bg-secondary',
                 'comptable': 'bg-success'
             };
+
+            // Le champ statut contient 'actif' ou 'inactif'
+            const isActif = u.statut === 'actif' || u.statut === 'Actif';
 
             return `
                 <tr data-id="${u.id}">
@@ -236,11 +249,11 @@ class ParametresController {
                         <small class="text-secondary">${this.escapeHtml(u.telephone || '')}</small>
                     </td>
                     <td>${this.escapeHtml(u.email)}</td>
-                    <td><span class="badge ${roleBadges[u.role] || 'bg-secondary'}">${roleLabels[u.role] || u.role}</span></td>
+                    <td><span class="badge ${roleBadges[roleCode] || 'bg-secondary'}">${roleLabels[roleCode] || u.roleNom || u.roleCode || '—'}</span></td>
                     <td class="d-none d-md-table-cell"><small>${u.derniereConnexion ? this.formatDateTime(u.derniereConnexion) : 'Jamais'}</small></td>
                     <td>
-                        <span class="badge ${u.actif ? 'bg-success' : 'bg-danger'}">
-                            ${u.actif ? 'Actif' : 'Inactif'}
+                        <span class="badge ${isActif ? 'bg-success' : 'bg-danger'}">
+                            ${isActif ? 'Actif' : 'Inactif'}
                         </span>
                     </td>
                     <td>
@@ -326,8 +339,14 @@ class ParametresController {
         document.getElementById('userPrenom').value = u.prenom || '';
         document.getElementById('userEmail').value = u.email || '';
         document.getElementById('userTelephone').value = u.telephone || '';
-        document.getElementById('userRole').value = u.role || 'employe';
-        document.getElementById('userActif').checked = u.actif !== false;
+
+        // Mapper roleCode (ex: 'ADMIN') vers la valeur du select (ex: 'admin')
+        const roleCode = (u.roleCode || u.roleNom || 'employe').toLowerCase();
+        document.getElementById('userRole').value = roleCode;
+
+        // Mapper statut ('actif'/'inactif') vers checkbox actif
+        const isActif = u.statut === 'actif' || u.statut === 'Actif';
+        document.getElementById('userActif').checked = isActif;
     }
 
     /**
@@ -440,7 +459,7 @@ class ParametresController {
                 // Charger la devise persistée
                 const savedDevise = localStorage.getItem('tia_devise');
                 if (savedDevise) {
-                document.getElementById('prefDevise').value = savedDevise;
+                    document.getElementById('prefDevise').value = savedDevise;
                 }
             }
         } catch (error) {
