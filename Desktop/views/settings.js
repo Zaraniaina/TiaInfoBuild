@@ -486,8 +486,9 @@ class ParametresController {
         if (document.getElementById('themeLight').checked) data.theme = 'light';
         else if (document.getElementById('themeDark').checked) data.theme = 'dark';
         else data.theme = 'auto';
-        // Persister la devise globalement
-        localStorage.setItem('tia_devise', data.devise || 'MGA');
+        // Persister la devise globalement et notifier le changement
+        const nouvelleDevise = data.devise || 'MGA';
+        localStorage.setItem('tia_devise', nouvelleDevise);
 
         const userId = window.AppState?.user?.id;
         if (!userId) return;
@@ -498,6 +499,10 @@ class ParametresController {
 
             // Appliquer le thème immédiatement
             this.applyTheme(data.theme);
+            // Appliquer le changement de devise immédiatement dans toute l'interface
+            if (typeof window.onCurrencyChanged === 'function') {
+                window.onCurrencyChanged(nouvelleDevise);
+            }
         } catch (error) {
             console.error('Erreur sauvegarde préférences:', error);
             showToast(`Erreur: ${error.message}`, 'error');

@@ -76,7 +76,7 @@ class EmployesController {
                 <td class="fw-semibold">${this.escapeHtml(emp.prenom || '')} ${this.escapeHtml(emp.nom || '')}</td>
                 <td>${this.escapeHtml(emp.poste || 'Ouvrier')}</td>
                 <td class="d-none d-md-table-cell">${this.escapeHtml(emp.telephone || emp.email || '—')}</td>
-                <td class="d-none d-lg-table-cell">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(emp.salaireBase || 0)}</td>
+<td class="d-none d-lg-table-cell">${window.formatCurrencyGlobal ? window.formatCurrencyGlobal(emp.salaireBase || 0) : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'MGA', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(emp.salaireBase || 0)}</td>
                 <td><span class="badge bg-success">Actif</span></td>
                 <td>
                     <div class="btn-group btn-group-sm">

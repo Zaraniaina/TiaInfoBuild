@@ -89,13 +89,13 @@ class FacturesController {
     }
 
     formatCurrency(amount) {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: window.getAppCurrency ? window.getAppCurrency() : 'MGA',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(amount || 0);
-}
+        return window.formatCurrencyGlobal ? window.formatCurrencyGlobal(amount) : new Intl.NumberFormat('fr-FR', {
+            style: 'currency',
+            currency: 'MGA',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(amount || 0);
+    }
     async loadFactures() {
         const entrepriseId = window.AppState?.entreprise?.id || 1;
         const tbody = document.getElementById('facturesTbody');
@@ -155,9 +155,9 @@ class FacturesController {
         };
 
        const formatMoney = (amount) => {
-        return new Intl.NumberFormat('fr-FR', { 
+        return window.formatCurrencyGlobal ? window.formatCurrencyGlobal(amount) : new Intl.NumberFormat('fr-FR', { 
             style: 'currency', 
-            currency: window.getAppCurrency ? window.getAppCurrency() : 'MGA' 
+            currency: 'MGA' 
         }).format(amount || 0);
         };
 
@@ -296,9 +296,9 @@ class FacturesController {
         document.getElementById('paiementDate').value = new Date().toISOString().split('T')[0];
         document.getElementById('paiementMontant').value = resteAPayer;
         
-        resteLabel.textContent = new Intl.NumberFormat('fr-FR', { 
-        style: 'currency', 
-        currency: window.getAppCurrency ? window.getAppCurrency() : 'MGA' 
+        resteLabel.textContent = window.formatCurrencyGlobal ? window.formatCurrencyGlobal(resteAPayer) : new Intl.NumberFormat('fr-FR', { 
+            style: 'currency', 
+            currency: 'MGA' 
         }).format(resteAPayer);
 
         new bootstrap.Modal(document.getElementById('modalPaiement')).show();

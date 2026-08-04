@@ -31,13 +31,13 @@ class RapportsController {
     }
     
     formatCurrency(amount) {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: window.getAppCurrency ? window.getAppCurrency() : 'MGA',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(amount || 0);
-}
+        return window.formatCurrencyGlobal ? window.formatCurrencyGlobal(amount) : new Intl.NumberFormat('fr-FR', {
+            style: 'currency',
+            currency: 'MGA',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(amount || 0);
+    }
     async loadChantiers() {
         try {
             const entrepriseId = window.AppState?.entreprise?.id || 1;
@@ -348,7 +348,7 @@ class RapportsController {
         });
     }
 
-    formatCurrency(n) { return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0); }
+    formatCurrency(n) { return window.formatCurrencyGlobal ? window.formatCurrencyGlobal(n) : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'MGA', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0); }
     escapeHtml(str) { if (!str) return ''; return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 }
 

@@ -364,36 +364,6 @@ function startAutoSync() {
     }, config.interval);
 }
 
-/**
- * Récupérer la devise active de l'application
- * @returns {string} Code ISO devise (MGA, EUR, USD...)
- */
-function getAppCurrency() {
-    try {
-        return localStorage.getItem('tia_devise') || 'MGA';
-    } catch {
-        return 'MGA';
-    }
-}
-
-/**
- * Formater un montant avec la devise active
- * @param {number} amount - Montant
- * @returns {string} Montant formaté
- */
-function formatCurrencyGlobal(amount) {
-    const currency = getAppCurrency();
-    return new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: currency,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: currency === 'MGA' ? 0 : 2
-    }).format(amount || 0);
-}
-
-window.getAppCurrency = getAppCurrency;
-window.formatCurrencyGlobal = formatCurrencyGlobal;
-
 // ============================================================
 // SYSTÈME DE DEVISE DYNAMIQUE
 // ============================================================

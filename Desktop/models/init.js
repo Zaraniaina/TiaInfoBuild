@@ -35,7 +35,7 @@ function initDatabase() {
             email TEXT,
             logo TEXT,
             abonnement TEXT,
-            devise TEXT DEFAULT '€',
+            devise TEXT DEFAULT 'MGA',
             dateCreation DATETIME DEFAULT CURRENT_TIMESTAMP,
             is_synced INTEGER DEFAULT 0,
             is_deleted INTEGER DEFAULT 0,
@@ -659,7 +659,7 @@ function initDatabase() {
         ensureColumn(tableName, 'is_deleted', 'INTEGER DEFAULT 0');
     });
 
-    ensureColumn('Entreprise', 'devise', "TEXT DEFAULT '€'");
+    ensureColumn('Entreprise', 'devise', "TEXT DEFAULT 'MGA'");
     ensureColumn('Entreprise', 'codePostal', 'TEXT');
     ensureColumn('Entreprise', 'ville', 'TEXT');
     ensureColumn('Entreprise', 'nomCommercial', 'TEXT');
@@ -740,7 +740,7 @@ function initDatabase() {
     if (entCount === 0) {
         const crypto = require('crypto');
         const adminHash = crypto.createHash('sha256').update('admin123').digest('hex');
-        db.prepare(`INSERT OR IGNORE INTO Entreprise (id, server_id, nom, devise, is_synced) VALUES (1, 1, 'TIA Construction', '€', 1)`).run();
+        db.prepare(`INSERT OR IGNORE INTO Entreprise (id, server_id, nom, devise, is_synced) VALUES (1, 1, 'TIA Construction', 'MGA', 1)`).run();
         db.prepare(`INSERT OR IGNORE INTO Role (id, nom, code) VALUES (1, 'Administrateur', 'ADMIN')`).run();
         db.prepare(`INSERT OR IGNORE INTO Utilisateur (id, server_id, nom, prenom, email, motDePasseHash, roleId, entrepriseId, is_synced) VALUES (1, 1, 'Admin', 'TIA', 'admin@tiabuild.com', ?, 1, 1, 1)`).run(adminHash);
     }
