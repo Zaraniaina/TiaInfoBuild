@@ -2,7 +2,8 @@ const { app, BrowserWindow, ipcMain, Menu, dialog, shell } = require('electron')
 const path = require('path')
 
 const { initDatabase } = require('./models/init')
-
+const fs = require('fs')
+const db = require('./models/db')
 // Repositories
 const ChantierRepository = require('./models/repositories/ChantierRepository')
 const PhaseRepository = require('./models/repositories/PhaseRepository')
@@ -26,6 +27,7 @@ const MaterielRepository = require('./models/repositories/MaterielRepository')
 const MaintenanceRepository = require('./models/repositories/MaintenanceRepository')
 const DashboardRepository = require('./models/repositories/DashboardRepository')
 const SyncRepository = require('./models/repositories/SyncRepository')
+const UtilisateurRepository = require('./models/repositories/UtilisateurRepository')
 
 // Controllers
 const { handleLogin, handleRegister } = require('./controllers/authController')
@@ -37,6 +39,7 @@ const CommercialController = require('./controllers/commercialController')
 const FinanceController = require('./controllers/financeController')
 const DashboardController = require('./controllers/dashboardController')
 const SyncController = require('./controllers/syncController')
+const UtilisateurController = require('./controllers/utilisateurController')
 
 // Services
 const SyncService = require('./services/syncService')
@@ -64,7 +67,8 @@ const repos = {
   materiels: new MaterielRepository(),
   maintenances: new MaintenanceRepository(),
   dashboard: new DashboardRepository(),
-  sync: new SyncRepository()
+  sync: new SyncRepository(),
+  utilisateurs: new UtilisateurRepository()
 }
 
 // Instanciation des contrôleurs
@@ -76,9 +80,13 @@ const commercialCtrl = new CommercialController(repos)
 const financeCtrl = new FinanceController(repos)
 const dashboardCtrl = new DashboardController(repos)
 const syncCtrl = new SyncController(repos)
+const utilisateurCtrl = new UtilisateurController(repos)
 
 // Instanciation des services
 const syncService = new SyncService(repos.sync)
+const dbPath = path.join(__dirname, 'tia_info_build.sqlite')
+const backupsDir = path.join(app.getPath('userData'), 'backups')
+if (!fs.existsSync(backupsDir)) fs.mkdirSync(backupsDir, { recursive: true })
 
 function createWindow() {
   Menu.setApplicationMenu(null)
@@ -139,6 +147,168 @@ ipcMain.handle('session:clear', async () => {
   return { success: true };
 })
 
+// --- Utilisateurs & Rôles (Paramètres Admin) ---
+ipcMain.handle('utilisateurs:list', (e, params) => utilisateurCtrl.getList(e, params))
+ipcMain.handle('utilisateurs:getAll', (e, params) => utilisateurCtrl.getList(e, params))
+ipcMain.handle('utilisateurs:get', (e, id) => utilisateurCtrl.getById(e, id))
+ipcMain.handle('utilisateurs:create', (e, data, entId) => utilisateurCtrl.create(e, data, entId))
+ipcMain.handle('utilisateurs:update', (e, id, data) => utilisateurCtrl.update(e, id, data))
+ipcMain.handle('utilisateurs:delete', (e, id) => utilisateurCtrl.delete(e, id))
+
+ipcMain.handle('users:list', (e, params) => utilisateurCtrl.getList(e, params))
+ipcMain.handle('users:getAll', (e, params) => utilisateurCtrl.getList(e, params))
+ipcMain.handle('users:get', (e, id) => utilisateurCtrl.getById(e, id))
+ipcMain.handle('users:create', (e, data, entId) => utilisateurCtrl.create(e, data, entId))
+ipcMain.handle('users:update', (e, id, data) => utilisateurCtrl.update(e, id, data))
+ipcMain.handle('users:delete', (e, id) => utilisateurCtrl.delete(e, id))
+
+ipcMain.handle('roles:list', async () => {
+  try {
+    const roles = repos.utilisateurs.rawQuery("SELECT * FROM Role WHERE is_deleted = 0");
+    return { success: true, data: roles };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+})
+// --- Entreprise (Paramètres) ---
+ipcMain.handle('entreprises:get', (e, id) => {
+  try {
+    return db.prepare('SELECT * FROM Entreprise WHERE id = ?').get(id) || null
+  } catch (err) {
+    console.error('entreprises:get error:', err)
+    return null
+  }
+})
+
+ipcMain.handle('entreprises:update', (e, id, data) => {
+  try {
+    const allowed = ['nom', 'nomCommercial', 'siret', 'numeroTVA', 'codeAPE', 'adresse', 'codePostal',
+      'ville', 'telephone', 'email', 'siteWeb', 'prefixeDevis', 'prefixeFacture', 'prefixeContrat',
+      'tvaDefaut', 'delaiPaiementDefaut', 'validiteDevis', 'mentionsLegales', 'devise']
+    const fields = Object.keys(data).filter(k => allowed.includes(k))
+    if (fields.length === 0) return { success: true }
+    const setClause = fields.map(f => `${f} = @${f}`).join(', ')
+    db.prepare(`UPDATE Entreprise SET ${setClause} WHERE id = @id`).run({ ...data, id })
+    return { success: true }
+  } catch (err) {
+    console.error('entreprises:update error:', err)
+    throw err
+  }
+})
+
+// --- Préférences utilisateur (Paramètres) ---
+ipcMain.handle('preferences:get', (e, userId) => {
+  try {
+    let row = db.prepare('SELECT * FROM Preference WHERE userId = ?').get(userId)
+    if (!row) {
+      db.prepare('INSERT INTO Preference (userId) VALUES (?)').run(userId)
+      row = db.prepare('SELECT * FROM Preference WHERE userId = ?').get(userId)
+    }
+    return {
+      ...row,
+      notifEmail: !!row.notifEmail,
+      notifPush: !!row.notifPush,
+      notifFacturesRetard: !!row.notifFacturesRetard,
+      notifStockBas: !!row.notifStockBas
+    }
+  } catch (err) {
+    console.error('preferences:get error:', err)
+    return null
+  }
+})
+
+ipcMain.handle('preferences:update', (e, userId, data) => {
+  try {
+    const allowed = ['theme', 'langue', 'dateFormat', 'devise', 'notifEmail', 'notifPush', 'notifFacturesRetard', 'notifStockBas']
+    const payload = { userId }
+    allowed.filter(k => k in data).forEach(f => {
+      payload[f] = typeof data[f] === 'boolean' ? (data[f] ? 1 : 0) : data[f]
+    })
+    const exists = db.prepare('SELECT id FROM Preference WHERE userId = ?').get(userId)
+    if (exists) {
+      const fields = Object.keys(payload).filter(f => f !== 'userId')
+      const setClause = fields.map(f => `${f} = @${f}`).join(', ')
+      db.prepare(`UPDATE Preference SET ${setClause} WHERE userId = @userId`).run(payload)
+    } else {
+      const cols = Object.keys(payload)
+      db.prepare(`INSERT INTO Preference (${cols.join(', ')}) VALUES (${cols.map(c => `@${c}`).join(', ')})`).run(payload)
+    }
+    return { success: true }
+  } catch (err) {
+    console.error('preferences:update error:', err)
+    throw err
+  }
+})
+
+// --- Sauvegarde / Restauration (Paramètres) ---
+ipcMain.handle('backup:list', () => {
+  try {
+    return fs.readdirSync(backupsDir)
+      .filter(f => f.endsWith('.sqlite'))
+      .map(f => {
+        const stat = fs.statSync(path.join(backupsDir, f))
+        return { fichier: f, date: stat.mtime.toISOString(), taille: stat.size, type: f.startsWith('auto_') ? 'auto' : 'manuel' }
+      })
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+  } catch (err) {
+    console.error('backup:list error:', err)
+    return []
+  }
+})
+
+ipcMain.handle('backup:exportSQLite', () => {
+  const bytes = fs.readFileSync(dbPath)
+  fs.copyFileSync(dbPath, path.join(backupsDir, `manuel_${Date.now()}.sqlite`))
+  return bytes
+})
+
+ipcMain.handle('backup:exportSQL', () => {
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all()
+  let sql = ''
+  tables.forEach(t => {
+    const rows = db.prepare(`SELECT * FROM ${t.name}`).all()
+    rows.forEach(row => {
+      const cols = Object.keys(row)
+      const values = cols.map(c => row[c] === null ? 'NULL' : `'${String(row[c]).replace(/'/g, "''")}'`)
+      sql += `INSERT INTO ${t.name} (${cols.join(', ')}) VALUES (${values.join(', ')});\n`
+    })
+  })
+  return Buffer.from(sql, 'utf-8')
+})
+
+ipcMain.handle('backup:download', (e, filename) => {
+  const filePath = path.join(backupsDir, filename)
+  if (!fs.existsSync(filePath)) throw new Error('Fichier introuvable')
+  return fs.readFileSync(filePath)
+})
+
+ipcMain.handle('backup:restore', (e, filename) => {
+  const filePath = path.join(backupsDir, filename)
+  if (!fs.existsSync(filePath)) throw new Error('Sauvegarde introuvable')
+  fs.copyFileSync(filePath, dbPath)
+  return { success: true }
+})
+
+ipcMain.handle('backup:delete', (e, filename) => {
+  const filePath = path.join(backupsDir, filename)
+  if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
+  return { success: true }
+})
+
+ipcMain.handle('backup:import', (e, fileBuffer) => {
+  fs.writeFileSync(dbPath, Buffer.from(fileBuffer))
+  return { success: true }
+})
+
+ipcMain.handle('backup:setAutoConfig', (e, config) => {
+  try {
+    fs.writeFileSync(path.join(backupsDir, 'auto-config.json'), JSON.stringify(config, null, 2))
+    return { success: true }
+  } catch (err) {
+    console.error('backup:setAutoConfig error:', err)
+    throw err
+  }
+})
 // --- Chantiers, Phases & Incidents ---
 ipcMain.handle('chantiers:list', (e, params) => chantierCtrl.getList(e, params))
 ipcMain.handle('chantiers:get', (e, id) => chantierCtrl.getById(e, id))
@@ -263,6 +433,9 @@ ipcMain.handle('sync:getStatus', (e) => syncCtrl.getStatus(e))
 ipcMain.handle('sync:status', () => syncService.getStatus())
 ipcMain.handle('sync:push', () => syncCtrl.push())
 ipcMain.handle('sync:pull', () => syncCtrl.pull())
+ipcMain.handle('sync:testConnection', (e) => syncCtrl.testConnection(e))
+ipcMain.handle('sync:syncNow', (e) => syncCtrl.syncNow(e))
+ipcMain.handle('sync:setAutoConfig', (e, config) => syncCtrl.setAutoConfig(e, config))
 
 // --- Utilitaires Systèmes ---
 ipcMain.handle('app:getVersion', () => app.getVersion())

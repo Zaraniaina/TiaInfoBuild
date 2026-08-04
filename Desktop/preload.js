@@ -27,6 +27,10 @@ contextBridge.exposeInMainWorld('api', {
 
     auth: createIpcWrapper('auth'),
 
+    entreprises: createIpcWrapper('entreprises'),
+    preferences: createIpcWrapper('preferences'),
+    backup: createIpcWrapper('backup'),
+
     chantiers: createIpcWrapper('chantiers'),
     phases: createIpcWrapper('phases'),
     incidents: createIpcWrapper('incidents'),
@@ -57,6 +61,7 @@ contextBridge.exposeInMainWorld('api', {
     dashboard: createIpcWrapper('dashboard'),
 
     sync: createIpcWrapper('sync'),
+    utilisateurs: createIpcWrapper('utilisateurs'),
 
     utils: {
         getVersion: () => ipcRenderer.invoke('app:getVersion'),

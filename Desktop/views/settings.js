@@ -185,11 +185,11 @@ class ParametresController {
     /**
      * Charger la liste des utilisateurs
      */
-    async loadUtilisateurs() {
+   async loadUtilisateurs() {
         try {
             const entrepriseId = window.AppState?.entreprise?.id || 1;
-            const result = await window.api.utilisateurs.invoke('list', { entrepriseId });
-            this.utilisateurs = result.items || [];
+            const response = await window.api.utilisateurs.invoke('list', { entrepriseId });
+            this.utilisateurs = response?.data?.items || [];
             this.renderUtilisateursTable();
         } catch (error) {
             console.error('Erreur chargement utilisateurs:', error);
@@ -283,7 +283,8 @@ class ParametresController {
      */
     async openModalEditionUtilisateur(id) {
         try {
-            const user = await window.api.utilisateurs.invoke('get', parseInt(id));
+            const response = await window.api.utilisateurs.invoke('get', parseInt(id));
+            const user = response?.data;
             if (!user) {
                 showToast('Utilisateur non trouvé', 'error');
                 return;
@@ -295,7 +296,6 @@ class ParametresController {
             document.getElementById('btnDeleteUtilisateur').style.display = 'inline-block';
             document.getElementById('btnDeleteUtilisateur').dataset.id = id;
 
-            // Masquer le champ mot de passe pour l'édition (optionnel)
             document.getElementById('userMotDePasse').placeholder = 'Laisser vide pour ne pas changer';
 
             const modal = new bootstrap.Modal(document.getElementById('modalUtilisateur'));
@@ -437,6 +437,11 @@ class ParametresController {
 
                 // Appliquer le thème
                 this.applyTheme(prefs.theme || 'auto');
+                // Charger la devise persistée
+                const savedDevise = localStorage.getItem('tia_devise');
+                if (savedDevise) {
+                document.getElementById('prefDevise').value = savedDevise;
+                }
             }
         } catch (error) {
             console.error('Erreur chargement préférences:', error);
@@ -541,30 +546,33 @@ class ParametresController {
      */
     async exportDatabase() {
         try {
-            const blob = await window.api.backup.invoke('exportSQLite');
+            const bytes = await window.api.backup.invoke('exportSQLite');
+            const blob = new Blob([bytes], { type: 'application/x-sqlite3' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
             link.download = `tiainfo_backup_${new Date().toISOString().split('T')[0]}.sqlite`;
             link.click();
+            URL.revokeObjectURL(url);
             showToast('Export SQLite terminé', 'success');
         } catch (error) {
             console.error('Erreur export SQLite:', error);
             showToast('Erreur lors de l\'export', 'error');
         }
     }
-
     /**
      * Exporter en SQL
      */
     async exportSQL() {
         try {
-            const blob = await window.api.backup.invoke('exportSQL');
+            const bytes = await window.api.backup.invoke('exportSQL');
+            const blob = new Blob([bytes], { type: 'application/sql' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
             link.download = `tiainfo_backup_${new Date().toISOString().split('T')[0]}.sql`;
             link.click();
+            URL.revokeObjectURL(url);
             showToast('Export SQL terminé', 'success');
         } catch (error) {
             console.error('Erreur export SQL:', error);
@@ -589,7 +597,8 @@ class ParametresController {
         }
 
         try {
-            await window.api.backup.invoke('import', file);
+            const arrayBuffer = await file.arrayBuffer();
+            await window.api.backup.invoke('import', new Uint8Array(arrayBuffer));
             showToast('Import terminé. Redémarrage nécessaire.', 'success');
             setTimeout(() => window.location.reload(), 2000);
         } catch (error) {
@@ -603,12 +612,14 @@ class ParametresController {
      */
     async downloadBackup(filename) {
         try {
-            const blob = await window.api.backup.invoke('download', filename);
+            const bytes = await window.api.backup.invoke('download', filename);
+            const blob = new Blob([bytes]);
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
             link.download = filename;
             link.click();
+            URL.revokeObjectURL(url);
         } catch (error) {
             console.error('Erreur téléchargement:', error);
             showToast('Erreur lors du téléchargement', 'error');
@@ -676,7 +687,8 @@ class ParametresController {
      */
     async loadSyncConfig() {
         try {
-            const config = await window.api.sync.invoke('getConfig');
+            const response = await window.api.sync.invoke('getConfig');
+            const config = response?.data;
 
             if (config) {
                 document.getElementById('syncApiUrl').value = config.apiUrl || '';
@@ -688,7 +700,6 @@ class ParametresController {
                 document.getElementById('syncOnChange').checked = config.syncOnChange || false;
             }
 
-            // Vérifier le statut de connexion
             await this.checkSyncStatus();
         } catch (error) {
             console.error('Erreur chargement config sync:', error);
@@ -838,7 +849,8 @@ class ParametresController {
      */
     async showSyncStatus() {
         try {
-            const status = await window.api.sync.invoke('getStatus');
+            const response = await window.api.sync.invoke('getStatus');
+            const status = response?.data;
             const log = document.getElementById('syncLog');
 
             if (status) {
@@ -859,13 +871,16 @@ class ParametresController {
     /**
      * Charger l'historique des synchronisations
      */
+    /**
+     * Charger l'historique des synchronisations
+     */
     async loadSyncHistory() {
         const tbody = document.getElementById('syncHistoryTbody');
         if (!tbody) return;
 
         try {
-            const history = await window.api.sync.invoke('getHistory');
-            this.syncHistory = history || [];
+            const response = await window.api.sync.invoke('getHistory');
+            this.syncHistory = response?.data || [];
 
             if (this.syncHistory.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-secondary">Aucune synchronisation</td></tr>';

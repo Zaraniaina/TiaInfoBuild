@@ -65,6 +65,40 @@ class SyncController {
       return { success: false, error: error.message };
     }
   }
+  async testConnection(event) {
+    try {
+      const config = this.repos.sync.getConfig()
+      if (!config?.apiUrl) return { success: false, message: 'URL API non configurée' }
+      const res = await fetch(`${config.apiUrl.replace(/\/$/, '')}/health`, {
+        headers: config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}
+      })
+      return { success: res.ok, message: res.ok ? 'Connexion réussie' : `Erreur HTTP ${res.status}` }
+    } catch (error) {
+      console.error('SyncController.testConnection error:', error)
+      return { success: false, message: error.message }
+    }
+  }
+
+  async syncNow(event) {
+    try {
+      const pushResult = await this.repos.sync.push()
+      const pullResult = await this.repos.sync.pull()
+      return { success: true, message: 'Synchronisation terminée', data: { pushResult, pullResult } }
+    } catch (error) {
+      console.error('SyncController.syncNow error:', error)
+      return { success: false, message: error.message }
+    }
+  }
+
+  async setAutoConfig(event, config) {
+    try {
+      this.repos.sync.setConfig({ ...this.repos.sync.getConfig(), ...config })
+      return { success: true }
+    } catch (error) {
+      console.error('SyncController.setAutoConfig error:', error)
+      return { success: false, error: error.message }
+    }
+  }
 }
 
 module.exports = SyncController;
