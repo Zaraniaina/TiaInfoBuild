@@ -200,11 +200,22 @@ class Router {
             chantiers: 'Chantiers',
             'chantiers/nouveau': 'Nouveau chantier',
             employes: 'Employés',
+            pointages: 'Pointages',
+            equipes: 'Équipes',
+            'heures-sup': 'Heures supplémentaires',
             materiels: 'Matériels',
             stocks: 'Stocks',
+            fournisseurs: 'Fournisseurs',
+            mouvements: 'Mouvements de stock',
             clients: 'Clients',
             devis: 'Devis & Contrats',
+            contrats: 'Contrats',
+            factures: 'Factures',
+            paiements: 'Paiements',
             finances: 'Finances',
+            depenses: 'Dépenses',
+            rapports: 'Rapports financiers',
+            alertes: 'Alertes',
             utilisateurs: 'Utilisateurs',
             profil: 'Mon profil',
             parametres: 'Paramètres'
@@ -359,6 +370,26 @@ window.router.add('pointages', async (to) => {
     }
 });
 
+// Équipes
+window.router.add('equipes', async (to) => {
+    const html = await loadView('rh/equipes/index.html');
+    document.getElementById('contentArea').innerHTML = html;
+    await window.loadScript('rh/equipes/index.js');
+    if (window.equipesController && typeof window.equipesController.init === 'function') {
+        await window.equipesController.init();
+    }
+});
+
+// Heures supplémentaires
+window.router.add('heures-sup', async (to) => {
+    const html = await loadView('rh/heures-sup/index.html');
+    document.getElementById('contentArea').innerHTML = html;
+    await window.loadScript('rh/heures-sup/index.js');
+    if (window.heuresSupController && typeof window.heuresSupController.init === 'function') {
+        await window.heuresSupController.init();
+    }
+});
+
 // Matériels
 window.router.add('materiels', async (to) => {
     const html = await loadView('materiels/index.html');
@@ -389,6 +420,16 @@ window.router.add('fournisseurs', async (to) => {
     }
 });
 
+// Mouvements de stock
+window.router.add('mouvements', async (to) => {
+    const html = await loadView('stocks/mouvements/index.html');
+    document.getElementById('contentArea').innerHTML = html;
+    await window.loadScript('stocks/mouvements/index.js');
+    if (window.mouvementsController && typeof window.mouvementsController.init === 'function') {
+        await window.mouvementsController.init();
+    }
+});
+
 // Clients
 window.router.add('clients', async (to) => {
     const html = await loadView('commercial/clients/index.html');
@@ -409,6 +450,16 @@ window.router.add('devis', async (to) => {
     }
 });
 
+// Contrats
+window.router.add('contrats', async (to) => {
+    const html = await loadView('commercial/contrats/index.html');
+    document.getElementById('contentArea').innerHTML = html;
+    await window.loadScript('commercial/contrats/index.js');
+    if (window.contratsController && typeof window.contratsController.init === 'function') {
+        await window.contratsController.init();
+    }
+});
+
 // Factures
 window.router.add('factures', async (to) => {
     const html = await loadView('commercial/factures/index.html');
@@ -419,6 +470,16 @@ window.router.add('factures', async (to) => {
     }
 });
 
+// Paiements
+window.router.add('paiements', async (to) => {
+    const html = await loadView('commercial/paiements/index.html');
+    document.getElementById('contentArea').innerHTML = html;
+    await window.loadScript('commercial/paiements/index.js');
+    if (window.paiementsController && typeof window.paiementsController.init === 'function') {
+        await window.paiementsController.init();
+    }
+});
+
 // Finances
 window.router.add('finances', async (to) => {
     const html = await loadView('finance/index.html');
@@ -426,6 +487,36 @@ window.router.add('finances', async (to) => {
     await window.loadScript('finance/index.js');
     if (window.financesController && typeof window.financesController.init === 'function') {
         await window.financesController.init();
+    }
+});
+
+// Dépenses
+window.router.add('depenses', async (to) => {
+    const html = await loadView('finance/depenses/index.html');
+    document.getElementById('contentArea').innerHTML = html;
+    await window.loadScript('finance/depenses/index.js');
+    if (window.depensesController && typeof window.depensesController.init === 'function') {
+        await window.depensesController.init();
+    }
+});
+
+// Rapports financiers
+window.router.add('rapports', async (to) => {
+    const html = await loadView('finance/rapports/index.html');
+    document.getElementById('contentArea').innerHTML = html;
+    await window.loadScript('finance/rapports/index.js');
+    if (window.rapportsController && typeof window.rapportsController.init === 'function') {
+        await window.rapportsController.init();
+    }
+});
+
+// Alertes
+window.router.add('alertes', async (to) => {
+    const html = await loadView('finance/alertes/index.html');
+    document.getElementById('contentArea').innerHTML = html;
+    await window.loadScript('finance/alertes/index.js');
+    if (window.alertesController && typeof window.alertesController.init === 'function') {
+        await window.alertesController.init();
     }
 });
 
