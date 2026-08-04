@@ -183,36 +183,32 @@ function setupRouterGuards() {
     if (!window.router) return;
 
     window.router.beforeEach(async (to, from) => {
-        // Vérifier authentification : si pas d'user, rediriger vers index.html
         if (!AppState.user) {
             sessionStorage.setItem('tia_redirect_after_login', to.hash || '');
             window.location.href = 'index.html';
-            return false; // Annuler la navigation dans le SPA
+            return false;
         }
-
-        // Vérifier autorisation admin pour les routes protégées
         if (to.path.startsWith('utilisateurs') || to.path.startsWith('parametres')) {
-            // Le user object a roleNom et roleCode (ex: 'Administrateur', 'ADMIN') depuis la BDD
             const roleLabel = AppState.user.roleNom || AppState.user.roleCode || String(AppState.user.roleId || '');
-            const isAdmin = ['administrateur', 'directeur', 'admin'].some(r =>
-                roleLabel.toLowerCase().includes(r)
-            );
+            const isAdmin = ['administrateur', 'directeur', 'admin'].some(r => roleLabel.toLowerCase().includes(r));
             if (!isAdmin) {
                 try { showToast('Accès non autorisé', 'error'); } catch (e) { }
-                return false; // Annuler navigation
+                return false;
             }
         }
-
         return true;
     });
 
     window.router.afterEach(async (to, from) => {
-        // Fermer les dropdowns ouverts
+        // CORRECTION : Forcer la mise à jour des symboles monétaires à chaque vue
+        if (typeof window.updateCurrencySymbols === 'function') {
+            window.updateCurrencySymbols();
+        }
+
         document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
             menu.classList.remove('show');
         });
 
-        // Scroll en haut
         const contentArea = document.getElementById('contentArea');
         if (contentArea) contentArea.scrollTop = 0;
     });
