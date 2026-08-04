@@ -6,16 +6,10 @@ class EmployeRepository extends BaseRepository {
         super('Employe');
     }
 
-    /**
-     * Récupérer un employé avec ses relations
-     * @param {number} id - ID local de l'employé
-     * @returns {Object|null} - Employé avec relations
-     */
     getWithRelations(id) {
         const employe = this.getById(id);
         if (!employe) return null;
 
-        // Équipes
         const equipes = db.prepare(`
             SELECT e.*, me.dateAffectation
             FROM Equipe e
@@ -23,7 +17,6 @@ class EmployeRepository extends BaseRepository {
             WHERE me.employeId = ? AND e.is_deleted = 0 AND me.is_deleted = 0
         `).all(id);
 
-        // Affectations chantiers
         const affectations = db.prepare(`
             SELECT ac.*, c.nom as chantierNom, c.statut as chantierStatut
             FROM AffectationChantier ac
@@ -32,7 +25,6 @@ class EmployeRepository extends BaseRepository {
             ORDER BY ac.dateDebut DESC
         `).all(id);
 
-        // Pointages récents (30 derniers jours)
         const pointages = db.prepare(`
             SELECT p.*, c.nom as chantierNom
             FROM Pointage p
@@ -42,7 +34,6 @@ class EmployeRepository extends BaseRepository {
             ORDER BY p.dateJour DESC
         `).all(id);
 
-        // Heures sup récentes
         const heuresSup = db.prepare(`
             SELECT hs.*, c.nom as chantierNom
             FROM HeureSupplementaire hs
@@ -61,11 +52,6 @@ class EmployeRepository extends BaseRepository {
         };
     }
 
-    /**
-     * Récupérer la liste des employés avec infos résumées
-     * @param {Object} options - { entrepriseId, limit, offset, statut, search }
-     * @returns {Array} - Liste des employés
-     */
     getListWithStats(options = {}) {
         const { entrepriseId, limit = 50, offset = 0, statut, search } = options;
 
@@ -73,17 +59,17 @@ class EmployeRepository extends BaseRepository {
         const params = [];
 
         if (statut) {
-            whereClause += ' AND statut = ?';
+            whereClause += ' AND e.statut = ?';
             params.push(statut);
         }
 
         if (search) {
-            whereClause += ' AND (nom LIKE ? OR prenom LIKE ? OR matricule LIKE ? OR poste LIKE ?)';
+            whereClause += ' AND (e.nom LIKE ? OR e.prenom LIKE ? OR e.matricule LIKE ? OR e.poste LIKE ?)';
             const searchParam = `%${search}%`;
             params.push(searchParam, searchParam, searchParam, searchParam);
         }
 
-        let tenantWhere = this._entrepriseWhere(entrepriseId);
+        let tenantWhere = this._entrepriseWhere(entrepriseId, 'e');
         if (whereClause) {
             tenantWhere += whereClause;
         }
@@ -103,9 +89,7 @@ class EmployeRepository extends BaseRepository {
     }
 
     /**
-     * Obtenir les employés présents aujourd'hui (pour pointage)
-     * @param {number} entrepriseId - ID entreprise
-     * @returns {Array} - Employés avec statut pointage du jour
+     * Obtenir les employés présents aujourd'hui (Préfixe d'alias 'e' pour lever l'ambiguïté)
      */
     getPresentsToday(entrepriseId) {
         const today = new Date().toISOString().split('T')[0];
@@ -117,7 +101,7 @@ class EmployeRepository extends BaseRepository {
             FROM Employe e
             LEFT JOIN Pointage p ON e.id = p.employeId AND p.dateJour = ? AND p.is_deleted = 0
             LEFT JOIN Chantier c ON p.chantierId = c.id AND c.is_deleted = 0
-            ${this._entrepriseWhere(entrepriseId)}
+            ${this._entrepriseWhere(entrepriseId, 'e')}
             AND e.statut = 'actif'
             ORDER BY e.nom, e.prenom
         `;
@@ -126,33 +110,25 @@ class EmployeRepository extends BaseRepository {
         return stmt.all(today);
     }
 
-    /**
-     * Pointer un employé (arrivée/départ)
-     * @param {Object} data - { employeId, chantierId, heureArrivee, heureDepart, statut }
-     * @returns {Object} - Pointage créé/mis à jour
-     */
     pointer(data) {
         const { employeId, chantierId, heureArrivee, heureDepart, statut } = data;
         const today = new Date().toISOString().split('T')[0];
 
-        // Vérifier si pointage existe déjà aujourd'hui
         const existing = db.prepare(`
             SELECT * FROM Pointage 
             WHERE employeId = ? AND dateJour = ? AND is_deleted = 0
         `).get(employeId, today);
 
         if (existing) {
-            // Mise à jour
             return db.prepare(`
                 UPDATE Pointage 
-                SET chantierId = ?, heureArrivee = COALESCE(?, heureArrivee), 
+                SET chantierId = COALESCE(?, chantierId), heureArrivee = COALESCE(?, heureArrivee), 
                     heureDepart = COALESCE(?, heureDepart), statut = COALESCE(?, statut),
                     is_synced = 0, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             `).run(chantierId, heureArrivee, heureDepart, statut, existing.id) &&
                 db.prepare('SELECT * FROM Pointage WHERE id = ?').get(existing.id);
         } else {
-            // Création
             const pointageRepo = require('./PointageRepository');
             return new pointageRepo().create({
                 employeId,
@@ -165,22 +141,15 @@ class EmployeRepository extends BaseRepository {
         }
     }
 
-    /**
-     * Obtenir les statistiques RH pour le dashboard
-     * @param {number} entrepriseId - ID entreprise
-     * @returns {Object} - KPIs RH
-     */
     getDashboardStats(entrepriseId) {
         const stats = {};
 
-        // Effectif total
         const total = db.prepare(`
             SELECT COUNT(*) as count FROM Employe 
             WHERE entrepriseId = ? AND is_deleted = 0
         `).get(entrepriseId);
         stats.effectifTotal = total.count;
 
-        // Par statut
         const parStatut = db.prepare(`
             SELECT statut, COUNT(*) as count FROM Employe 
             WHERE entrepriseId = ? AND is_deleted = 0
@@ -188,7 +157,6 @@ class EmployeRepository extends BaseRepository {
         `).all(entrepriseId);
         stats.parStatut = parStatut.reduce((acc, row) => { acc[row.statut] = row.count; return acc; }, {});
 
-        // Présents aujourd'hui
         const today = new Date().toISOString().split('T')[0];
         const presents = db.prepare(`
             SELECT COUNT(DISTINCT e.id) as count
@@ -199,7 +167,6 @@ class EmployeRepository extends BaseRepository {
         `).get(entrepriseId, today);
         stats.presentsAujourdhui = presents.count;
 
-        // Heures sup ce mois
         const debutMois = new Date();
         debutMois.setDate(1);
         const debutMoisStr = debutMois.toISOString().split('T')[0];
@@ -213,7 +180,6 @@ class EmployeRepository extends BaseRepository {
         `).get(entrepriseId, debutMoisStr);
         stats.heuresSupMois = hs.total || 0;
 
-        // Employés en alerte (pas de pointage depuis 3 jours)
         const enAlerte = db.prepare(`
             SELECT COUNT(*) as count
             FROM Employe e
@@ -229,12 +195,6 @@ class EmployeRepository extends BaseRepository {
         return stats;
     }
 
-    /**
-     * Créer un employé avec validation
-     * @param {Object} data - Données de l'employé
-     * @param {number} entrepriseId - ID entreprise
-     * @returns {Object} - Employé créé
-     */
     createWithValidation(data, entrepriseId) {
         if (!data.nom || !data.nom.trim()) {
             throw new Error('Le nom est obligatoire');
@@ -243,7 +203,6 @@ class EmployeRepository extends BaseRepository {
             throw new Error('Le prénom est obligatoire');
         }
 
-        // Vérifier matricule unique si fourni
         if (data.matricule) {
             const existing = db.prepare(`
                 SELECT id FROM Employe 

@@ -896,13 +896,13 @@ class EmployesController {
     }
 
     formatCurrency(amount) {
-        return new Intl.NumberFormat('fr-FR', {
-            style: 'currency',
-            currency: 'EUR',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        }).format(amount || 0);
-    }
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: window.getAppCurrency ? window.getAppCurrency() : 'MGA',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount || 0);
+}
 
     escapeHtml(text) {
         if (!text) return '';
