@@ -36,11 +36,12 @@ const MaterielController = require('./controllers/materielController')
 const CommercialController = require('./controllers/commercialController')
 const FinanceController = require('./controllers/financeController')
 const DashboardController = require('./controllers/dashboardController')
+const SyncController = require('./controllers/syncController')
 
 // Services
 const SyncService = require('./services/syncService')
 
-// Instanciation des repositories
+// Instanciation unique de tous les repositories
 const repos = {
   chantiers: new ChantierRepository(),
   phases: new PhaseRepository(),
@@ -74,6 +75,7 @@ const materielCtrl = new MaterielController(repos)
 const commercialCtrl = new CommercialController(repos)
 const financeCtrl = new FinanceController(repos)
 const dashboardCtrl = new DashboardController(repos)
+const syncCtrl = new SyncController(repos)
 
 // Instanciation des services
 const syncService = new SyncService(repos.sync)
@@ -91,7 +93,6 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true
     },
-    // icon: path.join(__dirname, 'public', 'icon.png'), // TODO: ajouter icon.png
     titleBarStyle: 'default',
     show: false
   })
@@ -255,9 +256,13 @@ ipcMain.handle('dashboard:getTopChantiersBudget', (e, entrepriseId) => dashboard
 ipcMain.handle('dashboard:getActiviteRecente', (e, entrepriseId, limit) => dashboardCtrl.getActiviteRecente(e, entrepriseId, limit))
 
 // --- Synchronisation ---
-ipcMain.handle('sync:push', () => syncService.push())
-ipcMain.handle('sync:pull', () => syncService.pull())
+ipcMain.handle('sync:getConfig', (e) => syncCtrl.getConfig(e))
+ipcMain.handle('sync:setConfig', (e, config) => syncCtrl.setConfig(e, config))
+ipcMain.handle('sync:getHistory', (e, limit) => syncCtrl.getHistory(e, limit))
+ipcMain.handle('sync:getStatus', (e) => syncCtrl.getStatus(e))
 ipcMain.handle('sync:status', () => syncService.getStatus())
+ipcMain.handle('sync:push', () => syncCtrl.push())
+ipcMain.handle('sync:pull', () => syncCtrl.pull())
 
 // --- Utilitaires Systèmes ---
 ipcMain.handle('app:getVersion', () => app.getVersion())

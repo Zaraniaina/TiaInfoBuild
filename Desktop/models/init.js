@@ -1,35 +1,41 @@
 const db = require('./db');
 
 function columnExists(tableName, columnName) {
-    const rows = db.prepare(`PRAGMA table_info(${tableName})`).all();
-    return rows.some(row => row.name === columnName);
+    try {
+        const rows = db.prepare(`PRAGMA table_info(${tableName})`).all();
+        return rows.some(row => row.name === columnName);
+    } catch (e) {
+        return false;
+    }
 }
 
 function ensureColumn(tableName, columnName, definition) {
     if (!columnExists(tableName, columnName)) {
-        db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`).run();
+        try {
+            db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`).run();
+        } catch (e) {
+            console.warn(`Note: Impossible d'ajouter ${columnName} à ${tableName}: ${e.message}`);
+        }
     }
 }
 
 function initDatabase() {
-    // Activer les clés étrangères
     db.pragma('foreign_keys = ON');
 
-    // ============================================================
-    // MODULE TRANVERSE — Entreprise, Rôle, Utilisateur
-    // ============================================================
-
-    // Table Entreprise (multi-tenant)
+    // 1. MODULE TRANVERSE — Entreprise, Rôle, Utilisateur
     db.prepare(`
         CREATE TABLE IF NOT EXISTS Entreprise (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             server_id INTEGER UNIQUE,
             nom TEXT NOT NULL,
             adresse TEXT,
+            codePostal TEXT,
+            ville TEXT,
             telephone TEXT,
             email TEXT,
             logo TEXT,
             abonnement TEXT,
+            devise TEXT DEFAULT '€',
             dateCreation DATETIME DEFAULT CURRENT_TIMESTAMP,
             is_synced INTEGER DEFAULT 0,
             is_deleted INTEGER DEFAULT 0,
@@ -38,7 +44,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table Role
     db.prepare(`
         CREATE TABLE IF NOT EXISTS Role (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,7 +58,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table Utilisateur (Modèle Transverse)
     db.prepare(`
         CREATE TABLE IF NOT EXISTS Utilisateur (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,11 +81,30 @@ function initDatabase() {
         )
     `).run();
 
-    // ============================================================
-    // MODULE CHANTIERS
-    // ============================================================
+    // 2. MODULE COMMERCIAL — Client
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS Client (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            server_id INTEGER UNIQUE,
+            entrepriseId INTEGER NOT NULL,
+            nom TEXT NOT NULL,
+            type TEXT,
+            adresse TEXT,
+            codePostal TEXT,
+            ville TEXT,
+            siret TEXT,
+            telephone TEXT,
+            email TEXT,
+            notes TEXT,
+            is_synced INTEGER DEFAULT 0,
+            is_deleted INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id)
+        )
+    `).run();
 
-    // Table Chantier
+    // 3. MODULE CHANTIERS
     db.prepare(`
         CREATE TABLE IF NOT EXISTS Chantier (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,10 +114,13 @@ function initDatabase() {
             chefChantierId INTEGER,
             nom TEXT NOT NULL,
             adresse TEXT,
+            codePostal TEXT,
+            ville TEXT,
             dateDebut DATE,
             dateFinPrevue DATE,
             dateFinReelle DATE,
             budgetPrevu REAL DEFAULT 0,
+            budgetPrevisionnel REAL DEFAULT 0,
             budgetReel REAL DEFAULT 0,
             statut TEXT DEFAULT 'planification',
             description TEXT,
@@ -108,7 +134,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table Phase
     db.prepare(`
         CREATE TABLE IF NOT EXISTS Phase (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -118,6 +143,7 @@ function initDatabase() {
             description TEXT,
             dateDebut DATE,
             dateFin DATE,
+            budget REAL DEFAULT 0,
             avancementPct INTEGER DEFAULT 0,
             statut TEXT DEFAULT 'non_commencee',
             ordre INTEGER DEFAULT 0,
@@ -129,7 +155,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table Incident
     db.prepare(`
         CREATE TABLE IF NOT EXISTS Incident (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -150,7 +175,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table AffectationRessource (pivot générique Employe/Materiel)
     db.prepare(`
         CREATE TABLE IF NOT EXISTS AffectationRessource (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -169,11 +193,102 @@ function initDatabase() {
         )
     `).run();
 
-    // ============================================================
-    // MODULE RESSOURCES HUMAINES
-    // ============================================================
+    // 4. COMMERCIAL SUITE — Devis, Contrat, Factures
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS Devis (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            server_id INTEGER UNIQUE,
+            entrepriseId INTEGER NOT NULL,
+            clientId INTEGER NOT NULL,
+            numero TEXT,
+            dateCreation DATE DEFAULT (date('now')),
+            dateValidite DATE,
+            montantTotal REAL DEFAULT 0,
+            statut TEXT DEFAULT 'brouillon',
+            is_synced INTEGER DEFAULT 0,
+            is_deleted INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id),
+            FOREIGN KEY (clientId) REFERENCES Client(id)
+        )
+    `).run();
 
-    // Table Employe
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS LigneDevis (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            server_id INTEGER UNIQUE,
+            devisId INTEGER NOT NULL,
+            description TEXT,
+            quantite REAL DEFAULT 0,
+            prixUnitaire REAL DEFAULT 0,
+            is_synced INTEGER DEFAULT 0,
+            is_deleted INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (devisId) REFERENCES Devis(id) ON DELETE CASCADE
+        )
+    `).run();
+
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS Contrat (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            server_id INTEGER UNIQUE,
+            entrepriseId INTEGER,
+            devisId INTEGER,
+            chantierId INTEGER,
+            dateSignature DATE,
+            montant REAL DEFAULT 0,
+            statut TEXT DEFAULT 'en_cours',
+            is_synced INTEGER DEFAULT 0,
+            is_deleted INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id),
+            FOREIGN KEY (devisId) REFERENCES Devis(id),
+            FOREIGN KEY (chantierId) REFERENCES Chantier(id)
+        )
+    `).run();
+
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS Facture (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            server_id INTEGER UNIQUE,
+            entrepriseId INTEGER NOT NULL,
+            contratId INTEGER NOT NULL,
+            numero TEXT,
+            dateEmission DATE DEFAULT (date('now')),
+            dateEcheance DATE,
+            montant REAL DEFAULT 0,
+            montantTTC REAL DEFAULT 0,
+            montantPaye REAL DEFAULT 0,
+            statut TEXT DEFAULT 'emis',
+            is_synced INTEGER DEFAULT 0,
+            is_deleted INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id),
+            FOREIGN KEY (contratId) REFERENCES Contrat(id) ON DELETE CASCADE
+        )
+    `).run();
+
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS Paiement (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            server_id INTEGER UNIQUE,
+            factureId INTEGER NOT NULL,
+            datePaiement DATE DEFAULT (date('now')),
+            montant REAL DEFAULT 0,
+            modePaiement TEXT,
+            is_synced INTEGER DEFAULT 0,
+            is_deleted INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (factureId) REFERENCES Facture(id) ON DELETE CASCADE
+        )
+    `).run();
+
+    // 5. MODULE RESSOURCES HUMAINES
     db.prepare(`
         CREATE TABLE IF NOT EXISTS Employe (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -183,9 +298,12 @@ function initDatabase() {
             nom TEXT NOT NULL,
             prenom TEXT,
             poste TEXT,
+            photo TEXT,
             dateEmbauche DATE,
             salaireBase REAL DEFAULT 0,
             telephone TEXT,
+            email TEXT,
+            adresse TEXT,
             statut TEXT DEFAULT 'actif',
             is_synced INTEGER DEFAULT 0,
             is_deleted INTEGER DEFAULT 0,
@@ -195,7 +313,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table Equipe
     db.prepare(`
         CREATE TABLE IF NOT EXISTS Equipe (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -212,7 +329,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table MembreEquipe
     db.prepare(`
         CREATE TABLE IF NOT EXISTS MembreEquipe (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -230,7 +346,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table AffectationChantier (Employe <-> Chantier)
     db.prepare(`
         CREATE TABLE IF NOT EXISTS AffectationChantier (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -249,7 +364,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table Pointage
     db.prepare(`
         CREATE TABLE IF NOT EXISTS Pointage (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -270,7 +384,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table HeureSupplementaire
     db.prepare(`
         CREATE TABLE IF NOT EXISTS HeureSupplementaire (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -289,21 +402,21 @@ function initDatabase() {
         )
     `).run();
 
-    // ============================================================
-    // MODULE MATÉRIELS
-    // ============================================================
-
-    // Table Materiel
+    // 6. MODULE MATÉRIELS
     db.prepare(`
         CREATE TABLE IF NOT EXISTS Materiel (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             server_id INTEGER UNIQUE,
             entrepriseId INTEGER NOT NULL,
             nom TEXT NOT NULL,
+            designation TEXT,
             type TEXT,
+            marque TEXT,
+            modele TEXT,
             numeroSerie TEXT,
             dateAcquisition DATE,
             valeurAchat REAL DEFAULT 0,
+            description TEXT,
             statut TEXT DEFAULT 'disponible',
             is_synced INTEGER DEFAULT 0,
             is_deleted INTEGER DEFAULT 0,
@@ -313,7 +426,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table AffectationMateriel
     db.prepare(`
         CREATE TABLE IF NOT EXISTS AffectationMateriel (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -331,7 +443,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table Maintenance
     db.prepare(`
         CREATE TABLE IF NOT EXISTS Maintenance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -350,7 +461,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table AlerteMateriel
     db.prepare(`
         CREATE TABLE IF NOT EXISTS AlerteMateriel (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -368,21 +478,22 @@ function initDatabase() {
         )
     `).run();
 
-    // ============================================================
-    // MODULE STOCKS
-    // ============================================================
-
-    // Table Article
+    // 7. MODULE STOCKS
     db.prepare(`
         CREATE TABLE IF NOT EXISTS Article (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             server_id INTEGER UNIQUE,
             entrepriseId INTEGER NOT NULL,
             nom TEXT NOT NULL,
+            designation TEXT,
+            reference TEXT,
             categorie TEXT,
             unite TEXT,
+            prixUnitaire REAL DEFAULT 0,
             seuilAlerte REAL DEFAULT 0,
             quantiteStock REAL DEFAULT 0,
+            stockActuel REAL DEFAULT 0,
+            description TEXT,
             is_synced INTEGER DEFAULT 0,
             is_deleted INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -391,7 +502,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table Fournisseur
     db.prepare(`
         CREATE TABLE IF NOT EXISTS Fournisseur (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -400,8 +510,13 @@ function initDatabase() {
             nom TEXT NOT NULL,
             contact TEXT,
             adresse TEXT,
+            codePostal TEXT,
+            ville TEXT,
+            siret TEXT,
             telephone TEXT,
             email TEXT,
+            conditionsPaiement TEXT,
+            notes TEXT,
             is_synced INTEGER DEFAULT 0,
             is_deleted INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -410,7 +525,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table MouvementStock
     db.prepare(`
         CREATE TABLE IF NOT EXISTS MouvementStock (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -432,125 +546,7 @@ function initDatabase() {
         )
     `).run();
 
-    // ============================================================
-    // MODULE COMMERCIAL
-    // ============================================================
-
-    // Table Client
-    db.prepare(`
-        CREATE TABLE IF NOT EXISTS Client (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            server_id INTEGER UNIQUE,
-            entrepriseId INTEGER NOT NULL,
-            nom TEXT NOT NULL,
-            type TEXT,
-            adresse TEXT,
-            telephone TEXT,
-            email TEXT,
-            is_synced INTEGER DEFAULT 0,
-            is_deleted INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id)
-        )
-    `).run();
-
-    // Table Devis
-    db.prepare(`
-        CREATE TABLE IF NOT EXISTS Devis (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            server_id INTEGER UNIQUE,
-            entrepriseId INTEGER NOT NULL,
-            clientId INTEGER NOT NULL,
-            dateCreation DATE DEFAULT (date('now')),
-            dateValidite DATE,
-            montantTotal REAL DEFAULT 0,
-            statut TEXT DEFAULT 'brouillon',
-            is_synced INTEGER DEFAULT 0,
-            is_deleted INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id),
-            FOREIGN KEY (clientId) REFERENCES Client(id)
-        )
-    `).run();
-
-    // Table LigneDevis
-    db.prepare(`
-        CREATE TABLE IF NOT EXISTS LigneDevis (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            server_id INTEGER UNIQUE,
-            devisId INTEGER NOT NULL,
-            description TEXT,
-            quantite REAL DEFAULT 0,
-            prixUnitaire REAL DEFAULT 0,
-            is_synced INTEGER DEFAULT 0,
-            is_deleted INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (devisId) REFERENCES Devis(id) ON DELETE CASCADE
-        )
-    `).run();
-
-    // Table Contrat
-    db.prepare(`
-        CREATE TABLE IF NOT EXISTS Contrat (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            server_id INTEGER UNIQUE,
-            devisId INTEGER,
-            chantierId INTEGER,
-            dateSignature DATE,
-            montant REAL DEFAULT 0,
-            statut TEXT DEFAULT 'en_cours',
-            is_synced INTEGER DEFAULT 0,
-            is_deleted INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (devisId) REFERENCES Devis(id),
-            FOREIGN KEY (chantierId) REFERENCES Chantier(id)
-        )
-    `).run();
-
-    // Table Facture
-    db.prepare(`
-        CREATE TABLE IF NOT EXISTS Facture (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            server_id INTEGER UNIQUE,
-            contratId INTEGER NOT NULL,
-            dateEmission DATE DEFAULT (date('now')),
-            dateEcheance DATE,
-            montant REAL DEFAULT 0,
-            statut TEXT DEFAULT 'emis',
-            is_synced INTEGER DEFAULT 0,
-            is_deleted INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (contratId) REFERENCES Contrat(id) ON DELETE CASCADE
-        )
-    `).run();
-
-    // Table Paiement
-    db.prepare(`
-        CREATE TABLE IF NOT EXISTS Paiement (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            server_id INTEGER UNIQUE,
-            factureId INTEGER NOT NULL,
-            datePaiement DATE DEFAULT (date('now')),
-            montant REAL DEFAULT 0,
-            modePaiement TEXT,
-            is_synced INTEGER DEFAULT 0,
-            is_deleted INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (factureId) REFERENCES Facture(id) ON DELETE CASCADE
-        )
-    `).run();
-
-    // ============================================================
-    // MODULE FINANCE & AIDE À LA DÉCISION
-    // ============================================================
-
-    // Table Depense
+    // 8. MODULE FINANCE & ALERTES
     db.prepare(`
         CREATE TABLE IF NOT EXISTS Depense (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -570,7 +566,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table RapportFinancier
     db.prepare(`
         CREATE TABLE IF NOT EXISTS RapportFinancier (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -589,7 +584,6 @@ function initDatabase() {
         )
     `).run();
 
-    // Table Alerte (transverse générique)
     db.prepare(`
         CREATE TABLE IF NOT EXISTS Alerte (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -609,20 +603,16 @@ function initDatabase() {
         )
     `).run();
 
-    // ============================================================
-    // TABLE DE SYNCHRONISATION (Queue)
-    // ============================================================
-
-    // Table SyncQueue pour l'offline-first sync
+    // 9. TABLE DE SYNCHRONISATION
     db.prepare(`
         CREATE TABLE IF NOT EXISTS SyncQueue (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             tableName TEXT NOT NULL,
             recordId INTEGER NOT NULL,
             serverId INTEGER,
-            operation TEXT NOT NULL CHECK (operation IN ('create', 'update', 'delete')),
-            payload TEXT, -- JSON string
-            status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'syncing', 'synced', 'failed', 'conflict')),
+            operation TEXT NOT NULL CHECK (operation IN ('create', 'update', 'delete', 'push', 'pull')),
+            payload TEXT,
+            status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'syncing', 'synced', 'failed', 'conflict', 'success', 'error')),
             retryCount INTEGER DEFAULT 0,
             errorMessage TEXT,
             createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -630,12 +620,11 @@ function initDatabase() {
         )
     `).run();
 
-    // Index pour performance sync
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON SyncQueue(status)`).run();
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_sync_queue_table_record ON SyncQueue(tableName, recordId)`).run();
 
-    // Triggers pour updated_at automatique
-    const tablesWithUpdatedAt = [
+    // Migrations de colonnes
+    const allTables = [
         'Entreprise', 'Role', 'Utilisateur',
         'Chantier', 'Phase', 'Incident', 'AffectationRessource',
         'Employe', 'Equipe', 'MembreEquipe', 'AffectationChantier', 'Pointage', 'HeureSupplementaire',
@@ -645,57 +634,88 @@ function initDatabase() {
         'Depense', 'RapportFinancier', 'Alerte'
     ];
 
-    tablesWithUpdatedAt.forEach(table => {
+    allTables.forEach(tableName => {
+        ensureColumn(tableName, 'created_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP');
+        ensureColumn(tableName, 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP');
+        ensureColumn(tableName, 'is_synced', 'INTEGER DEFAULT 0');
+        ensureColumn(tableName, 'is_deleted', 'INTEGER DEFAULT 0');
+    });
+
+    ensureColumn('Entreprise', 'devise', "TEXT DEFAULT '€'");
+    ensureColumn('Entreprise', 'codePostal', 'TEXT');
+    ensureColumn('Entreprise', 'ville', 'TEXT');
+
+    ensureColumn('Chantier', 'budgetPrevisionnel', 'REAL DEFAULT 0');
+    ensureColumn('Chantier', 'codePostal', 'TEXT');
+    ensureColumn('Chantier', 'ville', 'TEXT');
+
+    ensureColumn('Phase', 'budget', 'REAL DEFAULT 0');
+
+    ensureColumn('Article', 'designation', 'TEXT');
+    ensureColumn('Article', 'reference', 'TEXT');
+    ensureColumn('Article', 'stockActuel', 'REAL DEFAULT 0');
+    ensureColumn('Article', 'prixUnitaire', 'REAL DEFAULT 0');
+    ensureColumn('Article', 'description', 'TEXT');
+
+    ensureColumn('Fournisseur', 'codePostal', 'TEXT');
+    ensureColumn('Fournisseur', 'ville', 'TEXT');
+    ensureColumn('Fournisseur', 'siret', 'TEXT');
+    ensureColumn('Fournisseur', 'conditionsPaiement', 'TEXT');
+    ensureColumn('Fournisseur', 'notes', 'TEXT');
+
+    ensureColumn('Client', 'codePostal', 'TEXT');
+    ensureColumn('Client', 'ville', 'TEXT');
+    ensureColumn('Client', 'siret', 'TEXT');
+    ensureColumn('Client', 'notes', 'TEXT');
+
+    ensureColumn('Materiel', 'designation', 'TEXT');
+    ensureColumn('Materiel', 'marque', 'TEXT');
+    ensureColumn('Materiel', 'modele', 'TEXT');
+    ensureColumn('Materiel', 'description', 'TEXT');
+
+    ensureColumn('Devis', 'numero', 'TEXT');
+    ensureColumn('Contrat', 'entrepriseId', 'INTEGER');
+    ensureColumn('Facture', 'numero', 'TEXT');
+    ensureColumn('Facture', 'entrepriseId', 'INTEGER');
+    ensureColumn('Facture', 'montantTTC', 'REAL DEFAULT 0');
+    ensureColumn('Facture', 'montantPaye', 'REAL DEFAULT 0');
+
+    ensureColumn('Employe', 'photo', 'TEXT');
+    ensureColumn('Employe', 'email', 'TEXT');
+    ensureColumn('Employe', 'adresse', 'TEXT');
+
+    // Triggers SQLite
+    allTables.forEach(table => {
         db.prepare(`
             CREATE TRIGGER IF NOT EXISTS trigger_${table}_updated_at
             AFTER UPDATE ON ${table}
             FOR EACH ROW
+            WHEN OLD.updated_at = NEW.updated_at OR OLD.updated_at IS NEW.updated_at
             BEGIN
                 UPDATE ${table} SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
-            END
+            END;
         `).run();
-    });
-
-    // Compatibilité avec la base existante (ajout de colonnes manquantes)
-    ensureColumn('Chantier', 'budgetPrevisionnel', 'REAL DEFAULT 0');
-    ensureColumn('Phase', 'budget', 'REAL DEFAULT 0');
-    ensureColumn('Article', 'stockActuel', 'REAL DEFAULT 0');
-    ensureColumn('Article', 'prixUnitaire', 'REAL DEFAULT 0');
-    ensureColumn('Facture', 'montantTTC', 'REAL DEFAULT 0');
-    ensureColumn('Facture', 'montantPaye', 'REAL DEFAULT 0');
-    ensureColumn('Employe', 'photo', 'TEXT');
-
-    const tablesWithTimestamps = [
-        'Entreprise', 'Role', 'Utilisateur',
-        'Chantier', 'Phase', 'Incident', 'AffectationRessource',
-        'Employe', 'Equipe', 'MembreEquipe', 'AffectationChantier', 'Pointage', 'HeureSupplementaire',
-        'Materiel', 'AffectationMateriel', 'Maintenance', 'AlerteMateriel',
-        'Article', 'Fournisseur', 'MouvementStock',
-        'Client', 'Devis', 'LigneDevis', 'Contrat', 'Facture', 'Paiement',
-        'Depense', 'RapportFinancier', 'Alerte'
-    ];
-
-    tablesWithTimestamps.forEach(tableName => {
-        ensureColumn(tableName, 'created_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP');
-        ensureColumn(tableName, 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP');
     });
 
     db.prepare(`UPDATE Chantier SET budgetPrevisionnel = COALESCE(budgetPrevisionnel, budgetPrevu, 0) WHERE COALESCE(budgetPrevisionnel, 0) = 0`).run();
     db.prepare(`UPDATE Article SET stockActuel = COALESCE(stockActuel, quantiteStock, 0) WHERE COALESCE(stockActuel, 0) = 0`).run();
     db.prepare(`UPDATE Facture SET montantTTC = COALESCE(montantTTC, montant, 0) WHERE COALESCE(montantTTC, 0) = 0`).run();
     db.prepare(`UPDATE Facture SET montantPaye = COALESCE(montantPaye, 0)`).run();
+    db.prepare(`UPDATE Devis SET numero = 'DEV-' || id WHERE numero IS NULL OR numero = ''`).run();
+    db.prepare(`UPDATE Facture SET numero = 'FAC-' || id WHERE numero IS NULL OR numero = ''`).run();
+    db.prepare(`UPDATE Contrat SET entrepriseId = (SELECT entrepriseId FROM Devis WHERE Devis.id = Contrat.devisId) WHERE entrepriseId IS NULL AND devisId IS NOT NULL`).run();
 
-    // Initial Seed Data si base vide (Permet la première connexion immédiate)
+    // Initial Seed Data si la BDD est vide
     const entCount = db.prepare('SELECT COUNT(*) as count FROM Entreprise').get().count;
     if (entCount === 0) {
         const crypto = require('crypto');
         const adminHash = crypto.createHash('sha256').update('admin123').digest('hex');
-        db.prepare(`INSERT OR IGNORE INTO Entreprise (id, server_id, nom, is_synced) VALUES (1, 1, 'TIA Construction', 1)`).run();
+        db.prepare(`INSERT OR IGNORE INTO Entreprise (id, server_id, nom, devise, is_synced) VALUES (1, 1, 'TIA Construction', '€', 1)`).run();
         db.prepare(`INSERT OR IGNORE INTO Role (id, nom, code) VALUES (1, 'Administrateur', 'ADMIN')`).run();
         db.prepare(`INSERT OR IGNORE INTO Utilisateur (id, server_id, nom, prenom, email, motDePasseHash, roleId, entrepriseId, is_synced) VALUES (1, 1, 'Admin', 'TIA', 'admin@tiabuild.com', ?, 1, 1, 1)`).run(adminHash);
     }
 
-    console.log("Base de données initialisée avec succès ! (toutes tables créées)");
+    console.log("Base de données initialisée avec succès !");
 }
 
 module.exports = { initDatabase };

@@ -1,132 +1,175 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 /**
- * Preload script - Pont sécurisé entre Main Process et Renderer Process
- * Expose une API IPC structurée par module
+ * Helper IPC
  */
-
-// Helper pour créer des wrappers IPC typés
 function createIpcWrapper(channelPrefix) {
-  return {
-    // Appel simple (invoke)
-    invoke: (method, ...args) => ipcRenderer.invoke(`${channelPrefix}:${method}`, ...args),
+    return {
+        invoke: (method, ...args) =>
+            ipcRenderer.invoke(`${channelPrefix}:${method}`, ...args),
 
-    // Écoute d'événements (on)
-    on: (event, callback) => {
-      const channel = `${channelPrefix}:${event}`;
-      ipcRenderer.on(channel, (_, ...args) => callback(...args));
-      return () => ipcRenderer.removeAllListeners(channel);
-    },
+        on: (event, callback) => {
+            const channel = `${channelPrefix}:${event}`;
+            ipcRenderer.on(channel, (_, ...args) => callback(...args));
+            return () => ipcRenderer.removeAllListeners(channel);
+        },
 
-    // Émission d'événements vers main (send)
-    send: (event, ...args) => ipcRenderer.send(`${channelPrefix}:${event}`, ...args)
-  };
+        send: (event, ...args) =>
+            ipcRenderer.send(`${channelPrefix}:${event}`, ...args)
+    };
 }
 
-// Exposer l'API structurée
+/* ======================================================
+   Nouvelle API modulaire
+====================================================== */
+
 contextBridge.exposeInMainWorld('api', {
-  // Authentification
-  auth: createIpcWrapper('auth'),
 
-  // Chantiers
-  chantiers: createIpcWrapper('chantiers'),
+    auth: createIpcWrapper('auth'),
 
-  // Phases
-  phases: createIpcWrapper('phases'),
+    chantiers: createIpcWrapper('chantiers'),
+    phases: createIpcWrapper('phases'),
+    incidents: createIpcWrapper('incidents'),
 
-  // Incidents
-  incidents: createIpcWrapper('incidents'),
+    employes: createIpcWrapper('employes'),
+    pointages: createIpcWrapper('pointages'),
+    equipes: createIpcWrapper('equipes'),
+    heuresSup: createIpcWrapper('heures-sup'),
 
-  // RH - Employés
-  employes: createIpcWrapper('employes'),
+    materiels: createIpcWrapper('materiels'),
+    maintenances: createIpcWrapper('maintenances'),
 
-  // RH - Pointages
-  pointages: createIpcWrapper('pointages'),
+    articles: createIpcWrapper('articles'),
+    fournisseurs: createIpcWrapper('fournisseurs'),
+    mouvements: createIpcWrapper('mouvements'),
 
-  // RH - Équipes
-  equipes: createIpcWrapper('equipes'),
+    clients: createIpcWrapper('clients'),
+    devis: createIpcWrapper('devis'),
+    contrats: createIpcWrapper('contrats'),
+    factures: createIpcWrapper('factures'),
+    paiements: createIpcWrapper('paiements'),
 
-  // RH - Heures sup
-  heuresSup: createIpcWrapper('heures-sup'),
+    depenses: createIpcWrapper('depenses'),
+    rapports: createIpcWrapper('rapports'),
 
-  // Matériels
-  materiels: createIpcWrapper('materiels'),
+    alertes: createIpcWrapper('alertes'),
 
-  // Maintenance
-  maintenances: createIpcWrapper('maintenances'),
+    dashboard: createIpcWrapper('dashboard'),
 
-  // Stocks - Articles
-  articles: createIpcWrapper('articles'),
+    sync: createIpcWrapper('sync'),
 
-  // Stocks - Fournisseurs
-  fournisseurs: createIpcWrapper('fournisseurs'),
+    utils: {
+        getVersion: () => ipcRenderer.invoke('app:getVersion'),
+        openPath: (path) => ipcRenderer.invoke('app:openPath', path),
+        showItemInFolder: (path) =>
+            ipcRenderer.invoke('app:showItemInFolder', path),
 
-  // Stocks - Mouvements
-  mouvements: createIpcWrapper('mouvements'),
+        showOpenDialog: (options) =>
+            ipcRenderer.invoke('dialog:showOpenDialog', options),
 
-  // Commercial - Clients
-  clients: createIpcWrapper('clients'),
+        showSaveDialog: (options) =>
+            ipcRenderer.invoke('dialog:showSaveDialog', options),
 
-  // Commercial - Devis
-  devis: createIpcWrapper('devis'),
+        showNotification: (title, body) =>
+            ipcRenderer.invoke('notification:show', title, body)
+    },
 
-  // Commercial - Contrats
-  contrats: createIpcWrapper('contrats'),
-
-  // Commercial - Factures
-  factures: createIpcWrapper('factures'),
-
-  // Commercial - Paiements
-  paiements: createIpcWrapper('paiements'),
-
-  // Finance - Dépenses
-  depenses: createIpcWrapper('depenses'),
-
-  // Finance - Rapports
-  rapports: createIpcWrapper('rapports'),
-
-  // Alertes
-  alertes: createIpcWrapper('alertes'),
-
-  // Dashboard / Stats
-  dashboard: createIpcWrapper('dashboard'),
-
-  // Synchronisation
-  sync: createIpcWrapper('sync'),
-
-  // Utilitaires
-  utils: {
-    // Obtenir la version de l'app
-    getVersion: () => ipcRenderer.invoke('app:getVersion'),
-
-    // Ouvrir un fichier/dossier
-    openPath: (path) => ipcRenderer.invoke('app:openPath', path),
-
-    // Afficher dans le dossier
-    showItemInFolder: (path) => ipcRenderer.invoke('app:showItemInFolder', path),
-
-    // Dialogue fichier
-    showOpenDialog: (options) => ipcRenderer.invoke('dialog:showOpenDialog', options),
-    showSaveDialog: (options) => ipcRenderer.invoke('dialog:showSaveDialog', options),
-
-    // Notification native
-    showNotification: (title, body) => ipcRenderer.invoke('notification:show', title, body)
-  },
-
-  // Session utilisateur
-  session: {
-    get: () => ipcRenderer.invoke('session:get'),
-    set: (data) => ipcRenderer.invoke('session:set', data),
-    clear: () => ipcRenderer.invoke('session:clear')
-  }
+    session: {
+        get: () => ipcRenderer.invoke('session:get'),
+        set: (data) => ipcRenderer.invoke('session:set', data),
+        clear: () => ipcRenderer.invoke('session:clear')
+    }
 });
 
-// Exposer aussi les canaux bruts pour cas avancés
+/* ======================================================
+   Compatibilité avec l'ancien code
+====================================================== */
+
+contextBridge.exposeInMainWorld('electronAPI', {
+
+    // Auth
+    login: (credentials) =>
+        ipcRenderer.invoke('auth:login', credentials),
+
+    register: (data) =>
+        ipcRenderer.invoke('auth:register', data),
+
+    // Dashboard
+    getDashboardStats: (entrepriseId) =>
+        ipcRenderer.invoke('dashboard:getStats', entrepriseId),
+
+    getCAEvolution: (entrepriseId) =>
+        ipcRenderer.invoke('dashboard:getCAEvolution', entrepriseId),
+
+    getTopChantiersBudget: (entrepriseId) =>
+        ipcRenderer.invoke('dashboard:getTopChantiersBudget', entrepriseId),
+
+    getActiviteRecente: (entrepriseId, limit) =>
+        ipcRenderer.invoke(
+            'dashboard:getActiviteRecente',
+            entrepriseId,
+            limit
+        ),
+
+    // Commercial
+    getListDevis: (params) =>
+        ipcRenderer.invoke('commercial:getListDevis', params),
+
+    getDevisById: (id) =>
+        ipcRenderer.invoke('commercial:getDevisById', id),
+
+    createDevis: (data, entrepriseId) =>
+        ipcRenderer.invoke(
+            'commercial:createDevis',
+            data,
+            entrepriseId
+        ),
+
+    getListFactures: (params) =>
+        ipcRenderer.invoke('commercial:getListFactures', params),
+
+    getFactureById: (id) =>
+        ipcRenderer.invoke('commercial:getFactureById', id),
+
+    getListClients: (params) =>
+        ipcRenderer.invoke('commercial:getListClients', params),
+
+    // Chantiers
+    getListChantiers: (params) =>
+        ipcRenderer.invoke('chantier:getList', params),
+
+    // Entreprise
+    updateEntrepriseDevise: (entrepriseId, devise) =>
+        ipcRenderer.invoke(
+            'entreprise:updateDevise',
+            entrepriseId,
+            devise
+        ),
+
+    // Sync
+    syncPush: () =>
+        ipcRenderer.invoke('sync:push'),
+
+    syncPull: () =>
+        ipcRenderer.invoke('sync:pull'),
+
+    getSyncStatus: () =>
+        ipcRenderer.invoke('sync:status')
+});
+
+/* ======================================================
+   IPC brut
+====================================================== */
+
 contextBridge.exposeInMainWorld('ipcRaw', {
-  invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
-  on: (channel, callback) => {
-    ipcRenderer.on(channel, (_, ...args) => callback(...args));
-    return () => ipcRenderer.removeAllListeners(channel);
-  },
-  send: (channel, ...args) => ipcRenderer.send(channel, ...args)
+    invoke: (channel, ...args) =>
+        ipcRenderer.invoke(channel, ...args),
+
+    on: (channel, callback) => {
+        ipcRenderer.on(channel, (_, ...args) => callback(...args));
+        return () => ipcRenderer.removeAllListeners(channel);
+    },
+
+    send: (channel, ...args) =>
+        ipcRenderer.send(channel, ...args)
 });

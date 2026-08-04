@@ -6,23 +6,16 @@ class ChantierRepository extends BaseRepository {
         super('Chantier');
     }
 
-    /**
-     * Récupérer un chantier avec ses relations (phases, incidents, etc.)
-     * @param {number} id - ID local du chantier
-     * @returns {Object|null} - Chantier avec relations
-     */
     getWithRelations(id) {
         const chantier = this.getById(id);
         if (!chantier) return null;
 
-        // Phases
         const phases = db.prepare(`
             SELECT * FROM Phase 
             WHERE chantierId = ? AND is_deleted = 0 
             ORDER BY ordre
         `).all(id);
 
-        // Incidents
         const incidents = db.prepare(`
             SELECT i.*, u.nom as declareParNom, u.prenom as declareParPrenom
             FROM Incident i
@@ -31,7 +24,6 @@ class ChantierRepository extends BaseRepository {
             ORDER BY i.dateIncident DESC
         `).all(id);
 
-        // Affectations ressources (employés + matériels)
         const affectations = db.prepare(`
             SELECT ar.*, 
                 e.nom as employeNom, e.prenom as employePrenom,
@@ -43,13 +35,11 @@ class ChantierRepository extends BaseRepository {
             ORDER BY ar.dateDebut
         `).all(id);
 
-        // Client
         let client = null;
         if (chantier.clientId) {
             client = db.prepare('SELECT * FROM Client WHERE id = ? AND is_deleted = 0').get(chantier.clientId);
         }
 
-        // Chef de chantier
         let chefChantier = null;
         if (chantier.chefChantierId) {
             chefChantier = db.prepare('SELECT id, nom, prenom, email FROM Utilisateur WHERE id = ? AND is_deleted = 0').get(chantier.chefChantierId);
@@ -66,9 +56,7 @@ class ChantierRepository extends BaseRepository {
     }
 
     /**
-     * Récupérer la liste des chantiers avec infos résumées (pour liste)
-     * @param {Object} options - { entrepriseId, limit, offset, statut, search }
-     * @returns {Array} - Liste des chantiers avec comptages
+     * Récupérer la liste des chantiers (Préfixe d'alias 'c' pour éviter l'ambiguïté)
      */
     getListWithStats(options = {}) {
         const { entrepriseId, limit = 50, offset = 0, statut, search } = options;
@@ -77,17 +65,17 @@ class ChantierRepository extends BaseRepository {
         const params = [];
 
         if (statut) {
-            whereClause += ' AND statut = ?';
+            whereClause += ' AND c.statut = ?';
             params.push(statut);
         }
 
         if (search) {
-            whereClause += ' AND (nom LIKE ? OR adresse LIKE ? OR description LIKE ?)';
+            whereClause += ' AND (c.nom LIKE ? OR c.adresse LIKE ? OR c.description LIKE ?)';
             const searchParam = `%${search}%`;
             params.push(searchParam, searchParam, searchParam);
         }
 
-        let tenantWhere = this._entrepriseWhere(entrepriseId);
+        let tenantWhere = this._entrepriseWhere(entrepriseId, 'c');
         if (whereClause) {
             tenantWhere += whereClause;
         }
@@ -112,9 +100,7 @@ class ChantierRepository extends BaseRepository {
     }
 
     /**
-     * Compter les chantiers avec filtres
-     * @param {Object} options - { entrepriseId, statut, search }
-     * @returns {number} - Total
+     * Compter les chantiers (Préfixe d'alias 'Chantier' pour éviter l'ambiguïté)
      */
     countWithFilters(options = {}) {
         const { entrepriseId, statut, search } = options;
@@ -123,17 +109,17 @@ class ChantierRepository extends BaseRepository {
         const params = [];
 
         if (statut) {
-            whereClause += ' AND statut = ?';
+            whereClause += ' AND Chantier.statut = ?';
             params.push(statut);
         }
 
         if (search) {
-            whereClause += ' AND (nom LIKE ? OR adresse LIKE ? OR description LIKE ?)';
+            whereClause += ' AND (Chantier.nom LIKE ? OR Chantier.adresse LIKE ? OR Chantier.description LIKE ?)';
             const searchParam = `%${search}%`;
             params.push(searchParam, searchParam, searchParam);
         }
 
-        let tenantWhere = this._entrepriseWhere(entrepriseId);
+        let tenantWhere = this._entrepriseWhere(entrepriseId, 'Chantier');
         if (whereClause) {
             tenantWhere += whereClause;
         }
@@ -149,15 +135,9 @@ class ChantierRepository extends BaseRepository {
         return result?.total || 0;
     }
 
-    /**
-     * Obtenir les statistiques globales pour le dashboard
-     * @param {number} entrepriseId - ID entreprise
-     * @returns {Object} - KPIs
-     */
     getDashboardStats(entrepriseId) {
         const stats = {};
 
-        // Chantiers par statut
         const parStatut = db.prepare(`
             SELECT statut, COUNT(*) as count 
             FROM Chantier 
@@ -166,7 +146,6 @@ class ChantierRepository extends BaseRepository {
         `).all(entrepriseId);
         stats.parStatut = parStatut.reduce((acc, row) => { acc[row.statut] = row.count; return acc; }, {});
 
-        // Budget total prévu vs réel
         const budgets = db.prepare(`
             SELECT 
                 SUM(budgetPrevu) as budgetPrevuTotal,
@@ -177,15 +156,13 @@ class ChantierRepository extends BaseRepository {
         stats.budgetPrevuTotal = budgets.budgetPrevuTotal || 0;
         stats.budgetReelTotal = budgets.budgetReelTotal || 0;
 
-        // Chantiers actifs (actif + en_pause)
         const actifs = db.prepare(`
             SELECT COUNT(*) as count 
             FROM Chantier 
-            WHERE entrepriseId = ? AND is_deleted = 0 AND statut IN ('actif', 'en_pause')
+            WHERE entrepriseId = ? AND is_deleted = 0 AND statut IN ('actif', 'en_pause', 'en_cours')
         `).get(entrepriseId);
         stats.chantiersActifs = actifs.count;
 
-        // Phases en retard (dateFin < aujourd'hui et avancement < 100)
         const phasesRetard = db.prepare(`
             SELECT COUNT(*) as count 
             FROM Phase p
@@ -195,32 +172,23 @@ class ChantierRepository extends BaseRepository {
         `).get(entrepriseId);
         stats.phasesEnRetard = phasesRetard.count;
 
-        // Incidents non résolus
         const incidentsOuverts = db.prepare(`
             SELECT COUNT(*) as count 
             FROM Incident i
             JOIN Chantier c ON i.chantierId = c.id
             WHERE c.entrepriseId = ? AND i.is_deleted = 0 AND c.is_deleted = 0
-            AND i.statut IN ('signale', 'en_cours')
+            AND i.statut IN ('signale', 'en_cours', 'ouvert')
         `).get(entrepriseId);
         stats.incidentsOuverts = incidentsOuverts.count;
 
         return stats;
     }
 
-    /**
-     * Créer un chantier avec validation
-     * @param {Object} data - Données du chantier
-     * @param {number} entrepriseId - ID entreprise
-     * @returns {Object} - Chantier créé
-     */
     createWithValidation(data, entrepriseId) {
-        // Valider les champs obligatoires
         if (!data.nom || !data.nom.trim()) {
             throw new Error('Le nom du chantier est obligatoire');
         }
 
-        // Vérifier unicité nom par entreprise
         const existing = db.prepare(`
             SELECT id FROM Chantier 
             WHERE entrepriseId = ? AND nom = ? AND is_deleted = 0
@@ -244,39 +212,21 @@ class ChantierRepository extends BaseRepository {
         return this.create(chantierData, entrepriseId);
     }
 
-    /**
-     * Mettre à jour le budget réel (calculé depuis les dépenses + affectations)
-     * @param {number} chantierId - ID chantier
-     * @returns {Object} - Chantier mis à jour
-     */
     recalculerBudgetReel(chantierId) {
-        // Sommes des dépenses validées
         const depenses = db.prepare(`
             SELECT SUM(montant) as total 
             FROM Depense 
             WHERE chantierId = ? AND is_deleted = 0
         `).get(chantierId);
 
-        // Coût des affectations main d'œuvre (via pointages)
-        // Coût des affectations matériel (via locations/maintenance)
-        // Pour simplifier : on utilise juste les dépenses pour l'instant
-
         const budgetReel = depenses.total || 0;
-
         return this.update(chantierId, { budgetReel });
     }
 
-    /**
-     * Ajouter une phase à un chantier
-     * @param {number} chantierId - ID chantier
-     * @param {Object} phaseData - Données de la phase
-     * @returns {Object} - Phase créée
-     */
     addPhase(chantierId, phaseData) {
         const phaseRepo = require('./PhaseRepository');
         const phaseRepoInstance = new phaseRepo();
 
-        // Déterminer l'ordre suivant
         const lastPhase = db.prepare(`
             SELECT MAX(ordre) as maxOrdre FROM Phase WHERE chantierId = ? AND is_deleted = 0
         `).get(chantierId);
@@ -293,13 +243,6 @@ class ChantierRepository extends BaseRepository {
         });
     }
 
-    /**
-     * Ajouter un incident à un chantier
-     * @param {number} chantierId - ID chantier
-     * @param {Object} incidentData - Données de l'incident
-     * @param {number} userId - ID utilisateur déclarant
-     * @returns {Object} - Incident créé
-     */
     addIncident(chantierId, incidentData, userId) {
         const incidentRepo = require('./IncidentRepository');
         const incidentRepoInstance = new incidentRepo();

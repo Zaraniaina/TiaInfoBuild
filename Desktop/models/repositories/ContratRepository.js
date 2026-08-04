@@ -7,10 +7,47 @@ class ContratRepository extends BaseRepository {
     }
 
     /**
-     * Récupérer un contrat avec son devis et chantier
-     * @param {number} id - ID contrat
-     * @returns {Object|null} - Contrat avec relations
+     * Surchargé pour supporter le filtre par entrepriseId
      */
+    getAll(options = {}) {
+        const { entrepriseId, limit = 50, offset = 0 } = options;
+
+        if (entrepriseId) {
+            const sql = `
+                SELECT co.*, d.numero as devisNumero, c.nom as chantierNom
+                FROM Contrat co
+                LEFT JOIN Devis d ON co.devisId = d.id AND d.is_deleted = 0
+                LEFT JOIN Chantier c ON co.chantierId = c.id AND c.is_deleted = 0
+                WHERE (co.entrepriseId = ? OR d.entrepriseId = ? OR c.entrepriseId = ?)
+                AND co.is_deleted = 0
+                ORDER BY co.id DESC
+                LIMIT ? OFFSET ?
+            `;
+            return db.prepare(sql).all(entrepriseId, entrepriseId, entrepriseId, limit, offset);
+        }
+
+        return super.getAll(options);
+    }
+
+    count(options = {}) {
+        const { entrepriseId } = options;
+
+        if (entrepriseId) {
+            const sql = `
+                SELECT COUNT(*) as total
+                FROM Contrat co
+                LEFT JOIN Devis d ON co.devisId = d.id AND d.is_deleted = 0
+                LEFT JOIN Chantier c ON co.chantierId = c.id AND c.is_deleted = 0
+                WHERE (co.entrepriseId = ? OR d.entrepriseId = ? OR c.entrepriseId = ?)
+                AND co.is_deleted = 0
+            `;
+            const result = db.prepare(sql).get(entrepriseId, entrepriseId, entrepriseId);
+            return result?.total || 0;
+        }
+
+        return super.count(options);
+    }
+
     getWithRelations(id) {
         const contrat = this.getById(id);
         if (!contrat) return null;
