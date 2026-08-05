@@ -1,356 +1,601 @@
 <!-- Vue Liste des Chantiers -->
 <div class="chantiers-view" data-view="chantiers">
-    <!-- Header avec actions -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-            <h2 class="mb-1"><i class="bi bi-building me-2"></i>Chantiers</h2>
-            <p class="text-secondary mb-0">Gestion et suivi des chantiers</p>
+  <!-- Header avec actions -->
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+    <div>
+      <h2 class="mb-1"><i class="bi bi-building me-2"></i>Chantiers</h2>
+      <p class="text-secondary mb-0">Gestion et suivi des chantiers</p>
+    </div>
+
+    <button class="btn btn-primary" id="btnNouveauChantier">
+      <i class="bi bi-plus-lg me-1"></i>Nouveau chantier
+    </button>
+  </div>
+
+  <!-- Filtres et recherche -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label visually-hidden" for="searchChantier">Rechercher</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" id="searchChantier"
+                   placeholder="Rechercher un chantier...">
+          </div>
         </div>
-        <button class="btn btn-primary" id="btnNouveauChantier">
-            <i class="bi bi-plus-lg me-1"></i>Nouveau chantier
-        </button>
-    </div>
 
-    <!-- Filtres et recherche -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label visually-hidden" for="searchChantier">Rechercher</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" class="form-control" id="searchChantier"
-                            placeholder="Rechercher un chantier...">
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <select class="form-select" id="filterStatut">
-                        <option value="">Tous les statuts</option>
-                        <option value="planifie">Planifié</option>
-                        <option value="en_cours">En cours</option>
-                        <option value="termine">Terminé</option>
-                        <option value="arrete">Arrêté</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <select class="form-select" id="filterTri">
-                        <option value="dateCreation_desc">Plus récents</option>
-                        <option value="dateCreation_asc">Plus anciens</option>
-                        <option value="nom_asc">Nom A-Z</option>
-                        <option value="budget_desc">Budget décroissant</option>
-                    </select>
-                </div>
-                <div class="col-md-3 d-flex gap-2">
-                    <button class="btn btn-outline-secondary" id="btnExportChantiers">
-                        <i class="bi bi-download me-1"></i>Exporter
-                    </button>
-                    <button class="btn btn-outline-secondary" id="btnRefreshChantiers">
-                        <i class="bi bi-arrow-clockwise"></i>
-                    </button>
-                </div>
-            </div>
+        <div class="col-md-3">
+          <select class="form-select" id="filterStatut">
+            <option value="">Tous les statuts</option>
+            <option value="planification">Planifié</option>
+            <option value="en_cours">En cours</option>
+            <option value="termine">Terminé</option>
+            <option value="arrete">Arrêté</option>
+          </select>
         </div>
-    </div>
 
-    <!-- Tableau des chantiers -->
-    <div class="card">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0" id="chantiersTable">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 40px;">#</th>
-                            <th>Chantier</th>
-                            <th>Client</th>
-                            <th class="d-none d-md-table-cell">Dates</th>
-                            <th class="d-none d-lg-table-cell">Budget</th>
-                            <th class="d-none d-lg-table-cell">Avancement</th>
-                            <th>Statut</th>
-                            <th style="width: 100px;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="chantiersTbody">
-                        <!-- Rempli par JS -->
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Pagination -->
-            <div class="card-footer bg-white border-0 px-4 py-3" id="chantiersPagination">
-                <!-- Rempli par JS -->
-            </div>
+        <div class="col-md-2">
+          <select class="form-select" id="filterTri">
+            <option value="dateCreation_desc">Plus récents</option>
+            <option value="dateCreation_asc">Plus anciens</option>
+            <option value="nom_asc">Nom A-Z</option>
+            <option value="budget_desc">Budget décroissant</option>
+          </select>
         </div>
-    </div>
 
-    <!-- État vide -->
-    <div class="text-center py-5 d-none" id="chantiersEmpty">
-        <i class="bi bi-building display-1 text-secondary"></i>
-        <h4 class="mt-3">Aucun chantier</h4>
-        <p class="text-secondary">Commencez par créer votre premier chantier</p>
-        <button class="btn btn-primary" id="btnFirstChantier">
-            <i class="bi bi-plus-lg me-1"></i>Créer un chantier
-        </button>
+        <div class="col-md-3 d-flex gap-2">
+          <button class="btn btn-outline-secondary" id="btnExportChantiers">
+            <i class="bi bi-download me-1"></i>Exporter
+          </button>
+
+          <button class="btn btn-outline-secondary" id="btnRefreshChantiers">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+      </div>
     </div>
+  </div>
+
+  <!-- Tableau des chantiers -->
+  <div class="card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0" id="chantiersTable">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 40px;">#</th>
+              <th>Chantier</th>
+              <th>Client</th>
+              <th class="d-none d-md-table-cell">Dates</th>
+              <th class="d-none d-lg-table-cell">Budget</th>
+              <th class="d-none d-lg-table-cell">Avancement</th>
+              <th>Statut</th>
+              <th style="width: 100px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="chantiersTbody">
+            <!-- Rempli par JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="card-footer bg-white border-0 px-4 py-3" id="chantiersPagination">
+        <!-- Rempli par JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- État vide -->
+  <div class="text-center py-5 d-none" id="chantiersEmpty">
+    <i class="bi bi-building display-1 text-secondary"></i>
+    <h4 class="mt-3">Aucun chantier</h4>
+    <p class="text-secondary">Commencez par créer votre premier chantier</p>
+    <button class="btn btn-primary" id="btnFirstChantier">
+      <i class="bi bi-plus-lg me-1"></i>Créer un chantier
+    </button>
+  </div>
 </div>
 
 <!-- Modale Nouveau/Édition Chantier -->
 <div class="modal fade" id="modalChantier" tabindex="-1" aria-labelledby="modalChantierLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalChantierLabel"><i class="bi bi-building me-2"></i>Nouveau chantier</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalChantierLabel">
+          <i class="bi bi-building me-2"></i>Nouveau chantier
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+
+      <form id="formChantier" novalidate>
+        <div class="modal-body">
+          <input type="hidden" name="id" id="chantierId">
+
+          <!-- Onglets -->
+          <ul class="nav nav-tabs mb-3" id="chantierTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="tab-infos-tab" data-bs-toggle="tab"
+                      data-bs-target="#tab-infos" type="button" role="tab">
+                <i class="bi bi-info-circle me-1"></i>Informations
+              </button>
+            </li>
+
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="tab-budget-tab" data-bs-toggle="tab"
+                      data-bs-target="#tab-budget" type="button" role="tab">
+                <i class="bi bi-currency-exchange me-1"></i>Budget
+              </button>
+            </li>
+
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="tab-phases-tab" data-bs-toggle="tab"
+                      data-bs-target="#tab-phases" type="button" role="tab">
+                <i class="bi bi-list-task me-1"></i>Phases
+              </button>
+            </li>
+
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="tab-incidents-tab" data-bs-toggle="tab"
+                      data-bs-target="#tab-incidents" type="button" role="tab">
+                <i class="bi bi-exclamation-triangle me-1"></i>Incidents
+              </button>
+            </li>
+
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="tab-ressources-tab" data-bs-toggle="tab"
+                      data-bs-target="#tab-ressources" type="button" role="tab">
+                <i class="bi bi-people me-1"></i>Ressources
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content" id="chantierTabsContent">
+
+            <!-- Onglet Informations -->
+            <div class="tab-pane fade show active" id="tab-infos" role="tabpanel">
+              <div class="row g-3">
+
+                <div class="col-md-6">
+                  <label class="form-label" for="chantierNumero">Numéro</label>
+                  <input type="text" class="form-control" name="numero" id="chantierNumero">
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label required" for="chantierNom">Nom *</label>
+                  <input type="text" class="form-control" name="nom" id="chantierNom" required>
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label" for="chantierDescription">Description</label>
+                  <textarea class="form-control" name="description" id="chantierDescription" rows="3"></textarea>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label required" for="chantierClient">Client *</label>
+                  <select class="form-select" name="clientId" id="chantierClient" required>
+                    <option value="">Sélectionner un client</option>
+                  </select>
+                </div>
+
+                <div class="col-md-3">
+                  <label class="form-label required" for="chantierDateDebut">Date début *</label>
+                  <input type="date" class="form-control" name="dateDebut" id="chantierDateDebut" required>
+                </div>
+
+                <div class="col-md-3">
+                  <label class="form-label" for="chantierDateFinPrevue">Date fin prévue</label>
+                  <input type="date" class="form-control" name="dateFinPrevue" id="chantierDateFinPrevue">
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label" for="chantierAdresse">Adresse du chantier</label>
+                  <input type="text" class="form-control" name="adresse" id="chantierAdresse">
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label" for="chantierVille">Ville</label>
+                  <input type="text" class="form-control" name="ville" id="chantierVille">
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label" for="chantierCodePostal">Code postal</label>
+                  <input type="text" class="form-control" name="codePostal" id="chantierCodePostal">
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label" for="chantierDateFinReelle">Date fin réelle</label>
+                  <input type="date" class="form-control" name="dateFinReelle" id="chantierDateFinReelle">
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label" for="chantierChefChantier">Chef de chantier</label>
+                  <select class="form-select" name="chefChantierId" id="chantierChefChantier">
+                    <option value="">Sélectionner</option>
+                  </select>
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label" for="chantierStatut">Statut</label>
+                  <select class="form-select" name="statut" id="chantierStatut">
+                    <option value="planification">Planifié</option>
+                    <option value="en_cours">En cours</option>
+                    <option value="termine">Terminé</option>
+                    <option value="arrete">Arrêté</option>
+                  </select>
+                </div>
+              </div>
             </div>
-            <form id="formChantier" novalidate>
-                <div class="modal-body">
-                    <input type="hidden" name="id" id="chantierId">
 
-                    <!-- Onglets -->
-                    <ul class="nav nav-tabs mb-3" id="chantierTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="tab-infos-tab" data-bs-toggle="tab"
-                                data-bs-target="#tab-infos" type="button" role="tab">
-                                <i class="bi bi-info-circle me-1"></i>Informations
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="tab-budget-tab" data-bs-toggle="tab"
-                                data-bs-target="#tab-budget" type="button" role="tab">
-                                <i class="bi bi-currency-exchange me-1"></i>Budget
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="tab-phases-tab" data-bs-toggle="tab"
-                                data-bs-target="#tab-phases" type="button" role="tab">
-                                <i class="bi bi-list-task me-1"></i>Phases
-                            </button>
-                        </li>
-                    </ul>
+            <!-- Onglet Budget -->
+            <div class="tab-pane fade" id="tab-budget" role="tabpanel">
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label" for="chantierBudgetPrevu">Budget prévu <span class="currency-symbol">Ar</span></label>
+                  <input type="number" class="form-control" name="budgetPrevu"
+                         id="chantierBudgetPrevu" step="0.01" min="0">
+                </div>
 
-                    <div class="tab-content" id="chantierTabsContent">
-                        <!-- Onglet Informations -->
-                        <div class="tab-pane fade show active" id="tab-infos" role="tabpanel">
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="form-label required" for="chantierNumero">Numéro *</label>
-                                    <input type="text" class="form-control" name="numero" id="chantierNumero" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label required" for="chantierNom">Nom *</label>
-                                    <input type="text" class="form-control" name="nom" id="chantierNom" required>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label" for="chantierDescription">Description</label>
-                                    <textarea class="form-control" name="description" id="chantierDescription"
-                                        rows="3"></textarea>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label required" for="chantierClient">Client *</label>
-                                    <select class="form-select" name="clientId" id="chantierClient" required>
-                                        <option value="">Sélectionner un client</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label required" for="chantierDateDebut">Date début *</label>
-                                    <input type="date" class="form-control" name="dateDebut" id="chantierDateDebut"
-                                        required>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label" for="chantierDateFinPrevue">Date fin prévue</label>
-                                    <input type="date" class="form-control" name="dateFinPrevue"
-                                        id="chantierDateFinPrevue">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label" for="chantierAdresse">Adresse du chantier</label>
-                                    <input type="text" class="form-control" name="adresse" id="chantierAdresse">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label" for="chantierVille">Ville</label>
-                                    <input type="text" class="form-control" name="ville" id="chantierVille">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label" for="chantierCodePostal">Code postal</label>
-                                    <input type="text" class="form-control" name="codePostal" id="chantierCodePostal">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label" for="chantierResponsable">Responsable de chantier</label>
-                                    <select class="form-select" name="responsableId" id="chantierResponsable">
-                                        <option value="">Sélectionner</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label" for="chantierStatut">Statut</label>
-                                    <select class="form-select" name="statut" id="chantierStatut">
-                                        <option value="planifie">Planifié</option>
-                                        <option value="en_cours">En cours</option>
-                                        <option value="termine">Terminé</option>
-                                        <option value="arrete">Arrêté</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
+                <div class="col-md-4">
+                  <label class="form-label" for="chantierMargeCible">Marge cible (%)</label>
+                  <input type="number" class="form-control" name="margeCible" id="chantierMargeCible"
+                         step="0.1" min="0" max="100">
+                </div>
 
-                        <!-- Onglet Budget -->
-                        <div class="tab-pane fade" id="tab-budget" role="tabpanel">
-                            <div class="row g-3">
-                                <div class="col-md-4">
-                                <label class="form-label" for="chantierBudgetPrevisionnel">Budget prévisionnel <span class="currency-symbol">Ar</span></label>
-                                <input type="number" class="form-control" name="budgetPrevisionnel"
-                                    id="chantierBudgetPrevisionnel" step="0.01" min="0">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label" for="chantierMargeCible">Marge cible (%)</label>
-                                    <input type="number" class="form-control" name="margeCible" id="chantierMargeCible"
-                                        step="0.1" min="0" max="100">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label" for="chantierTva">TVA (%)</label>
-                                    <select class="form-select" name="tva" id="chantierTva">
-                                        <option value="20">20%</option>
-                                        <option value="10">10%</option>
-                                        <option value="5.5">5.5%</option>
-                                        <option value="0">Exonéré</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <hr>
-                            <div class="alert alert-info">
-                                <i class="bi bi-info-circle me-2"></i>
-                                Le budget réel et l'avancement financier sont calculés automatiquement à partir des
-                                dépenses, devis et factures.
-                            </div>
-                        </div>
+                <div class="col-md-4">
+                  <label class="form-label" for="chantierTva">TVA (%)</label>
+                  <select class="form-select" name="tva" id="chantierTva">
+                    <option value="20">20%</option>
+                    <option value="10">10%</option>
+                    <option value="5.5">5.5%</option>
+                    <option value="0">Exonéré</option>
+                  </select>
+                </div>
+              </div>
 
-                        <!-- Onglet Phases -->
-                        <div class="tab-pane fade" id="tab-phases" role="tabpanel">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h6 class="mb-0">Phases du chantier</h6>
-                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnAjouterPhase">
-                                    <i class="bi bi-plus me-1"></i>Ajouter une phase
-                                </button>
-                            </div>
-                            <div id="phasesContainer">
-                                <!-- Phases ajoutées dynamiquement -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="button" class="btn btn-outline-danger" id="btnDeleteChantier" style="display: none;">
-                        <i class="bi bi-trash me-1"></i>Supprimer
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save me-1"></i>Enregistrer
-                    </button>
-                </div>
-            </form>
-        </div </div>
-    </div>
+              <hr>
 
-    <!-- Modale Détail Chantier (vue rapide) -->
-    <div class="modal fade" id="modalChantierDetail" tabindex="-1" aria-labelledby="modalChantierDetailLabel"
-        aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalChantierDetailLabel"><i class="bi bi-building me-2"></i>Détail
-                        chantier</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-                </div>
-                <div class="modal-body" id="chantierDetailContent">
-                    <!-- Contenu chargé dynamiquement -->
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-                    <button type="button" class="btn btn-primary" id="btnEditFromDetail">
-                        <i class="bi bi-pencil me-1"></i>Modifier
-                    </button>
-                </div>
+              <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                Le budget réel est calculé automatiquement à partir des dépenses.
+              </div>
             </div>
+
+            <!-- Onglet Phases -->
+            <div class="tab-pane fade" id="tab-phases" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">Phases du chantier</h6>
+
+                <button type="button" class="btn btn-sm btn-outline-primary" id="btnAjouterPhase">
+                  <i class="bi bi-plus me-1"></i>Ajouter une phase
+                </button>
+              </div>
+
+              <div id="phasesContainer">
+                <!-- Phases ajoutées dynamiquement -->
+              </div>
+            </div>
+
+            <!-- Onglet Incidents -->
+            <div class="tab-pane fade" id="tab-incidents" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">Incidents du chantier</h6>
+
+                <button type="button" class="btn btn-sm btn-outline-danger" id="btnAjouterIncident">
+                  <i class="bi bi-plus me-1"></i>Ajouter un incident
+                </button>
+              </div>
+
+              <div id="incidentsContainer">
+                <!-- Incidents chargés dynamiquement -->
+              </div>
+            </div>
+
+            <!-- Onglet Ressources -->
+            <div class="tab-pane fade" id="tab-ressources" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">Ressources affectées</h6>
+
+                <button type="button" class="btn btn-sm btn-outline-primary" id="btnAjouterAffectation">
+                  <i class="bi bi-plus me-1"></i>Affecter une ressource
+                </button>
+              </div>
+
+              <div id="affectationsContainer">
+                <!-- Affectations chargées dynamiquement -->
+              </div>
+            </div>
+          </div>
         </div>
-    </div>
 
-    <!-- Modale Ajout Phase -->
-    <div class="modal fade" id="modalPhase" tabindex="-1" aria-labelledby="modalPhaseLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalPhaseLabel"><i class="bi bi-list-task me-2"></i>Nouvelle phase</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-                </div>
-                <form id="formPhase" novalidate>
-                    <div class="modal-body">
-                        <input type="hidden" name="id" id="phaseId">
-                        <input type="hidden" name="chantierId" id="phaseChantierId">
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
 
-                        <div class="row g-3">
-                            <div class="col-12">
-                                <label class="form-label required" for="phaseNom">Nom de la phase *</label>
-                                <input type="text" class="form-control" name="nom" id="phaseNom" required>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label" for="phaseDescription">Description</label>
-                                <textarea class="form-control" name="description" id="phaseDescription"
-                                    rows="2"></textarea>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="phaseDateDebut">Date début</label>
-                                <input type="date" class="form-control" name="dateDebut" id="phaseDateDebut">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="phaseDateFin">Date fin prévue</label>
-                                <input type="date" class="form-control" name="dateFin" id="phaseDateFin">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label" for="phaseBudget">Budget (€)</label>
-                                <input type="number" class="form-control" name="budget" id="phaseBudget" step="0.01"
-                                    min="0">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label" for="phaseAvancement">Avancement (%)</label>
-                                <input type="number" class="form-control" name="avancement" id="phaseAvancement" min="0"
-                                    max="100" value="0">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label" for="phaseOrdre">Ordre</label>
-                                <input type="number" class="form-control" name="ordre" id="phaseOrdre" min="1"
-                                    value="1">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="button" class="btn btn-outline-danger" id="btnDeleteChantier" style="display: none;">
-                        <i class="bi bi-trash me-1"></i>Supprimer
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save me-1"></i>Enregistrer
-                    </button>
-                </div>
-            </form>
-        </div> <!-- CORRECTION: au lieu de </div </div> -->
+          <button type="button" class="btn btn-outline-danger" id="btnDeleteChantier" style="display: none;">
+            <i class="bi bi-trash me-1"></i>Supprimer
+          </button>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save me-1"></i>Enregistrer
+          </button>
+        </div>
+      </form>
+
     </div>
+  </div>
 </div>
-    <!-- Modale Confirmation Suppression -->
-    <div class="modal fade" id="modalConfirmDelete" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Confirmer la suppression</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Êtes-vous sûr de vouloir supprimer <strong id="deleteItemName"></strong> ?</p>
-                    <p class="text-danger small"><i class="bi bi-info-circle me-1"></i>Cette action est irréversible
-                        (suppression logique).</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="button" class="btn btn-danger" id="btnConfirmDelete">
-                        <i class="bi bi-trash me-1"></i>Supprimer
-                    </button>
-                </div>
-            </div>
-        </div>
+
+<!-- Modale Détail Chantier -->
+<div class="modal fade" id="modalChantierDetail" tabindex="-1" aria-labelledby="modalChantierDetailLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalChantierDetailLabel">
+          <i class="bi bi-building me-2"></i>Détail chantier
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+
+      <div class="modal-body" id="chantierDetailContent">
+        <!-- Contenu chargé dynamiquement -->
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+
+        <button type="button" class="btn btn-primary" id="btnEditFromDetail">
+          <i class="bi bi-pencil me-1"></i>Modifier
+        </button>
+      </div>
+
     </div>
+  </div>
+</div>
+
+<!-- Modale Ajout / Édition Phase -->
+<div class="modal fade" id="modalPhase" tabindex="-1" aria-labelledby="modalPhaseLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalPhaseLabel">
+          <i class="bi bi-list-task me-2"></i>Nouvelle phase
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+
+      <form id="formPhase" novalidate>
+        <div class="modal-body">
+          <input type="hidden" name="id" id="phaseId">
+          <input type="hidden" name="localId" id="phaseLocalId">
+          <input type="hidden" name="chantierId" id="phaseChantierId">
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label required" for="phaseNom">Nom de la phase *</label>
+              <input type="text" class="form-control" name="nom" id="phaseNom" required>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label" for="phaseDescription">Description</label>
+              <textarea class="form-control" name="description" id="phaseDescription" rows="2"></textarea>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label" for="phaseDateDebut">Date début</label>
+              <input type="date" class="form-control" name="dateDebut" id="phaseDateDebut">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label" for="phaseDateFin">Date fin prévue</label>
+              <input type="date" class="form-control" name="dateFin" id="phaseDateFin">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label" for="phaseBudget">Budget (Ar)</label>
+              <input type="number" class="form-control" name="budget" id="phaseBudget" step="0.01" min="0">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label" for="phaseAvancement">Avancement (%)</label>
+              <input type="number" class="form-control" name="avancement" id="phaseAvancement" min="0" max="100" value="0">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label" for="phaseOrdre">Ordre</label>
+              <input type="number" class="form-control" name="ordre" id="phaseOrdre" min="1" value="1">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+
+          <button type="button" class="btn btn-outline-danger" id="btnDeletePhaseModal" style="display: none;">
+            <i class="bi bi-trash me-1"></i>Supprimer
+          </button>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save me-1"></i>Enregistrer
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modale Incident -->
+<div class="modal fade" id="modalIncident" tabindex="-1" aria-labelledby="modalIncidentLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalIncidentLabel">
+          <i class="bi bi-exclamation-triangle me-2"></i>Nouvel incident
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+
+      <form id="formIncident" novalidate>
+        <div class="modal-body">
+          <input type="hidden" id="incidentId">
+          <input type="hidden" id="incidentChantierId">
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label required" for="incidentTitre">Titre *</label>
+              <input type="text" class="form-control" id="incidentTitre" required>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label" for="incidentDescription">Description</label>
+              <textarea class="form-control" id="incidentDescription" rows="3"></textarea>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label" for="incidentDate">Date incident</label>
+              <input type="date" class="form-control" id="incidentDate">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label" for="incidentGravite">Gravité</label>
+              <select class="form-select" id="incidentGravite">
+                <option value="faible">Faible</option>
+                <option value="moyenne" selected>Moyenne</option>
+                <option value="elevee">Élevée</option>
+                <option value="critique">Critique</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label" for="incidentStatut">Statut</label>
+              <select class="form-select" id="incidentStatut">
+                <option value="signale" selected>Signalé</option>
+                <option value="en_cours">En cours</option>
+                <option value="resolu">Résolu</option>
+                <option value="clos">Clos</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+
+          <button type="button" class="btn btn-outline-danger" id="btnDeleteIncidentModal" style="display: none;">
+            <i class="bi bi-trash me-1"></i>Supprimer
+          </button>
+
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-save me-1"></i>Enregistrer
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modale Affectation Ressource -->
+<div class="modal fade" id="modalAffectation" tabindex="-1" aria-labelledby="modalAffectationLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalAffectationLabel">
+          <i class="bi bi-people me-2"></i>Affecter une ressource
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+
+      <form id="formAffectation" novalidate>
+        <div class="modal-body">
+          <input type="hidden" id="affectationId">
+          <input type="hidden" id="affectationChantierId">
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label required" for="affectationTypeRessource">Type de ressource *</label>
+              <select class="form-select" id="affectationTypeRessource" required>
+                <option value="Employe" selected>Employé</option>
+                <option value="Materiel">Matériel</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label required" for="affectationRessourceId">Ressource *</label>
+              <select class="form-select" id="affectationRessourceId" required>
+                <option value="">Sélectionner</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label" for="affectationDateDebut">Date début</label>
+              <input type="date" class="form-control" id="affectationDateDebut">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label" for="affectationDateFin">Date fin</label>
+              <input type="date" class="form-control" id="affectationDateFin">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label" for="affectationRole">Rôle / fonction sur le chantier</label>
+              <input type="text" class="form-control" id="affectationRole"
+                     placeholder="Ex : Chef d'équipe, Conducteur d'engin, Grue...">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+
+          <button type="button" class="btn btn-outline-danger" id="btnDeleteAffectationModal" style="display: none;">
+            <i class="bi bi-trash me-1"></i>Supprimer
+          </button>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save me-1"></i>Enregistrer
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modale Confirmation Suppression -->
+<div class="modal fade" id="modalConfirmDelete" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-exclamation-triangle me-2"></i>Confirmer la suppression
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <p>Êtes-vous sûr de vouloir supprimer <strong id="deleteItemName"></strong> ?</p>
+        <p class="text-danger small">
+          <i class="bi bi-info-circle me-1"></i>Cette action est irréversible (suppression logique).
+        </p>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+
+        <button type="button" class="btn btn-danger" id="btnConfirmDelete">
+          <i class="bi bi-trash me-1"></i>Supprimer
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>

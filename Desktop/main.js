@@ -41,6 +41,7 @@ const FinanceController = require('./controllers/financeController')
 const DashboardController = require('./controllers/dashboardController')
 const SyncController = require('./controllers/syncController')
 const UtilisateurController = require('./controllers/utilisateurController')
+const AffectationRessourceRepository = require('./models/repositories/AffectationRessourceRepository')
 
 // Services
 const SyncService = require('./services/syncService')
@@ -48,6 +49,7 @@ const SyncService = require('./services/syncService')
 // Instanciation unique de tous les repositories
 const repos = {
   chantiers: new ChantierRepository(),
+  affectations: new AffectationRessourceRepository(),
   phases: new PhaseRepository(),
   incidents: new IncidentRepository(),
   employes: new EmployeRepository(),
@@ -172,7 +174,8 @@ ipcMain.handle('roles:list', async () => {
     return { success: false, error: err.message };
   }
 })
-// --- Entreprise (Paramètres) ---
+
+// --- Entreprise ---
 ipcMain.handle('entreprises:get', (e, id) => {
   try {
     return db.prepare('SELECT * FROM Entreprise WHERE id = ?').get(id) || null
@@ -197,120 +200,6 @@ ipcMain.handle('entreprises:update', (e, id, data) => {
     throw err
   }
 })
-
-// --- Préférences utilisateur (Paramètres) ---
-ipcMain.handle('preferences:get', (e, userId) => {
-  try {
-    let row = db.prepare('SELECT * FROM Preference WHERE userId = ?').get(userId)
-    if (!row) {
-      db.prepare('INSERT INTO Preference (userId) VALUES (?)').run(userId)
-      row = db.prepare('SELECT * FROM Preference WHERE userId = ?').get(userId)
-    }
-    return {
-      ...row,
-      notifEmail: !!row.notifEmail,
-      notifPush: !!row.notifPush,
-      notifFacturesRetard: !!row.notifFacturesRetard,
-      notifStockBas: !!row.notifStockBas
-    }
-  } catch (err) {
-    console.error('preferences:get error:', err)
-    return null
-  }
-})
-
-ipcMain.handle('preferences:update', (e, userId, data) => {
-  try {
-    const allowed = ['theme', 'langue', 'dateFormat', 'devise', 'notifEmail', 'notifPush', 'notifFacturesRetard', 'notifStockBas']
-    const payload = { userId }
-    allowed.filter(k => k in data).forEach(f => {
-      payload[f] = typeof data[f] === 'boolean' ? (data[f] ? 1 : 0) : data[f]
-    })
-    const exists = db.prepare('SELECT id FROM Preference WHERE userId = ?').get(userId)
-    if (exists) {
-      const fields = Object.keys(payload).filter(f => f !== 'userId')
-      const setClause = fields.map(f => `${f} = @${f}`).join(', ')
-      db.prepare(`UPDATE Preference SET ${setClause} WHERE userId = @userId`).run(payload)
-    } else {
-      const cols = Object.keys(payload)
-      db.prepare(`INSERT INTO Preference (${cols.join(', ')}) VALUES (${cols.map(c => `@${c}`).join(', ')})`).run(payload)
-    }
-    return { success: true }
-  } catch (err) {
-    console.error('preferences:update error:', err)
-    throw err
-  }
-})
-
-// --- Sauvegarde / Restauration (Paramètres) ---
-ipcMain.handle('backup:list', () => {
-  try {
-    return fs.readdirSync(backupsDir)
-      .filter(f => f.endsWith('.sqlite'))
-      .map(f => {
-        const stat = fs.statSync(path.join(backupsDir, f))
-        return { fichier: f, date: stat.mtime.toISOString(), taille: stat.size, type: f.startsWith('auto_') ? 'auto' : 'manuel' }
-      })
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-  } catch (err) {
-    console.error('backup:list error:', err)
-    return []
-  }
-})
-
-ipcMain.handle('backup:exportSQLite', () => {
-  const bytes = fs.readFileSync(dbPath)
-  fs.copyFileSync(dbPath, path.join(backupsDir, `manuel_${Date.now()}.sqlite`))
-  return bytes
-})
-
-ipcMain.handle('backup:exportSQL', () => {
-  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all()
-  let sql = ''
-  tables.forEach(t => {
-    const rows = db.prepare(`SELECT * FROM ${t.name}`).all()
-    rows.forEach(row => {
-      const cols = Object.keys(row)
-      const values = cols.map(c => row[c] === null ? 'NULL' : `'${String(row[c]).replace(/'/g, "''")}'`)
-      sql += `INSERT INTO ${t.name} (${cols.join(', ')}) VALUES (${values.join(', ')});\n`
-    })
-  })
-  return Buffer.from(sql, 'utf-8')
-})
-
-ipcMain.handle('backup:download', (e, filename) => {
-  const filePath = path.join(backupsDir, filename)
-  if (!fs.existsSync(filePath)) throw new Error('Fichier introuvable')
-  return fs.readFileSync(filePath)
-})
-
-ipcMain.handle('backup:restore', (e, filename) => {
-  const filePath = path.join(backupsDir, filename)
-  if (!fs.existsSync(filePath)) throw new Error('Sauvegarde introuvable')
-  fs.copyFileSync(filePath, dbPath)
-  return { success: true }
-})
-
-ipcMain.handle('backup:delete', (e, filename) => {
-  const filePath = path.join(backupsDir, filename)
-  if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
-  return { success: true }
-})
-
-ipcMain.handle('backup:import', (e, fileBuffer) => {
-  fs.writeFileSync(dbPath, Buffer.from(fileBuffer))
-  return { success: true }
-})
-
-ipcMain.handle('backup:setAutoConfig', (e, config) => {
-  try {
-    fs.writeFileSync(path.join(backupsDir, 'auto-config.json'), JSON.stringify(config, null, 2))
-    return { success: true }
-  } catch (err) {
-    console.error('backup:setAutoConfig error:', err)
-    throw err
-  }
-})
 // --- Chantiers, Phases & Incidents ---
 ipcMain.handle('chantiers:list', (e, params) => chantierCtrl.getList(e, params))
 ipcMain.handle('chantiers:get', (e, id) => chantierCtrl.getById(e, id))
@@ -318,16 +207,22 @@ ipcMain.handle('chantiers:create', (e, data, entrepriseId) => chantierCtrl.creat
 ipcMain.handle('chantiers:update', (e, id, data) => chantierCtrl.update(e, id, data))
 ipcMain.handle('chantiers:delete', (e, id) => chantierCtrl.delete(e, id))
 ipcMain.handle('chantiers:stats', (e, entrepriseId) => chantierCtrl.getStats(e, entrepriseId))
+
 ipcMain.handle('chantiers:addPhase', (e, chantierId, data) => chantierCtrl.addPhase(e, chantierId, data))
+ipcMain.handle('chantiers:savePhases', (e, chantierId, phases) => chantierCtrl.savePhases(e, chantierId, phases))
 ipcMain.handle('chantiers:addIncident', (e, chantierId, data, userId) => chantierCtrl.addIncident(e, chantierId, data, userId))
 ipcMain.handle('chantiers:recalculerBudget', (e, chantierId) => chantierCtrl.recalculerBudget(e, chantierId))
 
 ipcMain.handle('phases:list', (e, chantierId) => chantierCtrl.getPhasesByChantier(e, chantierId))
+ipcMain.handle('phases:create', (e, data) => chantierCtrl.createPhase(e, data))
+ipcMain.handle('phases:update', (e, id, data) => chantierCtrl.updatePhase(e, id, data))
+ipcMain.handle('phases:delete', (e, id) => chantierCtrl.deletePhase(e, id))
 ipcMain.handle('phases:updateAvancement', (e, id, pct) => chantierCtrl.updatePhaseAvancement(e, id, pct))
 ipcMain.handle('phases:reorder', (e, chantierId, ids) => chantierCtrl.reorderPhases(e, chantierId, ids))
 ipcMain.handle('phases:avancementGlobal', (e, chantierId) => chantierCtrl.getAvancementGlobalPhases(e, chantierId))
 
 ipcMain.handle('incidents:list', (e, chantierId) => chantierCtrl.getIncidentsByChantier(e, chantierId))
+ipcMain.handle('incidents:create', (e, data) => chantierCtrl.createIncident(e, data))
 ipcMain.handle('incidents:changerStatut', (e, id, statut) => chantierCtrl.changerStatutIncident(e, id, statut))
 ipcMain.handle('incidents:ouvertsByEntreprise', (e, entrepriseId) => chantierCtrl.getIncidentsOuvertsByEntreprise(e, entrepriseId))
 
