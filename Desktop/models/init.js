@@ -13,6 +13,7 @@ function ensureColumn(tableName, columnName, definition) {
     if (!columnExists(tableName, columnName)) {
         try {
             db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`).run();
+            console.log(`[Migration] Colonne ${columnName} ajoutée à la table ${tableName}`);
         } catch (e) {
             console.warn(`Note: Impossible d'ajouter ${columnName} à ${tableName}: ${e.message}`);
         }
@@ -106,19 +107,58 @@ function initDatabase() {
             server_id INTEGER UNIQUE,
             entrepriseId INTEGER NOT NULL,
             nom TEXT NOT NULL,
-            type TEXT,
+            type TEXT DEFAULT 'particulier',
+            civilite TEXT,
+            prenom TEXT,
+            entreprise TEXT,
+            siret TEXT,
+            numeroTVA TEXT,
             adresse TEXT,
             codePostal TEXT,
             ville TEXT,
-            siret TEXT,
             telephone TEXT,
+            portable TEXT,
             email TEXT,
+            siteWeb TEXT,
             notes TEXT,
+            conditionsPaiement TEXT DEFAULT '30 jours',
+            modePaiement TEXT DEFAULT 'virement',
+            encoursMax REAL DEFAULT 0,
+            commercialId INTEGER,
+            origine TEXT,
+            rib TEXT,
+            caTotal REAL DEFAULT 0,
+            encoursActuel REAL DEFAULT 0,
+            dernierContact DATETIME,
+            nbDevis INTEGER DEFAULT 0,
+            nbFactures INTEGER DEFAULT 0,
             is_synced INTEGER DEFAULT 0,
             is_deleted INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id)
+            FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id),
+            FOREIGN KEY (commercialId) REFERENCES Utilisateur(id)
+        )
+    `).run();
+
+    // Table Adresses Client
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS ClientAdresse (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            server_id INTEGER UNIQUE,
+            clientId INTEGER NOT NULL,
+            type TEXT NOT NULL CHECK (type IN ('facturation', 'livraison', 'chantier', 'autre', 'siege')),
+            ligne1 TEXT NOT NULL,
+            ligne2 TEXT,
+            codePostal TEXT NOT NULL,
+            ville TEXT NOT NULL,
+            pays TEXT DEFAULT 'Madagascar',
+            defaut INTEGER DEFAULT 0,
+            is_synced INTEGER DEFAULT 0,
+            is_deleted INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (clientId) REFERENCES Client(id) ON DELETE CASCADE
         )
     `).run();
 
@@ -641,14 +681,14 @@ function initDatabase() {
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON SyncQueue(status)`).run();
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_sync_queue_table_record ON SyncQueue(tableName, recordId)`).run();
 
-    // Migrations de colonnes
+    // Migrations automatiques de colonnes génériques
     const allTables = [
         'Entreprise', 'Role', 'Utilisateur', 'Preference',
         'Chantier', 'Phase', 'Incident', 'AffectationRessource',
         'Employe', 'Equipe', 'MembreEquipe', 'AffectationChantier', 'Pointage', 'HeureSupplementaire',
         'Materiel', 'AffectationMateriel', 'Maintenance', 'AlerteMateriel',
         'Article', 'Fournisseur', 'MouvementStock',
-        'Client', 'Devis', 'LigneDevis', 'Contrat', 'Facture', 'Paiement',
+        'Client', 'ClientAdresse', 'Devis', 'LigneDevis', 'Contrat', 'Facture', 'Paiement',
         'Depense', 'RapportFinancier', 'Alerte'
     ];
 
@@ -659,6 +699,34 @@ function initDatabase() {
         ensureColumn(tableName, 'is_deleted', 'INTEGER DEFAULT 0');
     });
 
+    // MIGRATIONS SPECIFIQUES - TABLE CLIENT
+    ensureColumn('Client', 'type', "TEXT DEFAULT 'particulier'");
+    ensureColumn('Client', 'civilite', 'TEXT');
+    ensureColumn('Client', 'prenom', 'TEXT');
+    ensureColumn('Client', 'entreprise', 'TEXT');
+    ensureColumn('Client', 'siret', 'TEXT');
+    ensureColumn('Client', 'numeroTVA', 'TEXT');
+    ensureColumn('Client', 'adresse', 'TEXT');
+    ensureColumn('Client', 'codePostal', 'TEXT');
+    ensureColumn('Client', 'ville', 'TEXT');
+    ensureColumn('Client', 'telephone', 'TEXT');
+    ensureColumn('Client', 'portable', 'TEXT');
+    ensureColumn('Client', 'email', 'TEXT');
+    ensureColumn('Client', 'siteWeb', 'TEXT');
+    ensureColumn('Client', 'notes', 'TEXT');
+    ensureColumn('Client', 'conditionsPaiement', "TEXT DEFAULT '30 jours'");
+    ensureColumn('Client', 'modePaiement', "TEXT DEFAULT 'virement'");
+    ensureColumn('Client', 'encoursMax', 'REAL DEFAULT 0');
+    ensureColumn('Client', 'commercialId', 'INTEGER');
+    ensureColumn('Client', 'origine', 'TEXT');
+    ensureColumn('Client', 'rib', 'TEXT');
+    ensureColumn('Client', 'caTotal', 'REAL DEFAULT 0');
+    ensureColumn('Client', 'encoursActuel', 'REAL DEFAULT 0');
+    ensureColumn('Client', 'dernierContact', 'DATETIME');
+    ensureColumn('Client', 'nbDevis', 'INTEGER DEFAULT 0');
+    ensureColumn('Client', 'nbFactures', 'INTEGER DEFAULT 0');
+
+    // MIGRATIONS ENTREPRISE & CHANTIERS
     ensureColumn('Entreprise', 'devise', "TEXT DEFAULT 'MGA'");
     ensureColumn('Entreprise', 'codePostal', 'TEXT');
     ensureColumn('Entreprise', 'ville', 'TEXT');
@@ -693,11 +761,6 @@ function initDatabase() {
     ensureColumn('Fournisseur', 'conditionsPaiement', 'TEXT');
     ensureColumn('Fournisseur', 'notes', 'TEXT');
 
-    ensureColumn('Client', 'codePostal', 'TEXT');
-    ensureColumn('Client', 'ville', 'TEXT');
-    ensureColumn('Client', 'siret', 'TEXT');
-    ensureColumn('Client', 'notes', 'TEXT');
-
     ensureColumn('Materiel', 'designation', 'TEXT');
     ensureColumn('Materiel', 'marque', 'TEXT');
     ensureColumn('Materiel', 'modele', 'TEXT');
@@ -731,9 +794,6 @@ function initDatabase() {
     db.prepare(`UPDATE Article SET stockActuel = COALESCE(stockActuel, quantiteStock, 0) WHERE COALESCE(stockActuel, 0) = 0`).run();
     db.prepare(`UPDATE Facture SET montantTTC = COALESCE(montantTTC, montant, 0) WHERE COALESCE(montantTTC, 0) = 0`).run();
     db.prepare(`UPDATE Facture SET montantPaye = COALESCE(montantPaye, 0)`).run();
-    db.prepare(`UPDATE Devis SET numero = 'DEV-' || id WHERE numero IS NULL OR numero = ''`).run();
-    db.prepare(`UPDATE Facture SET numero = 'FAC-' || id WHERE numero IS NULL OR numero = ''`).run();
-    db.prepare(`UPDATE Contrat SET entrepriseId = (SELECT entrepriseId FROM Devis WHERE Devis.id = Contrat.devisId) WHERE entrepriseId IS NULL AND devisId IS NOT NULL`).run();
 
     // Initial Seed Data si la BDD est vide
     const entCount = db.prepare('SELECT COUNT(*) as count FROM Entreprise').get().count;
@@ -745,7 +805,7 @@ function initDatabase() {
         db.prepare(`INSERT OR IGNORE INTO Utilisateur (id, server_id, nom, prenom, email, motDePasseHash, roleId, entrepriseId, is_synced) VALUES (1, 1, 'Admin', 'TIA', 'admin@tiabuild.com', ?, 1, 1, 1)`).run(adminHash);
     }
 
-    console.log("Base de données initialisée avec succès !");
+    console.log("Base de données initialisée et migrée avec succès !");
 }
 
 module.exports = { initDatabase };

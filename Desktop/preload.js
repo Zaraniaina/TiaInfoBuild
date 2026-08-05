@@ -51,6 +51,7 @@ contextBridge.exposeInMainWorld('api', {
     fournisseurs: createIpcWrapper('fournisseurs'),
     mouvements: createIpcWrapper('mouvements'),
     clients: createIpcWrapper('clients'),
+    clientAdresses: createIpcWrapper('clientAdresses'),
     devis: createIpcWrapper('devis'),
     contrats: createIpcWrapper('contrats'),
     factures: createIpcWrapper('factures'),

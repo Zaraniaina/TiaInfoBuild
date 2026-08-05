@@ -16,6 +16,7 @@ const ArticleRepository = require('./models/repositories/ArticleRepository')
 const FournisseurRepository = require('./models/repositories/FournisseurRepository')
 const MouvementStockRepository = require('./models/repositories/MouvementStockRepository')
 const ClientRepository = require('./models/repositories/ClientRepository')
+const ClientAdresseRepository = require('./models/repositories/ClientAdresseRepository')
 const DevisRepository = require('./models/repositories/DevisRepository')
 const LigneDevisRepository = require('./models/repositories/LigneDevisRepository')
 const ContratRepository = require('./models/repositories/ContratRepository')
@@ -57,6 +58,7 @@ const repos = {
   fournisseurs: new FournisseurRepository(),
   mouvements: new MouvementStockRepository(),
   clients: new ClientRepository(),
+  clientAdresses: new ClientAdresseRepository(),
   devis: new DevisRepository(),
   lignesDevis: new LigneDevisRepository(),
   contrats: new ContratRepository(),
@@ -387,6 +389,12 @@ ipcMain.handle('clients:get', (e, id) => commercialCtrl.getClientById(e, id))
 ipcMain.handle('clients:create', (e, data, entrepriseId) => commercialCtrl.createClient(e, data, entrepriseId))
 ipcMain.handle('clients:update', (e, id, data) => commercialCtrl.updateClient(e, id, data))
 ipcMain.handle('clients:delete', (e, id) => commercialCtrl.deleteClient(e, id))
+
+// --- Adresses Clients ---
+ipcMain.handle('clientAdresses:list', (e, clientId) => commercialCtrl.getClientAdresses(e, clientId))
+ipcMain.handle('clientAdresses:create', (e, clientId, data) => commercialCtrl.createClientAdresse(e, clientId, data))
+ipcMain.handle('clientAdresses:update', (e, id, data) => commercialCtrl.updateClientAdresse(e, id, data))
+ipcMain.handle('clientAdresses:delete', (e, id) => commercialCtrl.deleteClientAdresse(e, id))
 
 ipcMain.handle('devis:list', (e, params) => commercialCtrl.getListDevis(e, params))
 ipcMain.handle('devis:get', (e, id) => commercialCtrl.getDevisById(e, id))
