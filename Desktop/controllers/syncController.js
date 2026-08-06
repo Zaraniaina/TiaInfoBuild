@@ -1,3 +1,4 @@
+// Desktop/controllers/syncController.js
 /**
  * Contrôleur Main Process - Module de Synchronisation (Offline-First)
  */
@@ -65,6 +66,7 @@ class SyncController {
       return { success: false, error: error.message };
     }
   }
+
   async testConnection(event) {
     try {
       const config = this.repos.sync.getConfig()

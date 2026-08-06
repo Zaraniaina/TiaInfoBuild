@@ -1,3 +1,4 @@
+// Desktop/controllers/authController.js
 const API_BASE_URL = require('../apiUrl/url');
 const db = require('../models/db');
 const axios = require('axios');
@@ -16,7 +17,6 @@ function hashPassword(password) {
  */
 function verifyPassword(inputPassword, storedHash) {
   if (!inputPassword || !storedHash) return false;
-
   const inputHash = hashPassword(inputPassword);
 
   // Si le mot de passe en BDD est déjà un hash (longueur 64 hex)
@@ -38,6 +38,7 @@ function verifyPassword(inputPassword, storedHash) {
 async function handleLogin(event, data) {
   // Support both calling styles: handleLogin(event, email, password) and handleLogin(event, { email, password })
   let email, password;
+
   if (typeof event === 'string') {
     // Backward compat: handleLogin(email, password)
     email = event;
@@ -60,14 +61,14 @@ async function handleLogin(event, data) {
     // 1. Vérifier si l'utilisateur existe dans la BDD locale SQLite
     // Inclure le rôle via jointure pour avoir roleNom et roleCode
     const stmt = db.prepare(`
-          SELECT u.id, u.server_id, u.entrepriseId, u.roleId, u.nom, u.prenom, u.email, 
-                 u.telephone, u.statut, u.dateCreation, u.derniereConnexion, u.is_synced,
-                 u.motDePasseHash,
-                 r.nom as roleNom, r.code as roleCode
-          FROM Utilisateur u
-          LEFT JOIN Role r ON u.roleId = r.id AND r.is_deleted = 0
-          WHERE u.email = ? AND u.is_deleted = 0
-      `);
+      SELECT u.id, u.server_id, u.entrepriseId, u.roleId, u.nom, u.prenom, u.email,
+        u.telephone, u.statut, u.dateCreation, u.derniereConnexion, u.is_synced,
+        u.motDePasseHash,
+        r.nom as roleNom, r.code as roleCode
+      FROM Utilisateur u
+      LEFT JOIN Role r ON u.roleId = r.id AND r.is_deleted = 0
+      WHERE u.email = ? AND u.is_deleted = 0
+    `);
     const localUser = stmt.get(email);
 
     if (localUser) {
@@ -175,7 +176,6 @@ async function handleRegister(event, data) {
 
       const newUser = db.prepare('SELECT * FROM Utilisateur WHERE id = ?').get(userInfo.lastInsertRowid);
       return { success: true, user: newUser, message: 'Inscription réussie sur le serveur distant et synchronisée en local !' };
-
     } catch (apiError) {
       console.error("Erreur API Django Inscription:", apiError.message);
 
@@ -188,12 +188,12 @@ async function handleRegister(event, data) {
         VALUES (?, ?, ?, ?, 1, ?, 0)
       `);
       const userInfo = userStmt.run(nom || 'Admin', prenom || '', email, pwdHash, entInfo.lastInsertRowid);
-      const newUser = db.prepare('SELECT * FROM Utilisateur WHERE id = ?').get(userInfo.lastInsertRowid);
 
+      const newUser = db.prepare('SELECT * FROM Utilisateur WHERE id = ?').get(userInfo.lastInsertRowid);
       return {
         success: true,
         user: newUser,
-        message: 'Compte créé localement (Mode Hors Ligne). Il sera synchronisé avec le serveur Web dès qu’une connexion sera disponible.'
+        message: 'Compte créé localement (Mode Hors Ligne). Il sera synchronisé avec le serveur Web dès qu\'une connexion sera disponible.'
       };
     }
   } catch (error) {

@@ -1,3 +1,4 @@
+// Desktop/models/init.js
 const db = require('./db');
 
 function columnExists(tableName, columnName) {
@@ -32,6 +33,7 @@ function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       server_id INTEGER UNIQUE,
       nom TEXT NOT NULL,
+      nomCommercial TEXT,
       adresse TEXT,
       codePostal TEXT,
       ville TEXT,
@@ -40,6 +42,17 @@ function initDatabase() {
       logo TEXT,
       abonnement TEXT,
       devise TEXT DEFAULT 'MGA',
+      siret TEXT,
+      numeroTVA TEXT,
+      codeAPE TEXT,
+      siteWeb TEXT,
+      prefixeDevis TEXT DEFAULT 'DEV',
+      prefixeFacture TEXT DEFAULT 'FAC',
+      prefixeContrat TEXT DEFAULT 'CTR',
+      tvaDefaut REAL DEFAULT 20,
+      delaiPaiementDefaut TEXT DEFAULT '30 jours',
+      validiteDevis INTEGER DEFAULT 30,
+      mentionsLegales TEXT,
       dateCreation DATETIME DEFAULT CURRENT_TIMESTAMP,
       is_synced INTEGER DEFAULT 0,
       is_deleted INTEGER DEFAULT 0,
@@ -73,7 +86,7 @@ function initDatabase() {
       email TEXT UNIQUE NOT NULL,
       motDePasseHash TEXT,
       telephone TEXT,
-      statut TEXT,
+      statut TEXT DEFAULT 'actif',
       dateCreation DATETIME DEFAULT CURRENT_TIMESTAMP,
       derniereConnexion DATETIME,
       is_synced INTEGER DEFAULT 0,
@@ -817,7 +830,6 @@ function initDatabase() {
   // ============================================================
 
   const entCount = db.prepare('SELECT COUNT(*) as count FROM Entreprise').get().count;
-
   if (entCount === 0) {
     const crypto = require('crypto');
     const adminHash = crypto.createHash('sha256').update('admin123').digest('hex');

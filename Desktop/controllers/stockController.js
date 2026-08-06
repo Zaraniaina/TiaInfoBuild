@@ -1,3 +1,4 @@
+// Desktop/controllers/stockController.js
 /**
  * Contrôleur Main Process - Module Stocks (Articles, Fournisseurs, Mouvements)
  */

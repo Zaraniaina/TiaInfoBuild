@@ -1,3 +1,4 @@
+// Desktop/controllers/rhController.js
 /**
  * Contrôleur Main Process - Module Ressources Humaines (Employés, Pointages, Équipes, Heures Sup)
  */
@@ -91,7 +92,6 @@ class RhController {
   // --- POINTAGES ---
   async getListPointages(event, { employeId, chantierId, dateDebut, dateFin, limit, offset }) {
     try {
-      // PointageRepository liste ou recherche
       const items = this.repos.pointages.getAll({ employeId, chantierId })
       return { success: true, data: items }
     } catch (error) {

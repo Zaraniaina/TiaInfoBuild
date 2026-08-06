@@ -1,17 +1,18 @@
-const apiClient = require('./apiClient')
+// Desktop/services/syncService.js
+const apiClient = require('./apiClient');
 
 /**
  * Service de Synchronisation Offline-First (Local <-> Serveur Django)
  */
 class SyncService {
   constructor(syncRepository) {
-    this.syncRepo = syncRepository
-    this.isSyncing = false
-    this.lastSyncTime = null
+    this.syncRepo = syncRepository;
+    this.isSyncing = false;
+    this.lastSyncTime = null;
   }
 
   setSyncRepository(syncRepository) {
-    this.syncRepo = syncRepository
+    this.syncRepo = syncRepository;
   }
 
   /**
@@ -19,22 +20,23 @@ class SyncService {
    */
   async push() {
     if (this.isSyncing) {
-      return { success: false, message: 'Synchronisation déjà en cours' }
+      return { success: false, message: 'Synchronisation déjà en cours' };
     }
 
-    this.isSyncing = true
+    this.isSyncing = true;
+
     try {
       if (this.syncRepo) {
-        const result = await this.syncRepo.push()
-        this.lastSyncTime = new Date().toISOString()
-        return { success: true, data: result, lastSync: this.lastSyncTime }
+        const result = await this.syncRepo.push();
+        this.lastSyncTime = new Date().toISOString();
+        return { success: true, data: result, lastSync: this.lastSyncTime };
       }
-      return { success: true, message: 'Sync Repo local simulé' }
+      return { success: true, message: 'Sync Repo local simulé' };
     } catch (error) {
-      console.error('SyncService.push error:', error)
-      return { success: false, error: error.message }
+      console.error('SyncService.push error:', error);
+      return { success: false, error: error.message };
     } finally {
-      this.isSyncing = false
+      this.isSyncing = false;
     }
   }
 
@@ -43,32 +45,33 @@ class SyncService {
    */
   async pull() {
     if (this.isSyncing) {
-      return { success: false, message: 'Synchronisation déjà en cours' }
+      return { success: false, message: 'Synchronisation déjà en cours' };
     }
 
-    this.isSyncing = true
+    this.isSyncing = true;
+
     try {
       if (this.syncRepo) {
-        const result = await this.syncRepo.pull()
-        this.lastSyncTime = new Date().toISOString()
-        return { success: true, data: result, lastSync: this.lastSyncTime }
+        const result = await this.syncRepo.pull();
+        this.lastSyncTime = new Date().toISOString();
+        return { success: true, data: result, lastSync: this.lastSyncTime };
       }
-      return { success: true, message: 'Sync Repo pull local simulé' }
+      return { success: true, message: 'Sync Repo pull local simulé' };
     } catch (error) {
-      console.error('SyncService.pull error:', error)
-      return { success: false, error: error.message }
+      console.error('SyncService.pull error:', error);
+      return { success: false, error: error.message };
     } finally {
-      this.isSyncing = false
+      this.isSyncing = false;
     }
   }
 
   /**
-   * Obtenir le statut courant de la synchronisation (nombre d'éléments en attente, etc.)
+   * Obtenir le statut courant de la synchronisation
    */
   async getStatus() {
     try {
       if (this.syncRepo) {
-        const status = this.syncRepo.getStatus()
+        const status = this.syncRepo.getStatus();
         return {
           success: true,
           data: {
@@ -76,7 +79,7 @@ class SyncService {
             isSyncing: this.isSyncing,
             lastSyncTime: this.lastSyncTime
           }
-        }
+        };
       }
       return {
         success: true,
@@ -85,12 +88,12 @@ class SyncService {
           isSyncing: this.isSyncing,
           lastSyncTime: this.lastSyncTime
         }
-      }
+      };
     } catch (error) {
-      console.error('SyncService.getStatus error:', error)
-      return { success: false, error: error.message }
+      console.error('SyncService.getStatus error:', error);
+      return { success: false, error: error.message };
     }
   }
 }
 
-module.exports = SyncService
+module.exports = SyncService;

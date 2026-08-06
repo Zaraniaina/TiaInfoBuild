@@ -1,3 +1,4 @@
+// Desktop/controllers/commercialController.js
 /**
  * Contrôleur Main Process - Module Commercial (Clients, Adresses, Devis, Contrats, Factures, Paiements)
  */
@@ -33,18 +34,16 @@ class CommercialController {
     try {
       let item
       try {
-        item = typeof this.repos.clients.getWithRelations === 'function' 
-          ? this.repos.clients.getWithRelations(id) 
+        item = typeof this.repos.clients.getWithRelations === 'function'
+          ? this.repos.clients.getWithRelations(id)
           : this.repos.clients.getById(id)
       } catch (err) {
         console.warn('Fallback getById for client:', err.message)
         item = this.repos.clients.getById(id)
       }
-
       if (item && this.repos.clientAdresses && (!item.adresses || item.adresses.length === 0)) {
         item.adresses = this.repos.clientAdresses.getByClientId(id) || []
       }
-
       return { success: true, data: item }
     } catch (error) {
       console.error('CommercialController.getClientById error:', error)
@@ -56,15 +55,12 @@ class CommercialController {
     try {
       const { adresses, ...clientData } = data
       const result = this.repos.clients.create({ ...clientData, entrepriseId }, entrepriseId)
-      
       const clientId = result?.id || result
-      
       if (adresses && adresses.length > 0 && this.repos.clientAdresses) {
         for (const adr of adresses) {
           this.repos.clientAdresses.createForClient(adr, clientId)
         }
       }
-      
       return { success: true, data: result }
     } catch (error) {
       console.error('CommercialController.createClient error:', error)
@@ -76,7 +72,6 @@ class CommercialController {
     try {
       const { adresses, ...clientData } = data
       const result = this.repos.clients.update(id, clientData)
-      
       if (adresses && adresses.length > 0 && this.repos.clientAdresses) {
         for (const adr of adresses) {
           if (adr.id) {
@@ -86,7 +81,6 @@ class CommercialController {
           }
         }
       }
-      
       return { success: true, data: result }
     } catch (error) {
       console.error('CommercialController.updateClient error:', error)

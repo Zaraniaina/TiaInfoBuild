@@ -1,3 +1,4 @@
+// Desktop/controllers/dashboardController.js
 /**
  * Contrôleur Main Process - Dashboard Global KPIs & Stats
  */

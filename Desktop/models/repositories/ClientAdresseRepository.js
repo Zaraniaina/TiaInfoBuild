@@ -1,3 +1,4 @@
+// Desktop/models/repositories/ClientAdresseRepository.js
 const db = require('../db');
 
 class ClientAdresseRepository {
@@ -7,8 +8,8 @@ class ClientAdresseRepository {
   getByClientId(clientId) {
     try {
       const stmt = db.prepare(`
-        SELECT * FROM ClientAdresse 
-        WHERE clientId = ? AND is_deleted = 0 
+        SELECT * FROM ClientAdresse
+        WHERE clientId = ? AND is_deleted = 0
         ORDER BY defaut DESC, id ASC
       `);
       return stmt.all(clientId) || [];
@@ -56,7 +57,6 @@ class ClientAdresseRepository {
         VALUES (@clientId, @type, @ligne1, @ligne2, @codePostal, @ville, @pays, @defaut)
       `);
       const info = stmt.run(payload);
-
       return this.getById(info.lastInsertRowid);
     } catch (e) {
       console.error('ClientAdresseRepository.createForClient error:', e);
@@ -88,13 +88,12 @@ class ClientAdresseRepository {
       };
 
       const stmt = db.prepare(`
-        UPDATE ClientAdresse 
-        SET type = @type, ligne1 = @ligne1, ligne2 = @ligne2, codePostal = @codePostal, 
+        UPDATE ClientAdresse
+        SET type = @type, ligne1 = @ligne1, ligne2 = @ligne2, codePostal = @codePostal,
             ville = @ville, pays = @pays, defaut = @defaut, updated_at = CURRENT_TIMESTAMP
         WHERE id = @id
       `);
       stmt.run(payload);
-
       return this.getById(id);
     } catch (e) {
       console.error('ClientAdresseRepository.updateAdresse error:', e);

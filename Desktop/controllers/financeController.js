@@ -1,3 +1,4 @@
+// Desktop/controllers/financeController.js
 /**
  * Contrôleur Main Process - Module Finance & Alertes
  */

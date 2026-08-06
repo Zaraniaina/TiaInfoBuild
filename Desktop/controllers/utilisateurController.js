@@ -1,3 +1,4 @@
+// Desktop/controllers/utilisateurController.js
 /**
  * Contrôleur Main Process - Module Utilisateurs & Paramètres
  */

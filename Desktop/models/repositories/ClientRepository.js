@@ -1,3 +1,4 @@
+// Desktop/models/repositories/ClientRepository.js
 const db = require('../db');
 
 class ClientRepository {
@@ -20,9 +21,9 @@ class ClientRepository {
   getAll({ entrepriseId, limit = 50, offset = 0 }) {
     try {
       const stmt = db.prepare(`
-        SELECT c.*, 
-               u.nom as commercialNom, 
-               u.prenom as commercialPrenom
+        SELECT c.*,
+          u.nom as commercialNom,
+          u.prenom as commercialPrenom
         FROM Client c
         LEFT JOIN Utilisateur u ON c.commercialId = u.id
         WHERE c.entrepriseId = ? AND c.is_deleted = 0
@@ -42,8 +43,8 @@ class ClientRepository {
   count({ entrepriseId }) {
     try {
       const stmt = db.prepare(`
-        SELECT COUNT(*) as total 
-        FROM Client 
+        SELECT COUNT(*) as total
+        FROM Client
         WHERE entrepriseId = ? AND is_deleted = 0
       `);
       return stmt.get(entrepriseId)?.total || 0;
@@ -59,9 +60,9 @@ class ClientRepository {
   searchWithFilters(entrepriseId, { search, type, tri, limit = 50, offset = 0 }) {
     try {
       let sql = `
-        SELECT c.*, 
-               u.nom as commercialNom, 
-               u.prenom as commercialPrenom
+        SELECT c.*,
+          u.nom as commercialNom,
+          u.prenom as commercialPrenom
         FROM Client c
         LEFT JOIN Utilisateur u ON c.commercialId = u.id
         WHERE c.entrepriseId = ? AND c.is_deleted = 0
@@ -147,10 +148,10 @@ class ClientRepository {
   getWithRelations(id) {
     try {
       const stmt = db.prepare(`
-        SELECT c.*, 
-               u.nom as commercialNom, 
-               u.prenom as commercialPrenom,
-               u.email as commercialEmail
+        SELECT c.*,
+          u.nom as commercialNom,
+          u.prenom as commercialPrenom,
+          u.email as commercialEmail
         FROM Client c
         LEFT JOIN Utilisateur u ON c.commercialId = u.id
         WHERE c.id = ? AND c.is_deleted = 0
@@ -171,8 +172,8 @@ class ClientRepository {
 
       try {
         const adrStmt = db.prepare(`
-          SELECT * FROM ClientAdresse 
-          WHERE clientId = ? AND is_deleted = 0 
+          SELECT * FROM ClientAdresse
+          WHERE clientId = ? AND is_deleted = 0
           ORDER BY defaut DESC, id ASC
         `);
         row.adresses = adrStmt.all(id) || [];
@@ -193,7 +194,6 @@ class ClientRepository {
   create(data, entrepriseId) {
     try {
       const existingCols = this.getTableColumns();
-
       const payload = {
         entrepriseId: entrepriseId || data.entrepriseId || 1,
         nom: data.nom || 'Sans nom',
@@ -233,7 +233,6 @@ class ClientRepository {
 
       const stmt = db.prepare(`INSERT INTO Client (${cols}) VALUES (${vals})`);
       const info = stmt.run(safePayload);
-
       return this.getById(info.lastInsertRowid);
     } catch (e) {
       console.error('ClientRepository.create error:', e);
@@ -247,7 +246,6 @@ class ClientRepository {
   update(id, data) {
     try {
       const existingCols = this.getTableColumns();
-
       const allowed = [
         'nom', 'type', 'civilite', 'prenom', 'entreprise', 'siret', 'numeroTVA',
         'adresse', 'codePostal', 'ville', 'telephone', 'portable', 'email', 'siteWeb',
@@ -268,7 +266,6 @@ class ClientRepository {
       const setClause = fields.map(f => `${f} = @${f}`).join(', ');
       const stmt = db.prepare(`UPDATE Client SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = @id AND is_deleted = 0`);
       stmt.run({ ...payload, id });
-
       return this.getById(id);
     } catch (e) {
       console.error('ClientRepository.update error:', e);

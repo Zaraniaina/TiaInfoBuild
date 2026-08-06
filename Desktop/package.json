@@ -1,20 +1,60 @@
 {
-  "name": "desktop",
+  "name": "tia-info-build",
   "version": "1.0.0",
-  "description": "",
+  "description": "Plateforme de gestion BTP - Electron Desktop",
   "main": "main.js",
+  "author": "TIA INFO BUILD",
+  "license": "MIT",
+
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dev": "set NODE_ENV=development&& electron .",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "postinstall": "electron-rebuild -f -w better-sqlite3",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "devDependencies": {
-    "electron": "^43.2.0"
-  },
+
   "dependencies": {
-    "axios": "^1.19.0",
-    "better-sqlite3": "^13.0.2"
+    "axios": "^1.12.2",
+    "better-sqlite3": "^12.4.1"
+  },
+
+  "devDependencies": {
+    "electron": "^38.1.0",
+    "electron-builder": "^26.0.12",
+    "electron-rebuild": "^3.2.9"
+  },
+
+  "build": {
+    "appId": "com.tiainfo.build",
+    "productName": "TIA INFO BUILD",
+
+    "directories": {
+      "output": "dist"
+    },
+
+    "files": [
+      "**/*",
+      "!dist/**/*",
+      "!*.log"
+    ],
+
+    "win": {
+      "target": "nsis",
+      "icon": "public/icon.ico"
+    },
+
+    "mac": {
+      "target": "dmg",
+      "icon": "public/icon.icns"
+    },
+
+    "linux": {
+      "target": "AppImage",
+      "icon": "public/icon.png"
+    }
   }
 }

@@ -1,3 +1,4 @@
+// Desktop/controllers/materielController.js
 /**
  * Contrôleur Main Process - Module Matériels & Maintenance
  */
@@ -7,7 +8,6 @@ class MaterielController {
   }
 
   // ── MATÉRIELS ──────────────────────────────────────────────
-
   async getListMateriels(event, { entrepriseId, limit = 50, offset = 0, statut, search } = {}) {
     try {
       const items = this.repos.materiels.getByEntreprise(entrepriseId, { limit, offset, statut, search })
@@ -37,7 +37,6 @@ class MaterielController {
       }
       const payload = {
         ...data,
-        // Normaliser le champ nom/designation
         nom: data.designation || data.nom,
         entrepriseId: entrepriseId || data.entrepriseId,
         statut: data.statut || 'disponible',
@@ -102,7 +101,6 @@ class MaterielController {
   }
 
   // ── MAINTENANCES ───────────────────────────────────────────
-
   async getListMaintenances(event, { materielId, limit = 50, offset = 0 } = {}) {
     try {
       const items = this.repos.maintenances.getAll({ materielId, limit, offset })
@@ -117,7 +115,7 @@ class MaterielController {
   async createMaintenance(event, data) {
     try {
       if (!data.materielId) {
-        return { success: false, error: 'L\'identifiant du matériel est obligatoire.' }
+        return { success: false, error: "L'identifiant du matériel est obligatoire." }
       }
       const result = this.repos.maintenances.create({ ...data, is_synced: 0 })
       return { success: true, data: result }
