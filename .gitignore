@@ -11,3 +11,43 @@ node_modules/
 plan.md
 tia_info_build.sqlite-shm
 tia_info_build.sqlite-wal
+
+cat > .gitignore << 'EOF'
+# Base de données SQLite locale
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+tia_info_build.sqlite
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Electron
+dist/
+out/
+build/
+*.log
+
+# Tests
+coverage/
+__tests__/setup/*.sqlite*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environnement
+.env
+.env.local
+EOF
+ 
