@@ -1,7 +1,6 @@
-// Desktop/models/repositories/UtilisateurRepository.js
 const BaseRepository = require('./BaseRepository');
 const db = require('../db');
-const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 
 class UtilisateurRepository extends BaseRepository {
   constructor() {
@@ -75,7 +74,7 @@ class UtilisateurRepository extends BaseRepository {
     let pwdHash = '';
     if (data.password || data.motDePasse) {
       const pwd = data.password || data.motDePasse;
-      pwdHash = crypto.createHash('sha256').update(pwd).digest('hex');
+      pwdHash = bcrypt.hashSync(pwd, 10);
     }
 
     const userData = {
@@ -101,7 +100,7 @@ class UtilisateurRepository extends BaseRepository {
 
     if (data.password || data.motDePasse) {
       const pwd = data.password || data.motDePasse;
-      payload.motDePasseHash = crypto.createHash('sha256').update(pwd).digest('hex');
+      payload.motDePasseHash = bcrypt.hashSync(pwd, 10);
       delete payload.password;
       delete payload.motDePasse;
     }

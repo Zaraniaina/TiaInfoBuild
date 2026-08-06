@@ -2,14 +2,14 @@
 const API_BASE_URL = require('../apiUrl/url');
 const db = require('../models/db');
 const axios = require('axios');
-const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 
 /**
- * Fonction utilitaire de hachage sécurisé des mots de passe (SHA-256)
+ * Fonction utilitaire de hachage sécurisé des mots de passe (bcrypt)
  */
 function hashPassword(password) {
   if (!password) return '';
-  return crypto.createHash('sha256').update(password).digest('hex');
+  return bcrypt.hashSync(password, 10);
 }
 
 /**
@@ -17,10 +17,11 @@ function hashPassword(password) {
  */
 function verifyPassword(inputPassword, storedHash) {
   if (!inputPassword || !storedHash) return false;
-  const inputHash = hashPassword(inputPassword);
 
-  // Si le mot de passe en BDD est déjà un hash (longueur 64 hex)
-  if (storedHash.length === 64) {
+  // Si le mot de passe en BDD est déjà un hash SHA-256 (longueur 64 hex) et non bcrypt
+  if (storedHash.length === 64 && !storedHash.startsWith('$2')) {
+    const crypto = require('crypto');
+    const inputHash = crypto.createHash('sha256').update(inputPassword).digest('hex');
     try {
       return crypto.timingSafeEqual(Buffer.from(inputHash), Buffer.from(storedHash));
     } catch (e) {
@@ -28,7 +29,12 @@ function verifyPassword(inputPassword, storedHash) {
     }
   }
 
-  // Fallback si le mot de passe a été stocké en texte brut lors de la synchronisation d'origine
+  // Si c'est un hash bcrypt
+  if (storedHash.startsWith('$2')) {
+    return bcrypt.compareSync(inputPassword, storedHash);
+  }
+
+  // Fallback si le mot de passe a été stocké en texte brut
   return inputPassword === storedHash;
 }
 

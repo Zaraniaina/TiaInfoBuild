@@ -143,12 +143,15 @@ class Router {
 window.router = new Router();
 
 window.loadScript = function (scriptPath) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     if (document.querySelector(`script[src="${scriptPath}"]`)) return resolve();
     const script = document.createElement('script');
     script.src = scriptPath;
     script.onload = resolve;
-    script.onerror = () => { console.warn(`Script ${scriptPath} non trouvé.`); resolve(); };
+    script.onerror = () => { 
+      console.warn(`Script ${scriptPath} non trouvé.`); 
+      reject(new Error(`Script ${scriptPath} introuvable`)); 
+    };
     document.body.appendChild(script);
   });
 };

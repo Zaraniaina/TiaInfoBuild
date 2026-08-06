@@ -831,20 +831,31 @@ function initDatabase() {
 
   const entCount = db.prepare('SELECT COUNT(*) as count FROM Entreprise').get().count;
   if (entCount === 0) {
-    const crypto = require('crypto');
-    const adminHash = crypto.createHash('sha256').update('admin123').digest('hex');
+    const bcrypt = require('bcryptjs');
+    const adminHash = bcrypt.hashSync('admin123', 10);
 
     db.prepare(`
       INSERT OR IGNORE INTO Entreprise (id, server_id, nom, devise, is_synced)
       VALUES (1, 1, 'TIA Construction', 'MGA', 1)
     `).run();
 
-    db.prepare(`INSERT OR IGNORE INTO Role (id, nom, code) VALUES (1, 'Administrateur', 'ADMIN')`).run();
-    db.prepare(`INSERT OR IGNORE INTO Role (id, nom, code) VALUES (2, 'Directeur', 'DIRECTEUR')`).run();
-    db.prepare(`INSERT OR IGNORE INTO Role (id, nom, code) VALUES (3, 'Chef de chantier', 'CHEF_CHANTIER')`).run();
-    db.prepare(`INSERT OR IGNORE INTO Role (id, nom, code) VALUES (4, 'Comptable', 'COMPTABLE')`).run();
-    db.prepare(`INSERT OR IGNORE INTO Role (id, nom, code) VALUES (5, 'Magasinier', 'MAGASINIER')`).run();
-    db.prepare(`INSERT OR IGNORE INTO Role (id, nom, code) VALUES (6, 'Employé de terrain', 'EMPLOYE_TERRAIN')`).run();
+    // Insertion des 9 rôles officiels selon roles_avec_admin_entreprise_tia_info_build.md
+    const roles = [
+      { id: 1, nom: 'Administrateur d\'Entreprise', code: 'ADMIN' },
+      { id: 2, nom: 'Comptable / Responsable Financier', code: 'COMPTABLE' },
+      { id: 3, nom: 'Direction Générale / DAF', code: 'DIRECTION' },
+      { id: 4, nom: 'Chef de Chantier / Conducteur de Travaux', code: 'CHEF_CHANTIER' },
+      { id: 5, nom: 'Chef de Projet / Directeur Technique', code: 'CHEF_PROJET' },
+      { id: 6, nom: 'Responsable RH', code: 'RH' },
+      { id: 7, nom: 'Responsable Matériel / Logisticien', code: 'MATERIEL' },
+      { id: 8, nom: 'Magasinier / Responsable Stock', code: 'MAGASINIER' },
+      { id: 9, nom: 'Commercial / Responsable Commercial', code: 'COMMERCIAL' }
+    ];
+
+    const insertRole = db.prepare(`INSERT OR IGNORE INTO Role (id, nom, code) VALUES (@id, @nom, @code)`);
+    db.transaction(() => {
+      for (const role of roles) insertRole.run(role);
+    })();
 
     db.prepare(`
       INSERT OR IGNORE INTO Utilisateur (

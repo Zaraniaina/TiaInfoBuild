@@ -132,33 +132,79 @@ function safeRepo(fn) {
 }
 
 // ============================================================
+// HELPER: Wrapper pour sécuriser les IPC (Authentification + RBAC)
+// ============================================================
+function secureHandle(channel, allowedRoles, handler) {
+  ipcMain.handle(channel, async (event, ...args) => {
+    if (!_session) {
+      console.warn(`[Security] Tentative d'accès non authentifiée à ${channel}`);
+      return { success: false, error: 'Non authentifié. Veuillez vous connecter.' };
+    }
+
+    // Si des rôles spécifiques sont requis, on vérifie
+    if (allowedRoles && allowedRoles.length > 0) {
+      // On autorise toujours le rôle Administrateur
+      const userRoleName = (_session.roleNom || '').toLowerCase();
+      const isAdmin = userRoleName.includes('admin');
+      
+      const hasRole = isAdmin || allowedRoles.some(role => userRoleName.includes(role.toLowerCase()));
+      
+      if (!hasRole) {
+        console.warn(`[Security] Accès refusé à ${channel} pour le rôle ${_session.roleNom}`);
+        return { success: false, error: "Vous n'avez pas les droits nécessaires pour effectuer cette action." };
+      }
+    }
+
+    return handler(event, ...args);
+  });
+}
+
+// ============================================================
 // AUTH & SESSION
 // ============================================================
 let _session = null
-ipcMain.handle('auth:login', handleLogin)
+
+ipcMain.handle('auth:login', async (e, data) => {
+  const result = await handleLogin(e, data);
+  if (result.success) {
+    _session = result.user;
+  }
+  return result;
+});
+
 ipcMain.handle('auth:logout', async () => { _session = null; return { success: true } })
 ipcMain.handle('auth:check', async () => ({ authenticated: !!_session, user: _session }))
-ipcMain.handle('auth:register', handleRegister)
+
+ipcMain.handle('auth:register', async (e, data) => {
+  const result = await handleRegister(e, data);
+  if (result.success) {
+    _session = result.user;
+  }
+  return result;
+});
+
 ipcMain.handle('session:get', async () => ({ success: true, data: _session }))
-ipcMain.handle('session:set', async (e, data) => { _session = data; return { success: true } })
+// Suppression de session:set qui permettait au frontend d'usurper une session
 ipcMain.handle('session:clear', async () => { _session = null; return { success: true } })
 
 // ============================================================
 // UTILISATEURS & RÔLES
 // ============================================================
-ipcMain.handle('utilisateurs:list', (e, params) => utilisateurCtrl.getList(e, params))
-ipcMain.handle('utilisateurs:getAll', (e, params) => utilisateurCtrl.getList(e, params))
-ipcMain.handle('utilisateurs:get', (e, id) => utilisateurCtrl.getById(e, id))
-ipcMain.handle('utilisateurs:create', (e, data, entId) => utilisateurCtrl.create(e, data, entId))
-ipcMain.handle('utilisateurs:update', (e, id, data) => utilisateurCtrl.update(e, id, data))
-ipcMain.handle('utilisateurs:delete', (e, id) => utilisateurCtrl.delete(e, id))
-ipcMain.handle('users:list', (e, params) => utilisateurCtrl.getList(e, params))
-ipcMain.handle('users:getAll', (e, params) => utilisateurCtrl.getList(e, params))
-ipcMain.handle('users:get', (e, id) => utilisateurCtrl.getById(e, id))
-ipcMain.handle('users:create', (e, data, entId) => utilisateurCtrl.create(e, data, entId))
-ipcMain.handle('users:update', (e, id, data) => utilisateurCtrl.update(e, id, data))
-ipcMain.handle('users:delete', (e, id) => utilisateurCtrl.delete(e, id))
-ipcMain.handle('roles:list', async () => {
+const rolesAdminRh = ['admin', 'rh'];
+
+secureHandle('utilisateurs:list', rolesAdminRh, (e, params) => utilisateurCtrl.getList(e, params))
+secureHandle('utilisateurs:getAll', rolesAdminRh, (e, params) => utilisateurCtrl.getList(e, params))
+secureHandle('utilisateurs:get', rolesAdminRh, (e, id) => utilisateurCtrl.getById(e, id))
+secureHandle('utilisateurs:create', rolesAdminRh, (e, data, entId) => utilisateurCtrl.create(e, data, entId))
+secureHandle('utilisateurs:update', rolesAdminRh, (e, id, data) => utilisateurCtrl.update(e, id, data))
+secureHandle('utilisateurs:delete', rolesAdminRh, (e, id) => utilisateurCtrl.delete(e, id))
+secureHandle('users:list', rolesAdminRh, (e, params) => utilisateurCtrl.getList(e, params))
+secureHandle('users:getAll', rolesAdminRh, (e, params) => utilisateurCtrl.getList(e, params))
+secureHandle('users:get', rolesAdminRh, (e, id) => utilisateurCtrl.getById(e, id))
+secureHandle('users:create', rolesAdminRh, (e, data, entId) => utilisateurCtrl.create(e, data, entId))
+secureHandle('users:update', rolesAdminRh, (e, id, data) => utilisateurCtrl.update(e, id, data))
+secureHandle('users:delete', rolesAdminRh, (e, id) => utilisateurCtrl.delete(e, id))
+secureHandle('roles:list', rolesAdminRh, async () => {
   try {
     const roles = db.prepare("SELECT * FROM Role WHERE is_deleted = 0").all()
     return { success: true, data: roles }
@@ -168,11 +214,13 @@ ipcMain.handle('roles:list', async () => {
 // ============================================================
 // ENTREPRISE
 // ============================================================
-ipcMain.handle('entreprises:get', (e, id) => {
+const rolesAdminDg = ['admin', 'direction', 'daf'];
+
+secureHandle('entreprises:get', [], (e, id) => {
   try { return db.prepare('SELECT * FROM Entreprise WHERE id = ?').get(id) || null }
   catch (err) { return null }
 })
-ipcMain.handle('entreprises:update', (e, id, data) => {
+secureHandle('entreprises:update', rolesAdminDg, (e, id, data) => {
   try {
     const allowed = ['nom','nomCommercial','siret','numeroTVA','codeAPE','adresse','codePostal','ville','telephone','email','siteWeb','prefixeDevis','prefixeFacture','prefixeContrat','tvaDefaut','delaiPaiementDefaut','validiteDevis','mentionsLegales','devise']
     const fields = Object.keys(data).filter(k => allowed.includes(k))
@@ -186,133 +234,143 @@ ipcMain.handle('entreprises:update', (e, id, data) => {
 // ============================================================
 // CHANTIERS, PHASES, INCIDENTS, AFFECTATIONS
 // ============================================================
-ipcMain.handle('chantiers:list', (e, params) => chantierCtrl.getList(e, params))
-ipcMain.handle('chantiers:get', (e, id) => chantierCtrl.getById(e, id))
-ipcMain.handle('chantiers:create', (e, data, entrepriseId) => chantierCtrl.create(e, data, entrepriseId))
-ipcMain.handle('chantiers:update', (e, id, data) => chantierCtrl.update(e, id, data))
-ipcMain.handle('chantiers:delete', (e, id) => chantierCtrl.delete(e, id))
-ipcMain.handle('chantiers:stats', (e, entrepriseId) => chantierCtrl.getStats(e, entrepriseId))
-ipcMain.handle('chantiers:addPhase', (e, chantierId, data) => chantierCtrl.addPhase(e, chantierId, data))
-ipcMain.handle('chantiers:savePhases', (e, chantierId, phases) => chantierCtrl.savePhases(e, chantierId, phases))
-ipcMain.handle('chantiers:addIncident', (e, chantierId, data, userId) => chantierCtrl.addIncident(e, chantierId, data, userId))
-ipcMain.handle('chantiers:updateIncident', (e, id, data) => chantierCtrl.updateIncident(e, id, data))
-ipcMain.handle('chantiers:deleteIncident', (e, id) => chantierCtrl.deleteIncident(e, id))
-ipcMain.handle('chantiers:recalculerBudget', (e, chantierId) => chantierCtrl.recalculerBudget(e, chantierId))
-ipcMain.handle('chantiers:addAffectation', (e, data) => chantierCtrl.createAffectation(e, data))
-ipcMain.handle('chantiers:updateAffectation', (e, id, data) => chantierCtrl.updateAffectation(e, id, data))
-ipcMain.handle('chantiers:deleteAffectation', (e, id) => chantierCtrl.deleteAffectation(e, id))
+const rolesChantiers = ['admin', 'chef de chantier', 'conducteur', 'chef de projet', 'direction'];
 
-ipcMain.handle('phases:list', (e, chantierId) => chantierCtrl.getPhasesByChantier(e, chantierId))
-ipcMain.handle('phases:create', (e, data) => chantierCtrl.createPhase(e, data))
-ipcMain.handle('phases:update', (e, id, data) => chantierCtrl.updatePhase(e, id, data))
-ipcMain.handle('phases:delete', (e, id) => chantierCtrl.deletePhase(e, id))
-ipcMain.handle('phases:updateAvancement', (e, id, pct) => chantierCtrl.updatePhaseAvancement(e, id, pct))
-ipcMain.handle('phases:reorder', (e, chantierId, ids) => chantierCtrl.reorderPhases(e, chantierId, ids))
-ipcMain.handle('phases:avancementGlobal', (e, chantierId) => chantierCtrl.getAvancementGlobalPhases(e, chantierId))
+secureHandle('chantiers:list', rolesChantiers, (e, params) => chantierCtrl.getList(e, params))
+secureHandle('chantiers:get', rolesChantiers, (e, id) => chantierCtrl.getById(e, id))
+secureHandle('chantiers:create', rolesChantiers, (e, data, entrepriseId) => chantierCtrl.create(e, data, entrepriseId))
+secureHandle('chantiers:update', rolesChantiers, (e, id, data) => chantierCtrl.update(e, id, data))
+secureHandle('chantiers:delete', rolesChantiers, (e, id) => chantierCtrl.delete(e, id))
+secureHandle('chantiers:stats', rolesChantiers, (e, entrepriseId) => chantierCtrl.getStats(e, entrepriseId))
+secureHandle('chantiers:addPhase', rolesChantiers, (e, chantierId, data) => chantierCtrl.addPhase(e, chantierId, data))
+secureHandle('chantiers:savePhases', rolesChantiers, (e, chantierId, phases) => chantierCtrl.savePhases(e, chantierId, phases))
+secureHandle('chantiers:addIncident', rolesChantiers, (e, chantierId, data, userId) => chantierCtrl.addIncident(e, chantierId, data, userId))
+secureHandle('chantiers:updateIncident', rolesChantiers, (e, id, data) => chantierCtrl.updateIncident(e, id, data))
+secureHandle('chantiers:deleteIncident', rolesChantiers, (e, id) => chantierCtrl.deleteIncident(e, id))
+secureHandle('chantiers:recalculerBudget', rolesChantiers, (e, chantierId) => chantierCtrl.recalculerBudget(e, chantierId))
+secureHandle('chantiers:addAffectation', rolesChantiers, (e, data) => chantierCtrl.createAffectation(e, data))
+secureHandle('chantiers:updateAffectation', rolesChantiers, (e, id, data) => chantierCtrl.updateAffectation(e, id, data))
+secureHandle('chantiers:deleteAffectation', rolesChantiers, (e, id) => chantierCtrl.deleteAffectation(e, id))
 
-ipcMain.handle('incidents:list', (e, chantierId) => chantierCtrl.getIncidentsByChantier(e, chantierId))
-ipcMain.handle('incidents:create', (e, data) => chantierCtrl.createIncident(e, data))
-ipcMain.handle('incidents:update', (e, id, data) => chantierCtrl.updateIncident(e, id, data))
-ipcMain.handle('incidents:delete', (e, id) => chantierCtrl.deleteIncident(e, id))
-ipcMain.handle('incidents:changerStatut', (e, id, statut) => chantierCtrl.changerStatutIncident(e, id, statut))
-ipcMain.handle('incidents:ouvertsByEntreprise', (e, entrepriseId) => chantierCtrl.getIncidentsOuvertsByEntreprise(e, entrepriseId))
+secureHandle('phases:list', rolesChantiers, (e, chantierId) => chantierCtrl.getPhasesByChantier(e, chantierId))
+secureHandle('phases:create', rolesChantiers, (e, data) => chantierCtrl.createPhase(e, data))
+secureHandle('phases:update', rolesChantiers, (e, id, data) => chantierCtrl.updatePhase(e, id, data))
+secureHandle('phases:delete', rolesChantiers, (e, id) => chantierCtrl.deletePhase(e, id))
+secureHandle('phases:updateAvancement', rolesChantiers, (e, id, pct) => chantierCtrl.updatePhaseAvancement(e, id, pct))
+secureHandle('phases:reorder', rolesChantiers, (e, chantierId, ids) => chantierCtrl.reorderPhases(e, chantierId, ids))
+secureHandle('phases:avancementGlobal', rolesChantiers, (e, chantierId) => chantierCtrl.getAvancementGlobalPhases(e, chantierId))
 
-ipcMain.handle('affectations:byChantier', (e, chantierId) => chantierCtrl.getAffectationsByChantier(e, chantierId))
-ipcMain.handle('affectations:create', (e, data) => chantierCtrl.createAffectation(e, data))
-ipcMain.handle('affectations:update', (e, id, data) => chantierCtrl.updateAffectation(e, id, data))
-ipcMain.handle('affectations:delete', (e, id) => chantierCtrl.deleteAffectation(e, id))
+secureHandle('incidents:list', rolesChantiers, (e, chantierId) => chantierCtrl.getIncidentsByChantier(e, chantierId))
+secureHandle('incidents:create', rolesChantiers, (e, data) => chantierCtrl.createIncident(e, data))
+secureHandle('incidents:update', rolesChantiers, (e, id, data) => chantierCtrl.updateIncident(e, id, data))
+secureHandle('incidents:delete', rolesChantiers, (e, id) => chantierCtrl.deleteIncident(e, id))
+secureHandle('incidents:changerStatut', rolesChantiers, (e, id, statut) => chantierCtrl.changerStatutIncident(e, id, statut))
+secureHandle('incidents:ouvertsByEntreprise', rolesChantiers, (e, entrepriseId) => chantierCtrl.getIncidentsOuvertsByEntreprise(e, entrepriseId))
+
+secureHandle('affectations:byChantier', rolesChantiers, (e, chantierId) => chantierCtrl.getAffectationsByChantier(e, chantierId))
+secureHandle('affectations:create', rolesChantiers, (e, data) => chantierCtrl.createAffectation(e, data))
+secureHandle('affectations:update', rolesChantiers, (e, id, data) => chantierCtrl.updateAffectation(e, id, data))
+secureHandle('affectations:delete', rolesChantiers, (e, id) => chantierCtrl.deleteAffectation(e, id))
 
 // ============================================================
 // RESSOURCES HUMAINES
 // ============================================================
-ipcMain.handle('employes:list', (e, params) => rhCtrl.getListEmployes(e, params))
-ipcMain.handle('employes:get', (e, id) => rhCtrl.getEmployeById(e, id))
-ipcMain.handle('employes:create', (e, data, entrepriseId) => rhCtrl.createEmploye(e, data, entrepriseId))
-ipcMain.handle('employes:update', (e, id, data) => rhCtrl.updateEmploye(e, id, data))
-ipcMain.handle('employes:delete', (e, id) => rhCtrl.deleteEmploye(e, id))
-ipcMain.handle('employes:presentsToday', (e, entrepriseId) => rhCtrl.getPresentsToday(e, entrepriseId))
-ipcMain.handle('employes:pointer', (e, data) => rhCtrl.pointer(e, data))
-ipcMain.handle('employes:stats', (e, entrepriseId) => rhCtrl.getStatsEmployes(e, entrepriseId))
+const rolesRH = ['admin', 'rh', 'chef de chantier', 'direction'];
 
-ipcMain.handle('pointages:list', (e, params) => rhCtrl.getListPointages(e, params))
-ipcMain.handle('pointages:create', (e, data) => rhCtrl.createPointage(e, data))
-ipcMain.handle('pointages:update', (e, id, data) => safeRepo(() => repos.pointages.update(id, data)))
-ipcMain.handle('pointages:delete', (e, id) => safeRepo(() => repos.pointages.delete(id)))
+secureHandle('employes:list', rolesRH, (e, params) => rhCtrl.getListEmployes(e, params))
+secureHandle('employes:get', rolesRH, (e, id) => rhCtrl.getEmployeById(e, id))
+secureHandle('employes:create', rolesRH, (e, data, entrepriseId) => rhCtrl.createEmploye(e, data, entrepriseId))
+secureHandle('employes:update', rolesRH, (e, id, data) => rhCtrl.updateEmploye(e, id, data))
+secureHandle('employes:delete', rolesRH, (e, id) => rhCtrl.deleteEmploye(e, id))
+secureHandle('employes:presentsToday', rolesRH, (e, entrepriseId) => rhCtrl.getPresentsToday(e, entrepriseId))
+secureHandle('employes:pointer', rolesRH, (e, data) => rhCtrl.pointer(e, data))
+secureHandle('employes:stats', rolesRH, (e, entrepriseId) => rhCtrl.getStatsEmployes(e, entrepriseId))
 
-ipcMain.handle('heures-sup:list', (e, params) => rhCtrl.getListHeuresSup(e, params))
-ipcMain.handle('heures-sup:create', (e, data) => rhCtrl.createHeureSup(e, data))
-ipcMain.handle('heures-sup:update', (e, id, data) => safeRepo(() => repos.heuresSup.update(id, data)))
-ipcMain.handle('heures-sup:delete', (e, id) => safeRepo(() => repos.heuresSup.delete(id)))
+secureHandle('pointages:list', rolesRH, (e, params) => rhCtrl.getListPointages(e, params))
+secureHandle('pointages:create', rolesRH, (e, data) => rhCtrl.createPointage(e, data))
+secureHandle('pointages:update', rolesRH, (e, id, data) => safeRepo(() => repos.pointages.update(id, data)))
+secureHandle('pointages:delete', rolesRH, (e, id) => safeRepo(() => repos.pointages.delete(id)))
 
-ipcMain.handle('equipes:list', (e, entrepriseId) => rhCtrl.getListEquipes(e, entrepriseId))
-ipcMain.handle('equipes:create', (e, data, entrepriseId) => rhCtrl.createEquipe(e, data, entrepriseId))
-ipcMain.handle('equipes:update', (e, id, data) => safeRepo(() => repos.equipes.update(id, data)))
-ipcMain.handle('equipes:delete', (e, id) => safeRepo(() => repos.equipes.delete(id)))
-ipcMain.handle('equipes:ajouterMembre', (e, equipeId, employeId) => safeRepo(() => repos.equipes.ajouterMembre(equipeId, employeId)))
-ipcMain.handle('equipes:retirerMembre', (e, membreId) => safeRepo(() => repos.equipes.retirerMembre(membreId)))
-ipcMain.handle('equipes:assignerChantier', (e, data) => safeRepo(() => repos.equipes.assignerChantier(data)))
+secureHandle('heures-sup:list', rolesRH, (e, params) => rhCtrl.getListHeuresSup(e, params))
+secureHandle('heures-sup:create', rolesRH, (e, data) => rhCtrl.createHeureSup(e, data))
+secureHandle('heures-sup:update', rolesRH, (e, id, data) => safeRepo(() => repos.heuresSup.update(id, data)))
+secureHandle('heures-sup:delete', rolesRH, (e, id) => safeRepo(() => repos.heuresSup.delete(id)))
+
+secureHandle('equipes:list', rolesRH, (e, entrepriseId) => rhCtrl.getListEquipes(e, entrepriseId))
+secureHandle('equipes:create', rolesRH, (e, data, entrepriseId) => rhCtrl.createEquipe(e, data, entrepriseId))
+secureHandle('equipes:update', rolesRH, (e, id, data) => safeRepo(() => repos.equipes.update(id, data)))
+secureHandle('equipes:delete', rolesRH, (e, id) => safeRepo(() => repos.equipes.delete(id)))
+secureHandle('equipes:ajouterMembre', rolesRH, (e, equipeId, employeId) => safeRepo(() => repos.equipes.ajouterMembre(equipeId, employeId)))
+secureHandle('equipes:retirerMembre', rolesRH, (e, membreId) => safeRepo(() => repos.equipes.retirerMembre(membreId)))
+secureHandle('equipes:assignerChantier', rolesRH, (e, data) => safeRepo(() => repos.equipes.assignerChantier(data)))
 
 // ============================================================
 // STOCKS & FOURNISSEURS
 // ============================================================
-ipcMain.handle('articles:list', (e, params) => stockCtrl.getListArticles(e, params))
-ipcMain.handle('articles:get', (e, id) => stockCtrl.getArticleById(e, id))
-ipcMain.handle('articles:create', (e, data, entrepriseId) => stockCtrl.createArticle(e, data, entrepriseId))
-ipcMain.handle('articles:update', (e, id, data) => stockCtrl.updateArticle(e, id, data))
-ipcMain.handle('articles:delete', (e, id) => stockCtrl.deleteArticle(e, id))
-ipcMain.handle('articles:enAlerte', (e, entrepriseId) => stockCtrl.getArticlesEnAlerte(e, entrepriseId))
-ipcMain.handle('articles:updateStock', (e, articleId, qte, type, opt) => stockCtrl.updateStockArticle(e, articleId, qte, type, opt))
-ipcMain.handle('articles:stats', (e, entrepriseId) => stockCtrl.getStatsArticles(e, entrepriseId))
+const rolesStocks = ['admin', 'magasinier', 'stock', 'chef de chantier'];
 
-ipcMain.handle('fournisseurs:list', (e, params) => stockCtrl.getListFournisseurs(e, params))
-ipcMain.handle('fournisseurs:get', (e, id) => safeRepo(() => repos.fournisseurs.getById(id)))
-ipcMain.handle('fournisseurs:create', (e, data, entrepriseId) => stockCtrl.createFournisseur(e, data, entrepriseId))
-ipcMain.handle('fournisseurs:update', (e, id, data) => stockCtrl.updateFournisseur(e, id, data))
-ipcMain.handle('fournisseurs:delete', (e, id) => stockCtrl.deleteFournisseur(e, id))
+secureHandle('articles:list', rolesStocks, (e, params) => stockCtrl.getListArticles(e, params))
+secureHandle('articles:get', rolesStocks, (e, id) => stockCtrl.getArticleById(e, id))
+secureHandle('articles:create', rolesStocks, (e, data, entrepriseId) => stockCtrl.createArticle(e, data, entrepriseId))
+secureHandle('articles:update', rolesStocks, (e, id, data) => stockCtrl.updateArticle(e, id, data))
+secureHandle('articles:delete', rolesStocks, (e, id) => stockCtrl.deleteArticle(e, id))
+secureHandle('articles:enAlerte', rolesStocks, (e, entrepriseId) => stockCtrl.getArticlesEnAlerte(e, entrepriseId))
+secureHandle('articles:updateStock', rolesStocks, (e, articleId, qte, type, opt) => stockCtrl.updateStockArticle(e, articleId, qte, type, opt))
+secureHandle('articles:stats', rolesStocks, (e, entrepriseId) => stockCtrl.getStatsArticles(e, entrepriseId))
 
-ipcMain.handle('mouvements:byArticle', (e, id) => stockCtrl.getMouvementsByArticle(e, id))
-ipcMain.handle('mouvements:byChantier', (e, id) => stockCtrl.getMouvementsByChantier(e, id))
-ipcMain.handle('mouvements:byPeriode', (e, params) => stockCtrl.getMouvementsByPeriode(e, params.entrepriseId, params.dateDebut, params.dateFin))
-ipcMain.handle('mouvements:stats', (e, params) => stockCtrl.getMouvementsStats(e, params.entrepriseId, params.dateDebut, params.dateFin))
-ipcMain.handle('mouvements:create', (e, data) => safeRepo(() => repos.mouvements.create(data)))
-ipcMain.handle('mouvements:delete', (e, id) => safeRepo(() => repos.mouvements.delete(id)))
+secureHandle('fournisseurs:list', rolesStocks, (e, params) => stockCtrl.getListFournisseurs(e, params))
+secureHandle('fournisseurs:get', rolesStocks, (e, id) => safeRepo(() => repos.fournisseurs.getById(id)))
+secureHandle('fournisseurs:create', rolesStocks, (e, data, entrepriseId) => stockCtrl.createFournisseur(e, data, entrepriseId))
+secureHandle('fournisseurs:update', rolesStocks, (e, id, data) => stockCtrl.updateFournisseur(e, id, data))
+secureHandle('fournisseurs:delete', rolesStocks, (e, id) => stockCtrl.deleteFournisseur(e, id))
+
+secureHandle('mouvements:byArticle', rolesStocks, (e, id) => stockCtrl.getMouvementsByArticle(e, id))
+secureHandle('mouvements:byChantier', rolesStocks, (e, id) => stockCtrl.getMouvementsByChantier(e, id))
+secureHandle('mouvements:byPeriode', rolesStocks, (e, params) => stockCtrl.getMouvementsByPeriode(e, params.entrepriseId, params.dateDebut, params.dateFin))
+secureHandle('mouvements:stats', rolesStocks, (e, params) => stockCtrl.getMouvementsStats(e, params.entrepriseId, params.dateDebut, params.dateFin))
+secureHandle('mouvements:create', rolesStocks, (e, data) => safeRepo(() => repos.mouvements.create(data)))
+secureHandle('mouvements:delete', rolesStocks, (e, id) => safeRepo(() => repos.mouvements.delete(id)))
 
 // ============================================================
 // MATÉRIELS
 // ============================================================
-ipcMain.handle('materiels:list', (e, params) => materielCtrl.getListMateriels(e, params))
-ipcMain.handle('materiels:get', (e, id) => materielCtrl.getMaterielById(e, id))
-ipcMain.handle('materiels:create', (e, data, entrepriseId) => materielCtrl.createMateriel(e, data, entrepriseId))
-ipcMain.handle('materiels:update', (e, id, data) => materielCtrl.updateMateriel(e, id, data))
-ipcMain.handle('materiels:delete', (e, id) => materielCtrl.deleteMateriel(e, id))
-ipcMain.handle('materiels:stats', (e, entrepriseId) => materielCtrl.getStatsMateriels(e, entrepriseId))
-ipcMain.handle('materiels:disponibles', (e, entrepriseId) => materielCtrl.getDisponibles(e, entrepriseId))
-ipcMain.handle('materiels:maintenanceEnRetard', (e, entrepriseId) => materielCtrl.getMaintenanceEnRetard(e, entrepriseId))
-ipcMain.handle('maintenances:list', (e, params) => materielCtrl.getListMaintenances(e, params))
-ipcMain.handle('maintenances:create', (e, data) => materielCtrl.createMaintenance(e, data))
-ipcMain.handle('maintenances:update', (e, id, data) => materielCtrl.updateMaintenance(e, id, data))
+const rolesMateriel = ['admin', 'logisticien', 'matériel', 'chef de chantier'];
+
+secureHandle('materiels:list', rolesMateriel, (e, params) => materielCtrl.getListMateriels(e, params))
+secureHandle('materiels:get', rolesMateriel, (e, id) => materielCtrl.getMaterielById(e, id))
+secureHandle('materiels:create', rolesMateriel, (e, data, entrepriseId) => materielCtrl.createMateriel(e, data, entrepriseId))
+secureHandle('materiels:update', rolesMateriel, (e, id, data) => materielCtrl.updateMateriel(e, id, data))
+secureHandle('materiels:delete', rolesMateriel, (e, id) => materielCtrl.deleteMateriel(e, id))
+secureHandle('materiels:stats', rolesMateriel, (e, entrepriseId) => materielCtrl.getStatsMateriels(e, entrepriseId))
+secureHandle('materiels:disponibles', rolesMateriel, (e, entrepriseId) => materielCtrl.getDisponibles(e, entrepriseId))
+secureHandle('materiels:maintenanceEnRetard', rolesMateriel, (e, entrepriseId) => materielCtrl.getMaintenanceEnRetard(e, entrepriseId))
+secureHandle('maintenances:list', rolesMateriel, (e, params) => materielCtrl.getListMaintenances(e, params))
+secureHandle('maintenances:create', rolesMateriel, (e, data) => materielCtrl.createMaintenance(e, data))
+secureHandle('maintenances:update', rolesMateriel, (e, id, data) => materielCtrl.updateMaintenance(e, id, data))
 
 // ============================================================
 // COMMERCIAL (Clients, Devis, Contrats, Factures, Paiements)
 // ============================================================
-ipcMain.handle('clients:list', (e, params) => commercialCtrl.getListClients(e, params))
-ipcMain.handle('clients:get', (e, id) => commercialCtrl.getClientById(e, id))
-ipcMain.handle('clients:create', (e, data, entrepriseId) => commercialCtrl.createClient(e, data, entrepriseId))
-ipcMain.handle('clients:update', (e, id, data) => commercialCtrl.updateClient(e, id, data))
-ipcMain.handle('clients:delete', (e, id) => commercialCtrl.deleteClient(e, id))
+const rolesCommercial = ['admin', 'commercial', 'direction', 'comptable'];
 
-ipcMain.handle('clientAdresses:list', (e, clientId) => commercialCtrl.getClientAdresses(e, clientId))
-ipcMain.handle('clientAdresses:create', (e, clientId, data) => commercialCtrl.createClientAdresse(e, clientId, data))
-ipcMain.handle('clientAdresses:update', (e, id, data) => commercialCtrl.updateClientAdresse(e, id, data))
-ipcMain.handle('clientAdresses:delete', (e, id) => commercialCtrl.deleteClientAdresse(e, id))
+secureHandle('clients:list', rolesCommercial, (e, params) => commercialCtrl.getListClients(e, params))
+secureHandle('clients:get', rolesCommercial, (e, id) => commercialCtrl.getClientById(e, id))
+secureHandle('clients:create', rolesCommercial, (e, data, entrepriseId) => commercialCtrl.createClient(e, data, entrepriseId))
+secureHandle('clients:update', rolesCommercial, (e, id, data) => commercialCtrl.updateClient(e, id, data))
+secureHandle('clients:delete', rolesCommercial, (e, id) => commercialCtrl.deleteClient(e, id))
 
-ipcMain.handle('devis:list', (e, params) => commercialCtrl.getListDevis(e, params))
-ipcMain.handle('devis:get', (e, id) => commercialCtrl.getDevisById(e, id))
-ipcMain.handle('devis:create', (e, data, entrepriseId) => commercialCtrl.createDevis(e, data, entrepriseId))
-ipcMain.handle('devis:update', (e, id, data) => commercialCtrl.updateDevis(e, id, data))
-ipcMain.handle('devis:delete', (e, id) => safeRepo(() => repos.devis.delete(id)))
-ipcMain.handle('devis:transformerEnContrat', (e, devisId, data) => commercialCtrl.transformerDevisEnContrat(e, devisId, data))
-ipcMain.handle('devis:saveLignes', (e, devisId, lignes) => safeRepo(() => {
+secureHandle('clientAdresses:list', rolesCommercial, (e, clientId) => commercialCtrl.getClientAdresses(e, clientId))
+secureHandle('clientAdresses:create', rolesCommercial, (e, clientId, data) => commercialCtrl.createClientAdresse(e, clientId, data))
+secureHandle('clientAdresses:update', rolesCommercial, (e, id, data) => commercialCtrl.updateClientAdresse(e, id, data))
+secureHandle('clientAdresses:delete', rolesCommercial, (e, id) => commercialCtrl.deleteClientAdresse(e, id))
+
+secureHandle('devis:list', rolesCommercial, (e, params) => commercialCtrl.getListDevis(e, params))
+secureHandle('devis:get', rolesCommercial, (e, id) => commercialCtrl.getDevisById(e, id))
+secureHandle('devis:create', rolesCommercial, (e, data, entrepriseId) => commercialCtrl.createDevis(e, data, entrepriseId))
+secureHandle('devis:update', rolesCommercial, (e, id, data) => commercialCtrl.updateDevis(e, id, data))
+secureHandle('devis:delete', rolesCommercial, (e, id) => safeRepo(() => repos.devis.delete(id)))
+secureHandle('devis:transformerEnContrat', rolesCommercial, (e, devisId, data) => commercialCtrl.transformerDevisEnContrat(e, devisId, data))
+secureHandle('devis:saveLignes', rolesCommercial, (e, devisId, lignes) => safeRepo(() => {
   // Supprimer les anciennes lignes et recréer
   const existing = repos.lignesDevis.getByDevis(devisId)
   if (existing) existing.forEach(l => repos.lignesDevis.delete(l.id))
@@ -320,52 +378,55 @@ ipcMain.handle('devis:saveLignes', (e, devisId, lignes) => safeRepo(() => {
   return { saved: lignes.length }
 }))
 
-ipcMain.handle('contrats:list', (e, params) => commercialCtrl.getListContrats(e, params))
-ipcMain.handle('contrats:get', (e, id) => commercialCtrl.getContratById(e, id))
-ipcMain.handle('contrats:create', (e, data) => safeRepo(() => repos.contrats.create(data)))
-ipcMain.handle('contrats:update', (e, id, data) => safeRepo(() => repos.contrats.update(id, data)))
-ipcMain.handle('contrats:delete', (e, id) => safeRepo(() => repos.contrats.delete(id)))
+secureHandle('contrats:list', rolesCommercial, (e, params) => commercialCtrl.getListContrats(e, params))
+secureHandle('contrats:get', rolesCommercial, (e, id) => commercialCtrl.getContratById(e, id))
+secureHandle('contrats:create', rolesCommercial, (e, data) => safeRepo(() => repos.contrats.create(data)))
+secureHandle('contrats:update', rolesCommercial, (e, id, data) => safeRepo(() => repos.contrats.update(id, data)))
+secureHandle('contrats:delete', rolesCommercial, (e, id) => safeRepo(() => repos.contrats.delete(id)))
 
-ipcMain.handle('factures:list', (e, params) => commercialCtrl.getListFactures(e, params))
-ipcMain.handle('factures:get', (e, id) => commercialCtrl.getFactureById(e, id))
-ipcMain.handle('factures:create', (e, data, entrepriseId) => commercialCtrl.createFacture(e, data, entrepriseId))
-ipcMain.handle('factures:update', (e, id, data) => commercialCtrl.updateFacture(e, id, data))
-ipcMain.handle('factures:delete', (e, id) => commercialCtrl.deleteFacture(e, id))
-ipcMain.handle('factures:enRetard', (e, entrepriseId) => commercialCtrl.getFacturesEnRetard(e, entrepriseId))
-ipcMain.handle('factures:ajouterPaiement', (e, factureId, data) => commercialCtrl.ajouterPaiementFacture(e, factureId, data))
+secureHandle('factures:list', rolesCommercial, (e, params) => commercialCtrl.getListFactures(e, params))
+secureHandle('factures:get', rolesCommercial, (e, id) => commercialCtrl.getFactureById(e, id))
+secureHandle('factures:create', rolesCommercial, (e, data, entrepriseId) => commercialCtrl.createFacture(e, data, entrepriseId))
+secureHandle('factures:update', rolesCommercial, (e, id, data) => commercialCtrl.updateFacture(e, id, data))
+secureHandle('factures:delete', rolesCommercial, (e, id) => commercialCtrl.deleteFacture(e, id))
+secureHandle('factures:enRetard', rolesCommercial, (e, entrepriseId) => commercialCtrl.getFacturesEnRetard(e, entrepriseId))
+secureHandle('factures:ajouterPaiement', rolesCommercial, (e, factureId, data) => commercialCtrl.ajouterPaiementFacture(e, factureId, data))
 
-ipcMain.handle('paiements:byFacture', (e, id) => commercialCtrl.getPaiementsByFacture(e, id))
-ipcMain.handle('paiements:list', (e, params) => safeRepo(() => repos.paiements.list(params)))
-ipcMain.handle('paiements:create', (e, data) => safeRepo(() => repos.paiements.create(data)))
-ipcMain.handle('paiements:update', (e, id, data) => safeRepo(() => repos.paiements.update(id, data)))
-ipcMain.handle('paiements:delete', (e, id) => safeRepo(() => repos.paiements.delete(id)))
+secureHandle('paiements:byFacture', rolesCommercial, (e, id) => commercialCtrl.getPaiementsByFacture(e, id))
+secureHandle('paiements:list', rolesCommercial, (e, params) => safeRepo(() => repos.paiements.list(params)))
+secureHandle('paiements:create', rolesCommercial, (e, data) => safeRepo(() => repos.paiements.create(data)))
+secureHandle('paiements:update', rolesCommercial, (e, id, data) => safeRepo(() => repos.paiements.update(id, data)))
+secureHandle('paiements:delete', rolesCommercial, (e, id) => safeRepo(() => repos.paiements.delete(id)))
 
 // ============================================================
 // FINANCE & ALERTES
 // ============================================================
-ipcMain.handle('depenses:byChantier', (e, id) => financeCtrl.getDepensesByChantier(e, id))
-ipcMain.handle('depenses:totalByChantier', (e, id) => financeCtrl.getTotalDepensesByChantier(e, id))
-ipcMain.handle('depenses:byCategorie', (e, id) => financeCtrl.getDepensesByCategorie(e, id))
-ipcMain.handle('depenses:enAttenteValidation', (e, entrepriseId) => financeCtrl.getDepensesEnAttenteValidation(e, entrepriseId))
-ipcMain.handle('depenses:create', (e, data) => safeRepo(() => repos.depenses.create(data)))
-ipcMain.handle('depenses:update', (e, id, data) => safeRepo(() => repos.depenses.update(id, data)))
-ipcMain.handle('depenses:delete', (e, id) => safeRepo(() => repos.depenses.delete(id)))
-ipcMain.handle('depenses:list', (e, params) => safeRepo(() => repos.depenses.list(params)))
+const rolesFinance = ['admin', 'comptable', 'direction'];
 
-ipcMain.handle('alertes:nonLues', (e, entrepriseId, limit) => financeCtrl.getAlertesNonLues(e, entrepriseId, limit))
-ipcMain.handle('alertes:marquerLue', (e, id) => financeCtrl.marquerAlerteLue(e, id))
-ipcMain.handle('alertes:marquerToutesLues', (e, entrepriseId) => financeCtrl.marquerToutesAlertesLues(e, entrepriseId))
-ipcMain.handle('alertes:creer', (e, data) => financeCtrl.creerAlerte(e, data))
-ipcMain.handle('alertes:countNonLues', (e, entrepriseId) => financeCtrl.countAlertesNonLues(e, entrepriseId))
-ipcMain.handle('alertes:list', (e, params) => safeRepo(() => repos.alertes.list(params)))
+secureHandle('depenses:byChantier', rolesFinance, (e, id) => financeCtrl.getDepensesByChantier(e, id))
+secureHandle('depenses:totalByChantier', rolesFinance, (e, id) => financeCtrl.getTotalDepensesByChantier(e, id))
+secureHandle('depenses:byCategorie', rolesFinance, (e, id) => financeCtrl.getDepensesByCategorie(e, id))
+secureHandle('depenses:enAttenteValidation', rolesFinance, (e, entrepriseId) => financeCtrl.getDepensesEnAttenteValidation(e, entrepriseId))
+secureHandle('depenses:create', rolesFinance, (e, data) => safeRepo(() => repos.depenses.create(data)))
+secureHandle('depenses:update', rolesFinance, (e, id, data) => safeRepo(() => repos.depenses.update(id, data)))
+secureHandle('depenses:delete', rolesFinance, (e, id) => safeRepo(() => repos.depenses.delete(id)))
+secureHandle('depenses:list', rolesFinance, (e, params) => safeRepo(() => repos.depenses.list(params)))
+
+secureHandle('alertes:nonLues', [], (e, entrepriseId, limit) => financeCtrl.getAlertesNonLues(e, entrepriseId, limit))
+secureHandle('alertes:marquerLue', [], (e, id) => financeCtrl.marquerAlerteLue(e, id))
+secureHandle('alertes:marquerToutesLues', [], (e, entrepriseId) => financeCtrl.marquerToutesAlertesLues(e, entrepriseId))
+secureHandle('alertes:creer', [], (e, data) => financeCtrl.creerAlerte(e, data))
+secureHandle('alertes:countNonLues', [], (e, entrepriseId) => financeCtrl.countAlertesNonLues(e, entrepriseId))
+secureHandle('alertes:list', [], (e, params) => safeRepo(() => repos.alertes.list(params)))
 
 // ============================================================
 // DASHBOARD
 // ============================================================
-ipcMain.handle('dashboard:stats', (e, entrepriseId) => dashboardCtrl.getDashboardStats(e, entrepriseId))
-ipcMain.handle('dashboard:getCAEvolution', (e, entrepriseId) => dashboardCtrl.getCAEvolution(e, entrepriseId))
-ipcMain.handle('dashboard:getTopChantiersBudget', (e, entrepriseId) => dashboardCtrl.getTopChantiersBudget(e, entrepriseId))
-ipcMain.handle('dashboard:getActiviteRecente', (e, entrepriseId, limit) => dashboardCtrl.getActiviteRecente(e, entrepriseId, limit))
+// Tous les utilisateurs authentifiés ont accès au dashboard, les filtres de données seront gérés plus bas
+secureHandle('dashboard:stats', [], (e, entrepriseId) => dashboardCtrl.getDashboardStats(e, entrepriseId))
+secureHandle('dashboard:getCAEvolution', [], (e, entrepriseId) => dashboardCtrl.getCAEvolution(e, entrepriseId))
+secureHandle('dashboard:getTopChantiersBudget', [], (e, entrepriseId) => dashboardCtrl.getTopChantiersBudget(e, entrepriseId))
+secureHandle('dashboard:getActiviteRecente', [], (e, entrepriseId, limit) => dashboardCtrl.getActiviteRecente(e, entrepriseId, limit))
 
 // ============================================================
 // SYNCHRONISATION

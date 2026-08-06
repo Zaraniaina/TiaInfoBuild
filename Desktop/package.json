@@ -5,7 +5,6 @@
   "main": "main.js",
   "author": "TIA INFO BUILD",
   "license": "MIT",
-
   "scripts": {
     "start": "electron .",
     "dev": "set NODE_ENV=development&& electron .",
@@ -16,42 +15,35 @@
     "build:mac": "electron-builder --mac",
     "build:linux": "electron-builder --linux"
   },
-
   "dependencies": {
     "axios": "^1.12.2",
+    "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.4.1"
   },
-
   "devDependencies": {
     "electron": "^38.1.0",
     "electron-builder": "^26.0.12",
     "electron-rebuild": "^3.2.9"
   },
-
   "build": {
     "appId": "com.tiainfo.build",
     "productName": "TIA INFO BUILD",
-
     "directories": {
       "output": "dist"
     },
-
     "files": [
       "**/*",
       "!dist/**/*",
       "!*.log"
     ],
-
     "win": {
       "target": "nsis",
       "icon": "public/icon.ico"
     },
-
     "mac": {
       "target": "dmg",
       "icon": "public/icon.icns"
     },
-
     "linux": {
       "target": "AppImage",
       "icon": "public/icon.png"
