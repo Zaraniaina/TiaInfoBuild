@@ -278,10 +278,10 @@ class EquipesController {
                             <button class="btn btn-outline-secondary btn-view" data-id="${eq.id}" title="Voir">
                                 <i class="bi bi-eye"></i>
                             </button>
-                            <button class="btn btn-outline-primary btn-edit" data-id="${eq.id}" title="Modifier">
+                            <button class="btn btn-outline-primary btn-edit" data-id="${eq.id}" title="Modifier" data-permission="equipes:update">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-outline-danger btn-delete" data-id="${eq.id}" title="Supprimer">
+                            <button class="btn btn-outline-danger btn-delete" data-id="${eq.id}" title="Supprimer" data-permission="equipes:delete">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>

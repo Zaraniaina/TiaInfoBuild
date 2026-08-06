@@ -258,10 +258,10 @@ class ParametresController {
                     </td>
                     <td>
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary btn-edit" data-id="${u.id}" title="Modifier">
+                            <button class="btn btn-outline-primary btn-edit" data-id="${u.id}" title="Modifier" data-permission="utilisateurs:update">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-outline-danger btn-delete" data-id="${u.id}" title="Supprimer">
+                            <button class="btn btn-outline-danger btn-delete" data-id="${u.id}" title="Supprimer" data-permission="utilisateurs:delete">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>

@@ -212,14 +212,14 @@ class HeuresSupController {
                     <td><span class="badge ${st.class}">${st.label}</span></td>
                     <td>
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary btn-edit" data-id="${h.id}" title="Modifier">
+                            <button class="btn btn-outline-primary btn-edit" data-id="${h.id}" title="Modifier" data-permission="heures-sup:update">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             ${h.statut === 'en_attente' ? `
-                            <button class="btn btn-outline-success btn-validate" data-id="${h.id}" title="Valider">
+                            <button class="btn btn-outline-success btn-validate" data-id="${h.id}" title="Valider" data-permission="heures-sup:update">
                                 <i class="bi bi-check"></i>
                             </button>` : ''}
-                            <button class="btn btn-outline-danger btn-delete" data-id="${h.id}" title="Supprimer">
+                            <button class="btn btn-outline-danger btn-delete" data-id="${h.id}" title="Supprimer" data-permission="heures-sup:delete">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>

@@ -862,10 +862,10 @@ class ChantiersController {
             </div>
 
             <div class="col-auto">
-              <button type="button" class="btn btn-sm btn-outline-primary btn-edit-phase" data-uid="${p.uid}">
+              <button type="button" class="btn btn-sm btn-outline-primary btn-edit-phase" data-uid="${p.uid}" data-permission="chantiers:update">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button type="button" class="btn btn-sm btn-outline-danger btn-delete-phase" data-uid="${p.uid}">
+              <button type="button" class="btn btn-sm btn-outline-danger btn-delete-phase" data-uid="${p.uid}" data-permission="chantiers:delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -1070,11 +1070,10 @@ class ChantiersController {
               </div>
 
               <div class="col-auto">
-                <button type="button" class="btn btn-sm btn-outline-primary btn-edit-incident" data-id="${incident.id}">
+                <button type="button" class="btn btn-sm btn-outline-primary btn-edit-incident" data-id="${incident.id}" data-permission="chantiers:update">
                   <i class="bi bi-pencil"></i>
                 </button>
-
-                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-incident" data-id="${incident.id}">
+                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-incident" data-id="${incident.id}" data-permission="chantiers:delete">
                   <i class="bi bi-trash"></i>
                 </button>
               </div>
@@ -1287,11 +1286,10 @@ class ChantiersController {
               </div>
 
               <div class="col-auto">
-                <button type="button" class="btn btn-sm btn-outline-primary btn-edit-affectation" data-id="${affectation.id}">
+                <button type="button" class="btn btn-sm btn-outline-primary btn-edit-affectation" data-id="${affectation.id}" data-permission="chantiers:update">
                   <i class="bi bi-pencil"></i>
                 </button>
-
-                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-affectation" data-id="${affectation.id}">
+                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-affectation" data-id="${affectation.id}" data-permission="chantiers:delete">
                   <i class="bi bi-trash"></i>
                 </button>
               </div>

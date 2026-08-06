@@ -337,13 +337,13 @@ class StocksController {
                             <button class="btn btn-outline-secondary btn-view" data-id="${a.id}" title="Voir">
                                 <i class="bi bi-eye"></i>
                             </button>
-                            <button class="btn btn-outline-primary btn-edit" data-id="${a.id}" title="Modifier">
+                            <button class="btn btn-outline-primary btn-edit" data-id="${a.id}" title="Modifier" data-permission="articles:update">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-outline-success btn-mouv" data-id="${a.id}" title="Mouvement">
+                            <button class="btn btn-outline-success btn-mouv" data-id="${a.id}" title="Mouvement" data-permission="mouvements:create">
                                 <i class="bi bi-arrow-left-right"></i>
                             </button>
-                            <button class="btn btn-outline-danger btn-delete" data-id="${a.id}" title="Supprimer">
+                            <button class="btn btn-outline-danger btn-delete" data-id="${a.id}" title="Supprimer" data-permission="articles:delete">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
@@ -1007,10 +1007,10 @@ class StocksController {
                 <td class="d-none d-lg-table-cell">${this.escapeHtml(f.conditionsPaiement || '—')}</td>
                 <td>
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary btn-edit" data-id="${f.id}" title="Modifier">
+                        <button class="btn btn-outline-primary btn-edit" data-id="${f.id}" title="Modifier" data-permission="fournisseurs:update">
                             <i class="bi bi-pencil"></i>
                         </button>
-                        <button class="btn btn-outline-danger btn-delete" data-id="${f.id}" title="Supprimer">
+                        <button class="btn btn-outline-danger btn-delete" data-id="${f.id}" title="Supprimer" data-permission="fournisseurs:delete">
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>

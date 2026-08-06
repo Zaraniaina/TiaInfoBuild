@@ -743,10 +743,10 @@ class DevisController {
                             <strong class="text-primary">${this.formatCurrency(l.totalHT || 0)}</strong>
                         </div>
                         <div class="col-auto">
-                            <button type="button" class="btn btn-sm btn-outline-primary btn-edit-ligne" data-index="${index}">
+                            <button type="button" class="btn btn-sm btn-outline-primary btn-edit-ligne" data-index="${index}" data-permission="devis:update">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-ligne" data-index="${index}">
+                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-ligne" data-index="${index}" data-permission="devis:delete">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
@@ -1126,10 +1126,10 @@ class DevisController {
                             <button class="btn btn-outline-secondary btn-view" data-id="${c.id}" title="Voir">
                                 <i class="bi bi-eye"></i>
                             </button>
-                            <button class="btn btn-outline-primary btn-edit" data-id="${c.id}" title="Modifier">
+                            <button class="btn btn-outline-primary btn-edit" data-id="${c.id}" title="Modifier" data-permission="contrats:update">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-outline-danger btn-delete" data-id="${c.id}" title="Supprimer">
+                            <button class="btn btn-outline-danger btn-delete" data-id="${c.id}" title="Supprimer" data-permission="contrats:delete">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
