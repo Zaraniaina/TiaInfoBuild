@@ -16,9 +16,7 @@ function hashPassword(password) {
  */
 function verifyPassword(inputPassword, storedHash) {
   if (!inputPassword || !storedHash) return false;
-
   const inputHash = hashPassword(inputPassword);
-
   // Si le mot de passe en BDD est déjà un hash (longueur 64 hex)
   if (storedHash.length === 64) {
     try {
@@ -27,7 +25,6 @@ function verifyPassword(inputPassword, storedHash) {
       return inputHash === storedHash;
     }
   }
-
   // Fallback si le mot de passe a été stocké en texte brut lors de la synchronisation d'origine
   return inputPassword === storedHash;
 }
@@ -138,6 +135,12 @@ async function handleRegister(event, data) {
       return { success: false, message: 'Veuillez remplir tous les champs obligatoires (Entreprise, Email, Mot de passe).' };
     }
 
+    // Vérification d'email dupliqué en local AVANT toute insertion
+    const existing = db.prepare('SELECT id FROM Utilisateur WHERE email = ? AND is_deleted = 0').get(email.trim());
+    if (existing) {
+      return { success: false, message: 'Un compte existe déjà avec cet email.' };
+    }
+
     const pwdHash = hashPassword(password);
 
     try {
@@ -179,8 +182,8 @@ async function handleRegister(event, data) {
         VALUES (?, ?, ?, ?, 1, ?, 0)
       `);
       const userInfo = userStmt.run(nom || 'Admin', prenom || '', email, pwdHash, entInfo.lastInsertRowid);
-      const newUser = db.prepare('SELECT * FROM Utilisateur WHERE id = ?').get(userInfo.lastInsertRowid);
 
+      const newUser = db.prepare('SELECT * FROM Utilisateur WHERE id = ?').get(userInfo.lastInsertRowid);
       return {
         success: true,
         user: newUser,

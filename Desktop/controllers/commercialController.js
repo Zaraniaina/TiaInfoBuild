@@ -35,6 +35,9 @@ class CommercialController {
 
   async createClient(event, data, entrepriseId) {
     try {
+      if (!data || !data.nom || !data.nom.trim()) {
+        return { success: false, error: 'Le nom du client est obligatoire.' }
+      }
       const result = this.repos.clients.create({ ...data, entrepriseId }, entrepriseId)
       return { success: true, data: result }
     } catch (error) {
@@ -63,10 +66,26 @@ class CommercialController {
     }
   }
 
-  // --- DEVIS ---
-  async getListDevis(event, { entrepriseId, limit, offset, statut, search }) {
+  // --- DEVIS (filtres appliqués) ---
+  async getListDevis(event, { entrepriseId, limit = 50, offset = 0, statut, search }) {
     try {
-      const items = this.repos.devis.getAll({ entrepriseId, limit, offset })
+      const where = []
+      const params = []
+      if (statut) {
+        where.push('statut = ?')
+        params.push(statut)
+      }
+      if (search) {
+        where.push('numero LIKE ?')
+        params.push(`%${search}%`)
+      }
+      const items = this.repos.devis.getAll({
+        entrepriseId,
+        limit,
+        offset,
+        where: where.length ? where.join(' AND ') : '',
+        params
+      })
       const total = this.repos.devis.count({ entrepriseId })
       return { success: true, data: { items, total } }
     } catch (error) {
@@ -105,6 +124,47 @@ class CommercialController {
     }
   }
 
+  // --- DEVIS : CHANGEMENT DE STATUT (workflow acceptation) ---
+  async changerStatutDevis(event, id, statut) {
+    try {
+      const statutsValides = ['brouillon', 'envoye', 'accepte', 'refuse', 'expire']
+      if (!statutsValides.includes(statut)) {
+        return { success: false, error: `Statut invalide. Valeurs acceptées : ${statutsValides.join(', ')}` }
+      }
+      const devis = this.repos.devis.getById(id)
+      if (!devis) {
+        return { success: false, error: 'Devis introuvable.' }
+      }
+      const result = this.repos.devis.update(id, { statut })
+      return { success: true, data: result }
+    } catch (error) {
+      console.error('CommercialController.changerStatutDevis error:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  // --- DEVIS : REMPLACEMENT DES LIGNES (+ recalcul du total) ---
+  async remplacerLignesDevis(event, devisId, lignes) {
+    try {
+      const devis = this.repos.devis.getById(devisId)
+      if (!devis) {
+        return { success: false, error: 'Devis introuvable.' }
+      }
+      if (!Array.isArray(lignes)) {
+        return { success: false, error: 'Les lignes doivent être un tableau.' }
+      }
+      const nouvellesLignes = this.repos.lignesDevis.remplacerLignes(devisId, lignes)
+      const montantTotal = nouvellesLignes.reduce(
+        (sum, l) => sum + (l.quantite || 0) * (l.prixUnitaire || 0), 0
+      )
+      this.repos.devis.update(devisId, { montantTotal })
+      return { success: true, data: this.repos.devis.getWithLignes(devisId) }
+    } catch (error) {
+      console.error('CommercialController.remplacerLignesDevis error:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
   async transformerDevisEnContrat(event, devisId, contratData) {
     try {
       const result = this.repos.devis.transformerEnContrat(devisId, contratData)
@@ -137,10 +197,22 @@ class CommercialController {
     }
   }
 
-  // --- FACTURES ---
-  async getListFactures(event, { entrepriseId, limit, offset, statut }) {
+  // --- FACTURES (filtre statut appliqué) ---
+  async getListFactures(event, { entrepriseId, limit = 50, offset = 0, statut }) {
     try {
-      const items = this.repos.factures.getAll({ entrepriseId, limit, offset })
+      const where = []
+      const params = []
+      if (statut) {
+        where.push('statut = ?')
+        params.push(statut)
+      }
+      const items = this.repos.factures.getAll({
+        entrepriseId,
+        limit,
+        offset,
+        where: where.length ? where.join(' AND ') : '',
+        params
+      })
       const total = this.repos.factures.count({ entrepriseId })
       return { success: true, data: { items, total } }
     } catch (error) {
@@ -161,8 +233,14 @@ class CommercialController {
 
   async createFacture(event, data, entrepriseId) {
     try {
-      // Les factures héritent de BaseRepository donc ont accès à .create()
-      const result = this.repos.factures.create({ ...data, entrepriseId }, entrepriseId)
+      if (!data || !data.contratId) {
+        return { success: false, error: 'Une facture doit être rattachée à un contrat.' }
+      }
+      const montant = parseFloat(data.montant)
+      if (!montant || montant <= 0) {
+        return { success: false, error: 'Le montant doit être supérieur à 0.' }
+      }
+      const result = this.repos.factures.create({ ...data, montant, entrepriseId }, entrepriseId)
       return { success: true, data: result }
     } catch (error) {
       console.error('CommercialController.createFacture error:', error)

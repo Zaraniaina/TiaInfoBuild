@@ -1,5 +1,5 @@
 /**
- * Contrôleur Main Process - Module Ressources Humaines (Employés, Pointages, Équipes, Heures Sup)
+ * Contrôleur Main Process - Module Ressources Humaines
  */
 class RhController {
   constructor(repos) {
@@ -88,11 +88,22 @@ class RhController {
     }
   }
 
-  // --- POINTAGES ---
-  async getListPointages(event, { employeId, chantierId, dateDebut, dateFin, limit, offset }) {
+  // --- POINTAGES (avec filtres appliqués) ---
+  async getListPointages(event, { employeId, chantierId, dateDebut, dateFin, limit = 50, offset = 0 } = {}) {
     try {
-      // PointageRepository liste ou recherche
-      const items = this.repos.pointages.getAll({ employeId, chantierId })
+      let items
+      if (employeId) {
+        items = this.repos.pointages.getByEmploye(employeId, { dateDebut, dateFin, limit, offset })
+      } else if (chantierId) {
+        items = this.repos.pointages.getAll({
+          where: 'chantierId = ?',
+          params: [chantierId],
+          limit,
+          offset
+        })
+      } else {
+        items = this.repos.pointages.getAll({ limit, offset })
+      }
       return { success: true, data: items }
     } catch (error) {
       console.error('RhController.getListPointages error:', error)
@@ -110,10 +121,17 @@ class RhController {
     }
   }
 
-  // --- HEURES SUP ---
-  async getListHeuresSup(event, { employeId, chantierId, dateDebut, dateFin }) {
+  // --- HEURES SUP (avec filtres appliqués) ---
+  async getListHeuresSup(event, { employeId, chantierId, dateDebut, dateFin, limit = 50, offset = 0 } = {}) {
     try {
-      const items = this.repos.heuresSup.getAll({ employeId, chantierId })
+      let items
+      if (employeId) {
+        items = this.repos.heuresSup.getByEmploye(employeId, { dateDebut, dateFin, limit, offset })
+      } else if (chantierId) {
+        items = this.repos.heuresSup.getByChantier(chantierId)
+      } else {
+        items = this.repos.heuresSup.getAll({ limit, offset })
+      }
       return { success: true, data: items }
     } catch (error) {
       console.error('RhController.getListHeuresSup error:', error)
@@ -132,9 +150,11 @@ class RhController {
   }
 
   // --- ÉQUIPES ---
+   
   async getListEquipes(event, entrepriseId) {
     try {
-      const items = this.repos.equipes.getAll({ entrepriseId })
+      // ⚠️ CORRECTION : utiliser getByEntreprise au lieu de getAll
+      const items = this.repos.equipes.getByEntreprise(entrepriseId)
       return { success: true, data: items }
     } catch (error) {
       console.error('RhController.getListEquipes error:', error)

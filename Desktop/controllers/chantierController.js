@@ -1,5 +1,5 @@
 /**
- * Contrôleur Main Process - Module Chantiers, Phases & Incidents
+ * Contrôleur Main Process - Module Chantiers, Phases, Incidents & Affectations
  */
 class ChantierController {
   constructor(repos) {
@@ -94,6 +94,27 @@ class ChantierController {
       return { success: true, data: result }
     } catch (error) {
       console.error('ChantierController.recalculerBudget error:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  // --- AFFECTATIONS DE RESSOURCES (Employé | Materiel) ---
+  async affecterRessource(event, data) {
+    try {
+      const result = this.repos.affectationsRessource.affecter(data)
+      return { success: true, data: result }
+    } catch (error) {
+      console.error('ChantierController.affecterRessource error:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  async retirerRessource(event, id) {
+    try {
+      const result = this.repos.affectationsRessource.retirer(id)
+      return { success: true, data: result }
+    } catch (error) {
+      console.error('ChantierController.retirerRessource error:', error)
       return { success: false, error: error.message }
     }
   }

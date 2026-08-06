@@ -7,7 +7,6 @@ class MaterielController {
   }
 
   // ── MATÉRIELS ──────────────────────────────────────────────
-
   async getListMateriels(event, { entrepriseId, limit = 50, offset = 0, statut, search } = {}) {
     try {
       const items = this.repos.materiels.getByEntreprise(entrepriseId, { limit, offset, statut, search })
@@ -101,12 +100,39 @@ class MaterielController {
     }
   }
 
-  // ── MAINTENANCES ───────────────────────────────────────────
+  // ── AFFECTATIONS MATÉRIEL ↔ CHANTIER ───────────────────────
+  async affecterMateriel(event, data) {
+    try {
+      const result = this.repos.affectationsMateriel.affecter(data)
+      return { success: true, data: result }
+    } catch (error) {
+      console.error('MaterielController.affecterMateriel error:', error)
+      return { success: false, error: error.message }
+    }
+  }
 
+  async retirerAffectationMateriel(event, id) {
+    try {
+      const result = this.repos.affectationsMateriel.retirer(id)
+      return { success: true, data: result }
+    } catch (error) {
+      console.error('MaterielController.retirerAffectationMateriel error:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  // ── MAINTENANCES ───────────────────────────────────────────
   async getListMaintenances(event, { materielId, limit = 50, offset = 0 } = {}) {
     try {
-      const items = this.repos.maintenances.getAll({ materielId, limit, offset })
-      const total = this.repos.maintenances.count({ materielId })
+      let items, total
+      if (materielId) {
+        // Filtre par matériel réellement appliqué
+        items = this.repos.maintenances.getByMateriel(materielId)
+        total = items.length
+      } else {
+        items = this.repos.maintenances.getAll({ limit, offset })
+        total = this.repos.maintenances.count({})
+      }
       return { success: true, data: { items, total } }
     } catch (error) {
       console.error('MaterielController.getListMaintenances error:', error)
@@ -133,6 +159,16 @@ class MaterielController {
       return { success: true, data: result }
     } catch (error) {
       console.error('MaterielController.updateMaintenance error:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  async deleteMaintenance(event, id) {
+    try {
+      const result = this.repos.maintenances.softDelete(id)
+      return { success: true, data: result }
+    } catch (error) {
+      console.error('MaterielController.deleteMaintenance error:', error)
       return { success: false, error: error.message }
     }
   }
