@@ -175,10 +175,10 @@ class PaiementsController {
                     <td><small>${this.escapeHtml(p.reference || '—')}</small></td>
                     <td>
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary btn-edit" data-id="${p.id}" title="Modifier">
+                            <button class="btn btn-outline-primary btn-edit" data-id="${p.id}" title="Modifier" data-permission="paiements:update">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-outline-danger btn-delete" data-id="${p.id}" title="Supprimer">
+                            <button class="btn btn-outline-danger btn-delete" data-id="${p.id}" title="Supprimer" data-permission="paiements:delete">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>

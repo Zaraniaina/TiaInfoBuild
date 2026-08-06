@@ -199,13 +199,13 @@ class ClientsController {
                             <button class="btn btn-outline-secondary btn-view" data-id="${c.id}" title="Consulter">
                                 <i class="bi bi-eye"></i>
                             </button>
-                            <button class="btn btn-outline-primary btn-edit" data-id="${c.id}" title="Modifier">
+                            <button class="btn btn-outline-primary btn-edit" data-id="${c.id}" title="Modifier" data-permission="clients:update">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-outline-success btn-devis" data-id="${c.id}" title="Créer un devis">
+                            <button class="btn btn-outline-success btn-devis" data-id="${c.id}" title="Créer un devis" data-permission="devis:create">
                                 <i class="bi bi-file-earmark-plus"></i>
                             </button>
-                            <button class="btn btn-outline-danger btn-delete" data-id="${c.id}" title="Supprimer">
+                            <button class="btn btn-outline-danger btn-delete" data-id="${c.id}" title="Supprimer" data-permission="clients:delete">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>

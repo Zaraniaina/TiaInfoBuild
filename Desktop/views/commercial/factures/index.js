@@ -181,12 +181,12 @@ class FacturesController {
                             Actions
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                            <li><a class="dropdown-item" href="#" onclick="window.facturesController.openModalFacture(${f.id})"><i class="bi bi-pencil me-2"></i>Modifier</a></li>
+                            <li><a class="dropdown-item" href="#" data-permission="factures:update" onclick="window.facturesController.openModalFacture(${f.id})"><i class="bi bi-pencil me-2"></i>Modifier</a></li>
                             ${f.statut !== 'paye' && f.statut !== 'annulee' ? 
-                                `<li><a class="dropdown-item text-success" href="#" onclick="window.facturesController.openModalPaiement(${f.id}, ${reste})"><i class="bi bi-cash me-2"></i>Paiement</a></li>` 
+                                `<li><a class="dropdown-item text-success" href="#" data-permission="factures:ajouterPaiement" onclick="window.facturesController.openModalPaiement(${f.id}, ${reste})"><i class="bi bi-cash me-2"></i>Paiement</a></li>` 
                                 : ''}
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger" href="#" onclick="window.facturesController.deleteFacture(${f.id})"><i class="bi bi-trash me-2"></i>Supprimer</a></li>
+                            <li><a class="dropdown-item text-danger" href="#" data-permission="factures:delete" onclick="window.facturesController.deleteFacture(${f.id})"><i class="bi bi-trash me-2"></i>Supprimer</a></li>
                         </ul>
                     </div>
                 </td>

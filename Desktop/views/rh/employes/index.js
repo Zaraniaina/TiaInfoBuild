@@ -80,7 +80,7 @@ class EmployesController {
                 <td><span class="badge bg-success">Actif</span></td>
                 <td>
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary btn-edit" data-id="${emp.id}"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-outline-primary btn-edit" data-id="${emp.id}" data-permission="employes:update"><i class="bi bi-pencil"></i></button>
                     </div>
                 </td>
             </tr>

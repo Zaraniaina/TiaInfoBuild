@@ -7,13 +7,13 @@
             <p class="text-secondary mb-0">Gestion financière et facturation</p>
         </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-outline-primary" id="btnPaiements">
+            <button class="btn btn-outline-primary" id="btnPaiements" data-permission="paiements:list">
                 <i class="bi bi-cash-stack me-1"></i>Paiements
             </button>
-            <button class="btn btn-outline-success" id="btnDepenses">
+            <button class="btn btn-outline-success" id="btnDepenses" data-permission="depenses:list">
                 <i class="bi bi-receipt me-1"></i>Dépenses
             </button>
-            <button class="btn btn-primary" id="btnNouvelleFacture">
+            <button class="btn btn-primary" id="btnNouvelleFacture" data-permission="factures:create">
                 <i class="bi bi-plus-lg me-1"></i>Nouvelle facture
             </button>
         </div>
@@ -179,7 +179,7 @@
                 <i class="bi bi-file-earmark-text display-1 text-secondary"></i>
                 <h4 class="mt-3">Aucune facture</h4>
                 <p class="text-secondary">Les factures peuvent être créées depuis les devis acceptés</p>
-                <button class="btn btn-primary" id="btnFirstFacture">
+                <button class="btn btn-primary" id="btnFirstFacture" data-permission="factures:create">
                     <i class="bi bi-plus-lg me-1"></i>Créer une facture
                 </button>
             </div>
@@ -189,7 +189,7 @@
         <div class="tab-pane fade" id="tab-paiements" role="tabpanel">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Paiements reçus</h5>
-                <button class="btn btn-sm btn-primary" id="btnNouveauPaiement">
+                <button class="btn btn-sm btn-primary" id="btnNouveauPaiement" data-permission="paiements:create">
                     <i class="bi bi-plus me-1"></i>Enregistrer un paiement
                 </button>
             </div>
@@ -238,7 +238,7 @@
         <div class="tab-pane fade" id="tab-depenses" role="tabpanel">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="mb-0"><i class="bi bi-receipt me-2"></i>Dépenses</h5>
-                <button class="btn btn-sm btn-primary" id="btnNouvelleDepense">
+                <button class="btn btn-sm btn-primary" id="btnNouvelleDepense" data-permission="depenses:create">
                     <i class="bi bi-plus me-1"></i>Nouvelle dépense
                 </button>
             </div>
@@ -355,7 +355,7 @@
                                             <option value="">Sélectionner un client</option>
                                         </select>
                                         <button class="btn btn-outline-secondary" type="button"
-                                            id="btnNouveauClientFacture" title="Nouveau client">
+                                            id="btnNouveauClientFacture" title="Nouveau client" data-permission="clients:create">
                                             <i class="bi bi-plus"></i>
                                         </button>
                                     </div>
@@ -428,7 +428,7 @@
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h6 class="mb-0">Lignes de la facture</h6>
                                 <button type="button" class="btn btn-sm btn-outline-primary"
-                                    id="btnAjouterLigneFacture">
+                                    id="btnAjouterLigneFacture" data-permission="factures:create,factures:update">
                                     <i class="bi bi-plus me-1"></i>Ajouter une ligne
                                 </button>
                             </div>
@@ -478,7 +478,7 @@
                         <div class="tab-pane fade" id="tab-fac-paiements" role="tabpanel">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h6 class="mb-0">Paiements reçus</h6>
-                                <button type="button" class="btn btn-sm btn-success" id="btnAjouterPaiementFacture">
+                                <button type="button" class="btn btn-sm btn-success" id="btnAjouterPaiementFacture" data-permission="factures:ajouterPaiement">
                                     <i class="bi bi-plus me-1"></i>Ajouter paiement
                                 </button>
                             </div>
@@ -491,13 +491,13 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
                     <button type="button" class="btn btn-outline-primary" id="btnDupliquerFacture"
-                        style="display: none;">
+                        style="display: none;" data-permission="factures:dupliquer">
                         <i class="bi bi-files me-1"></i>Dupliquer
                     </button>
-                    <button type="button" class="btn btn-outline-success" id="btnEnvoyerFacture" style="display: none;">
+                    <button type="button" class="btn btn-outline-success" id="btnEnvoyerFacture" style="display: none;" data-permission="factures:envoyer">
                         <i class="bi bi-send me-1"></i>Envoyer
                     </button>
-                    <button type="button" class="btn btn-outline-danger" id="btnDeleteFacture" style="display: none;">
+                    <button type="button" class="btn btn-outline-danger" id="btnDeleteFacture" style="display: none;" data-permission="factures:delete">
                         <i class="bi bi-trash me-1"></i>Supprimer
                     </button>
                     <button type="submit" class="btn btn-primary">
@@ -524,7 +524,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-                <button type="button" class="btn btn-primary" id="btnEditFactureFromDetail">
+                    <button type="button" class="btn btn-primary" id="btnEditFactureFromDetail" data-permission="factures:update">
                     <i class="bi bi-pencil me-1"></i>Modifier
                 </button>
             </div>

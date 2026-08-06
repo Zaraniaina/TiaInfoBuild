@@ -365,16 +365,16 @@ class DevisController {
                             <button class="btn btn-outline-secondary btn-view" data-id="${d.id}" title="Voir">
                                 <i class="bi bi-eye"></i>
                             </button>
-                            <button class="btn btn-outline-primary btn-edit" data-id="${d.id}" title="Modifier">
+                            <button class="btn btn-outline-primary btn-edit" data-id="${d.id}" title="Modifier" data-permission="devis:update">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-outline-success btn-duplicate" data-id="${d.id}" title="Dupliquer">
+                            <button class="btn btn-outline-success btn-duplicate" data-id="${d.id}" title="Dupliquer" data-permission="devis:create">
                                 <i class="bi bi-files"></i>
                             </button>
-                            ${d.statut !== 'transforme' ? `<button class="btn btn-outline-warning btn-transform" data-id="${d.id}" title="Transformer en contrat">
+                            ${d.statut !== 'transforme' ? `<button class="btn btn-outline-warning btn-transform" data-id="${d.id}" title="Transformer en contrat" data-permission="devis:transformerEnContrat">
                                 <i class="bi bi-arrow-right-circle"></i>
                             </button>` : ''}
-                            <button class="btn btn-outline-danger btn-delete" data-id="${d.id}" title="Supprimer">
+                            <button class="btn btn-outline-danger btn-delete" data-id="${d.id}" title="Supprimer" data-permission="devis:delete">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>

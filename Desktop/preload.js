@@ -70,7 +70,6 @@ contextBridge.exposeInMainWorld('api', {
   },
   session: {
     get: () => ipcRenderer.invoke('session:get'),
-    set: (data) => ipcRenderer.invoke('session:set', data),
     clear: () => ipcRenderer.invoke('session:clear')
   }
 });

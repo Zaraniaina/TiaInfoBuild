@@ -500,16 +500,16 @@ class FinancesController {
                     <td><span class="badge ${statutClass}">${statutLabel}</span></td>
                     <td>
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-secondary btn-view" data-id="${f.id}" title="Voir">
+                            <button class="btn btn-outline-secondary btn-view" data-id="${f.id}" title="Voir" data-permission="factures:list">
                                 <i class="bi bi-eye"></i>
                             </button>
-                            <button class="btn btn-outline-primary btn-edit" data-id="${f.id}" title="Modifier">
+                            <button class="btn btn-outline-primary btn-edit" data-id="${f.id}" title="Modifier" data-permission="factures:update">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            ${f.statut !== 'payee' && f.statut !== 'annulee' ? `<button class="btn btn-outline-success btn-paiement" data-id="${f.id}" title="Enregistrer paiement">
+                            ${f.statut !== 'payee' && f.statut !== 'annulee' ? `<button class="btn btn-outline-success btn-paiement" data-id="${f.id}" title="Enregistrer paiement" data-permission="factures:ajouterPaiement">
                                 <i class="bi bi-cash-stack"></i>
                             </button>` : ''}
-                            <button class="btn btn-outline-danger btn-delete" data-id="${f.id}" title="Supprimer">
+                            <button class="btn btn-outline-danger btn-delete" data-id="${f.id}" title="Supprimer" data-permission="factures:delete">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
@@ -747,7 +747,7 @@ class FinancesController {
                     <div class="card mb-3">
                         <div class="card-header d-flex justify-content-between">
                             <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Paiements (${f.paiements?.length || 0})</h6>
-                            <button class="btn btn-sm btn-success" onclick="window.financesController.openModalPaiement(${f.id}); bootstrap.Modal.getInstance(document.getElementById('modalFactureDetail'))?.hide();">
+                            <button class="btn btn-sm btn-success" data-permission="factures:ajouterPaiement" onclick="window.financesController.openModalPaiement(${f.id}); bootstrap.Modal.getInstance(document.getElementById('modalFactureDetail'))?.hide();">
                                 <i class="bi bi-plus me-1"></i>Ajouter
                             </button>
                         </div>
@@ -782,13 +782,13 @@ class FinancesController {
                     ` : ''}
 
                     <div class="d-flex gap-2">
-                        <button class="btn btn-outline-primary" onclick="window.financesController.openModalEditionFacture(${f.id}); bootstrap.Modal.getInstance(document.getElementById('modalFactureDetail'))?.hide();">
+                        <button class="btn btn-outline-primary" data-permission="factures:update" onclick="window.financesController.openModalEditionFacture(${f.id}); bootstrap.Modal.getInstance(document.getElementById('modalFactureDetail'))?.hide();">
                             <i class="bi bi-pencil me-1"></i>Modifier
                         </button>
-                        <button class="btn btn-outline-success" onclick="window.financesController.dupliquerFacture(${f.id}); bootstrap.Modal.getInstance(document.getElementById('modalFactureDetail'))?.hide();">
+                        <button class="btn btn-outline-success" data-permission="factures:dupliquer" onclick="window.financesController.dupliquerFacture(${f.id}); bootstrap.Modal.getInstance(document.getElementById('modalFactureDetail'))?.hide();">
                             <i class="bi bi-files me-1"></i>Dupliquer
                         </button>
-                        <button class="btn btn-success" onclick="window.financesController.openModalPaiement(${f.id}); bootstrap.Modal.getInstance(document.getElementById('modalFactureDetail'))?.hide();">
+                        <button class="btn btn-success" data-permission="factures:ajouterPaiement" onclick="window.financesController.openModalPaiement(${f.id}); bootstrap.Modal.getInstance(document.getElementById('modalFactureDetail'))?.hide();">
                             <i class="bi bi-cash-stack me-1"></i>Enregistrer paiement
                         </button>
                     </div>
@@ -874,8 +874,8 @@ class FinancesController {
                         <div class="col-auto"><small class="text-secondary">${l.tauxTVA || 20}% TVA</small></div>
                         <div class="col-auto"><strong class="text-primary">${this.formatCurrency(l.totalHT || 0)}</strong></div>
                         <div class="col-auto">
-                            <button class="btn btn-sm btn-outline-primary" onclick="window.financesController.editLigneFacture(${index})"><i class="bi bi-pencil"></i></button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="window.financesController.deleteLigneFacture(${index})"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-sm btn-outline-primary" data-permission="factures:update" onclick="window.financesController.editLigneFacture(${index})"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" data-permission="factures:update" onclick="window.financesController.deleteLigneFacture(${index})"><i class="bi bi-trash"></i></button>
                         </div>
                     </div>
                 </div>
@@ -906,7 +906,7 @@ class FinancesController {
                         </div>
                         <div>
                             <small class="text-secondary">${this.formatDate(p.datePaiement)}</small>
-                            <button class="btn btn-sm btn-outline-danger ms-2" onclick="window.financesController.deletePaiementFacture(${index})"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-sm btn-outline-danger ms-2" data-permission="factures:update" onclick="window.financesController.deletePaiementFacture(${index})"><i class="bi bi-trash"></i></button>
                         </div>
                     </div>
                 </div>

@@ -134,6 +134,48 @@ function safeRepo(fn) {
 // ============================================================
 // HELPER: Wrapper pour sécuriser les IPC (Authentification + RBAC)
 // ============================================================
+const ROLE_CODE_ALIASES = {
+  ADMIN: ['admin', 'administrateur', 'entreprise'],
+  DIRECTEUR: ['direction', 'daf', 'directeur'],
+  COMPTABLE: ['comptable', 'finance'],
+  RH: ['rh', 'responsable rh', 'responsable_rh'],
+  MATERIEL: ['materiel', 'responsable materiel', 'responsable_materiel', 'logisticien'],
+  MAGASINIER: ['magasinier', 'stock'],
+  COMMERCIAL: ['commercial'],
+  CHEF_CHANTIER: ['chef de chantier', 'conducteur', 'chef_chantier'],
+  CHEF_PROJET: ['chef de projet', 'chef_projet']
+};
+
+function normalizeRoleCode(rawRole) {
+  if (!rawRole) return 'ADMIN';
+  const normalized = rawRole.toString().trim().toUpperCase();
+  if (ROLE_CODE_ALIASES[normalized] || Object.keys(ROLE_CODE_ALIASES).includes(normalized)) {
+    return Object.keys(ROLE_CODE_ALIASES).includes(normalized) ? normalized : normalized;
+  }
+  for (const [code, aliases] of Object.entries(ROLE_CODE_ALIASES)) {
+    if (aliases.some(alias => normalized.includes(alias.toUpperCase()))) {
+      return code;
+    }
+  }
+  return 'ADMIN';
+}
+
+function getSessionRoles() {
+  if (!_session) return [];
+  const rawRoles = [];
+  if (_session.roleCode) rawRoles.push(..._session.roleCode.toString().split(/[,;|]+/));
+  if (_session.roleNom) rawRoles.push(..._session.roleNom.toString().split(/[,;|]+/));
+  const roles = rawRoles
+    .map(r => normalizeRoleCode(r))
+    .filter(Boolean);
+  return roles.length ? Array.from(new Set(roles)) : ['ADMIN'];
+}
+
+function isRoleAllowed(allowedRoles, currentRoles) {
+  if (!allowedRoles || allowedRoles.length === 0) return true;
+  return currentRoles.some(role => allowedRoles.includes(role));
+}
+
 function secureHandle(channel, allowedRoles, handler) {
   ipcMain.handle(channel, async (event, ...args) => {
     if (!_session) {
@@ -141,16 +183,11 @@ function secureHandle(channel, allowedRoles, handler) {
       return { success: false, error: 'Non authentifié. Veuillez vous connecter.' };
     }
 
-    // Si des rôles spécifiques sont requis, on vérifie
     if (allowedRoles && allowedRoles.length > 0) {
-      // On autorise toujours le rôle Administrateur
-      const userRoleName = (_session.roleNom || '').toLowerCase();
-      const isAdmin = userRoleName.includes('admin');
-      
-      const hasRole = isAdmin || allowedRoles.some(role => userRoleName.includes(role.toLowerCase()));
-      
-      if (!hasRole) {
-        console.warn(`[Security] Accès refusé à ${channel} pour le rôle ${_session.roleNom}`);
+      const userRoles = getSessionRoles();
+      const isAdmin = userRoles.includes('ADMIN');
+      if (!isAdmin && !isRoleAllowed(allowedRoles, userRoles)) {
+        console.warn(`[Security] Accès refusé à ${channel} pour le rôle ${_session.roleNom || _session.roleCode}`);
         return { success: false, error: "Vous n'avez pas les droits nécessaires pour effectuer cette action." };
       }
     }
@@ -190,7 +227,7 @@ ipcMain.handle('session:clear', async () => { _session = null; return { success:
 // ============================================================
 // UTILISATEURS & RÔLES
 // ============================================================
-const rolesAdminRh = ['admin', 'rh'];
+const rolesAdminRh = ['ADMIN', 'RH'];
 
 secureHandle('utilisateurs:list', rolesAdminRh, (e, params) => utilisateurCtrl.getList(e, params))
 secureHandle('utilisateurs:getAll', rolesAdminRh, (e, params) => utilisateurCtrl.getList(e, params))
@@ -214,7 +251,7 @@ secureHandle('roles:list', rolesAdminRh, async () => {
 // ============================================================
 // ENTREPRISE
 // ============================================================
-const rolesAdminDg = ['admin', 'direction', 'daf'];
+const rolesAdminDg = ['ADMIN', 'DIRECTEUR'];
 
 secureHandle('entreprises:get', [], (e, id) => {
   try { return db.prepare('SELECT * FROM Entreprise WHERE id = ?').get(id) || null }
@@ -234,7 +271,7 @@ secureHandle('entreprises:update', rolesAdminDg, (e, id, data) => {
 // ============================================================
 // CHANTIERS, PHASES, INCIDENTS, AFFECTATIONS
 // ============================================================
-const rolesChantiers = ['admin', 'chef de chantier', 'conducteur', 'chef de projet', 'direction'];
+const rolesChantiers = ['ADMIN', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'];
 
 secureHandle('chantiers:list', rolesChantiers, (e, params) => chantierCtrl.getList(e, params))
 secureHandle('chantiers:get', rolesChantiers, (e, id) => chantierCtrl.getById(e, id))
@@ -275,7 +312,7 @@ secureHandle('affectations:delete', rolesChantiers, (e, id) => chantierCtrl.dele
 // ============================================================
 // RESSOURCES HUMAINES
 // ============================================================
-const rolesRH = ['admin', 'rh', 'chef de chantier', 'direction'];
+const rolesRH = ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'];
 
 secureHandle('employes:list', rolesRH, (e, params) => rhCtrl.getListEmployes(e, params))
 secureHandle('employes:get', rolesRH, (e, id) => rhCtrl.getEmployeById(e, id))
@@ -307,7 +344,7 @@ secureHandle('equipes:assignerChantier', rolesRH, (e, data) => safeRepo(() => re
 // ============================================================
 // STOCKS & FOURNISSEURS
 // ============================================================
-const rolesStocks = ['admin', 'magasinier', 'stock', 'chef de chantier'];
+const rolesStocks = ['ADMIN', 'MAGASINIER', 'CHEF_CHANTIER'];
 
 secureHandle('articles:list', rolesStocks, (e, params) => stockCtrl.getListArticles(e, params))
 secureHandle('articles:get', rolesStocks, (e, id) => stockCtrl.getArticleById(e, id))
@@ -334,7 +371,7 @@ secureHandle('mouvements:delete', rolesStocks, (e, id) => safeRepo(() => repos.m
 // ============================================================
 // MATÉRIELS
 // ============================================================
-const rolesMateriel = ['admin', 'logisticien', 'matériel', 'chef de chantier'];
+const rolesMateriel = ['ADMIN', 'MATERIEL', 'CHEF_CHANTIER'];
 
 secureHandle('materiels:list', rolesMateriel, (e, params) => materielCtrl.getListMateriels(e, params))
 secureHandle('materiels:get', rolesMateriel, (e, id) => materielCtrl.getMaterielById(e, id))
@@ -351,7 +388,7 @@ secureHandle('maintenances:update', rolesMateriel, (e, id, data) => materielCtrl
 // ============================================================
 // COMMERCIAL (Clients, Devis, Contrats, Factures, Paiements)
 // ============================================================
-const rolesCommercial = ['admin', 'commercial', 'direction', 'comptable'];
+const rolesCommercial = ['ADMIN', 'COMMERCIAL', 'DIRECTION', 'COMPTABLE'];
 
 secureHandle('clients:list', rolesCommercial, (e, params) => commercialCtrl.getListClients(e, params))
 secureHandle('clients:get', rolesCommercial, (e, id) => commercialCtrl.getClientById(e, id))
@@ -401,7 +438,7 @@ secureHandle('paiements:delete', rolesCommercial, (e, id) => safeRepo(() => repo
 // ============================================================
 // FINANCE & ALERTES
 // ============================================================
-const rolesFinance = ['admin', 'comptable', 'direction'];
+const rolesFinance = ['ADMIN', 'COMPTABLE', 'DIRECTEUR'];
 
 secureHandle('depenses:byChantier', rolesFinance, (e, id) => financeCtrl.getDepensesByChantier(e, id))
 secureHandle('depenses:totalByChantier', rolesFinance, (e, id) => financeCtrl.getTotalDepensesByChantier(e, id))
@@ -446,15 +483,29 @@ ipcMain.handle('sync:setAutoConfig', (e, config) => syncCtrl.setAutoConfig(e, co
 // PRÉFÉRENCES UTILISATEUR
 // ============================================================
 ipcMain.handle('preferences:get', (e, userId) => safeRepo(() => {
-  const row = db.prepare('SELECT * FROM Preference WHERE utilisateurId = ?').get(userId)
-  return row ? JSON.parse(row.data || '{}') : {}
+  const row = db.prepare('SELECT * FROM Preference WHERE userId = ?').get(userId)
+  return row || {}
 }))
 ipcMain.handle('preferences:update', (e, userId, data) => safeRepo(() => {
-  const existing = db.prepare('SELECT id FROM Preference WHERE utilisateurId = ?').get(userId)
+  const existing = db.prepare('SELECT id FROM Preference WHERE userId = ?').get(userId)
   if (existing) {
-    db.prepare('UPDATE Preference SET data = ? WHERE utilisateurId = ?').run(JSON.stringify(data), userId)
+    db.prepare(`
+      UPDATE Preference 
+      SET theme = @theme, langue = @langue, dateFormat = @dateFormat, devise = @devise,
+          notifEmail = @notifEmail, notifPush = @notifPush, 
+          notifFacturesRetard = @notifFacturesRetard, notifStockBas = @notifStockBas
+      WHERE userId = @userId
+    `).run({ ...data, userId })
   } else {
-    db.prepare('INSERT INTO Preference (utilisateurId, data) VALUES (?, ?)').run(userId, JSON.stringify(data))
+    db.prepare(`
+      INSERT INTO Preference (
+        userId, theme, langue, dateFormat, devise, 
+        notifEmail, notifPush, notifFacturesRetard, notifStockBas
+      ) VALUES (
+        @userId, @theme, @langue, @dateFormat, @devise, 
+        @notifEmail, @notifPush, @notifFacturesRetard, @notifStockBas
+      )
+    `).run({ ...data, userId })
   }
   return data
 }))

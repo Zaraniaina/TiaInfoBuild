@@ -192,9 +192,9 @@ class DepensesController {
                     <td><span class="badge ${st.class}">${st.label}</span></td>
                     <td>
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary btn-edit" data-id="${d.id}" title="Modifier"><i class="bi bi-pencil"></i></button>
-                            ${d.statut === 'en_attente' ? `<button class="btn btn-outline-success btn-validate" data-id="${d.id}" title="Valider"><i class="bi bi-check"></i></button>` : ''}
-                            <button class="btn btn-outline-danger btn-delete" data-id="${d.id}" title="Supprimer"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-outline-primary btn-edit" data-id="${d.id}" title="Modifier" data-permission="depenses:update"><i class="bi bi-pencil"></i></button>
+                            ${d.statut === 'en_attente' ? `<button class="btn btn-outline-success btn-validate" data-id="${d.id}" title="Valider" data-permission="depenses:update"><i class="bi bi-check"></i></button>` : ''}
+                            <button class="btn btn-outline-danger btn-delete" data-id="${d.id}" title="Supprimer" data-permission="depenses:delete"><i class="bi bi-trash"></i></button>
                         </div>
                     </td>
                 </tr>

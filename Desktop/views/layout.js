@@ -23,7 +23,7 @@ const ROLE_SPACES = {
   CHEF_CHANTIER: {
     label: 'Terrain',
     icon: 'bi-building',
-    sections: ['chantiers', 'rh_pointage', 'materiel', 'stocks']
+    sections: ['pilotage', 'chantiers', 'rh', 'materiel', 'stocks']
   },
   CHEF_PROJET: {
     label: 'Projets',
@@ -33,14 +33,14 @@ const ROLE_SPACES = {
   COMPTABLE: {
     label: 'Comptabilité',
     icon: 'bi-calculator',
-    sections: ['finance', 'commercial_facturation']
+    sections: ['finance', 'commercial']
   },
-  RESPONSABLE_RH: {
+  RH: {
     label: 'Ressources Humaines',
     icon: 'bi-people',
     sections: ['rh']
   },
-  RESPONSABLE_MATERIEL: {
+  MATERIEL: {
     label: 'Logistique',
     icon: 'bi-tools',
     sections: ['materiel']
@@ -60,15 +60,123 @@ const ROLE_SPACES = {
 // Routes autorisées par rôle
 const ROLE_ROUTES = {
   ADMIN: ['dashboard', 'chantiers', 'employes', 'pointages', 'equipes', 'heures-sup', 'materiels', 'stocks', 'fournisseurs', 'mouvements', 'clients', 'devis', 'contrats', 'factures', 'paiements', 'finances', 'depenses', 'rapports', 'alertes', 'utilisateurs', 'parametres'],
-  DIRECTEUR: ['dashboard', 'chantiers', 'finances', 'rapports', 'alertes'],
-  CHEF_CHANTIER: ['dashboard', 'chantiers', 'pointages', 'materiels', 'stocks', 'mouvements'],
-  CHEF_PROJET: ['dashboard', 'chantiers'],
-  COMPTABLE: ['dashboard', 'finances', 'depenses', 'rapports', 'factures', 'paiements', 'alertes'],
-  RESPONSABLE_RH: ['dashboard', 'employes', 'pointages', 'equipes', 'heures-sup'],
-  RESPONSABLE_MATERIEL: ['dashboard', 'materiels'],
-  MAGASINIER: ['dashboard', 'stocks', 'fournisseurs', 'mouvements'],
-  COMMERCIAL: ['dashboard', 'clients', 'devis', 'contrats', 'factures', 'paiements']
+  DIRECTEUR: ['dashboard', 'chantiers', 'finances', 'depenses', 'rapports', 'alertes', 'employes', 'pointages', 'equipes', 'materiels', 'fournisseurs', 'clients', 'devis', 'contrats', 'factures'],
+  CHEF_CHANTIER: ['dashboard', 'chantiers', 'pointages', 'materiels', 'stocks', 'mouvements', 'alertes'],
+  CHEF_PROJET: ['dashboard', 'chantiers', 'alertes', 'pointages', 'employes', 'equipes'],
+  COMPTABLE: ['dashboard', 'finances', 'depenses', 'rapports', 'alertes', 'factures', 'paiements', 'clients', 'contrats', 'fournisseurs', 'employes', 'pointages', 'equipes'],
+  RH: ['dashboard', 'employes', 'pointages', 'equipes', 'heures-sup', 'alertes'],
+  MATERIEL: ['dashboard', 'materiels', 'alertes', 'chantiers'],
+  MAGASINIER: ['dashboard', 'stocks', 'fournisseurs', 'mouvements', 'alertes'],
+  COMMERCIAL: ['dashboard', 'clients', 'devis', 'contrats', 'factures', 'paiements', 'alertes']
 };
+
+const PERMISSION_MAP = {
+  'chantiers:create': ['ADMIN', 'DIRECTEUR', 'CHEF_PROJET'],
+  'chantiers:update': ['ADMIN', 'DIRECTEUR', 'CHEF_PROJET'],
+  'chantiers:delete': ['ADMIN', 'DIRECTEUR'],
+  'employes:list': ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'],
+  'employes:get': ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'],
+  'employes:create': ['ADMIN', 'RH'],
+  'employes:update': ['ADMIN', 'RH'],
+  'employes:delete': ['ADMIN', 'RH'],
+  'pointages:list': ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'],
+  'pointages:create': ['ADMIN', 'RH', 'CHEF_CHANTIER'],
+  'pointages:update': ['ADMIN', 'RH'],
+  'pointages:delete': ['ADMIN', 'RH'],
+  'heures-sup:list': ['ADMIN', 'RH', 'DIRECTEUR', 'COMPTABLE'],
+  'heures-sup:create': ['ADMIN', 'RH'],
+  'heures-sup:update': ['ADMIN', 'RH'],
+  'heures-sup:delete': ['ADMIN', 'RH'],
+  'equipes:list': ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'],
+  'equipes:create': ['ADMIN', 'RH'],
+  'equipes:update': ['ADMIN', 'RH'],
+  'equipes:delete': ['ADMIN', 'RH'],
+  'articles:list': ['ADMIN', 'MAGASINIER', 'CHEF_CHANTIER', 'DIRECTEUR', 'COMPTABLE'],
+  'articles:create': ['ADMIN', 'MAGASINIER'],
+  'articles:update': ['ADMIN', 'MAGASINIER'],
+  'articles:delete': ['ADMIN', 'MAGASINIER'],
+  'fournisseurs:list': ['ADMIN', 'MAGASINIER', 'DIRECTEUR', 'COMPTABLE'],
+  'fournisseurs:create': ['ADMIN', 'MAGASINIER'],
+  'fournisseurs:update': ['ADMIN', 'MAGASINIER'],
+  'fournisseurs:delete': ['ADMIN', 'MAGASINIER'],
+  'mouvements:list': ['ADMIN', 'MAGASINIER', 'CHEF_CHANTIER'],
+  'mouvements:create': ['ADMIN', 'MAGASINIER', 'CHEF_CHANTIER'],
+  'mouvements:delete': ['ADMIN', 'MAGASINIER'],
+  'materiels:list': ['ADMIN', 'MATERIEL', 'CHEF_CHANTIER', 'DIRECTEUR'],
+  'materiels:create': ['ADMIN', 'MATERIEL'],
+  'materiels:update': ['ADMIN', 'MATERIEL'],
+  'materiels:delete': ['ADMIN', 'MATERIEL'],
+  'clients:list': ['ADMIN', 'COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'],
+  'clients:create': ['ADMIN', 'COMMERCIAL'],
+  'clients:update': ['ADMIN', 'COMMERCIAL'],
+  'clients:delete': ['ADMIN', 'COMMERCIAL'],
+  'devis:list': ['ADMIN', 'COMMERCIAL', 'DIRECTEUR'],
+  'devis:create': ['ADMIN', 'COMMERCIAL'],
+  'devis:update': ['ADMIN', 'COMMERCIAL'],
+  'devis:delete': ['ADMIN', 'COMMERCIAL'],
+  'contrats:list': ['ADMIN', 'COMMERCIAL', 'DIRECTEUR'],
+  'contrats:create': ['ADMIN', 'COMMERCIAL'],
+  'contrats:update': ['ADMIN', 'COMMERCIAL'],
+  'factures:list': ['ADMIN', 'COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'],
+  'factures:create': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
+  'factures:update': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
+  'factures:dupliquer': ['ADMIN', 'COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'],
+  'factures:envoyer': ['ADMIN', 'COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'],
+  'paiements:list': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
+  'paiements:create': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
+  'depenses:list': ['ADMIN', 'COMPTABLE', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'],
+  'depenses:create': ['ADMIN', 'COMPTABLE', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'],
+  'depenses:update': ['ADMIN', 'COMPTABLE', 'DIRECTEUR'],
+  'depenses:delete': ['ADMIN', 'COMPTABLE', 'DIRECTEUR'],
+  'factures:ajouterPaiement': ['ADMIN', 'COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'],
+  'devis:transformerEnContrat': ['ADMIN', 'COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'],
+  'rapports:list': ['ADMIN', 'DIRECTEUR', 'COMPTABLE'],
+  'alertes:list': ['ADMIN', 'DIRECTEUR', 'COMPTABLE', 'RH', 'CHEF_CHANTIER', 'CHEF_PROJET', 'MATERIEL', 'MAGASINIER', 'COMMERCIAL'],
+  'dashboard:list': ['ADMIN', 'DIRECTEUR', 'COMPTABLE', 'RH', 'CHEF_CHANTIER', 'CHEF_PROJET', 'MATERIEL', 'MAGASINIER', 'COMMERCIAL']
+};
+
+const ROLE_CODE_ALIASES = {
+  ADMIN: ['admin', 'administrateur', 'administration'],
+  DIRECTEUR: ['direction', 'daf', 'directeur'],
+  COMPTABLE: ['comptable', 'finance'],
+  RH: ['rh', 'responsable rh', 'responsablerh'],
+  MATERIEL: ['materiel', 'responsable materiel', 'responsable_materiel', 'logisticien'],
+  MAGASINIER: ['magasinier', 'stock'],
+  COMMERCIAL: ['commercial'],
+  CHEF_CHANTIER: ['chef de chantier', 'conducteur', 'chef_chantier'],
+  CHEF_PROJET: ['chef de projet', 'chef_projet']
+};
+
+function normalizeRoleCode(rawRole) {
+  if (!rawRole) return 'ADMIN';
+  const normalized = rawRole.toString().trim().toUpperCase();
+  if (ROLE_SPACES[normalized]) return normalized;
+  for (const [code, aliases] of Object.entries(ROLE_CODE_ALIASES)) {
+    if (aliases.some(alias => normalized.includes(alias.toUpperCase()))) return code;
+  }
+  return 'ADMIN';
+}
+
+function getUserRoles(roleValue) {
+  if (!roleValue) return ['ADMIN'];
+  const rawCodes = Array.isArray(roleValue)
+    ? roleValue
+    : roleValue.toString().split(/[,;|]+/);
+  const roles = rawCodes.map(code => normalizeRoleCode(code)).filter(Boolean);
+  return roles.length ? Array.from(new Set(roles)) : ['ADMIN'];
+}
+
+function isRoleAllowed(allowedRoles, currentRoles) {
+  if (!allowedRoles || allowedRoles.length === 0) return true;
+  return currentRoles.some(role => allowedRoles.includes(role));
+}
+
+function hasPermission(action, module) {
+  const permissionKey = `${module}:${action}`;
+  const currentRoles = getUserRoles(window.AppState.roleCode);
+  const allowed = PERMISSION_MAP[permissionKey];
+  return isRoleAllowed(allowed, currentRoles);
+}
 
 // État global
 window.AppState = {
@@ -94,6 +202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initSyncButton();
   initLogout();
   initOnlineDetection();
+  initPermissionObserver();
   setupRouterGuards();
 });
 
@@ -119,10 +228,10 @@ async function loadUserSession() {
       nom: user.entrepriseNom || 'TIA Construction'
     };
 
-    // Déterminer le rôle
-    const roleCode = (user.roleCode || 'ADMIN').toUpperCase();
+    const roleCode = normalizeRoleCode(user.roleCode || user.roleNom || 'ADMIN');
     window.AppState.roleCode = roleCode;
     window.AppState.role = ROLE_SPACES[roleCode] || ROLE_SPACES.ADMIN;
+    window.AppState.roles = getUserRoles(user.roleCode || user.roleNom || 'ADMIN');
 
     updateUserUI(user);
     filterSidebarByRole(roleCode);
@@ -142,40 +251,115 @@ function hasAccess(route) {
 // SIDEBAR — Filtrage par rôle
 // ============================================================
 function filterSidebarByRole(roleCode) {
-  const allowedRoutes = ROLE_ROUTES[roleCode] || ROLE_ROUTES.ADMIN;
+  const currentRoles = getUserRoles(roleCode);
   const allowedSections = (ROLE_SPACES[roleCode] || ROLE_SPACES.ADMIN).sections;
 
-  // Masquer les liens non autorisés
   document.querySelectorAll('.sidebar-link[data-route]').forEach(link => {
     const route = link.dataset.route;
-    if (!allowedRoutes.includes(route)) {
-      link.style.display = 'none';
-    }
+    const linkRoles = link.dataset.roles ? link.dataset.roles.split(',').map(r => normalizeRoleCode(r)) : null;
+    const visible = linkRoles ? isRoleAllowed(linkRoles, currentRoles) : hasAccess(route);
+    link.style.display = visible ? '' : 'none';
   });
 
-  // Masquer les sections vides
   document.querySelectorAll('.sidebar-section-label').forEach(label => {
     const section = label.dataset.section;
-    if (section && !allowedSections.includes(section)) {
-      label.style.display = 'none';
-      // Masquer les liens jusqu'à la prochaine section
-      let next = label.nextElementSibling;
-      while (next && !next.classList.contains('sidebar-section-label')) {
-        if (next.classList.contains('sidebar-link')) {
+    const labelRoles = label.dataset.roles ? label.dataset.roles.split(',').map(r => normalizeRoleCode(r)) : null;
+    let visible = true;
+    if (labelRoles) {
+      visible = isRoleAllowed(labelRoles, currentRoles);
+    } else if (section) {
+      visible = allowedSections.includes(section);
+    }
+
+    label.style.display = visible ? '' : 'none';
+    let next = label.nextElementSibling;
+    while (next && !next.classList.contains('sidebar-section-label')) {
+      if (next.classList.contains('sidebar-link')) {
+        if (!visible) {
           next.style.display = 'none';
+        } else if (next.dataset.route) {
+          const linkRoles = next.dataset.roles ? next.dataset.roles.split(',').map(r => normalizeRoleCode(r)) : null;
+          const linkVisible = linkRoles ? isRoleAllowed(linkRoles, currentRoles) : hasAccess(next.dataset.route);
+          next.style.display = linkVisible ? '' : 'none';
         }
-        next = next.nextElementSibling;
       }
+      next = next.nextElementSibling;
     }
   });
 
-  // Afficher l'espace du rôle dans le header sidebar
   const roleSpace = ROLE_SPACES[roleCode];
   const spaceBadge = document.getElementById('roleSpaceBadge');
   if (spaceBadge && roleSpace) {
     spaceBadge.innerHTML = `<i class="bi ${roleSpace.icon} me-1"></i>${roleSpace.label}`;
     spaceBadge.style.display = 'inline-flex';
   }
+}
+
+function parsePermissionSpec(spec) {
+  if (!spec) return null;
+  const normalized = spec.toString().trim().toLowerCase();
+  if (normalized.includes(':')) {
+    const parts = normalized.split(':').map(p => p.trim());
+    return { module: parts[0], action: parts[1] };
+  }
+  if (normalized.includes('.')) {
+    const parts = normalized.split('.').map(p => p.trim());
+    return { module: parts[0], action: parts[1] };
+  }
+  return null;
+}
+
+function shouldShowElementByPermission(el) {
+  const permission = el.dataset.permission;
+  const roles = el.dataset.roles;
+
+  if (permission) {
+    const specs = permission.split(',').map(p => p.trim()).filter(Boolean);
+    if (specs.length === 0) return true;
+    return specs.some(spec => {
+      const parsed = parsePermissionSpec(spec);
+      if (!parsed) return false;
+      return hasPermission(parsed.action, parsed.module);
+    });
+  }
+
+  if (roles) {
+    const currentRoles = getUserRoles(window.AppState.roleCode);
+    const allowedRoles = roles.split(',').map(r => normalizeRoleCode(r));
+    return isRoleAllowed(allowedRoles, currentRoles);
+  }
+
+  return true;
+}
+
+function applyPagePermissions() {
+  document.querySelectorAll('[data-permission], [data-roles]').forEach(el => {
+    const visible = shouldShowElementByPermission(el);
+    el.style.display = visible ? '' : 'none';
+  });
+}
+
+function initPermissionObserver() {
+  const contentArea = document.getElementById('contentArea');
+  if (!contentArea || typeof MutationObserver === 'undefined') return;
+
+  const observer = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (!(node instanceof HTMLElement)) return;
+
+        if (node.matches('[data-permission], [data-roles]')) {
+          node.style.display = shouldShowElementByPermission(node) ? '' : 'none';
+        }
+
+        node.querySelectorAll('[data-permission], [data-roles]').forEach(el => {
+          el.style.display = shouldShowElementByPermission(el) ? '' : 'none';
+        });
+      });
+    });
+  });
+
+  observer.observe(contentArea, { childList: true, subtree: true });
 }
 
 function initSidebar() {
@@ -372,6 +556,9 @@ function setupRouterGuards() {
     if (typeof window.updateCurrencySymbols === 'function') {
       window.updateCurrencySymbols();
     }
+    if (typeof window.applyPagePermissions === 'function') {
+      window.applyPagePermissions();
+    }
     document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show'));
     const contentArea = document.getElementById('contentArea');
     if (contentArea) contentArea.scrollTop = 0;
@@ -405,3 +592,7 @@ window.handleLogout = handleLogout;
 window.hasAccess = hasAccess;
 window.ROLE_SPACES = ROLE_SPACES;
 window.ROLE_ROUTES = ROLE_ROUTES;
+window.hasPermission = hasPermission;
+window.applyPagePermissions = applyPagePermissions;
+window.currentRoleCode = () => window.AppState.roleCode;
+window.PERMISSION_MAP = PERMISSION_MAP;

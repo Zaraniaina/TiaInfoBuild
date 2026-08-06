@@ -508,10 +508,10 @@ class ChantiersController {
               <button class="btn btn-outline-secondary btn-view" data-id="${c.id}" title="Voir">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-primary btn-edit" data-id="${c.id}" title="Modifier">
+              <button class="btn btn-outline-primary btn-edit" data-id="${c.id}" title="Modifier" data-permission="chantiers:update">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-outline-danger btn-delete" data-id="${c.id}" title="Supprimer">
+              <button class="btn btn-outline-danger btn-delete" data-id="${c.id}" title="Supprimer" data-permission="chantiers:delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>

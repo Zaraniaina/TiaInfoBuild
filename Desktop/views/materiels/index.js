@@ -128,11 +128,11 @@ class MaterielsController {
                 <td class="small">${prochaine}</td>
                 <td>
                     <div class="d-flex gap-1">
-                        <button class="btn btn-sm btn-outline-primary" title="Modifier"
+                        <button class="btn btn-sm btn-outline-primary" title="Modifier" data-permission="materiels:update"
                             onclick="window.materielsController.openModal(${m.id})">
                             <i class="bi bi-pencil"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-danger" title="Supprimer"
+                        <button class="btn btn-sm btn-outline-danger" title="Supprimer" data-permission="materiels:delete"
                             onclick="window.materielsController.deleteMateriel(${m.id}, '${this.escHtml(m.nom || m.designation || '')}')">
                             <i class="bi bi-trash"></i>
                         </button>

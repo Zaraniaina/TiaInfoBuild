@@ -183,7 +183,7 @@ class MouvementsController {
                     <td>${this.escapeHtml(chantierNom)}</td>
                     <td><small>${this.escapeHtml(m.motif || '—')}</small></td>
                     <td>
-                        <button class="btn btn-sm btn-outline-danger btn-delete" data-id="${m.id}" title="Supprimer">
+                        <button class="btn btn-sm btn-outline-danger btn-delete" data-id="${m.id}" title="Supprimer" data-permission="mouvements:delete">
                             <i class="bi bi-trash"></i>
                         </button>
                     </td>

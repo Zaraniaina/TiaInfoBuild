@@ -28,77 +28,77 @@
 
     <nav class="sidebar-nav" id="sidebarNav">
       <!-- PILOTAGE -->
-      <div class="sidebar-section-label" data-section="pilotage">Pilotage</div>
-      <a href="#dashboard" class="sidebar-link" data-route="dashboard">
+      <div class="sidebar-section-label" data-section="pilotage" data-roles="ADMIN,DIRECTEUR,CHEF_CHANTIER,CHEF_PROJET,COMPTABLE,RH,MATERIEL,MAGASINIER,COMMERCIAL">Pilotage</div>
+      <a href="#dashboard" class="sidebar-link" data-route="dashboard" data-roles="ADMIN,DIRECTEUR,CHEF_CHANTIER,CHEF_PROJET,COMPTABLE,RH,MATERIEL,MAGASINIER,COMMERCIAL">
         <i class="bi bi-speedometer2"></i> Tableau de bord
       </a>
-      <a href="#chantiers" class="sidebar-link" data-route="chantiers">
+      <a href="#chantiers" class="sidebar-link" data-route="chantiers" data-roles="ADMIN,DIRECTEUR,CHEF_CHANTIER,CHEF_PROJET,COMPTABLE">
         <i class="bi bi-building"></i> Chantiers
       </a>
 
-      <!-- FINANCES (visible pour ADMIN, DIRECTEUR, COMPTABLE) -->
-      <div class="sidebar-section-label" data-section="finance">Finances</div>
-      <a href="#finances" class="sidebar-link" data-route="finances">
+      <!-- FINANCES (visible pour ADMIN, DIRECTEUR, COMPTABLE, CHEF_CHANTIER, CHEF_PROJET) -->
+      <div class="sidebar-section-label" data-section="finance" data-roles="ADMIN,DIRECTEUR,COMPTABLE,CHEF_CHANTIER,CHEF_PROJET">Finances</div>
+      <a href="#finances" class="sidebar-link" data-route="finances" data-roles="ADMIN,DIRECTEUR,COMPTABLE"> 
         <i class="bi bi-currency-exchange"></i> Finances
       </a>
-      <a href="#depenses" class="sidebar-link" data-route="depenses">
+      <a href="#depenses" class="sidebar-link" data-route="depenses" data-roles="ADMIN,COMPTABLE,DIRECTEUR,CHEF_CHANTIER,CHEF_PROJET">
         <i class="bi bi-cash-stack"></i> Dépenses
       </a>
-      <a href="#rapports" class="sidebar-link" data-route="rapports">
+      <a href="#rapports" class="sidebar-link" data-route="rapports" data-roles="ADMIN,DIRECTEUR,COMPTABLE">
         <i class="bi bi-graph-up"></i> Rapports
       </a>
-      <a href="#alertes" class="sidebar-link" data-route="alertes">
+      <a href="#alertes" class="sidebar-link" data-route="alertes" data-roles="ADMIN,DIRECTEUR,COMPTABLE,RH,CHEF_CHANTIER,CHEF_PROJET,MATERIEL,MAGASINIER,COMMERCIAL">
         <i class="bi bi-exclamation-triangle"></i> Alertes
       </a>
 
-      <!-- RH (visible pour ADMIN, RESPONSABLE_RH, CHEF_CHANTIER) -->
-      <div class="sidebar-section-label" data-section="rh">Ressources Humaines</div>
-      <a href="#employes" class="sidebar-link" data-route="employes">
+      <!-- RH (visible pour ADMIN, RH, CHEF_CHANTIER, CHEF_PROJET, DIRECTEUR, COMPTABLE) -->
+      <div class="sidebar-section-label" data-section="rh" data-roles="ADMIN,RH,CHEF_CHANTIER,CHEF_PROJET,DIRECTEUR,COMPTABLE">Ressources Humaines</div>
+      <a href="#employes" class="sidebar-link" data-route="employes" data-roles="ADMIN,RH,DIRECTEUR,CHEF_CHANTIER,CHEF_PROJET,COMPTABLE">
         <i class="bi bi-people"></i> Employés
       </a>
-      <a href="#pointages" class="sidebar-link" data-route="pointages">
+      <a href="#pointages" class="sidebar-link" data-route="pointages" data-roles="ADMIN,RH,DIRECTEUR,CHEF_CHANTIER,CHEF_PROJET,COMPTABLE">
         <i class="bi bi-clock-history"></i> Pointages
       </a>
-      <a href="#equipes" class="sidebar-link" data-route="equipes">
+      <a href="#equipes" class="sidebar-link" data-route="equipes" data-roles="ADMIN,RH,DIRECTEUR,CHEF_CHANTIER,CHEF_PROJET,COMPTABLE">
         <i class="bi bi-people-fill"></i> Équipes
       </a>
-      <a href="#heures-sup" class="sidebar-link" data-route="heures-sup">
+      <a href="#heures-sup" class="sidebar-link" data-route="heures-sup" data-roles="ADMIN,RH,DIRECTEUR,COMPTABLE">
         <i class="bi bi-clock"></i> Heures sup
       </a>
 
-      <!-- MATÉRIEL (visible pour ADMIN, RESPONSABLE_MATERIEL, CHEF_CHANTIER) -->
-      <div class="sidebar-section-label" data-section="materiel">Matériel</div>
-      <a href="#materiels" class="sidebar-link" data-route="materiels">
+      <!-- MATÉRIEL (visible pour ADMIN, MATERIEL, CHEF_CHANTIER, DIRECTEUR) -->
+      <div class="sidebar-section-label" data-section="materiel" data-roles="ADMIN,MATERIEL,CHEF_CHANTIER,DIRECTEUR">Matériel</div>
+      <a href="#materiels" class="sidebar-link" data-route="materiels" data-roles="ADMIN,MATERIEL,CHEF_CHANTIER,DIRECTEUR">
         <i class="bi bi-tools"></i> Matériels
       </a>
 
-      <!-- STOCKS (visible pour ADMIN, MAGASINIER, CHEF_CHANTIER) -->
-      <div class="sidebar-section-label" data-section="stocks">Stocks</div>
-      <a href="#stocks" class="sidebar-link" data-route="stocks">
+      <!-- STOCKS (visible pour ADMIN, MAGASINIER, CHEF_CHANTIER, DIRECTEUR, COMPTABLE) -->
+      <div class="sidebar-section-label" data-section="stocks" data-roles="ADMIN,MAGASINIER,CHEF_CHANTIER,DIRECTEUR,COMPTABLE">Stocks</div>
+      <a href="#stocks" class="sidebar-link" data-route="stocks" data-roles="ADMIN,MAGASINIER,CHEF_CHANTIER">
         <i class="bi bi-box-seam"></i> Articles
       </a>
-      <a href="#fournisseurs" class="sidebar-link" data-route="fournisseurs">
+      <a href="#fournisseurs" class="sidebar-link" data-route="fournisseurs" data-roles="ADMIN,MAGASINIER,DIRECTEUR,COMPTABLE">
         <i class="bi bi-truck"></i> Fournisseurs
       </a>
-      <a href="#mouvements" class="sidebar-link" data-route="mouvements">
+      <a href="#mouvements" class="sidebar-link" data-route="mouvements" data-roles="ADMIN,MAGASINIER,CHEF_CHANTIER">
         <i class="bi bi-arrow-left-right"></i> Mouvements
       </a>
 
-      <!-- COMMERCIAL (visible pour ADMIN, COMMERCIAL) -->
-      <div class="sidebar-section-label" data-section="commercial">Commercial</div>
-      <a href="#clients" class="sidebar-link" data-route="clients">
+      <!-- COMMERCIAL (visible pour ADMIN, COMMERCIAL, DIRECTEUR, COMPTABLE) -->
+      <div class="sidebar-section-label" data-section="commercial" data-roles="ADMIN,COMMERCIAL,DIRECTEUR,COMPTABLE">Commercial</div>
+      <a href="#clients" class="sidebar-link" data-route="clients" data-roles="ADMIN,COMMERCIAL,DIRECTEUR,COMPTABLE">
         <i class="bi bi-person-badge"></i> Clients
       </a>
-      <a href="#devis" class="sidebar-link" data-route="devis">
+      <a href="#devis" class="sidebar-link" data-route="devis" data-roles="ADMIN,COMMERCIAL,DIRECTEUR">
         <i class="bi bi-file-earmark-text"></i> Devis
       </a>
-      <a href="#contrats" class="sidebar-link" data-route="contrats">
+      <a href="#contrats" class="sidebar-link" data-route="contrats" data-roles="ADMIN,COMMERCIAL,DIRECTEUR,COMPTABLE">
         <i class="bi bi-file-earmark-check"></i> Contrats
       </a>
-      <a href="#factures" class="sidebar-link" data-route="factures">
+      <a href="#factures" class="sidebar-link" data-route="factures" data-roles="ADMIN,COMMERCIAL,COMPTABLE,DIRECTEUR">
         <i class="bi bi-receipt"></i> Factures
       </a>
-      <a href="#paiements" class="sidebar-link" data-route="paiements">
+      <a href="#paiements" class="sidebar-link" data-route="paiements" data-roles="ADMIN,COMMERCIAL,COMPTABLE">
         <i class="bi bi-cash-coin"></i> Paiements
       </a>
 
