@@ -1,13 +1,18 @@
 const { app, BrowserWindow, ipcMain, Menu, dialog, shell } = require('electron')
 const path = require('path')
-
-const { initDatabase } = require('./models/init')
 const fs = require('fs')
+const { initDatabase } = require('./models/init')
 const db = require('./models/db')
-// Repositories
+
+// ============================================================
+// REPOSITORIES
+// ============================================================
 const ChantierRepository = require('./models/repositories/ChantierRepository')
 const PhaseRepository = require('./models/repositories/PhaseRepository')
 const IncidentRepository = require('./models/repositories/IncidentRepository')
+const AffectationRessourceRepository = require('./models/repositories/AffectationRessourceRepository')
+const AffectationMaterielRepository = require('./models/repositories/AffectationMaterielRepository')
+const AffectationChantierRepository = require('./models/repositories/AffectationChantierRepository')
 const EmployeRepository = require('./models/repositories/EmployeRepository')
 const PointageRepository = require('./models/repositories/PointageRepository')
 const HeureSupplementaireRepository = require('./models/repositories/HeureSupplementaireRepository')
@@ -22,6 +27,7 @@ const ContratRepository = require('./models/repositories/ContratRepository')
 const FactureRepository = require('./models/repositories/FactureRepository')
 const PaiementRepository = require('./models/repositories/PaiementRepository')
 const DepenseRepository = require('./models/repositories/DepenseRepository')
+const RapportFinancierRepository = require('./models/repositories/RapportFinancierRepository')
 const AlerteRepository = require('./models/repositories/AlerteRepository')
 const MaterielRepository = require('./models/repositories/MaterielRepository')
 const MaintenanceRepository = require('./models/repositories/MaintenanceRepository')
@@ -29,7 +35,9 @@ const DashboardRepository = require('./models/repositories/DashboardRepository')
 const SyncRepository = require('./models/repositories/SyncRepository')
 const UtilisateurRepository = require('./models/repositories/UtilisateurRepository')
 
-// Controllers
+// ============================================================
+// CONTROLLERS
+// ============================================================
 const { handleLogin, handleRegister } = require('./controllers/authController')
 const ChantierController = require('./controllers/chantierController')
 const RhController = require('./controllers/rhController')
@@ -41,14 +49,22 @@ const DashboardController = require('./controllers/dashboardController')
 const SyncController = require('./controllers/syncController')
 const UtilisateurController = require('./controllers/utilisateurController')
 
-// Services
+// ============================================================
+// SERVICES
+// ============================================================
 const SyncService = require('./services/syncService')
+const apiClient = require('./services/apiClient')
 
-// Instanciation unique de tous les repositories
+// ============================================================
+// INSTANCIATION UNIQUE DES REPOSITORIES
+// ============================================================
 const repos = {
   chantiers: new ChantierRepository(),
   phases: new PhaseRepository(),
   incidents: new IncidentRepository(),
+  affectationsRessource: new AffectationRessourceRepository(),
+  affectationsMateriel: new AffectationMaterielRepository(),
+  affectationsChantier: new AffectationChantierRepository(),
   employes: new EmployeRepository(),
   pointages: new PointageRepository(),
   heuresSup: new HeureSupplementaireRepository(),
@@ -63,6 +79,7 @@ const repos = {
   factures: new FactureRepository(),
   paiements: new PaiementRepository(),
   depenses: new DepenseRepository(),
+  rapportsFinanciers: new RapportFinancierRepository(),
   alertes: new AlerteRepository(),
   materiels: new MaterielRepository(),
   maintenances: new MaintenanceRepository(),
@@ -71,7 +88,9 @@ const repos = {
   utilisateurs: new UtilisateurRepository()
 }
 
-// Instanciation des contrôleurs
+// ============================================================
+// INSTANCIATION DES CONTROLLERS
+// ============================================================
 const chantierCtrl = new ChantierController(repos)
 const rhCtrl = new RhController(repos)
 const stockCtrl = new StockController(repos)
@@ -82,15 +101,48 @@ const dashboardCtrl = new DashboardController(repos)
 const syncCtrl = new SyncController(repos)
 const utilisateurCtrl = new UtilisateurController(repos)
 
-// Instanciation des services
+// ============================================================
+// INSTANCIATION DES SERVICES
+// ============================================================
 const syncService = new SyncService(repos.sync)
+
 const dbPath = path.join(__dirname, 'tia_info_build.sqlite')
 const backupsDir = path.join(app.getPath('userData'), 'backups')
 if (!fs.existsSync(backupsDir)) fs.mkdirSync(backupsDir, { recursive: true })
 
+// ============================================================
+// SESSION PERSISTÉE (survit au redémarrage de l'app)
+// ============================================================
+const sessionFile = path.join(app.getPath('userData'), 'session.json')
+
+function loadSession() {
+  try {
+    return JSON.parse(fs.readFileSync(sessionFile, 'utf-8'))
+  } catch (e) {
+    return null
+  }
+}
+function saveSession(user) {
+  _session = user
+  try {
+    fs.writeFileSync(sessionFile, JSON.stringify(user))
+  } catch (e) {
+    console.error('saveSession error:', e)
+  }
+}
+function clearSession() {
+  _session = null
+  try {
+    if (fs.existsSync(sessionFile)) fs.unlinkSync(sessionFile)
+  } catch (e) { /* ignoré */ }
+}
+let _session = loadSession()
+
+// ============================================================
+// FENÊTRE PRINCIPALE
+// ============================================================
 function createWindow() {
   Menu.setApplicationMenu(null)
-
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -104,15 +156,11 @@ function createWindow() {
     titleBarStyle: 'default',
     show: false
   })
-
   win.maximize()
-
   win.once('ready-to-show', () => {
     win.show()
   })
-
   win.loadFile('views/index.html')
-
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
     return { action: 'deny' }
@@ -120,31 +168,36 @@ function createWindow() {
 }
 
 // ============================================================
-// REGISTRATION DES IPC HANDLERS VIA CONTROULERS (Style MVC)
+// REGISTRATION DES IPC HANDLERS VIA CONTROULEURS (Style MVC)
 // ============================================================
 
 // --- Auth & Session ---
-let _session = null;
-
-ipcMain.handle('auth:login', handleLogin)
+ipcMain.handle('auth:login', async (event, data) => {
+  const result = await handleLogin(event, data)
+  if (result && result.success) {
+    if (result.token) apiClient.setToken(result.token) // propagation token sync
+    if (result.user) saveSession(result.user)          // session persistée
+  }
+  return result
+})
 ipcMain.handle('auth:logout', async () => {
-  _session = null;
-  return { success: true };
+  clearSession()
+  return { success: true }
 })
 ipcMain.handle('auth:check', async () => {
-  return { authenticated: !!_session, user: _session };
+  return { authenticated: !!_session, user: _session }
 })
 ipcMain.handle('auth:register', handleRegister)
 ipcMain.handle('session:get', async () => {
-  return { success: true, data: _session };
+  return { success: true, data: _session }
 })
 ipcMain.handle('session:set', async (e, data) => {
-  _session = data;
-  return { success: true };
+  saveSession(data)
+  return { success: true }
 })
 ipcMain.handle('session:clear', async () => {
-  _session = null;
-  return { success: true };
+  clearSession()
+  return { success: true }
 })
 
 // --- Utilisateurs & Rôles (Paramètres Admin) ---
@@ -154,32 +207,30 @@ ipcMain.handle('utilisateurs:get', (e, id) => utilisateurCtrl.getById(e, id))
 ipcMain.handle('utilisateurs:create', (e, data, entId) => utilisateurCtrl.create(e, data, entId))
 ipcMain.handle('utilisateurs:update', (e, id, data) => utilisateurCtrl.update(e, id, data))
 ipcMain.handle('utilisateurs:delete', (e, id) => utilisateurCtrl.delete(e, id))
-
 ipcMain.handle('users:list', (e, params) => utilisateurCtrl.getList(e, params))
 ipcMain.handle('users:getAll', (e, params) => utilisateurCtrl.getList(e, params))
 ipcMain.handle('users:get', (e, id) => utilisateurCtrl.getById(e, id))
 ipcMain.handle('users:create', (e, data, entId) => utilisateurCtrl.create(e, data, entId))
 ipcMain.handle('users:update', (e, id, data) => utilisateurCtrl.update(e, id, data))
 ipcMain.handle('users:delete', (e, id) => utilisateurCtrl.delete(e, id))
-
 ipcMain.handle('roles:list', async () => {
   try {
-    const roles = repos.utilisateurs.rawQuery("SELECT * FROM Role WHERE is_deleted = 0");
-    return { success: true, data: roles };
+    const roles = repos.utilisateurs.rawQuery("SELECT * FROM Role WHERE is_deleted = 0")
+    return { success: true, data: roles }
   } catch (err) {
-    return { success: false, error: err.message };
+    return { success: false, error: err.message }
   }
 })
+
 // --- Entreprise (Paramètres) ---
 ipcMain.handle('entreprises:get', (e, id) => {
   try {
-    return db.prepare('SELECT * FROM Entreprise WHERE id = ?').get(id) || null
+    return db.prepare('SELECT * FROM Entreprise WHERE id = ? AND is_deleted = 0').get(id) || null
   } catch (err) {
     console.error('entreprises:get error:', err)
     return null
   }
 })
-
 ipcMain.handle('entreprises:update', (e, id, data) => {
   try {
     const allowed = ['nom', 'nomCommercial', 'siret', 'numeroTVA', 'codeAPE', 'adresse', 'codePostal',
@@ -216,7 +267,6 @@ ipcMain.handle('preferences:get', (e, userId) => {
     return null
   }
 })
-
 ipcMain.handle('preferences:update', (e, userId, data) => {
   try {
     const allowed = ['theme', 'langue', 'dateFormat', 'devise', 'notifEmail', 'notifPush', 'notifFacturesRetard', 'notifStockBas']
@@ -255,13 +305,12 @@ ipcMain.handle('backup:list', () => {
     return []
   }
 })
-
 ipcMain.handle('backup:exportSQLite', () => {
+  db.pragma('wal_checkpoint(TRUNCATE)') // flush WAL pour une sauvegarde cohérente
   const bytes = fs.readFileSync(dbPath)
   fs.copyFileSync(dbPath, path.join(backupsDir, `manuel_${Date.now()}.sqlite`))
   return bytes
 })
-
 ipcMain.handle('backup:exportSQL', () => {
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all()
   let sql = ''
@@ -275,31 +324,32 @@ ipcMain.handle('backup:exportSQL', () => {
   })
   return Buffer.from(sql, 'utf-8')
 })
-
 ipcMain.handle('backup:download', (e, filename) => {
   const filePath = path.join(backupsDir, filename)
   if (!fs.existsSync(filePath)) throw new Error('Fichier introuvable')
   return fs.readFileSync(filePath)
 })
-
 ipcMain.handle('backup:restore', (e, filename) => {
   const filePath = path.join(backupsDir, filename)
   if (!fs.existsSync(filePath)) throw new Error('Sauvegarde introuvable')
+  try { db.close() } catch (err) { console.error('backup:restore db.close:', err) }
   fs.copyFileSync(filePath, dbPath)
-  return { success: true }
+  try { fs.unlinkSync(dbPath + '-wal'); fs.unlinkSync(dbPath + '-shm') } catch (e) { /* ignoré */ }
+  app.relaunch()
+  app.exit(0)
 })
-
 ipcMain.handle('backup:delete', (e, filename) => {
   const filePath = path.join(backupsDir, filename)
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
   return { success: true }
 })
-
 ipcMain.handle('backup:import', (e, fileBuffer) => {
+  try { db.close() } catch (err) { console.error('backup:import db.close:', err) }
   fs.writeFileSync(dbPath, Buffer.from(fileBuffer))
-  return { success: true }
+  try { fs.unlinkSync(dbPath + '-wal'); fs.unlinkSync(dbPath + '-shm') } catch (e) { /* ignoré */ }
+  app.relaunch()
+  app.exit(0)
 })
-
 ipcMain.handle('backup:setAutoConfig', (e, config) => {
   try {
     fs.writeFileSync(path.join(backupsDir, 'auto-config.json'), JSON.stringify(config, null, 2))
@@ -309,6 +359,7 @@ ipcMain.handle('backup:setAutoConfig', (e, config) => {
     throw err
   }
 })
+
 // --- Chantiers, Phases & Incidents ---
 ipcMain.handle('chantiers:list', (e, params) => chantierCtrl.getList(e, params))
 ipcMain.handle('chantiers:get', (e, id) => chantierCtrl.getById(e, id))
@@ -319,12 +370,12 @@ ipcMain.handle('chantiers:stats', (e, entrepriseId) => chantierCtrl.getStats(e, 
 ipcMain.handle('chantiers:addPhase', (e, chantierId, data) => chantierCtrl.addPhase(e, chantierId, data))
 ipcMain.handle('chantiers:addIncident', (e, chantierId, data, userId) => chantierCtrl.addIncident(e, chantierId, data, userId))
 ipcMain.handle('chantiers:recalculerBudget', (e, chantierId) => chantierCtrl.recalculerBudget(e, chantierId))
-
+ipcMain.handle('chantiers:affecterRessource', (e, data) => chantierCtrl.affecterRessource(e, data))
+ipcMain.handle('chantiers:retirerRessource', (e, id) => chantierCtrl.retirerRessource(e, id))
 ipcMain.handle('phases:list', (e, chantierId) => chantierCtrl.getPhasesByChantier(e, chantierId))
 ipcMain.handle('phases:updateAvancement', (e, id, pct) => chantierCtrl.updatePhaseAvancement(e, id, pct))
 ipcMain.handle('phases:reorder', (e, chantierId, ids) => chantierCtrl.reorderPhases(e, chantierId, ids))
 ipcMain.handle('phases:avancementGlobal', (e, chantierId) => chantierCtrl.getAvancementGlobalPhases(e, chantierId))
-
 ipcMain.handle('incidents:list', (e, chantierId) => chantierCtrl.getIncidentsByChantier(e, chantierId))
 ipcMain.handle('incidents:changerStatut', (e, id, statut) => chantierCtrl.changerStatutIncident(e, id, statut))
 ipcMain.handle('incidents:ouvertsByEntreprise', (e, entrepriseId) => chantierCtrl.getIncidentsOuvertsByEntreprise(e, entrepriseId))
@@ -338,15 +389,19 @@ ipcMain.handle('employes:delete', (e, id) => rhCtrl.deleteEmploye(e, id))
 ipcMain.handle('employes:presentsToday', (e, entrepriseId) => rhCtrl.getPresentsToday(e, entrepriseId))
 ipcMain.handle('employes:pointer', (e, data) => rhCtrl.pointer(e, data))
 ipcMain.handle('employes:stats', (e, entrepriseId) => rhCtrl.getStatsEmployes(e, entrepriseId))
-
+ipcMain.handle('employes:affecterChantier', (e, data) => rhCtrl.affecterEmployeChantier(e, data))
+ipcMain.handle('employes:retirerAffectation', (e, id) => rhCtrl.retirerAffectationEmploye(e, id))
 ipcMain.handle('pointages:list', (e, params) => rhCtrl.getListPointages(e, params))
 ipcMain.handle('pointages:create', (e, data) => rhCtrl.createPointage(e, data))
-
 ipcMain.handle('heures-sup:list', (e, params) => rhCtrl.getListHeuresSup(e, params))
 ipcMain.handle('heures-sup:create', (e, data) => rhCtrl.createHeureSup(e, data))
-
 ipcMain.handle('equipes:list', (e, entrepriseId) => rhCtrl.getListEquipes(e, entrepriseId))
+ipcMain.handle('equipes:get', (e, id) => rhCtrl.getEquipeById(e, id))
 ipcMain.handle('equipes:create', (e, data, entrepriseId) => rhCtrl.createEquipe(e, data, entrepriseId))
+ipcMain.handle('equipes:update', (e, id, data) => rhCtrl.updateEquipe(e, id, data))
+ipcMain.handle('equipes:delete', (e, id) => rhCtrl.deleteEquipe(e, id))
+ipcMain.handle('equipes:ajouterMembre', (e, equipeId, employeId) => rhCtrl.ajouterMembreEquipe(e, equipeId, employeId))
+ipcMain.handle('equipes:retirerMembre', (e, equipeId, employeId) => rhCtrl.retirerMembreEquipe(e, equipeId, employeId))
 
 // --- Stocks & Fournisseurs ---
 ipcMain.handle('articles:list', (e, params) => stockCtrl.getListArticles(e, params))
@@ -357,12 +412,10 @@ ipcMain.handle('articles:delete', (e, id) => stockCtrl.deleteArticle(e, id))
 ipcMain.handle('articles:enAlerte', (e, entrepriseId) => stockCtrl.getArticlesEnAlerte(e, entrepriseId))
 ipcMain.handle('articles:updateStock', (e, articleId, qte, type, opt) => stockCtrl.updateStockArticle(e, articleId, qte, type, opt))
 ipcMain.handle('articles:stats', (e, entrepriseId) => stockCtrl.getStatsArticles(e, entrepriseId))
-
 ipcMain.handle('fournisseurs:list', (e, params) => stockCtrl.getListFournisseurs(e, params))
 ipcMain.handle('fournisseurs:create', (e, data, entrepriseId) => stockCtrl.createFournisseur(e, data, entrepriseId))
 ipcMain.handle('fournisseurs:update', (e, id, data) => stockCtrl.updateFournisseur(e, id, data))
 ipcMain.handle('fournisseurs:delete', (e, id) => stockCtrl.deleteFournisseur(e, id))
-
 ipcMain.handle('mouvements:byArticle', (e, id) => stockCtrl.getMouvementsByArticle(e, id))
 ipcMain.handle('mouvements:byChantier', (e, id) => stockCtrl.getMouvementsByChantier(e, id))
 ipcMain.handle('mouvements:byPeriode', (e, entrepriseId, d1, d2) => stockCtrl.getMouvementsByPeriode(e, entrepriseId, d1, d2))
@@ -377,9 +430,12 @@ ipcMain.handle('materiels:delete', (e, id) => materielCtrl.deleteMateriel(e, id)
 ipcMain.handle('materiels:stats', (e, entrepriseId) => materielCtrl.getStatsMateriels(e, entrepriseId))
 ipcMain.handle('materiels:disponibles', (e, entrepriseId) => materielCtrl.getDisponibles(e, entrepriseId))
 ipcMain.handle('materiels:maintenanceEnRetard', (e, entrepriseId) => materielCtrl.getMaintenanceEnRetard(e, entrepriseId))
+ipcMain.handle('materiels:affecter', (e, data) => materielCtrl.affecterMateriel(e, data))
+ipcMain.handle('materiels:retirerAffectation', (e, id) => materielCtrl.retirerAffectationMateriel(e, id))
 ipcMain.handle('maintenances:list', (e, params) => materielCtrl.getListMaintenances(e, params))
 ipcMain.handle('maintenances:create', (e, data) => materielCtrl.createMaintenance(e, data))
 ipcMain.handle('maintenances:update', (e, id, data) => materielCtrl.updateMaintenance(e, id, data))
+ipcMain.handle('maintenances:delete', (e, id) => materielCtrl.deleteMaintenance(e, id))
 
 // --- Commercial ---
 ipcMain.handle('clients:list', (e, params) => commercialCtrl.getListClients(e, params))
@@ -387,16 +443,15 @@ ipcMain.handle('clients:get', (e, id) => commercialCtrl.getClientById(e, id))
 ipcMain.handle('clients:create', (e, data, entrepriseId) => commercialCtrl.createClient(e, data, entrepriseId))
 ipcMain.handle('clients:update', (e, id, data) => commercialCtrl.updateClient(e, id, data))
 ipcMain.handle('clients:delete', (e, id) => commercialCtrl.deleteClient(e, id))
-
 ipcMain.handle('devis:list', (e, params) => commercialCtrl.getListDevis(e, params))
 ipcMain.handle('devis:get', (e, id) => commercialCtrl.getDevisById(e, id))
 ipcMain.handle('devis:create', (e, data, entrepriseId) => commercialCtrl.createDevis(e, data, entrepriseId))
 ipcMain.handle('devis:update', (e, id, data) => commercialCtrl.updateDevis(e, id, data))
+ipcMain.handle('devis:changerStatut', (e, id, statut) => commercialCtrl.changerStatutDevis(e, id, statut))
+ipcMain.handle('devis:remplacerLignes', (e, devisId, lignes) => commercialCtrl.remplacerLignesDevis(e, devisId, lignes))
 ipcMain.handle('devis:transformerEnContrat', (e, devisId, data) => commercialCtrl.transformerDevisEnContrat(e, devisId, data))
-
 ipcMain.handle('contrats:list', (e, params) => commercialCtrl.getListContrats(e, params))
 ipcMain.handle('contrats:get', (e, id) => commercialCtrl.getContratById(e, id))
-
 ipcMain.handle('factures:list', (e, params) => commercialCtrl.getListFactures(e, params))
 ipcMain.handle('factures:get', (e, id) => commercialCtrl.getFactureById(e, id))
 ipcMain.handle('factures:create', (e, data, entrepriseId) => commercialCtrl.createFacture(e, data, entrepriseId))
@@ -404,15 +459,25 @@ ipcMain.handle('factures:update', (e, id, data) => commercialCtrl.updateFacture(
 ipcMain.handle('factures:delete', (e, id) => commercialCtrl.deleteFacture(e, id))
 ipcMain.handle('factures:enRetard', (e, entrepriseId) => commercialCtrl.getFacturesEnRetard(e, entrepriseId))
 ipcMain.handle('factures:ajouterPaiement', (e, factureId, data) => commercialCtrl.ajouterPaiementFacture(e, factureId, data))
-
 ipcMain.handle('paiements:byFacture', (e, id) => commercialCtrl.getPaiementsByFacture(e, id))
 
-// --- Finance & Alertes ---
+// --- Finance : Dépenses ---
+ipcMain.handle('depenses:list', (e, params) => financeCtrl.getListDepenses(e, params))
+ipcMain.handle('depenses:create', (e, data) => financeCtrl.createDepense(e, data))
+ipcMain.handle('depenses:update', (e, id, data) => financeCtrl.updateDepense(e, id, data))
+ipcMain.handle('depenses:delete', (e, id) => financeCtrl.deleteDepense(e, id))
+ipcMain.handle('depenses:valider', (e, id, userId) => financeCtrl.validerDepense(e, id, userId))
 ipcMain.handle('depenses:byChantier', (e, id) => financeCtrl.getDepensesByChantier(e, id))
 ipcMain.handle('depenses:totalByChantier', (e, id) => financeCtrl.getTotalDepensesByChantier(e, id))
 ipcMain.handle('depenses:byCategorie', (e, id) => financeCtrl.getDepensesByCategorie(e, id))
 ipcMain.handle('depenses:enAttenteValidation', (e, entrepriseId) => financeCtrl.getDepensesEnAttenteValidation(e, entrepriseId))
 
+// --- Finance : Rapports financiers ---
+ipcMain.handle('rapports:generer', (e, chantierId, periode) => financeCtrl.genererRapportFinancier(e, chantierId, periode))
+ipcMain.handle('rapports:list', (e, entrepriseId) => financeCtrl.getListRapports(e, entrepriseId))
+ipcMain.handle('rapports:get', (e, id) => financeCtrl.getRapportById(e, id))
+
+// --- Finance : Alertes ---
 ipcMain.handle('alertes:nonLues', (e, entrepriseId, limit) => financeCtrl.getAlertesNonLues(e, entrepriseId, limit))
 ipcMain.handle('alertes:marquerLue', (e, id) => financeCtrl.marquerAlerteLue(e, id))
 ipcMain.handle('alertes:marquerToutesLues', (e, entrepriseId) => financeCtrl.marquerToutesAlertesLues(e, entrepriseId))
@@ -470,11 +535,11 @@ ipcMain.handle('dialog:showSaveDialog', async (e, options) => {
   }
 })
 ipcMain.handle('notification:show', async (e, title, body) => {
-  const { Notification } = require('electron');
+  const { Notification } = require('electron')
   if (Notification.isSupported()) {
-    new Notification({ title, body }).show();
+    new Notification({ title, body }).show()
   }
-  return { success: true };
+  return { success: true }
 })
 
 // ============================================================
@@ -483,7 +548,6 @@ ipcMain.handle('notification:show', async (e, title, body) => {
 app.whenReady().then(() => {
   initDatabase()
   createWindow()
-
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
@@ -496,7 +560,6 @@ app.on('window-all-closed', () => {
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error)
 })
-
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason)
 })
