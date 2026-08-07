@@ -71,6 +71,17 @@ class UtilisateurRepository extends BaseRepository {
       throw new Error("Un utilisateur avec cet email existe déjà.");
     }
 
+    const targetEntrepriseId = entrepriseId || data.entrepriseId || 1;
+    const roleId = data.roleId || 1;
+    if (roleId === 1) {
+      const existingAdmin = db.prepare(
+        `SELECT id FROM Utilisateur WHERE entrepriseId = ? AND roleId = 1 AND is_deleted = 0 LIMIT 1`
+      ).get(targetEntrepriseId);
+      if (existingAdmin) {
+        throw new Error("Il ne peut y avoir qu'un seul administrateur par entreprise.");
+      }
+    }
+
     let pwdHash = '';
     if (data.password || data.motDePasse) {
       const pwd = data.password || data.motDePasse;
@@ -78,8 +89,8 @@ class UtilisateurRepository extends BaseRepository {
     }
 
     const userData = {
-      entrepriseId: entrepriseId || data.entrepriseId || 1,
-      roleId: data.roleId || 1,
+      entrepriseId: targetEntrepriseId,
+      roleId,
       nom: data.nom.trim(),
       prenom: data.prenom?.trim() || '',
       email: data.email.trim(),
@@ -89,7 +100,7 @@ class UtilisateurRepository extends BaseRepository {
       is_synced: 0
     };
 
-    return this.create(userData, entrepriseId);
+    return this.create(userData, targetEntrepriseId);
   }
 
   /**
@@ -97,6 +108,17 @@ class UtilisateurRepository extends BaseRepository {
    */
   updateUser(id, data) {
     const payload = { ...data };
+
+    if (payload.roleId === 1) {
+      const current = this.getById(id);
+      const targetEntrepriseId = current?.entrepriseId || payload.entrepriseId || 1;
+      const existingAdmin = db.prepare(
+        `SELECT id FROM Utilisateur WHERE entrepriseId = ? AND roleId = 1 AND is_deleted = 0 AND id != ? LIMIT 1`
+      ).get(targetEntrepriseId, id);
+      if (existingAdmin) {
+        throw new Error("Il ne peut y avoir qu'un seul administrateur par entreprise.");
+      }
+    }
 
     if (data.password || data.motDePasse) {
       const pwd = data.password || data.motDePasse;

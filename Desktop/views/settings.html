@@ -239,7 +239,6 @@
                                 <label class="form-label">Langue</label>
                                 <select class="form-select" name="langue" id="prefLangue">
                                     <option value="fr">Français</option>
-                                    <option value="en">English</option>
                                 </select>
                             </div>
                             <div class="col-md-6">
@@ -589,12 +588,16 @@
                         <div class="col-md-6">
                             <label class="form-label required" for="userRole">Rôle *</label>
                             <select class="form-select" name="role" id="userRole" required>
-                                <option value="admin">Administrateur</option>
-                                <option value="manager">Manager</option>
-                                <option value="commercial">Commercial</option>
-                                <option value="conducteur">Conducteur de travaux</option>
-                                <option value="employe">Employé</option>
-                                <option value="comptable">Comptable</option>
+                                <option value="" selected disabled>Choisir un rôle</option>
+                                <option value="ADMIN">Administrateur d'Entreprise</option>
+                                <option value="DIRECTION">Direction Générale / DAF</option>
+                                <option value="COMPTABLE">Comptable / Responsable Financier</option>
+                                <option value="RH">Responsable RH</option>
+                                <option value="MATERIEL">Responsable Matériel / Logisticien</option>
+                                <option value="MAGASINIER">Magasinier / Responsable Stock</option>
+                                <option value="COMMERCIAL">Commercial / Responsable Commercial</option>
+                                <option value="CHEF_CHANTIER">Chef de Chantier / Conducteur de Travaux</option>
+                                <option value="CHEF_PROJET">Chef de Projet / Directeur Technique</option>
                             </select>
                         </div>
                         <div class="col-md-6">

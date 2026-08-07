@@ -3,6 +3,50 @@
  * Gère la configuration de l'entreprise, utilisateurs, préférences, sauvegarde, synchronisation
  */
 
+const UTILISATEUR_ROLE_OPTIONS = [
+    { id: 1, code: 'ADMIN', label: "Administrateur d'Entreprise" },
+    { id: 2, code: 'COMPTABLE', label: 'Comptable / Responsable Financier' },
+    { id: 3, code: 'DIRECTION', label: 'Direction Générale / DAF' },
+    { id: 4, code: 'CHEF_CHANTIER', label: 'Chef de Chantier / Conducteur de Travaux' },
+    { id: 5, code: 'CHEF_PROJET', label: 'Chef de Projet / Directeur Technique' },
+    { id: 6, code: 'RH', label: 'Responsable RH' },
+    { id: 7, code: 'MATERIEL', label: 'Responsable Matériel / Logisticien' },
+    { id: 8, code: 'MAGASINIER', label: 'Magasinier / Responsable Stock' },
+    { id: 9, code: 'COMMERCIAL', label: 'Commercial / Responsable Commercial' }
+];
+
+const UTILISATEUR_ROLE_CODE_TO_ID = UTILISATEUR_ROLE_OPTIONS.reduce((map, role) => {
+    map[role.code] = role.id;
+    return map;
+}, {});
+
+const UTILISATEUR_ROLE_LABELS = UTILISATEUR_ROLE_OPTIONS.reduce((map, role) => {
+    map[role.code] = role.label;
+    return map;
+}, {});
+
+const UTILISATEUR_ROLE_BADGES = {
+    ADMIN: 'bg-danger',
+    COMPTABLE: 'bg-success',
+    DIRECTION: 'bg-warning text-dark',
+    CHEF_CHANTIER: 'bg-info',
+    CHEF_PROJET: 'bg-primary',
+    RH: 'bg-secondary',
+    MATERIEL: 'bg-secondary',
+    MAGASINIER: 'bg-secondary',
+    COMMERCIAL: 'bg-primary'
+};
+
+function normalizeUtilisateurRoleCode(rawRole) {
+    if (!rawRole) return '';
+    const normalized = rawRole.toString().trim().toUpperCase();
+    if (UTILISATEUR_ROLE_CODE_TO_ID[normalized]) return normalized;
+    const matchByLabel = Object.entries(UTILISATEUR_ROLE_LABELS).find(([, label]) =>
+        label.toUpperCase().includes(normalized) || normalized.includes(label.toUpperCase())
+    );
+    return matchByLabel ? matchByLabel[0] : '';
+}
+
 class ParametresController {
     constructor() {
         this.utilisateurs = [];
@@ -210,33 +254,9 @@ class ParametresController {
         }
 
         tbody.innerHTML = this.utilisateurs.map((u, index) => {
-            // Le backend renvoie roleNom et roleCode (ex: 'Administrateur', 'ADMIN')
-            // On normalise en minuscules pour correspondre à nos mappings
-            const roleCode = (u.roleCode || u.roleNom || '').toLowerCase();
-
-            const roleLabels = {
-                'admin': 'Administrateur',
-                'administrateur': 'Administrateur',
-                'manager': 'Manager',
-                'commercial': 'Commercial',
-                'conducteur': 'Conducteur de travaux',
-                'conducteur de travaux': 'Conducteur de travaux',
-                'employe': 'Employé',
-                'employé': 'Employé',
-                'comptable': 'Comptable'
-            };
-
-            const roleBadges = {
-                'admin': 'bg-danger',
-                'administrateur': 'bg-danger',
-                'manager': 'bg-warning text-dark',
-                'commercial': 'bg-primary',
-                'conducteur': 'bg-info',
-                'conducteur de travaux': 'bg-info',
-                'employe': 'bg-secondary',
-                'employé': 'bg-secondary',
-                'comptable': 'bg-success'
-            };
+            const roleCode = normalizeUtilisateurRoleCode(u.roleCode || u.roleNom || '');
+            const roleLabel = UTILISATEUR_ROLE_LABELS[roleCode] || u.roleNom || u.roleCode || '—';
+            const roleBadge = UTILISATEUR_ROLE_BADGES[roleCode] || 'bg-secondary';
 
             // Le champ statut contient 'actif' ou 'inactif'
             const isActif = u.statut === 'actif' || u.statut === 'Actif';
@@ -249,7 +269,7 @@ class ParametresController {
                         <small class="text-secondary">${this.escapeHtml(u.telephone || '')}</small>
                     </td>
                     <td>${this.escapeHtml(u.email)}</td>
-                    <td><span class="badge ${roleBadges[roleCode] || 'bg-secondary'}">${roleLabels[roleCode] || u.roleNom || u.roleCode || '—'}</span></td>
+                    <td><span class="badge ${roleBadge}">${this.escapeHtml(roleLabel)}</span></td>
                     <td class="d-none d-md-table-cell"><small>${u.derniereConnexion ? this.formatDateTime(u.derniereConnexion) : 'Jamais'}</small></td>
                     <td>
                         <span class="badge ${isActif ? 'bg-success' : 'bg-danger'}">
@@ -305,6 +325,7 @@ class ParametresController {
 
             this.utilisateurEnEdition = user;
             this.fillFormUtilisateur(user);
+            this.updateAdminOptionState(this.utilisateurEnEdition.id);
             document.getElementById('modalUtilisateurLabel').textContent = `Modifier: ${user.prenom} ${user.nom}`;
             document.getElementById('btnDeleteUtilisateur').style.display = 'inline-block';
             document.getElementById('btnDeleteUtilisateur').dataset.id = id;
@@ -326,8 +347,9 @@ class ParametresController {
         const form = document.getElementById('formUtilisateur');
         if (form) form.reset();
         document.getElementById('userId').value = '';
-        document.getElementById('userRole').value = 'employe';
+        document.getElementById('userRole').value = '';
         document.getElementById('userActif').checked = true;
+        this.updateAdminOptionState();
     }
 
     /**
@@ -340,8 +362,7 @@ class ParametresController {
         document.getElementById('userEmail').value = u.email || '';
         document.getElementById('userTelephone').value = u.telephone || '';
 
-        // Mapper roleCode (ex: 'ADMIN') vers la valeur du select (ex: 'admin')
-        const roleCode = (u.roleCode || u.roleNom || 'employe').toLowerCase();
+        const roleCode = normalizeUtilisateurRoleCode(u.roleCode || u.roleNom || '');
         document.getElementById('userRole').value = roleCode;
 
         // Mapper statut ('actif'/'inactif') vers checkbox actif
@@ -352,6 +373,31 @@ class ParametresController {
     /**
      * Soumission formulaire utilisateur
      */
+    getRoleIdFromCode(roleValue) {
+        if (!roleValue) return null;
+        const normalized = roleValue.toString().trim().toUpperCase();
+        return UTILISATEUR_ROLE_CODE_TO_ID[normalized] || null;
+    }
+
+    hasAdminUser(excludeUserId = null) {
+        return this.utilisateurs.some(u => {
+            const roleCode = normalizeUtilisateurRoleCode(u.roleCode || u.roleNom || '');
+            if (roleCode !== 'ADMIN') return false;
+            return excludeUserId ? u.id !== excludeUserId : true;
+        });
+    }
+
+    updateAdminOptionState(excludeUserId = null) {
+        const roleSelect = document.getElementById('userRole');
+        if (!roleSelect) return;
+        const adminOption = roleSelect.querySelector('option[value="ADMIN"]');
+        if (!adminOption) return;
+
+        const hasOtherAdmin = this.hasAdminUser(excludeUserId);
+        adminOption.disabled = hasOtherAdmin;
+        adminOption.title = hasOtherAdmin ? 'Un administrateur existe déjà dans cette entreprise' : '';
+    }
+
     async handleSubmitUtilisateur(e) {
         e.preventDefault();
 
@@ -365,19 +411,34 @@ class ParametresController {
         const data = Object.fromEntries(formData.entries());
 
         data.actif = data.actif === 'on';
+        const roleCode = data.role ? data.role.toString().trim().toUpperCase() : '';
+        const roleId = this.getRoleIdFromCode(roleCode);
+        if (!roleId) {
+            showToast('Veuillez choisir un rôle valide.', 'error');
+            return;
+        }
+        data.roleId = roleId;
+        delete data.role;
+
+        const entrepriseId = window.AppState?.entreprise?.id || 1;
+        const isEdit = !!data.id;
+        const editingId = parseInt(data.id, 10);
+        delete data.id;
+
+        const hasOtherAdmin = roleId === 1 && this.hasAdminUser(isEdit ? editingId : null);
+        if (hasOtherAdmin) {
+            showToast('Il ne peut y avoir qu\'un seul administrateur par entreprise.', 'error');
+            return;
+        }
 
         // Ne pas envoyer le mot de passe s'il est vide
         if (!data.motDePasse) {
             delete data.motDePasse;
         }
 
-        const entrepriseId = window.AppState?.entreprise?.id || 1;
-        const isEdit = !!data.id;
-        delete data.id;
-
         try {
             if (isEdit) {
-                await window.api.utilisateurs.invoke('update', parseInt(formData.get('id')), data);
+                await window.api.utilisateurs.invoke('update', editingId, data);
                 showToast('Utilisateur modifié avec succès', 'success');
             } else {
                 await window.api.utilisateurs.invoke('create', data, entrepriseId);
