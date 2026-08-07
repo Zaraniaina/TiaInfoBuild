@@ -2,6 +2,14 @@ const BaseRepository = require('./BaseRepository');
 const db = require('../db');
 const bcrypt = require('bcryptjs');
 
+function normalizeUtilisateurStatut(rawStatut) {
+  if (rawStatut === undefined || rawStatut === null) return 'actif';
+  const normalized = rawStatut.toString().trim().toLowerCase();
+  if (['actif', 'active', 'on', '1', 'true'].includes(normalized)) return 'actif';
+  if (['inactif', 'inactive', 'off', '0', 'false'].includes(normalized)) return 'inactif';
+  return normalized;
+}
+
 class UtilisateurRepository extends BaseRepository {
   constructor() {
     super('Utilisateur');
@@ -71,8 +79,8 @@ class UtilisateurRepository extends BaseRepository {
       throw new Error("Un utilisateur avec cet email existe déjà.");
     }
 
-    const targetEntrepriseId = entrepriseId || data.entrepriseId || 1;
-    const roleId = data.roleId || 1;
+    const targetEntrepriseId = parseInt(entrepriseId || data.entrepriseId, 10) || 1;
+    const roleId = parseInt(data.roleId, 10) || 1;
     if (roleId === 1) {
       const existingAdmin = db.prepare(
         `SELECT id FROM Utilisateur WHERE entrepriseId = ? AND roleId = 1 AND is_deleted = 0 LIMIT 1`
@@ -96,7 +104,7 @@ class UtilisateurRepository extends BaseRepository {
       email: data.email.trim(),
       motDePasseHash: pwdHash,
       telephone: data.telephone?.trim() || '',
-      statut: data.statut || 'actif',
+      statut: normalizeUtilisateurStatut(data.statut),
       is_synced: 0
     };
 
@@ -108,6 +116,9 @@ class UtilisateurRepository extends BaseRepository {
    */
   updateUser(id, data) {
     const payload = { ...data };
+    if (payload.roleId !== undefined) {
+      payload.roleId = parseInt(payload.roleId, 10) || payload.roleId;
+    }
 
     if (payload.roleId === 1) {
       const current = this.getById(id);
@@ -118,6 +129,10 @@ class UtilisateurRepository extends BaseRepository {
       if (existingAdmin) {
         throw new Error("Il ne peut y avoir qu'un seul administrateur par entreprise.");
       }
+    }
+
+    if (payload.statut !== undefined) {
+      payload.statut = normalizeUtilisateurStatut(payload.statut);
     }
 
     if (data.password || data.motDePasse) {

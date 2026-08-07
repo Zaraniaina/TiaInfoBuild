@@ -37,13 +37,45 @@ const UTILISATEUR_ROLE_BADGES = {
     COMMERCIAL: 'bg-primary'
 };
 
+const UTILISATEUR_ROLE_ALIASES = {
+    ADMIN: ['ADMIN', 'ADMINISTRATEUR', 'ADMINISTRATEUR D\'ENTREPRISE', 'ENTREPRISE'],
+    COMPTABLE: ['COMPTABLE', 'RESPONSABLE FINANCIER', 'FINANCIER'],
+    DIRECTION: ['DIRECTION', 'DAF', 'DIRECTION GÉNÉRALE', 'DIRECTION GENERALE'],
+    RH: ['RH', 'RESPONSABLE RH'],
+    MATERIEL: ['MATERIEL', 'LOGISTICIEN', 'RESPONSABLE MATÉRIEL', 'RESPONSABLE MATERIEL'],
+    MAGASINIER: ['MAGASINIER', 'RESPONSABLE STOCK', 'STOCK'],
+    COMMERCIAL: ['COMMERCIAL', 'RESPONSABLE COMMERCIAL'],
+    CHEF_CHANTIER: ['CHEF DE CHANTIER', 'CONDUCTEUR', 'CHEF_CHANTIER'],
+    CHEF_PROJET: ['CHEF DE PROJET', 'CHEF_PROJET', 'DIRECTEUR TECHNIQUE']
+};
+
+function normalizeString(text) {
+    return text
+        .toString()
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .replace(/[^A-Z0-9]/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase();
+}
+
 function normalizeUtilisateurRoleCode(rawRole) {
     if (!rawRole) return '';
-    const normalized = rawRole.toString().trim().toUpperCase();
+    const normalized = normalizeString(rawRole);
+
     if (UTILISATEUR_ROLE_CODE_TO_ID[normalized]) return normalized;
-    const matchByLabel = Object.entries(UTILISATEUR_ROLE_LABELS).find(([, label]) =>
-        label.toUpperCase().includes(normalized) || normalized.includes(label.toUpperCase())
-    );
+
+    for (const [code, aliases] of Object.entries(UTILISATEUR_ROLE_ALIASES)) {
+        if (aliases.some(alias => normalizeString(alias).includes(normalized) || normalized.includes(normalizeString(alias)))) {
+            return code;
+        }
+    }
+
+    const matchByLabel = Object.entries(UTILISATEUR_ROLE_LABELS).find(([, label]) => {
+        const normalizedLabel = normalizeString(label);
+        return normalizedLabel.includes(normalized) || normalized.includes(normalizedLabel);
+    });
     return matchByLabel ? matchByLabel[0] : '';
 }
 
@@ -235,6 +267,7 @@ class ParametresController {
             const response = await window.api.utilisateurs.invoke('list', { entrepriseId });
             this.utilisateurs = response?.data?.items || [];
             this.renderUtilisateursTable();
+            this.updatePermissionsUI();
         } catch (error) {
             console.error('Erreur chargement utilisateurs:', error);
             showToast('Erreur lors du chargement des utilisateurs', 'error');
@@ -253,9 +286,12 @@ class ParametresController {
             return;
         }
 
+        const canEditUsers = window.hasPermission ? window.hasPermission('update', 'utilisateurs') : false;
+        const canDeleteUsers = window.hasPermission ? window.hasPermission('delete', 'utilisateurs') : false;
+
         tbody.innerHTML = this.utilisateurs.map((u, index) => {
-            const roleCode = normalizeUtilisateurRoleCode(u.roleCode || u.roleNom || '');
-            const roleLabel = UTILISATEUR_ROLE_LABELS[roleCode] || u.roleNom || u.roleCode || '—';
+            let roleCode = normalizeUtilisateurRoleCode(u.roleCode || u.roleNom || '');
+            const roleLabel = UTILISATEUR_ROLE_LABELS[roleCode] || u.roleNom || u.roleCode || (u.roleId ? (UTILISATEUR_ROLE_OPTIONS.find(r => r.id === parseInt(u.roleId, 10))?.label || '—') : '—');
             const roleBadge = UTILISATEUR_ROLE_BADGES[roleCode] || 'bg-secondary';
 
             // Le champ statut contient 'actif' ou 'inactif'
@@ -278,10 +314,10 @@ class ParametresController {
                     </td>
                     <td>
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary btn-edit" data-id="${u.id}" title="Modifier" data-permission="utilisateurs:update">
+                            <button class="btn btn-outline-primary btn-edit" data-id="${u.id}" title="Modifier" ${canEditUsers ? '' : 'disabled'}>
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-outline-danger btn-delete" data-id="${u.id}" title="Supprimer" data-permission="utilisateurs:delete">
+                            <button class="btn btn-outline-danger btn-delete" data-id="${u.id}" title="Supprimer" ${canDeleteUsers ? '' : 'disabled'}>
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
@@ -291,9 +327,11 @@ class ParametresController {
         }).join('');
 
         tbody.querySelectorAll('.btn-edit').forEach(btn => {
+            if (btn.disabled) return;
             btn.addEventListener('click', (e) => this.openModalEditionUtilisateur(e.currentTarget.dataset.id));
         });
         tbody.querySelectorAll('.btn-delete').forEach(btn => {
+            if (btn.disabled) return;
             btn.addEventListener('click', (e) => this.confirmDeleteUtilisateur(e.currentTarget.dataset.id));
         });
     }
@@ -398,6 +436,35 @@ class ParametresController {
         adminOption.title = hasOtherAdmin ? 'Un administrateur existe déjà dans cette entreprise' : '';
     }
 
+    updatePermissionsUI() {
+        const addUserButton = document.getElementById('btnNouvelUtilisateur');
+        const canCreateUsers = window.hasPermission ? window.hasPermission('create', 'utilisateurs') : false;
+        if (addUserButton) {
+            addUserButton.classList.toggle('d-none', !canCreateUsers);
+        }
+
+        const canUpdateEntreprise = window.hasPermission ? window.hasPermission('update', 'entreprises') : false;
+        const entrepriseFields = document.querySelectorAll('#formEntreprise input, #formEntreprise select, #formEntreprise button');
+        const facturationFields = document.querySelectorAll('#formFacturation input, #formFacturation select, #formFacturation button');
+
+        entrepriseFields.forEach(el => {
+            if (el.tagName === 'BUTTON') {
+                el.disabled = !canUpdateEntreprise;
+            } else {
+                el.readOnly = !canUpdateEntreprise;
+                el.disabled = !canUpdateEntreprise;
+            }
+        });
+        facturationFields.forEach(el => {
+            if (el.tagName === 'BUTTON') {
+                el.disabled = !canUpdateEntreprise;
+            } else {
+                el.readOnly = !canUpdateEntreprise;
+                el.disabled = !canUpdateEntreprise;
+            }
+        });
+    }
+
     async handleSubmitUtilisateur(e) {
         e.preventDefault();
 
@@ -410,7 +477,10 @@ class ParametresController {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
 
-        data.actif = data.actif === 'on';
+        const isActif = data.actif === 'on';
+        data.statut = isActif ? 'actif' : 'inactif';
+        delete data.actif;
+
         const roleCode = data.role ? data.role.toString().trim().toUpperCase() : '';
         const roleId = this.getRoleIdFromCode(roleCode);
         if (!roleId) {
@@ -429,6 +499,20 @@ class ParametresController {
         if (hasOtherAdmin) {
             showToast('Il ne peut y avoir qu\'un seul administrateur par entreprise.', 'error');
             return;
+        }
+
+        if (isEdit) {
+            const canUpdate = window.hasPermission ? window.hasPermission('update', 'utilisateurs') : false;
+            if (!canUpdate) {
+                showToast('Vous n\'avez pas l\'autorisation de modifier cet utilisateur.', 'error');
+                return;
+            }
+        } else {
+            const canCreate = window.hasPermission ? window.hasPermission('create', 'utilisateurs') : false;
+            if (!canCreate) {
+                showToast('Vous n\'avez pas l\'autorisation de créer un utilisateur.', 'error');
+                return;
+            }
         }
 
         // Ne pas envoyer le mot de passe s'il est vide
