@@ -313,11 +313,14 @@ window.router.add('alertes', async () => {
   if (window.alertesController) await window.alertesController.init();
 });
 
-window.router.add('parametres', async () => {
+window.router.add('parametres', async (to) => {
   const html = await loadView('settings.html');
   document.getElementById('contentArea').innerHTML = html;
   await window.loadScript('settings.js');
-  if (window.parametresController) await window.parametresController.init();
+  if (window.parametresController) {
+    await window.parametresController.init();
+    window.parametresController.selectTab(to.params?.tab);
+  }
 });
 
 // Helpers globaux

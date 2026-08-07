@@ -11,6 +11,12 @@
     <!-- Onglets Paramètres -->
     <ul class="nav nav-tabs mb-4" id="parametresTabs" role="tablist">
         <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-profil-tab" data-bs-toggle="tab" data-bs-target="#tab-profil"
+                type="button" role="tab">
+                <i class="bi bi-person-circle me-1"></i>Mon profil
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link active" id="tab-entreprise-tab" data-bs-toggle="tab"
                 data-bs-target="#tab-entreprise" type="button" role="tab">
                 <i class="bi bi-building me-1"></i>Entreprise
@@ -43,6 +49,47 @@
     </ul>
 
     <div class="tab-content" id="parametresTabsContent">
+        <!-- Onglet Profil -->
+        <div class="tab-pane fade" id="tab-profil" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-person-circle me-2"></i>Mon profil</h5>
+                </div>
+                <div class="card-body">
+                    <form id="formProfilUtilisateur" novalidate>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label required" for="profilNom">Nom *</label>
+                                <input type="text" class="form-control" name="nom" id="profilNom" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label required" for="profilPrenom">Prénom *</label>
+                                <input type="text" class="form-control" name="prenom" id="profilPrenom" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label required" for="profilEmail">Email *</label>
+                                <input type="email" class="form-control" name="email" id="profilEmail" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="profilTelephone">Téléphone</label>
+                                <input type="tel" class="form-control" name="telephone" id="profilTelephone">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="profilMotDePasse">Nouveau mot de passe</label>
+                                <input type="password" class="form-control" name="motDePasse" id="profilMotDePasse"
+                                    placeholder="Laisser vide pour ne pas changer">
+                                <div class="form-text">Minimum 8 caractères si vous souhaitez le modifier</div>
+                            </div>
+                        </div>
+                        <hr>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i>Enregistrer mon profil
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- Onglet Entreprise -->
         <div class="tab-pane fade show active" id="tab-entreprise" role="tabpanel">
             <div class="card">

@@ -60,14 +60,14 @@ const ROLE_SPACES = {
 // Routes autorisées par rôle
 const ROLE_ROUTES = {
   ADMIN: ['dashboard', 'chantiers', 'employes', 'pointages', 'equipes', 'heures-sup', 'materiels', 'stocks', 'fournisseurs', 'mouvements', 'clients', 'devis', 'contrats', 'factures', 'paiements', 'finances', 'depenses', 'rapports', 'alertes', 'utilisateurs', 'parametres'],
-  DIRECTEUR: ['dashboard', 'chantiers', 'finances', 'depenses', 'rapports', 'alertes', 'employes', 'pointages', 'equipes', 'materiels', 'fournisseurs', 'clients', 'devis', 'contrats', 'factures'],
-  CHEF_CHANTIER: ['dashboard', 'chantiers', 'pointages', 'materiels', 'stocks', 'mouvements', 'alertes'],
-  CHEF_PROJET: ['dashboard', 'chantiers', 'alertes', 'pointages', 'employes', 'equipes'],
-  COMPTABLE: ['dashboard', 'finances', 'depenses', 'rapports', 'alertes', 'factures', 'paiements', 'clients', 'contrats', 'fournisseurs', 'employes', 'pointages', 'equipes'],
-  RH: ['dashboard', 'employes', 'pointages', 'equipes', 'heures-sup', 'alertes'],
-  MATERIEL: ['dashboard', 'materiels', 'alertes', 'chantiers'],
-  MAGASINIER: ['dashboard', 'stocks', 'fournisseurs', 'mouvements', 'alertes'],
-  COMMERCIAL: ['dashboard', 'clients', 'devis', 'contrats', 'factures', 'paiements', 'alertes']
+  DIRECTEUR: ['dashboard', 'chantiers', 'finances', 'depenses', 'rapports', 'alertes', 'employes', 'pointages', 'equipes', 'materiels', 'fournisseurs', 'clients', 'devis', 'contrats', 'factures', 'parametres'],
+  CHEF_CHANTIER: ['dashboard', 'chantiers', 'pointages', 'materiels', 'stocks', 'mouvements', 'alertes', 'parametres'],
+  CHEF_PROJET: ['dashboard', 'chantiers', 'alertes', 'pointages', 'employes', 'equipes', 'parametres'],
+  COMPTABLE: ['dashboard', 'finances', 'depenses', 'rapports', 'alertes', 'factures', 'paiements', 'clients', 'contrats', 'fournisseurs', 'employes', 'pointages', 'equipes', 'parametres'],
+  RH: ['dashboard', 'employes', 'pointages', 'equipes', 'heures-sup', 'alertes', 'parametres'],
+  MATERIEL: ['dashboard', 'materiels', 'alertes', 'chantiers', 'parametres'],
+  MAGASINIER: ['dashboard', 'stocks', 'fournisseurs', 'mouvements', 'alertes', 'parametres'],
+  COMMERCIAL: ['dashboard', 'clients', 'devis', 'contrats', 'factures', 'paiements', 'alertes', 'parametres']
 };
 
 const PERMISSION_MAP = {
@@ -124,10 +124,11 @@ const PERMISSION_MAP = {
   'factures:envoyer': ['ADMIN', 'COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'],
   'paiements:list': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
   'paiements:create': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
-    'utilisateurs:list': ['ADMIN'],
-    'utilisateurs:create': ['ADMIN'],
-    'utilisateurs:update': ['ADMIN'],
-    'utilisateurs:delete': ['ADMIN'],
+  'utilisateurs:list': ['ADMIN'],
+  'utilisateurs:create': ['ADMIN'],
+  'utilisateurs:update': ['ADMIN'],
+  'utilisateurs:delete': ['ADMIN'],
+  'entreprises:update': ['ADMIN'],
   'depenses:list': ['ADMIN', 'COMPTABLE', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'],
   'depenses:create': ['ADMIN', 'COMPTABLE', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'],
   'depenses:update': ['ADMIN', 'COMPTABLE', 'DIRECTEUR'],
@@ -170,6 +171,13 @@ function getUserRoles(roleValue) {
   return roles.length ? Array.from(new Set(roles)) : ['ADMIN'];
 }
 
+function getCurrentRoleCodes() {
+  if (window.AppState && Array.isArray(window.AppState.roles) && window.AppState.roles.length) {
+    return window.AppState.roles;
+  }
+  return [window.AppState?.roleCode || 'ADMIN'];
+}
+
 function isRoleAllowed(allowedRoles, currentRoles) {
   if (!allowedRoles || allowedRoles.length === 0) return true;
   return currentRoles.some(role => allowedRoles.includes(role));
@@ -177,7 +185,7 @@ function isRoleAllowed(allowedRoles, currentRoles) {
 
 function hasPermission(action, module) {
   const permissionKey = `${module}:${action}`;
-  const currentRoles = getUserRoles(window.AppState.roleCode);
+  const currentRoles = getCurrentRoleCodes();
   const allowed = PERMISSION_MAP[permissionKey];
   return isRoleAllowed(allowed, currentRoles);
 }
@@ -188,6 +196,7 @@ window.AppState = {
   entreprise: null,
   role: null,
   roleCode: null,
+  roles: [],
   isOnline: navigator.onLine,
   syncStatus: 'offline',
   lastSync: null
@@ -246,17 +255,22 @@ async function loadUserSession() {
 }
 
 function hasAccess(route) {
-  const roleCode = window.AppState.roleCode || 'ADMIN';
-  const allowed = ROLE_ROUTES[roleCode] || ROLE_ROUTES.ADMIN;
-  return allowed.includes(route);
+  if (!route) return false;
+  const normalizedRoute = route.toString().trim();
+  const currentRoles = getCurrentRoleCodes();
+  return currentRoles.some(roleCode => {
+    const allowed = ROLE_ROUTES[roleCode] || ROLE_ROUTES.ADMIN;
+    if (allowed.includes(normalizedRoute)) return true;
+    return allowed.some(allowedRoute => normalizedRoute === allowedRoute || normalizedRoute.startsWith(`${allowedRoute}/`));
+  });
 }
 
 // ============================================================
 // SIDEBAR — Filtrage par rôle
 // ============================================================
 function filterSidebarByRole(roleCode) {
-  const currentRoles = getUserRoles(roleCode);
-  const allowedSections = (ROLE_SPACES[roleCode] || ROLE_SPACES.ADMIN).sections;
+  const currentRoles = window.AppState.roles && window.AppState.roles.length ? window.AppState.roles : getUserRoles(roleCode);
+  const allowedSections = Array.from(new Set(currentRoles.flatMap(role => (ROLE_SPACES[role] || ROLE_SPACES.ADMIN).sections || [])));
 
   document.querySelectorAll('.sidebar-link[data-route]').forEach(link => {
     const route = link.dataset.route;
@@ -316,6 +330,7 @@ function parsePermissionSpec(spec) {
 function shouldShowElementByPermission(el) {
   const permission = el.dataset.permission;
   const roles = el.dataset.roles;
+  const route = el.dataset.route;
 
   if (permission) {
     const specs = permission.split(',').map(p => p.trim()).filter(Boolean);
@@ -331,6 +346,10 @@ function shouldShowElementByPermission(el) {
     const currentRoles = getUserRoles(window.AppState.roleCode);
     const allowedRoles = roles.split(',').map(r => normalizeRoleCode(r));
     return isRoleAllowed(allowedRoles, currentRoles);
+  }
+
+  if (route) {
+    return hasAccess(route);
   }
 
   return true;
@@ -436,11 +455,17 @@ function updateUserUI(user) {
   if (topName) topName.textContent = nomComplet;
 
   // Section admin visible uniquement pour ADMIN
-  const isAdmin = window.AppState.roleCode === 'ADMIN';
+  const canManageUsers = window.hasPermission ? window.hasPermission('list', 'utilisateurs') : false;
+  const canUpdateEntreprise = window.hasPermission ? window.hasPermission('update', 'entreprises') : false;
+  const showSettings = canManageUsers || canUpdateEntreprise;
+
   const adminLabel = document.getElementById('adminSectionLabel');
-  if (adminLabel) adminLabel.classList.toggle('d-none', !isAdmin);
+  if (adminLabel) adminLabel.classList.toggle('d-none', !showSettings);
   const usersLink = document.getElementById('utilisateursLink');
-  if (usersLink) usersLink.classList.toggle('d-none', !isAdmin);
+  if (usersLink) usersLink.classList.toggle('d-none', !canManageUsers);
+
+  const topbarSettingsLink = document.getElementById('topbarSettingsLink');
+  if (topbarSettingsLink) topbarSettingsLink.style.display = showSettings ? '' : 'none';
 }
 
 // ============================================================
@@ -599,4 +624,5 @@ window.ROLE_ROUTES = ROLE_ROUTES;
 window.hasPermission = hasPermission;
 window.applyPagePermissions = applyPagePermissions;
 window.currentRoleCode = () => window.AppState.roleCode;
+window.formatCurrencyGlobal = window.formatCurrency;
 window.PERMISSION_MAP = PERMISSION_MAP;

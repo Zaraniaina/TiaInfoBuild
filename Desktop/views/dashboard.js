@@ -14,6 +14,7 @@ class DashboardController {
     async init() {
         this.bindEvents();
         await this.loadDashboardData();
+        this.updateDashboardVisibility();
     }
 
     /**
@@ -47,7 +48,32 @@ class DashboardController {
         } catch (error) {
             console.error('Erreur chargement dashboard:', error);
             showToast('Erreur lors du chargement du tableau de bord', 'error');
+        } finally {
+            this.updateDashboardVisibility();
         }
+    }
+
+    updateDashboardVisibility() {
+        const showChantiers = hasAccess('chantiers');
+        const showEmployes = hasAccess('employes') || hasPermission('list', 'employes') || hasPermission('list', 'pointages');
+        const showStocks = hasAccess('stocks') || hasPermission('articles', 'list') || hasPermission('mouvements', 'list');
+        const showFinances = hasAccess('finances') || hasPermission('list', 'factures') || hasPermission('list', 'depenses');
+        const showAlertes = hasAccess('alertes') || hasPermission('list', 'alertes');
+        const showQuickActions = showChantiers || showEmployes || showStocks || showFinances || showAlertes;
+
+        document.getElementById('kpiChantiersActifs')?.closest('.col-xl-3')?.classList.toggle('d-none', !showChantiers);
+        document.getElementById('kpiEmployesPresents')?.closest('.col-xl-3')?.classList.toggle('d-none', !showEmployes);
+        document.getElementById('kpiStocksAlerte')?.closest('.col-xl-3')?.classList.toggle('d-none', !showStocks);
+        document.getElementById('kpiCAMois')?.closest('.col-xl-3')?.classList.toggle('d-none', !showFinances);
+        document.getElementById('alertesCount')?.closest('.card')?.classList.toggle('d-none', !showAlertes);
+        document.getElementById('topChantiersList')?.closest('.card')?.classList.toggle('d-none', !showChantiers);
+        document.getElementById('activiteRecenteList')?.closest('.card')?.classList.toggle('d-none', !showQuickActions);
+        document.getElementById('quickActionsCard')?.classList.toggle('d-none', !showQuickActions);
+
+        document.querySelector('[data-route="chantiers/nouveau"]')?.classList.toggle('d-none', !showChantiers);
+        document.querySelector('[data-route="devis/nouveau"]')?.classList.toggle('d-none', !hasAccess('devis'));
+        document.querySelector('[data-route="employes/nouveau"]')?.classList.toggle('d-none', !showEmployes);
+        document.querySelector('[data-route="stocks/nouveau"]')?.classList.toggle('d-none', !showStocks);
     }
 
     /**

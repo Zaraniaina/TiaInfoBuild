@@ -94,6 +94,8 @@ class ParametresController {
         await this.loadEntreprise();
         await this.loadUtilisateurs();
         await this.loadPreferences();
+        this.loadCurrentUserProfile();
+        this.updateSettingsTabsVisibility();
         await this.loadBackups();
         await this.loadSyncConfig();
         await this.loadSyncHistory();
@@ -110,8 +112,12 @@ class ParametresController {
                 if (tab === 'utilisateurs') this.loadUtilisateurs();
                 else if (tab === 'sauvegarde') this.loadBackups();
                 else if (tab === 'sync') this.loadSyncHistory();
+                else if (tab === 'profil') this.loadCurrentUserProfile();
             });
         });
+
+        // Formulaire profil utilisateur
+        document.getElementById('formProfilUtilisateur')?.addEventListener('submit', (e) => this.handleSubmitProfil(e));
 
         // Formulaire entreprise
         document.getElementById('formEntreprise')?.addEventListener('submit', (e) => this.handleSubmitEntreprise(e));
@@ -195,6 +201,92 @@ class ParametresController {
         document.getElementById('facDelaiPaiement').value = e.delaiPaiementDefaut || '30 jours';
         document.getElementById('facValiditeDevis').value = e.validiteDevis || '30';
         document.getElementById('facMentionsLegales').value = e.mentionsLegales || '';
+    }
+
+    loadCurrentUserProfile() {
+        const user = window.AppState?.user;
+        if (!user) return;
+        document.getElementById('profilNom').value = user.nom || '';
+        document.getElementById('profilPrenom').value = user.prenom || '';
+        document.getElementById('profilEmail').value = user.email || '';
+        document.getElementById('profilTelephone').value = user.telephone || '';
+        document.getElementById('profilMotDePasse').value = '';
+    }
+
+    selectTab(tabName) {
+        const defaultTab = document.querySelector('#parametresTabs button.active');
+        const requestedTab = tabName ? document.getElementById(`tab-${tabName}-tab`) : null;
+        const targetTab = requestedTab && requestedTab.parentElement.style.display !== 'none' ? requestedTab : defaultTab;
+        if (!targetTab) {
+            const firstVisible = Array.from(document.querySelectorAll('#parametresTabs button')).find(btn => btn.parentElement.style.display !== 'none');
+            if (!firstVisible) return;
+            new bootstrap.Tab(firstVisible).show();
+            return;
+        }
+        const tab = new bootstrap.Tab(targetTab);
+        tab.show();
+    }
+
+    updateSettingsTabsVisibility() {
+        const canUpdateEntreprise = window.hasPermission ? window.hasPermission('update', 'entreprises') : false;
+        const canViewUsers = window.hasPermission ? window.hasPermission('list', 'utilisateurs') : false;
+
+        const entrepriseTab = document.getElementById('tab-entreprise-tab');
+        const utilisateursTab = document.getElementById('tab-utilisateurs-tab');
+        const profilTab = document.getElementById('tab-profil-tab');
+
+        if (entrepriseTab) entrepriseTab.parentElement.style.display = canUpdateEntreprise ? '' : 'none';
+        if (utilisateursTab) utilisateursTab.parentElement.style.display = canViewUsers ? '' : 'none';
+
+        const currentActive = document.querySelector('#parametresTabs button.active');
+        if (currentActive && currentActive.parentElement.style.display === 'none') {
+            const firstVisible = [profilTab, entrepriseTab, utilisateursTab].find(tab => tab && tab.parentElement.style.display !== 'none');
+            if (firstVisible) {
+                new bootstrap.Tab(firstVisible).show();
+            }
+        }
+
+        if (!canUpdateEntreprise && !canViewUsers && profilTab) {
+            new bootstrap.Tab(profilTab).show();
+        }
+    }
+
+    async handleSubmitProfil(e) {
+        e.preventDefault();
+
+        const form = e.target;
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        if (!data.motDePasse) {
+            delete data.motDePasse;
+        }
+
+        try {
+            const userId = window.AppState?.user?.id;
+            if (!userId) {
+                throw new Error('Utilisateur introuvable.');
+            }
+
+            const response = await window.api.utilisateurs.invoke('update', userId, data);
+            if (!response?.success) throw new Error(response?.error || 'Erreur mise à jour du profil.');
+
+            const updatedUser = response.data;
+            window.AppState.user = { ...window.AppState.user, ...updatedUser };
+            localStorage.setItem('currentUser', JSON.stringify(window.AppState.user));
+
+            showToast('Profil mis à jour', 'success');
+            this.loadCurrentUserProfile();
+            if (window.updateUserUI) window.updateUserUI(window.AppState.user);
+        } catch (error) {
+            console.error('Erreur sauvegarde profil:', error);
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
     }
 
     /**
