@@ -464,6 +464,7 @@ secureHandle('dashboard:stats', [], (e, entrepriseId) => dashboardCtrl.getDashbo
 secureHandle('dashboard:getCAEvolution', [], (e, entrepriseId) => dashboardCtrl.getCAEvolution(e, entrepriseId))
 secureHandle('dashboard:getTopChantiersBudget', [], (e, entrepriseId) => dashboardCtrl.getTopChantiersBudget(e, entrepriseId))
 secureHandle('dashboard:getActiviteRecente', [], (e, entrepriseId, limit) => dashboardCtrl.getActiviteRecente(e, entrepriseId, limit))
+secureHandle('dashboard:getFacturesRetard', ['ADMIN', 'COMPTABLE', 'DIRECTEUR'], (e, entrepriseId) => dashboardCtrl.getFacturesRetard(e, entrepriseId))
 
 // ============================================================
 // SYNCHRONISATION

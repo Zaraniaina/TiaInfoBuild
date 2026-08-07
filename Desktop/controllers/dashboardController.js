@@ -58,6 +58,19 @@ class DashboardController {
       return { success: false, error: error.message, data: [] }
     }
   }
+
+  /**
+   * Factures en retard pour le dashboard financier
+   */
+  async getFacturesRetard(event, entrepriseId) {
+    try {
+      const data = this.repos.dashboard.getFacturesRetard(entrepriseId)
+      return { success: true, data: data || [] }
+    } catch (error) {
+      console.error('DashboardController.getFacturesRetard error:', error)
+      return { success: false, error: error.message, data: [] }
+    }
+  }
 }
 
 module.exports = DashboardController

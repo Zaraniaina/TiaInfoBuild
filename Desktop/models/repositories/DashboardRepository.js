@@ -174,21 +174,40 @@ class DashboardRepository extends BaseRepository {
     return stmt.all(entrepriseId);
   }
 
-  /**
-   * Top 5 chantiers par budget
-   */
-  getTopChantiersBudget(entrepriseId) {
-    const stmt = db.prepare(`
-      SELECT id, nom, COALESCE(budgetPrevisionnel, budgetPrevu, 0) as budgetPrevisionnel, budgetReel,
-        (budgetReel / NULLIF(COALESCE(budgetPrevisionnel, budgetPrevu, 0), 0) * 100) as pctBudget
-      FROM Chantier
-      WHERE entrepriseId = ? AND is_deleted = 0
-      AND COALESCE(budgetPrevisionnel, budgetPrevu, 0) > 0
-      ORDER BY budgetPrevisionnel DESC
-      LIMIT 5
-    `);
-    return stmt.all(entrepriseId);
-  }
+    /**
+     * Top 5 chantiers par budget
+     */
+    getTopChantiersBudget(entrepriseId) {
+        const stmt = db.prepare(`
+            SELECT id, nom, COALESCE(budgetPrevisionnel, budgetPrevu, 0) as budgetPrevisionnel, budgetReel,
+                (budgetReel / NULLIF(COALESCE(budgetPrevisionnel, budgetPrevu, 0), 0) * 100) as pctBudget
+            FROM Chantier
+            WHERE entrepriseId = ? AND is_deleted = 0
+            AND COALESCE(budgetPrevisionnel, budgetPrevu, 0) > 0
+            ORDER BY budgetPrevisionnel DESC
+            LIMIT 5
+        `);
+        return stmt.all(entrepriseId);
+    }
+
+    /**
+     * Factures en retard pour le dashboard
+     */
+    getFacturesRetard(entrepriseId) {
+        const stmt = db.prepare(`
+            SELECT f.id, f.numero, f.dateEcheance, f.montantTTC, f.montantPaye,
+                (COALESCE(f.montantTTC, f.montant, 0) - COALESCE(f.montantPaye, 0)) as montantDu,
+                c.nom as clientNom
+            FROM Facture f
+            LEFT JOIN Client c ON f.clientId = c.id
+            WHERE f.entrepriseId = ? AND f.is_deleted = 0
+            AND f.statut IN ('emise', 'envoyee', 'partiellement_payee', 'emis')
+            AND f.dateEcheance < date('now')
+            ORDER BY f.dateEcheance ASC
+            LIMIT 10
+        `);
+        return stmt.all(entrepriseId);
+    }
 }
 
 module.exports = DashboardRepository;

@@ -18,7 +18,7 @@ const ROLE_SPACES = {
   DIRECTEUR: {
     label: 'Direction',
     icon: 'bi-graph-up-arrow',
-    sections: ['pilotage', 'chantiers', 'finance']
+    sections: ['pilotage', 'chantiers', 'rh', 'materiel', 'stocks', 'commercial', 'finance']
   },
   CHEF_CHANTIER: {
     label: 'Terrain',
@@ -28,12 +28,12 @@ const ROLE_SPACES = {
   CHEF_PROJET: {
     label: 'Projets',
     icon: 'bi-kanban',
-    sections: ['pilotage', 'chantiers']
+    sections: ['pilotage', 'chantiers', 'rh']
   },
   COMPTABLE: {
     label: 'Comptabilité',
     icon: 'bi-calculator',
-    sections: ['finance', 'commercial']
+    sections: ['finance', 'commercial', 'rh', 'stocks']
   },
   RH: {
     label: 'Ressources Humaines',
@@ -43,7 +43,7 @@ const ROLE_SPACES = {
   MATERIEL: {
     label: 'Logistique',
     icon: 'bi-tools',
-    sections: ['materiel']
+    sections: ['materiel', 'chantiers']
   },
   MAGASINIER: {
     label: 'Entrepôt',
@@ -61,7 +61,7 @@ const ROLE_SPACES = {
 const ROLE_ROUTES = {
   ADMIN: ['dashboard', 'chantiers', 'employes', 'pointages', 'equipes', 'heures-sup', 'materiels', 'stocks', 'fournisseurs', 'mouvements', 'clients', 'devis', 'contrats', 'factures', 'paiements', 'finances', 'depenses', 'rapports', 'alertes', 'utilisateurs', 'parametres'],
   DIRECTEUR: ['dashboard', 'chantiers', 'finances', 'depenses', 'rapports', 'alertes', 'employes', 'pointages', 'equipes', 'materiels', 'fournisseurs', 'clients', 'devis', 'contrats', 'factures', 'parametres'],
-  CHEF_CHANTIER: ['dashboard', 'chantiers', 'pointages', 'materiels', 'stocks', 'mouvements', 'alertes', 'parametres'],
+  CHEF_CHANTIER: ['dashboard', 'chantiers', 'employes', 'pointages', 'equipes', 'heures-sup', 'materiels', 'stocks', 'fournisseurs', 'mouvements', 'depenses', 'alertes', 'parametres'],
   CHEF_PROJET: ['dashboard', 'chantiers', 'alertes', 'pointages', 'employes', 'equipes', 'parametres'],
   COMPTABLE: ['dashboard', 'finances', 'depenses', 'rapports', 'alertes', 'factures', 'paiements', 'clients', 'contrats', 'fournisseurs', 'employes', 'pointages', 'equipes', 'parametres'],
   RH: ['dashboard', 'employes', 'pointages', 'equipes', 'heures-sup', 'alertes', 'parametres'],
@@ -142,14 +142,14 @@ const PERMISSION_MAP = {
 
 const ROLE_CODE_ALIASES = {
   ADMIN: ['admin', 'administrateur', 'administration'],
-  DIRECTEUR: ['direction', 'daf', 'directeur'],
-  COMPTABLE: ['comptable', 'finance'],
-  RH: ['rh', 'responsable rh', 'responsablerh'],
+  DIRECTEUR: ['direction', 'daf', 'directeur', 'direction générale'],
+  COMPTABLE: ['comptable', 'finance', 'responsable financier'],
+  RH: ['rh', 'responsable rh', 'responsablerh', 'responsable rh'],
   MATERIEL: ['materiel', 'responsable materiel', 'responsable_materiel', 'logisticien'],
-  MAGASINIER: ['magasinier', 'stock'],
-  COMMERCIAL: ['commercial'],
-  CHEF_CHANTIER: ['chef de chantier', 'conducteur', 'chef_chantier'],
-  CHEF_PROJET: ['chef de projet', 'chef_projet']
+  MAGASINIER: ['magasinier', 'stock', 'magasin'],
+  COMMERCIAL: ['commercial', 'responsable commercial'],
+  CHEF_CHANTIER: ['chef de chantier', 'conducteur', 'chef_chantier', 'chef chantier'],
+  CHEF_PROJET: ['chef de projet', 'chef_projet', 'chef de projet', 'directeur technique']
 };
 
 function normalizeRoleCode(rawRole) {

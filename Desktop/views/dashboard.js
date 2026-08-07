@@ -31,26 +31,50 @@ class DashboardController {
     }
 
     /**
-     * Charger toutes les données du dashboard
+     * Charger toutes les données du dashboard selon le rôle
      */
     async loadDashboardData() {
         const entrepriseId = window.AppState?.entreprise?.id || 1;
+        const currentRoles = window.AppState?.roles || [window.AppState?.roleCode || 'ADMIN'];
 
         try {
-            // Charger en parallèle
+            // Charger les KPIs de base pour tous les rôles
             await Promise.all([
                 this.loadKPIs(entrepriseId),
-                this.loadCAEvolution(entrepriseId),
-                this.loadAlertes(entrepriseId),
-                this.loadTopChantiers(entrepriseId),
-                this.loadActiviteRecente(entrepriseId)
+                this.loadAlertes(entrepriseId)
             ]);
+
+            // Charger les données spécifiques selon le rôle
+            const rolePromises = [];
+
+            // Direction/Comptable/Admin - CA, rapports financiers
+            if (this.hasRoleAccess(currentRoles, ['ADMIN', 'DIRECTEUR', 'COMPTABLE'])) {
+                rolePromises.push(this.loadCAEvolution(entrepriseId));
+                rolePromises.push(this.loadFacturesRetard(entrepriseId));
+            }
+
+            // Chantiers access - Admin, Direction, Chef Chantier, Chef Projet, Comptable
+            if (this.hasRoleAccess(currentRoles, ['ADMIN', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'])) {
+                rolePromises.push(this.loadTopChantiers(entrepriseId));
+            }
+
+            // Tous les rôles - activité récente
+            rolePromises.push(this.loadActiviteRecente(entrepriseId));
+
+            await Promise.all(rolePromises);
         } catch (error) {
             console.error('Erreur chargement dashboard:', error);
             showToast('Erreur lors du chargement du tableau de bord', 'error');
         } finally {
             this.updateDashboardVisibility();
         }
+    }
+
+    /**
+     * Vérifier si l'utilisateur a accès selon ses rôles
+     */
+    hasRoleAccess(userRoles, allowedRoles) {
+        return userRoles.some(role => allowedRoles.includes(role));
     }
 
     updateDashboardVisibility() {
@@ -67,8 +91,17 @@ class DashboardController {
         document.getElementById('kpiCAMois')?.closest('.col-xl-3')?.classList.toggle('d-none', !showFinances);
         document.getElementById('alertesCount')?.closest('.card')?.classList.toggle('d-none', !showAlertes);
         document.getElementById('topChantiersList')?.closest('.card')?.classList.toggle('d-none', !showChantiers);
+        document.getElementById('topChantiersCard')?.classList.toggle('d-none', !showChantiers);
         document.getElementById('activiteRecenteList')?.closest('.card')?.classList.toggle('d-none', !showQuickActions);
         document.getElementById('quickActionsCard')?.classList.toggle('d-none', !showQuickActions);
+
+        // Factures en retard - visible pour rôles financiers
+        const showFacturesRetard = hasAccess('finances') || hasPermission('list', 'factures');
+        document.getElementById('facturesRetardCard')?.classList.toggle('d-none', !showFacturesRetard);
+
+        // Graphique CA - visible pour rôles financiers
+        document.getElementById('caChart')?.closest('.card')?.classList.toggle('d-none', !showFinances);
+        document.getElementById('caChartEmpty')?.closest('.card')?.classList.toggle('d-none', !showFinances);
 
         document.querySelector('[data-route="chantiers/nouveau"]')?.classList.toggle('d-none', !showChantiers);
         document.querySelector('[data-route="devis/nouveau"]')?.classList.toggle('d-none', !hasAccess('devis'));
@@ -224,6 +257,58 @@ class DashboardController {
         } catch (error) {
             console.error('Erreur chargement alertes:', error);
         }
+    }
+
+    /**
+     * Charger les factures en retard pour le dashboard financier
+     */
+    async loadFacturesRetard(entrepriseId) {
+        try {
+            const factures = await window.api.dashboard.invoke('getFacturesRetard', entrepriseId);
+            this.renderFacturesRetard(factures);
+        } catch (error) {
+            console.error('Erreur chargement factures en retard:', error);
+        }
+    }
+
+    /**
+     * Rendre les factures en retard
+     */
+    renderFacturesRetard(factures) {
+        const container = document.getElementById('facturesRetardList');
+        const emptyState = document.getElementById('facturesRetardEmpty');
+
+        if (!container) return;
+
+        if (!factures || factures.length === 0) {
+            emptyState.style.display = 'block';
+            return;
+        }
+
+        emptyState.style.display = 'none';
+
+        container.innerHTML = factures.map(f => `
+            <div class="list-group-item list-group-item-action px-3 py-2 border-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-semibold small">${this.escapeHtml(f.numero || `FAC-${f.id}`)}</div>
+                        <small class="text-secondary">${this.escapeHtml(f.clientNom || 'Client inconnu')}</small>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-semibold text-danger">${this.formatCurrency(f.montantDu || 0)}</div>
+                        <small class="text-danger">${this.calculateDaysLate(f.dateEcheance)}j de retard</small>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    calculateDaysLate(dateEcheance) {
+        if (!dateEcheance) return 0;
+        const today = new Date();
+        const echeance = new Date(dateEcheance);
+        const diffTime = today - echeance;
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
 
     /**
