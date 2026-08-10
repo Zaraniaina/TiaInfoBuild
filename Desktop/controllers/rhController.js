@@ -8,9 +8,9 @@ class RhController {
   }
 
   // --- EMPLOYÉS ---
-  async getListEmployes(event, { entrepriseId, limit, offset, statut, search }) {
+  async getListEmployes(event, { entrepriseId, limit, offset, statut, search, typeContrat }) {
     try {
-      const items = this.repos.employes.getListWithStats({ entrepriseId, limit, offset, statut, search })
+      const items = this.repos.employes.getListWithStats({ entrepriseId, limit, offset, statut, search, typeContrat })
       const total = this.repos.employes.count({ entrepriseId, where: '', params: [] })
       return { success: true, data: { items, total } }
     } catch (error) {

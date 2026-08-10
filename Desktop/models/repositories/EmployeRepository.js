@@ -42,17 +42,28 @@ class EmployeRepository extends BaseRepository {
       ORDER BY hs.dateJour DESC
     `).all(id);
 
-    return { ...employe, equipes, affectations, pointages, heuresSup };
+    // Historique de carrière
+    const historiquePostes = db.prepare(`
+      SELECT * FROM HistoriquePoste
+      WHERE employeId = ? AND is_deleted = 0
+      ORDER BY dateDebut DESC
+    `).all(id);
+
+    return { ...employe, equipes, affectations, pointages, heuresSup, historiquePostes };
   }
 
   getListWithStats(options = {}) {
-    const { entrepriseId, limit = 50, offset = 0, statut, search } = options;
+    const { entrepriseId, limit = 50, offset = 0, statut, search, typeContrat } = options;
     let whereClause = '';
     const params = [];
 
     if (statut) {
       whereClause += ' AND e.statut = ?';
       params.push(statut);
+    }
+    if (typeContrat) {
+      whereClause += ' AND e.typeContrat = ?';
+      params.push(typeContrat);
     }
     if (search) {
       whereClause += ' AND (e.nom LIKE ? OR e.prenom LIKE ? OR e.matricule LIKE ? OR e.poste LIKE ?)';
@@ -172,14 +183,57 @@ class EmployeRepository extends BaseRepository {
       if (existing) throw new Error('Ce matricule existe déjà');
     }
 
-    return this.create({
+    const nouvelEmploye = this.create({
       ...data,
       nom: data.nom.trim(),
       prenom: data.prenom.trim(),
       entrepriseId,
       statut: data.statut || 'actif',
+      typeContrat: data.typeContrat || 'CDI',
+      dateDebutContrat: data.dateDebutContrat || data.dateEmbauche || new Date().toISOString().split('T')[0],
+      dateFinContrat: data.dateFinContrat || null,
       salaireBase: data.salaireBase || 0
     }, entrepriseId);
+
+    // Créer le premier enregistrement dans HistoriquePoste
+    try {
+      const HistoriquePosteRepository = require('./HistoriquePosteRepository');
+      new HistoriquePosteRepository().creerPremierPoste(nouvelEmploye.id, {
+        poste: data.poste || 'Ouvrier',
+        typeContrat: data.typeContrat || 'CDI',
+        salaireBase: data.salaireBase || 0,
+        dateDebut: data.dateDebutContrat || data.dateEmbauche || new Date().toISOString().split('T')[0],
+        entrepriseId
+      });
+    } catch (e) {
+      console.warn('[EmployeRepository] Erreur création historique poste:', e.message);
+    }
+
+    return nouvelEmploye;
+  }
+
+  /**
+   * Changer le poste d'un employé (promotion, mutation, etc.)
+   * Met à jour Employe + crée une entrée dans HistoriquePoste
+   */
+  changerPoste(employeId, data) {
+    const { poste, typeContrat, salaireBase, dateDebut, motifChangement, dateFinContrat, entrepriseId } = data;
+    if (!poste || !dateDebut) throw new Error('Poste et date de début requis');
+
+    // Mettre à jour la fiche employé
+    this.update(employeId, {
+      poste: poste.trim(),
+      typeContrat: typeContrat || 'CDI',
+      salaireBase: parseFloat(salaireBase) || 0,
+      dateDebutContrat: dateDebut,
+      dateFinContrat: dateFinContrat || null
+    });
+
+    // Enregistrer dans l'historique
+    const HistoriquePosteRepository = require('./HistoriquePosteRepository');
+    return new HistoriquePosteRepository().changerPoste(employeId, {
+      poste, typeContrat, salaireBase, dateDebut, motifChangement, entrepriseId
+    });
   }
 }
 

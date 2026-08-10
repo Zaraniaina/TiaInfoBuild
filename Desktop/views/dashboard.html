@@ -109,6 +109,154 @@
         </div>
     </div>
 
+    <!-- KPIs RH (Dynamiques selon rôle) -->
+    <div class="row g-3 mb-4 d-none" id="kpiCardsRH">
+        <div class="col-xl-4 col-md-6">
+            <div class="card kpi-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-secondary mb-1 small">Employés Actifs</p>
+                            <h3 class="mb-0 text-primary" id="kpiRHEmployesActifs">—</h3>
+                        </div>
+                        <div class="kpi-icon bg-primary bg-opacity-10 text-primary rounded-circle p-3">
+                            <i class="bi bi-people fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="card kpi-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-secondary mb-1 small">Équipes Actives</p>
+                            <h3 class="mb-0 text-success" id="kpiRHEquipesActives">—</h3>
+                        </div>
+                        <div class="kpi-icon bg-success bg-opacity-10 text-success rounded-circle p-3">
+                            <i class="bi bi-diagram-3 fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="card kpi-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-secondary mb-1 small">Heures Sup. en attente</p>
+                            <h3 class="mb-0 text-warning" id="kpiRHHeuresSup">—</h3>
+                        </div>
+                        <div class="kpi-icon bg-warning bg-opacity-10 text-warning rounded-circle p-3">
+                            <i class="bi bi-clock-history fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs Commercial (Dynamiques selon rôle) -->
+    <div class="row g-3 mb-4 d-none" id="kpiCardsCommercial">
+        <div class="col-xl-4 col-md-6">
+            <div class="card kpi-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-secondary mb-1 small">Nouveaux Clients (Mois)</p>
+                            <h3 class="mb-0 text-info" id="kpiComNouveauxClients">—</h3>
+                        </div>
+                        <div class="kpi-icon bg-info bg-opacity-10 text-info rounded-circle p-3">
+                            <i class="bi bi-person-plus fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="card kpi-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-secondary mb-1 small">Devis en attente</p>
+                            <h3 class="mb-0 text-warning" id="kpiComDevisAttente">—</h3>
+                        </div>
+                        <div class="kpi-icon bg-warning bg-opacity-10 text-warning rounded-circle p-3">
+                            <i class="bi bi-file-earmark-text fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="card kpi-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-secondary mb-1 small">Factures Impayées</p>
+                            <h3 class="mb-0 text-danger" id="kpiComFacturesImpayees">—</h3>
+                        </div>
+                        <div class="kpi-icon bg-danger bg-opacity-10 text-danger rounded-circle p-3">
+                            <i class="bi bi-receipt fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs Logistique (Dynamiques selon rôle) -->
+    <div class="row g-3 mb-4 d-none" id="kpiCardsLogistique">
+        <div class="col-xl-4 col-md-6">
+            <div class="card kpi-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-secondary mb-1 small">Valeur Totale Stock</p>
+                            <h3 class="mb-0 text-success" id="kpiLogValeurStock">—</h3>
+                        </div>
+                        <div class="kpi-icon bg-success bg-opacity-10 text-success rounded-circle p-3">
+                            <i class="bi bi-cash-stack fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="card kpi-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-secondary mb-1 small">Articles en Alerte / Rupture</p>
+                            <h3 class="mb-0 text-danger" id="kpiLogArticlesAlerte">—</h3>
+                        </div>
+                        <div class="kpi-icon bg-danger bg-opacity-10 text-danger rounded-circle p-3">
+                            <i class="bi bi-exclamation-triangle fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="card kpi-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-secondary mb-1 small">Parc Matériel Actif</p>
+                            <h3 class="mb-0 text-primary" id="kpiLogMateriels">—</h3>
+                        </div>
+                        <div class="kpi-icon bg-primary bg-opacity-10 text-primary rounded-circle p-3">
+                            <i class="bi bi-tools fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <!-- Graphiques et activité -->
     <div class="row g-4">
         <!-- Graphiques principaux (Dynamiques selon rôle) -->

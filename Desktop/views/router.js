@@ -307,10 +307,13 @@ window.router.add('rapports', async () => {
 });
 
 window.router.add('alertes', async () => {
-  const html = await loadView('finance/alertes/index.html');
+  const html = await loadView('alertes/index.html');
   document.getElementById('contentArea').innerHTML = html;
-  await window.loadScript('finance/alertes/index.js');
-  if (window.alertesController) await window.alertesController.init();
+  await window.loadScript('alertes/index.js');
+  if (window.AlertesController) {
+      window.alertesController = new window.AlertesController();
+      await window.alertesController.init();
+  }
 });
 
 window.router.add('parametres', async (to) => {

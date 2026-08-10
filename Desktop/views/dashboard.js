@@ -484,7 +484,21 @@ class DashboardController {
         try {
             const result = await window.api.dashboard.invoke('getRHStats', entrepriseId);
             if (result.success) {
-                this.renderRHChart(result.data);
+                const data = result.data;
+                document.getElementById('kpiCardsRH').classList.remove('d-none');
+                
+                if (document.getElementById('kpiRHEmployesActifs')) {
+                    document.getElementById('kpiRHEmployesActifs').textContent = data.employesActifs || 0;
+                }
+                if (document.getElementById('kpiRHEquipesActives')) {
+                    document.getElementById('kpiRHEquipesActives').textContent = data.equipesActives || 0;
+                }
+                if (document.getElementById('kpiRHHeuresSup')) {
+                    const hsAttente = data.heuresSupAttente ? data.heuresSupAttente.count : 0;
+                    document.getElementById('kpiRHHeuresSup').textContent = hsAttente;
+                }
+
+                this.renderRHChart(data);
             }
         } catch (error) {
             console.error('Erreur chargement stats RH:', error);
@@ -538,7 +552,21 @@ class DashboardController {
         try {
             const result = await window.api.dashboard.invoke('getCommercialStats', entrepriseId);
             if (result.success) {
-                this.renderCommercialChart(result.data);
+                const data = result.data;
+                document.getElementById('kpiCardsCommercial').classList.remove('d-none');
+
+                if (document.getElementById('kpiComNouveauxClients')) {
+                    document.getElementById('kpiComNouveauxClients').textContent = data.nouveauxClients || 0;
+                }
+                if (document.getElementById('kpiComDevisAttente')) {
+                    document.getElementById('kpiComDevisAttente').textContent = data.devisEnAttente?.count || 0;
+                }
+                if (document.getElementById('kpiComFacturesImpayees')) {
+                    const totalDu = data.facturesImpayees?.totalDu || 0;
+                    document.getElementById('kpiComFacturesImpayees').textContent = this.formatCurrency(totalDu);
+                }
+
+                this.renderCommercialChart(data);
             }
         } catch (error) {
             console.error('Erreur chargement stats Commercial:', error);
@@ -592,7 +620,21 @@ class DashboardController {
         try {
             const result = await window.api.dashboard.invoke('getLogistiqueStats', entrepriseId);
             if (result.success) {
-                this.renderLogistiqueChart(result.data);
+                const data = result.data;
+                document.getElementById('kpiCardsLogistique').classList.remove('d-none');
+
+                if (document.getElementById('kpiLogValeurStock')) {
+                    document.getElementById('kpiLogValeurStock').textContent = this.formatCurrency(data.valeurStock || 0);
+                }
+                if (document.getElementById('kpiLogArticlesAlerte')) {
+                    document.getElementById('kpiLogArticlesAlerte').textContent = data.articlesAlerte || 0;
+                }
+                if (document.getElementById('kpiLogMateriels')) {
+                    const totalMats = (data.materielsParEtat || []).reduce((acc, curr) => acc + curr.count, 0);
+                    document.getElementById('kpiLogMateriels').textContent = totalMats;
+                }
+
+                this.renderLogistiqueChart(data);
             }
         } catch (error) {
             console.error('Erreur chargement stats Logistique:', error);

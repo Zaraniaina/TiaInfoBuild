@@ -221,20 +221,34 @@ class DashboardRepository extends BaseRepository {
         const debutMoisStr = debutMois.toISOString().split('T')[0];
 
         stats.pointagesMois = db.prepare(`
-            SELECT type, COUNT(*) as count 
+            SELECT statut, COUNT(*) as count 
             FROM Pointage 
             WHERE employeId IN (SELECT id FROM Employe WHERE entrepriseId = ? AND is_deleted = 0)
             AND dateJour >= ? 
-            GROUP BY type
+            GROUP BY statut
         `).all(entrepriseId, debutMoisStr);
 
-        // Heures supplémentaires en attente
+        // Heures supplémentaires du mois en cours
         stats.heuresSupAttente = db.prepare(`
-            SELECT COUNT(*) as count, SUM(nbHeures) as totalHeures 
+            SELECT COUNT(*) as count, SUM(nombreHeures) as totalHeures 
             FROM HeureSupplementaire 
             WHERE employeId IN (SELECT id FROM Employe WHERE entrepriseId = ? AND is_deleted = 0)
-            AND statut = 'en_attente'
-        `).get(entrepriseId);
+            AND dateJour >= ?
+        `).get(entrepriseId, debutMoisStr);
+
+        // Employés Actifs
+        stats.employesActifs = db.prepare(`
+            SELECT COUNT(*) as count 
+            FROM Employe 
+            WHERE entrepriseId = ? AND is_deleted = 0 AND statut = 'actif'
+        `).get(entrepriseId).count;
+
+        // Equipes Actives
+        stats.equipesActives = db.prepare(`
+            SELECT COUNT(*) as count 
+            FROM Equipe 
+            WHERE entrepriseId = ? AND is_deleted = 0
+        `).get(entrepriseId).count;
 
         return stats;
     }
@@ -265,6 +279,22 @@ class DashboardRepository extends BaseRepository {
             AND created_at >= ?
         `).get(entrepriseId, debutMoisStr).count;
 
+        // Factures impayées (Montant total dû)
+        stats.facturesImpayees = db.prepare(`
+            SELECT COUNT(*) as count, SUM(COALESCE(montantTTC, montant, 0) - COALESCE(montantPaye, 0)) as totalDu
+            FROM Facture
+            WHERE entrepriseId = ? AND is_deleted = 0
+            AND statut IN ('emise', 'envoyee', 'partiellement_payee', 'emis')
+        `).get(entrepriseId);
+
+        // Devis en attente
+        stats.devisEnAttente = db.prepare(`
+            SELECT COUNT(*) as count, SUM(COALESCE(montantTTC, 0)) as totalTTC
+            FROM Devis
+            WHERE entrepriseId = ? AND is_deleted = 0
+            AND statut IN ('envoye', 'en_attente', 'brouillon')
+        `).get(entrepriseId);
+
         return stats;
     }
 
@@ -281,6 +311,21 @@ class DashboardRepository extends BaseRepository {
             WHERE entrepriseId = ? AND is_deleted = 0
             GROUP BY etat
         `).all(entrepriseId);
+
+        // Valeur totale du stock
+        stats.valeurStock = db.prepare(`
+            SELECT SUM(COALESCE(stockActuel, 0) * COALESCE(prixMoyen, prixAchat, 0)) as total
+            FROM Article
+            WHERE entrepriseId = ? AND is_deleted = 0
+        `).get(entrepriseId).total || 0;
+
+        // Articles en rupture ou alerte
+        stats.articlesAlerte = db.prepare(`
+            SELECT COUNT(*) as count
+            FROM Article
+            WHERE entrepriseId = ? AND is_deleted = 0
+            AND stockActuel <= seuilAlerte
+        `).get(entrepriseId).count || 0;
 
         // Top 5 articles les plus consommés (Mouvements de sortie)
         stats.topArticlesConsommes = db.prepare(`
