@@ -92,7 +92,7 @@ class FactureRepository extends BaseRepository {
       nouveauStatut = 'partiel';
     }
 
-    this.update(factureId, { statut: nouveauStatut });
+    this.update(factureId, { statut: nouveauStatut, montantPaye: nouveauTotalPaye });
 
     return this.getWithPaiements(factureId);
   }

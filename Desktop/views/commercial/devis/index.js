@@ -1077,11 +1077,15 @@ class DevisController {
         try {
             const entrepriseId = window.AppState?.entreprise?.id || 1;
 
-            // TODO: Implémenter liste contrats via API
-            const result = { items: [], total: 0 };
+            const result = await window.api.contrats.invoke('list', {
+                entrepriseId, limit: 1000, offset: 0
+            });
 
-            this.totalItems = result.total || 0;
-            this.renderContratsTable(result.items || []);
+            const res = result?.success === false ? null : (result?.data || result);
+            this.totalItems = res?.total || 0;
+            const items = res?.items || [];
+
+            this.renderContratsTable(items);
             this.renderContratsPagination();
 
         } catch (error) {
@@ -1112,15 +1116,19 @@ class DevisController {
                 'resilie': 'bg-danger'
             }[c.statut] || 'bg-secondary';
 
+            const clientNom = c.clientEntreprise
+                ? c.clientEntreprise
+                : `${(c.clientPrenom || '').trim()} ${this.escapeHtml(c.clientNom || '')}`.trim();
+
             return `
                 <tr data-id="${c.id}">
                     <td>${(this.currentPage - 1) * this.pageSize + index + 1}</td>
-                    <td>${this.escapeHtml(c.numero)}</td>
-                    <td>${c.devis?.numero || '—'}</td>
-                    <td>${c.client ? (c.client.type === 'entreprise' ? c.client.entreprise : `${c.client.prenom} ${c.client.nom}`.trim()) : '—'}</td>
+                    <td>${this.escapeHtml(c.reference || c.numero || `CTR-${c.id}`)}</td>
+                    <td>${c.devisNumero || c.devisReference || '—'}</td>
+                    <td>${clientNom || '—'}</td>
                     <td class="d-none d-md-table-cell"><small>${c.dateSignature ? this.formatDate(c.dateSignature) : '—'}</small></td>
                     <td class="d-none d-lg-table-cell">${this.formatCurrency(c.montantTTC || 0)}</td>
-                    <td><span class="badge ${statutClass}">${c.statut}</span></td>
+                    <td><span class="badge ${statutClass}">${c.statut || '—'}</span></td>
                     <td>
                         <div class="btn-group btn-group-sm">
                             <button class="btn btn-outline-secondary btn-view" data-id="${c.id}" title="Voir">
@@ -1218,8 +1226,41 @@ class DevisController {
      */
     async openModalEditionContrat(id) {
         try {
-            // TODO: Implémenter get contrat
-            showToast('Édition contrat à implémenter', 'info');
+            const result = await window.api.contrats.invoke('get', parseInt(id));
+            if (result?.success === false) {
+                throw new Error(result?.error || 'Contrat non trouvé');
+            }
+            const c = result?.data || result;
+            if (!c || !c.id) {
+                showToast('Contrat non trouvé', 'error');
+                return;
+            }
+
+            this.contratEnEdition = c;
+            document.getElementById('contratId').value = c.id;
+            document.getElementById('contratNumero').value = c.reference || c.numero || '';
+            document.getElementById('contratDevisId').value = c.devisId || '';
+            document.getElementById('contratMontant').value = c.montantHT || c.montant || '';
+            document.getElementById('contratTVA').value = c.tva || '';
+            document.getElementById('contratMontantTTC').value = c.montantTTC || c.montant || '';
+            document.getElementById('contratDateDebut').value = c.dateDebut ? c.dateDebut.split('T')[0] : '';
+            document.getElementById('contratDateFin').value = c.dateFin ? c.dateFin.split('T')[0] : '';
+            document.getElementById('contratDateSignature').value = c.dateSignature ? c.dateSignature.split('T')[0] : '';
+            document.getElementById('contratStatut').value = c.statut || 'signe';
+            document.getElementById('contratAcompte').value = c.acompteVerse || '0';
+            document.getElementById('contratConditions').value = c.conditionsPaiement || c.conditions || '';
+            document.getElementById('contratObjet').value = c.objet || '';
+            document.getElementById('contratNotes').value = c.notes || '';
+
+            document.getElementById('modalContratLabel').textContent = `Modifier: ${c.reference || c.numero || `CTR-${c.id}`}`;
+            document.getElementById('btnDeleteContrat').style.display = 'inline-block';
+
+            const elObjet = document.getElementById('contratObjet');
+            if (elObjet) elObjet.value = c.objet || '';
+            const elNotes = document.getElementById('contratNotes');
+            if (elNotes) elNotes.value = c.notes || '';
+
+            new bootstrap.Modal(document.getElementById('modalContrat')).show();
         } catch (error) {
             console.error('Erreur chargement contrat:', error);
             showToast('Erreur lors du chargement du contrat', 'error');
@@ -1257,7 +1298,6 @@ class DevisController {
      */
     async handleSubmitContrat(e) {
         e.preventDefault();
-
         const form = e.target;
         if (!form.checkValidity()) {
             form.classList.add('was-validated');
@@ -1273,18 +1313,27 @@ class DevisController {
         data.acompteVerse = parseFloat(data.acompteVerse) || 0;
         data.devisId = parseInt(data.devisId) || null;
 
+        data.reference = data.numero || data.reference;
+        data.conditionsPaiement = data.conditionsPaiement || data.conditions;
+
         const entrepriseId = window.AppState?.entreprise?.id || 1;
         const isEdit = !!data.id;
+        const contratId = data.id ? parseInt(data.id) : null;
         delete data.id;
 
         try {
+            let result;
             if (isEdit) {
-                // TODO: Implémenter update contrat
-                showToast('Modification contrat à implémenter', 'info');
+                result = await window.api.contrats.invoke('update', contratId, data);
             } else {
-                // TODO: Implémenter create contrat
-                showToast('Création contrat à implémenter', 'info');
+                result = await window.api.contrats.invoke('create', { ...data, entrepriseId }, entrepriseId);
             }
+
+            if (result?.success === false) {
+                throw new Error(result?.error || 'Erreur lors de l\'enregistrement du contrat');
+            }
+
+            showToast(`Contrat ${isEdit ? 'modifié' : 'créé'} avec succès`, 'success');
 
             bootstrap.Modal.getInstance(document.getElementById('modalContrat'))?.hide();
             await this.loadContrats();

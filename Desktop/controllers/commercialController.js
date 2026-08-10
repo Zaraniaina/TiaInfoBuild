@@ -142,8 +142,25 @@ class CommercialController {
   // --- DEVIS ---
   async getListDevis(event, { entrepriseId, limit, offset, statut, search }) {
     try {
-      const items = this.repos.devis.getAll({ entrepriseId, limit, offset })
-      const total = this.repos.devis.count({ entrepriseId })
+      const where = [];
+      const params = [];
+      if (statut) {
+        where.push('statut = ?');
+        params.push(statut);
+      }
+      if (search) {
+        where.push('(numero LIKE ? OR reference LIKE ?)');
+        params.push(`%${search}%`, `%${search}%`);
+      }
+
+      const items = this.repos.devis.getAll({
+        entrepriseId, limit, offset,
+        where: where.join(' AND '), params
+      })
+      const total = this.repos.devis.count({
+        entrepriseId,
+        where: where.join(' AND '), params
+      })
       return { success: true, data: { items, total } }
     } catch (error) {
       console.error('CommercialController.getListDevis error:', error)
@@ -173,7 +190,12 @@ class CommercialController {
 
   async updateDevis(event, id, data) {
     try {
-      const result = this.repos.devis.update(id, data)
+      let result;
+      if (Array.isArray(data.lignes)) {
+        result = this.repos.devis.updateWithLignes(id, data);
+      } else {
+        result = this.repos.devis.update(id, data);
+      }
       return { success: true, data: result }
     } catch (error) {
       console.error('CommercialController.updateDevis error:', error)
@@ -192,10 +214,27 @@ class CommercialController {
   }
 
   // --- CONTRATS ---
-  async getListContrats(event, { entrepriseId, limit, offset }) {
+  async getListContrats(event, { entrepriseId, limit, offset, statut, type }) {
     try {
-      const items = this.repos.contrats.getAll({ entrepriseId, limit, offset })
-      const total = this.repos.contrats.count({ entrepriseId })
+      const where = [];
+      const params = [];
+      if (statut) {
+        where.push('statut = ?');
+        params.push(statut);
+      }
+      if (type) {
+        where.push('typeContrat = ?');
+        params.push(type);
+      }
+
+      const items = this.repos.contrats.getAll({
+        entrepriseId, limit, offset,
+        where: where.join(' AND '), params
+      })
+      const total = this.repos.contrats.count({
+        entrepriseId,
+        where: where.join(' AND '), params
+      })
       return { success: true, data: { items, total } }
     } catch (error) {
       console.error('CommercialController.getListContrats error:', error)
@@ -214,10 +253,27 @@ class CommercialController {
   }
 
   // --- FACTURES ---
-  async getListFactures(event, { entrepriseId, limit, offset, statut }) {
+  async getListFactures(event, { entrepriseId, limit, offset, statut, search }) {
     try {
-      const items = this.repos.factures.getAll({ entrepriseId, limit, offset })
-      const total = this.repos.factures.count({ entrepriseId })
+      const where = [];
+      const params = [];
+      if (statut) {
+        where.push('statut = ?');
+        params.push(statut);
+      }
+      if (search) {
+        where.push('numero LIKE ?');
+        params.push(`%${search}%`);
+      }
+
+      const items = this.repos.factures.getAll({
+        entrepriseId, limit, offset,
+        where: where.join(' AND '), params
+      })
+      const total = this.repos.factures.count({
+        entrepriseId,
+        where: where.join(' AND '), params
+      })
       return { success: true, data: { items, total } }
     } catch (error) {
       console.error('CommercialController.getListFactures error:', error)

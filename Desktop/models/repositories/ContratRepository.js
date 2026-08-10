@@ -11,38 +11,50 @@ class ContratRepository extends BaseRepository {
    * Surchargé pour supporter le filtre par entrepriseId
    */
   getAll(options = {}) {
-    const { entrepriseId, limit = 50, offset = 0 } = options;
+    const { entrepriseId, limit = 50, offset = 0, where = '', params = [] } = options;
 
     if (entrepriseId) {
-      const sql = `
-        SELECT co.*, d.numero as devisNumero, c.nom as chantierNom
+      let sql = `
+        SELECT co.*, d.numero as devisNumero, d.reference as devisReference,
+               c.nom as chantierNom, cl.nom as clientNom, cl.entreprise as clientEntreprise,
+               cl.prenom as clientPrenom, cl.type as clientType
         FROM Contrat co
         LEFT JOIN Devis d ON co.devisId = d.id AND d.is_deleted = 0
         LEFT JOIN Chantier c ON co.chantierId = c.id AND c.is_deleted = 0
-        WHERE (co.entrepriseId = ? OR d.entrepriseId = ? OR c.entrepriseId = ?)
+        LEFT JOIN Client cl ON co.clientId = cl.id AND cl.is_deleted = 0
+        WHERE (co.entrepriseId = ? OR d.entrepriseId = ? OR c.entrepriseId = ? OR cl.entrepriseId = ?)
         AND co.is_deleted = 0
-        ORDER BY co.id DESC
-        LIMIT ? OFFSET ?
       `;
-      return db.prepare(sql).all(entrepriseId, entrepriseId, entrepriseId, limit, offset);
+      const allParams = [entrepriseId, entrepriseId, entrepriseId, entrepriseId, ...params];
+      if (where) {
+        sql += ` AND ${where}`;
+      }
+      sql += ` ORDER BY co.id DESC LIMIT ? OFFSET ?`;
+      allParams.push(limit, offset);
+      return db.prepare(sql).all(...allParams);
     }
 
     return super.getAll(options);
   }
 
   count(options = {}) {
-    const { entrepriseId } = options;
+    const { entrepriseId, where = '', params = [] } = options;
 
     if (entrepriseId) {
-      const sql = `
+      let sql = `
         SELECT COUNT(*) as total
         FROM Contrat co
         LEFT JOIN Devis d ON co.devisId = d.id AND d.is_deleted = 0
         LEFT JOIN Chantier c ON co.chantierId = c.id AND c.is_deleted = 0
-        WHERE (co.entrepriseId = ? OR d.entrepriseId = ? OR c.entrepriseId = ?)
+        LEFT JOIN Client cl ON co.clientId = cl.id AND cl.is_deleted = 0
+        WHERE (co.entrepriseId = ? OR d.entrepriseId = ? OR c.entrepriseId = ? OR cl.entrepriseId = ?)
         AND co.is_deleted = 0
       `;
-      const result = db.prepare(sql).get(entrepriseId, entrepriseId, entrepriseId);
+      const allParams = [entrepriseId, entrepriseId, entrepriseId, entrepriseId, ...params];
+      if (where) {
+        sql += ` AND ${where}`;
+      }
+      const result = db.prepare(sql).get(...allParams);
       return result?.total || 0;
     }
 
@@ -61,12 +73,16 @@ class ContratRepository extends BaseRepository {
       ? db.prepare('SELECT * FROM Chantier WHERE id = ? AND is_deleted = 0').get(contrat.chantierId)
       : null;
 
+    const client = contrat.clientId
+      ? db.prepare('SELECT * FROM Client WHERE id = ? AND is_deleted = 0').get(contrat.clientId)
+      : null;
+
     const factures = db.prepare(`
       SELECT * FROM Facture WHERE contratId = ? AND is_deleted = 0
       ORDER BY dateEmission DESC
     `).all(id);
 
-    return { ...contrat, devis, chantier, factures };
+    return { ...contrat, devis, chantier, client, factures };
   }
 }
 

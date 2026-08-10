@@ -112,9 +112,11 @@ class FacturesController {
                 statut: this.filters.statut || undefined
             });
 
-            // Note: la recherche n'est pas encore gérée côté backend factures.list, 
-            // mais on pourrait filtrer localement pour ce PoC.
-            let items = result?.data?.items || [];
+            if (result?.success === false) {
+                throw new Error(result?.error || 'Erreur lors du chargement des factures');
+            }
+
+            let items = result?.data?.items || result?.items || [];
             if (this.filters.search) {
                 const s = this.filters.search.toLowerCase();
                 items = items.filter(f => (f.numero && f.numero.toLowerCase().includes(s)));
@@ -296,10 +298,13 @@ class FacturesController {
         document.getElementById('paiementDate').value = new Date().toISOString().split('T')[0];
         document.getElementById('paiementMontant').value = resteAPayer;
         
-        resteLabel.textContent = window.formatCurrencyGlobal ? window.formatCurrencyGlobal(resteAPayer) : new Intl.NumberFormat('fr-FR', { 
+        const resteLabel = document.getElementById('paiementResteLabel');
+        if (resteLabel) {
+            resteLabel.textContent = window.formatCurrencyGlobal ? window.formatCurrencyGlobal(resteAPayer) : new Intl.NumberFormat('fr-FR', { 
             style: 'currency', 
             currency: 'MGA' 
         }).format(resteAPayer);
+        }
 
         new bootstrap.Modal(document.getElementById('modalPaiement')).show();
     }

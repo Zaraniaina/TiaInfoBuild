@@ -318,7 +318,7 @@ secureHandle('affectations:delete', rolesChantiers, (e, id) => chantierCtrl.dele
 // ============================================================
 const rolesRH = ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'];
 
-const rolesEmployesRead = ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'];
+const rolesEmployesRead = ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE', 'COMMERCIAL'];
 const rolesEmployesWrite = ['ADMIN', 'RH'];
 
 secureHandle('employes:list', rolesEmployesRead, (e, params) => rhCtrl.getListEmployes(e, params))

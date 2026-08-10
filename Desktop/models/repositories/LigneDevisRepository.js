@@ -59,11 +59,19 @@ class LigneDevisRepository extends BaseRepository {
         .run(devisId);
 
       // Créer nouvelles lignes
-      const nouvelles = lignes.map(l => this.create({
+       const nouvelles = lignes.map(l => this.create({
         devisId,
         description: l.description || '',
+        reference: l.reference || '',
+        type: l.type || 'produit',
+        articleId: l.articleId || null,
         quantite: l.quantite || 0,
-        prixUnitaire: l.prixUnitaire || 0
+        prixUnitaire: l.prixUnitaire || 0,
+        tauxTVA: l.tauxTVA || 0,
+        remise: l.remise || 0,
+        unite: l.unite || '',
+        ligneTotal: l.ligneTotal || 0,
+        ligneTotalTTC: l.ligneTotalTTC || 0
       }));
 
       return nouvelles;
