@@ -205,6 +205,21 @@
                 </div>
             </div>
         </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="card kpi-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-secondary mb-1 small">Taux Conversion</p>
+                            <h3 class="mb-0 text-primary" id="kpiComTauxConversion">—</h3>
+                        </div>
+                        <div class="kpi-icon bg-primary bg-opacity-10 text-primary rounded-circle p-3">
+                            <i class="bi bi-arrow-repeat fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- KPIs Logistique (Dynamiques selon rôle) -->
@@ -307,6 +322,21 @@
                 </div>
             </div>
 
+            <!-- Graphique CA Commercial par Mois -->
+            <div class="card mb-4" id="cardCAByMoisChart" style="display: none;">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-currency-dollar me-2"></i>CA Commercial (12 mois)</h5>
+                </div>
+                <div class="card-body">
+                    <div style="height: 300px;">
+                        <canvas id="caByMoisChart"></canvas>
+                    </div>
+                    <div class="text-center mt-3" id="caByMoisChartEmpty" style="display: none;">
+                        <p class="text-secondary mt-2">Aucune donnée de facturation commerciale</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Graphiques Logistique (Articles Consommés) -->
             <div class="card mb-4" id="cardLogistiqueChart" style="display: none;">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -374,6 +404,19 @@
                     <div class="text-center py-4 text-secondary" id="topChantiersEmpty">
                         <i class="bi bi-building display-4"></i>
                         <p class="mt-2">Aucun chantier</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top 5 Clients (Commercial) -->
+            <div class="card" id="topClientsCard" style="display: none;">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-people me-2"></i>Top 5 Clients (CA)</h5>
+                </div>
+                <div class="card-body p-0" id="topClientsList">
+                    <div class="text-center py-4 text-secondary" id="topClientsEmpty">
+                        <i class="bi bi-person display-4"></i>
+                        <p class="mt-2">Aucun client</p>
                     </div>
                 </div>
             </div>

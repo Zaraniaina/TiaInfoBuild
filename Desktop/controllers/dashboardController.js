@@ -109,6 +109,26 @@ class DashboardController {
       return { success: false, error: error.message, data: {} }
     }
   }
+
+  async getTopClients(event, entrepriseId) {
+    try {
+      const data = this.repos.dashboard.getTopClients(entrepriseId, 5)
+      return { success: true, data: data || [] }
+    } catch (error) {
+      console.error('DashboardController.getTopClients error:', error)
+      return { success: false, error: error.message, data: [] }
+    }
+  }
+
+  async getCAByMois(event, entrepriseId) {
+    try {
+      const data = this.repos.dashboard.getCAByMois(entrepriseId)
+      return { success: true, data: data || [] }
+    } catch (error) {
+      console.error('DashboardController.getCAByMois error:', error)
+      return { success: false, error: error.message, data: [] }
+    }
+  }
 }
 
 module.exports = DashboardController

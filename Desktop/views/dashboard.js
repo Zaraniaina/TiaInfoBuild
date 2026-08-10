@@ -66,6 +66,8 @@ class DashboardController {
             // Commercial
             if (this.hasRoleAccess(currentRoles, ['ADMIN', 'COMMERCIAL', 'DIRECTEUR'])) {
                 rolePromises.push(this.loadCommercialStats(entrepriseId));
+                rolePromises.push(this.loadTopClients(entrepriseId));
+                rolePromises.push(this.loadCAByMoisChart(entrepriseId));
             }
 
             // Logistique
@@ -121,12 +123,17 @@ class DashboardController {
         const roles = window.AppState?.roles || [window.AppState?.roleCode || 'ADMIN'];
         document.getElementById('cardRHChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'RH', 'DIRECTEUR']));
         document.getElementById('cardCommercialChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'COMMERCIAL', 'DIRECTEUR']));
+        document.getElementById('cardCAByMoisChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE']));
         document.getElementById('cardLogistiqueChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'MAGASINIER', 'RESPONSABLE_MATERIEL', 'CHEF_CHANTIER']));
 
         document.querySelector('[data-route="chantiers/nouveau"]')?.classList.toggle('d-none', !showChantiers);
         document.querySelector('[data-route="devis/nouveau"]')?.classList.toggle('d-none', !hasAccess('devis'));
         document.querySelector('[data-route="employes/nouveau"]')?.classList.toggle('d-none', !showEmployes);
         document.querySelector('[data-route="stocks/nouveau"]')?.classList.toggle('d-none', !showStocks);
+
+        // Top clients visible pour commercial
+        const showTopClients = hasAccess('clients') || hasPermission('list', 'clients');
+        document.getElementById('topClientsCard')?.classList.toggle('d-none', !showTopClients);
     }
 
     /**
@@ -565,6 +572,9 @@ class DashboardController {
                     const totalDu = data.facturesImpayees?.totalDu || 0;
                     document.getElementById('kpiComFacturesImpayees').textContent = this.formatCurrency(totalDu);
                 }
+                if (document.getElementById('kpiComTauxConversion')) {
+                    document.getElementById('kpiComTauxConversion').textContent = (data.tauxConversion || 0) + '%';
+                }
 
                 this.renderCommercialChart(data);
             }
@@ -609,6 +619,132 @@ class DashboardController {
             options: {
                 responsive: true,
                 maintainAspectRatio: false
+            }
+        });
+    }
+
+    /**
+     * Charger le top 5 clients pour le dashboard commercial
+     */
+    async loadTopClients(entrepriseId) {
+        try {
+            const result = await window.api.dashboard.invoke('getTopClients', entrepriseId);
+            if (result.success) {
+                const data = result.data;
+                document.getElementById('topClientsCard').classList.remove('d-none');
+                this.renderTopClients(data);
+            }
+        } catch (error) {
+            console.error('Erreur chargement top clients:', error);
+        }
+    }
+
+    renderTopClients(clients) {
+        const container = document.getElementById('topClientsList');
+        const emptyState = document.getElementById('topClientsEmpty');
+        if (!container) return;
+
+        if (!clients || clients.length === 0) {
+            emptyState.style.display = 'block';
+            return;
+        }
+        emptyState.style.display = 'none';
+
+        const maxCA = Math.max(...clients.map(c => c.caTotal || 0));
+
+        container.innerHTML = clients.map((c, i) => {
+            const nom = c.entreprise || c.nom || `Client #${c.id}`;
+            const pct = maxCA > 0 ? Math.round((c.caTotal / maxCA) * 100) : 0;
+            return `
+                <div class="list-group-item list-group-item-action px-3 py-2 border-0">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-semibold small text-truncate" style="max-width: 60%;">${this.escapeHtml(nom)}</span>
+                        <span class="fw-bold small text-success">${this.formatCurrency(c.caTotal || 0)}</span>
+                    </div>
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar bg-success" style="width: ${pct}%"></div>
+                    </div>
+                    <small class="text-secondary">${c.nbFactures || 0} facture(s)</small>
+                </div>
+            `;
+        }).join('');
+    }
+
+    /**
+     * Charger le CA par mois pour le graphique commercial
+     */
+    async loadCAByMoisChart(entrepriseId) {
+        try {
+            const result = await window.api.dashboard.invoke('getCAByMois', entrepriseId);
+            if (result.success) {
+                const data = result.data;
+                document.getElementById('cardCAByMoisChart').classList.remove('d-none');
+                this.renderCAByMoisChart(data);
+            }
+        } catch (error) {
+            console.error('Erreur chargement CA par mois:', error);
+            document.getElementById('caByMoisChartEmpty').style.display = 'block';
+            document.getElementById('caByMoisChart').style.display = 'none';
+        }
+    }
+
+    renderCAByMoisChart(data) {
+        const canvas = document.getElementById('caByMoisChart');
+        const emptyState = document.getElementById('caByMoisChartEmpty');
+        if (!canvas) return;
+
+        if (!data || data.length === 0) {
+            emptyState.style.display = 'block';
+            canvas.style.display = 'none';
+            return;
+        }
+
+        emptyState.style.display = 'none';
+        canvas.style.display = 'block';
+
+        const labels = data.map(d => {
+            const [year, month] = d.mois.split('-');
+            return new Date(year, month - 1).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+        });
+        const values = data.map(d => d.ca || 0);
+
+        if (this.caByMoisChartInstance) this.caByMoisChartInstance.destroy();
+
+        if (typeof Chart === 'undefined') return;
+
+        const ctx = canvas.getContext('2d');
+        this.caByMoisChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'CA',
+                    data: values,
+                    backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                    borderColor: '#0d6efd',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `CA: ${this.formatCurrency(context.raw)}`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => this.formatCurrency(value)
+                        }
+                    }
+                }
             }
         });
     }

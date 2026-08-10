@@ -477,6 +477,8 @@ secureHandle('dashboard:getFacturesRetard', ['ADMIN', 'COMPTABLE', 'DIRECTEUR'],
 secureHandle('dashboard:getRHStats', ['ADMIN', 'RH', 'DIRECTEUR'], (e, entrepriseId) => dashboardCtrl.getRHStats(e, entrepriseId))
 secureHandle('dashboard:getCommercialStats', ['ADMIN', 'COMMERCIAL', 'DIRECTEUR'], (e, entrepriseId) => dashboardCtrl.getCommercialStats(e, entrepriseId))
 secureHandle('dashboard:getLogistiqueStats', ['ADMIN', 'MAGASINIER', 'RESPONSABLE_MATERIEL', 'CHEF_CHANTIER'], (e, entrepriseId) => dashboardCtrl.getLogistiqueStats(e, entrepriseId))
+secureHandle('dashboard:getTopClients', ['ADMIN', 'COMMERCIAL', 'DIRECTEUR'], (e, entrepriseId) => dashboardCtrl.getTopClients(e, entrepriseId))
+secureHandle('dashboard:getCAByMois', ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'], (e, entrepriseId) => dashboardCtrl.getCAByMois(e, entrepriseId))
 
 
 // ============================================================

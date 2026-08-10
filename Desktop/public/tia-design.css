@@ -331,3 +331,84 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 @media (prefers-reduced-motion: reduce) {
   .sidebar { transition: none; }
 }
+
+/* ------------------------------ Dashboard --------------------------------- */
+.kpi-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid var(--tia-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(16, 26, 48, 0.10);
+}
+.kpi-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+.kpi-card .progress {
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.kpi-card .progress-bar {
+  transition: width 0.6s ease;
+}
+
+.dashboard-view .card {
+  border: 1px solid var(--tia-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s ease;
+}
+.dashboard-view .card:hover {
+  box-shadow: 0 4px 20px rgba(16, 26, 48, 0.08);
+}
+.dashboard-view .card-header {
+  border-bottom: 1px solid var(--tia-line);
+  font-family: var(--font-display);
+  font-weight: 600;
+  padding: 0.85rem 1.25rem;
+}
+
+.list-group-item {
+  transition: background 0.15s ease;
+}
+.list-group-item:hover {
+  background: var(--tia-concrete);
+}
+
+#quickActionsCard .btn {
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.15s ease;
+}
+
+.top-client-bar {
+  height: 4px;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.dashboard-view .row.g-3 > [class*="col-"] {
+  animation: fadeInUp 0.4s ease both;
+}
+.dashboard-view .row.g-3 > [class*="col-"]:nth-child(1) { animation-delay: 0.05s; }
+.dashboard-view .row.g-3 > [class*="col-"]:nth-child(2) { animation-delay: 0.10s; }
+.dashboard-view .row.g-3 > [class*="col-"]:nth-child(3) { animation-delay: 0.15s; }
+.dashboard-view .row.g-3 > [class*="col-"]:nth-child(4) { animation-delay: 0.20s; }
+
+canvas {
+  max-width: 100%;
+}
