@@ -89,10 +89,10 @@ class FactureRepository extends BaseRepository {
     if (nouveauTotalPaye >= facture.montant) {
       nouveauStatut = 'paye';
     } else if (nouveauTotalPaye > 0) {
-      nouveauStatut = 'partiel';
+      nouveauStatut = 'partiellement_payee';
     }
 
-    this.update(factureId, { statut: nouveauStatut });
+    this.update(factureId, { statut: nouveauStatut, montantPaye: nouveauTotalPaye });
 
     return this.getWithPaiements(factureId);
   }

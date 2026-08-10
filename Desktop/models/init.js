@@ -285,17 +285,34 @@ function initDatabase() {
       server_id INTEGER UNIQUE,
       entrepriseId INTEGER NOT NULL,
       clientId INTEGER NOT NULL,
+      chantierId INTEGER,
       numero TEXT,
+      reference TEXT,
       dateCreation DATE DEFAULT (date('now')),
+      dateEmission DATE DEFAULT (date('now')),
       dateValidite DATE,
+      tva REAL DEFAULT 20,
+      montantHT REAL DEFAULT 0,
+      montantTVA REAL DEFAULT 0,
+      montantTTC REAL DEFAULT 0,
       montantTotal REAL DEFAULT 0,
+      remiseGlobale REAL DEFAULT 0,
+      acomptePourcent REAL DEFAULT 0,
+      acompteMontant REAL DEFAULT 0,
+      conditionsPaiement TEXT DEFAULT 'Comptant',
+      modePaiement TEXT DEFAULT 'virement',
+      objet TEXT,
+      notes TEXT,
+      conditionsGenerales TEXT,
+      mentionsLegales TEXT,
       statut TEXT DEFAULT 'brouillon',
       is_synced INTEGER DEFAULT 0,
       is_deleted INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id),
-      FOREIGN KEY (clientId) REFERENCES Client(id)
+      FOREIGN KEY (clientId) REFERENCES Client(id),
+      FOREIGN KEY (chantierId) REFERENCES Chantier(id)
     )
   `).run();
 
@@ -305,8 +322,16 @@ function initDatabase() {
       server_id INTEGER UNIQUE,
       devisId INTEGER NOT NULL,
       description TEXT,
+      reference TEXT,
+      type TEXT DEFAULT 'produit',
+      articleId INTEGER,
       quantite REAL DEFAULT 0,
       prixUnitaire REAL DEFAULT 0,
+      tauxTVA REAL DEFAULT 20,
+      remise REAL DEFAULT 0,
+      unite TEXT,
+      ligneTotal REAL DEFAULT 0,
+      ligneTotalTTC REAL DEFAULT 0,
       is_synced INTEGER DEFAULT 0,
       is_deleted INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -321,9 +346,23 @@ function initDatabase() {
       server_id INTEGER UNIQUE,
       entrepriseId INTEGER,
       devisId INTEGER,
+      clientId INTEGER,
       chantierId INTEGER,
+      reference TEXT,
+      typeContrat TEXT DEFAULT 'travaux',
       dateSignature DATE,
+      dateDebut DATE,
+      dateFin DATE,
       montant REAL DEFAULT 0,
+      montantHT REAL DEFAULT 0,
+      montantTTC REAL DEFAULT 0,
+      tva REAL DEFAULT 0,
+      acompteVerse REAL DEFAULT 0,
+      conditionsPaiement TEXT DEFAULT '30 jours',
+      conditions TEXT,
+      garantieMois INTEGER DEFAULT 0,
+      objet TEXT,
+      notes TEXT,
       statut TEXT DEFAULT 'en_cours',
       is_synced INTEGER DEFAULT 0,
       is_deleted INTEGER DEFAULT 0,
@@ -331,6 +370,7 @@ function initDatabase() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id),
       FOREIGN KEY (devisId) REFERENCES Devis(id),
+      FOREIGN KEY (clientId) REFERENCES Client(id),
       FOREIGN KEY (chantierId) REFERENCES Chantier(id)
     )
   `).run();
@@ -341,13 +381,17 @@ function initDatabase() {
       server_id INTEGER UNIQUE,
       entrepriseId INTEGER NOT NULL,
       contratId INTEGER NOT NULL,
+      clientId INTEGER,
       numero TEXT,
       dateEmission DATE DEFAULT (date('now')),
       dateEcheance DATE,
       montant REAL DEFAULT 0,
+      montantHT REAL DEFAULT 0,
       montantTTC REAL DEFAULT 0,
+      tva REAL DEFAULT 0,
       montantPaye REAL DEFAULT 0,
       statut TEXT DEFAULT 'emis',
+      notes TEXT,
       is_synced INTEGER DEFAULT 0,
       is_deleted INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -362,9 +406,13 @@ function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       server_id INTEGER UNIQUE,
       factureId INTEGER NOT NULL,
+      entrepriseId INTEGER,
       datePaiement DATE DEFAULT (date('now')),
       montant REAL DEFAULT 0,
       modePaiement TEXT,
+      reference TEXT,
+      banque TEXT,
+      notes TEXT,
       is_synced INTEGER DEFAULT 0,
       is_deleted INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -832,6 +880,62 @@ function initDatabase() {
   ensureColumn('Employe', 'dateDebutContrat', 'DATE');
   ensureColumn('Employe', 'dateFinContrat', 'DATE');
 
+  // MIGRATIONS SPECIFIQUES - TABLE DEVIS
+  ensureColumn('Devis', 'chantierId', 'INTEGER');
+  ensureColumn('Devis', 'reference', 'TEXT');
+  ensureColumn('Devis', 'dateEmission', 'DATE');
+  ensureColumn('Devis', 'tva', 'REAL DEFAULT 20');
+  ensureColumn('Devis', 'montantHT', 'REAL DEFAULT 0');
+  ensureColumn('Devis', 'montantTVA', 'REAL DEFAULT 0');
+  ensureColumn('Devis', 'montantTTC', 'REAL DEFAULT 0');
+  ensureColumn('Devis', 'remiseGlobale', 'REAL DEFAULT 0');
+  ensureColumn('Devis', 'acomptePourcent', 'REAL DEFAULT 0');
+  ensureColumn('Devis', 'acompteMontant', 'REAL DEFAULT 0');
+  ensureColumn('Devis', 'conditionsPaiement', "TEXT DEFAULT 'Comptant'");
+  ensureColumn('Devis', 'modePaiement', "TEXT DEFAULT 'virement'");
+  ensureColumn('Devis', 'objet', 'TEXT');
+  ensureColumn('Devis', 'notes', 'TEXT');
+  ensureColumn('Devis', 'conditionsGenerales', 'TEXT');
+  ensureColumn('Devis', 'mentionsLegales', 'TEXT');
+
+  // MIGRATIONS SPECIFIQUES - TABLE LIGNEDEVIS
+  ensureColumn('LigneDevis', 'reference', 'TEXT');
+  ensureColumn('LigneDevis', 'type', "TEXT DEFAULT 'produit'");
+  ensureColumn('LigneDevis', 'articleId', 'INTEGER');
+  ensureColumn('LigneDevis', 'tauxTVA', 'REAL DEFAULT 20');
+  ensureColumn('LigneDevis', 'remise', 'REAL DEFAULT 0');
+  ensureColumn('LigneDevis', 'unite', 'TEXT');
+  ensureColumn('LigneDevis', 'ligneTotal', 'REAL DEFAULT 0');
+  ensureColumn('LigneDevis', 'ligneTotalTTC', 'REAL DEFAULT 0');
+
+  // MIGRATIONS SPECIFIQUES - TABLE CONTRAT
+  ensureColumn('Contrat', 'clientId', 'INTEGER');
+  ensureColumn('Contrat', 'reference', 'TEXT');
+  ensureColumn('Contrat', 'typeContrat', "TEXT DEFAULT 'travaux'");
+  ensureColumn('Contrat', 'dateDebut', 'DATE');
+  ensureColumn('Contrat', 'dateFin', 'DATE');
+  ensureColumn('Contrat', 'montantHT', 'REAL DEFAULT 0');
+  ensureColumn('Contrat', 'montantTTC', 'REAL DEFAULT 0');
+  ensureColumn('Contrat', 'tva', 'REAL DEFAULT 0');
+  ensureColumn('Contrat', 'acompteVerse', 'REAL DEFAULT 0');
+  ensureColumn('Contrat', 'conditionsPaiement', "TEXT DEFAULT '30 jours'");
+  ensureColumn('Contrat', 'conditions', 'TEXT');
+  ensureColumn('Contrat', 'garantieMois', 'INTEGER DEFAULT 0');
+  ensureColumn('Contrat', 'objet', 'TEXT');
+  ensureColumn('Contrat', 'notes', 'TEXT');
+
+  // MIGRATIONS SPECIFIQUES - TABLE FACTURE
+  ensureColumn('Facture', 'clientId', 'INTEGER');
+  ensureColumn('Facture', 'montantHT', 'REAL DEFAULT 0');
+  ensureColumn('Facture', 'tva', 'REAL DEFAULT 0');
+  ensureColumn('Facture', 'notes', 'TEXT');
+
+  // MIGRATIONS SPECIFIQUES - TABLE PAIEMENT
+  ensureColumn('Paiement', 'entrepriseId', 'INTEGER');
+  ensureColumn('Paiement', 'reference', 'TEXT');
+  ensureColumn('Paiement', 'banque', 'TEXT');
+  ensureColumn('Paiement', 'notes', 'TEXT');
+
   // ============================================================
   // TRIGGERS SQLite
   // ============================================================
@@ -872,7 +976,7 @@ function initDatabase() {
     const roles = [
       { id: 1, nom: 'Administrateur d\'Entreprise', code: 'ADMIN' },
       { id: 2, nom: 'Comptable / Responsable Financier', code: 'COMPTABLE' },
-      { id: 3, nom: 'Direction Générale / DAF', code: 'DIRECTION' },
+      { id: 3, nom: 'Direction Générale / DAF', code: 'DIRECTEUR' },
       { id: 4, nom: 'Chef de Chantier / Conducteur de Travaux', code: 'CHEF_CHANTIER' },
       { id: 5, nom: 'Chef de Projet / Directeur Technique', code: 'CHEF_PROJET' },
       { id: 6, nom: 'Responsable RH', code: 'RH' },

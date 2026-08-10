@@ -139,12 +139,20 @@ class BaseRepository {
     return this.getById(id);
   }
 
+   list(options = {}) {
+    return this.getAll(options);
+  }
+
   softDelete(id) {
     const stmt = this.db.prepare(
       `UPDATE ${this.tableName} SET is_deleted = 1, is_synced = 0, updated_at = CURRENT_TIMESTAMP WHERE ${this.primaryKey} = ?`
     );
     const info = stmt.run(id);
     return info.changes > 0;
+  }
+
+  delete(id) {
+    return this.softDelete(id);
   }
 
   hardDelete(id) {

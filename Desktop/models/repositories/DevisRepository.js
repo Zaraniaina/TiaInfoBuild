@@ -58,9 +58,17 @@ class DevisRepository extends BaseRepository {
       for (const ligne of (lignes || [])) {
         ligneRepoInstance.create({
           devisId: devis.id,
-          description: ligne.description,
+          description: ligne.description || '',
+          reference: ligne.reference || ligne.description || '',
+          type: ligne.type || 'produit',
+          articleId: ligne.articleId || null,
           quantite: ligne.quantite || 0,
-          prixUnitaire: ligne.prixUnitaire || 0
+          prixUnitaire: ligne.prixUnitaire || 0,
+          tauxTVA: ligne.tauxTVA || 0,
+          remise: ligne.remise || 0,
+          unite: ligne.unite || '',
+          ligneTotal: ligne.ligneTotal || 0,
+          ligneTotalTTC: ligne.ligneTotalTTC || 0
         });
       }
 
@@ -68,8 +76,50 @@ class DevisRepository extends BaseRepository {
     });
   }
 
+   /**
+    * Mettre à jour un devis avec ses lignes (transaction)
+    * @param {number} id - ID devis
+    * @param {Object} data - { clientId, lignes: [...], ... }
+    * @returns {Object} - Devis mis à jour avec lignes
+    */
+  updateWithLignes(id, data) {
+    const { lignes, ...devisData } = data;
+
+    return db.transaction(() => {
+      const ligneRepo = require('./LigneDevisRepository');
+      const ligneRepoInstance = new ligneRepo();
+
+      if (Array.isArray(lignes)) {
+        const existing = ligneRepoInstance.getByDevis(id);
+        existing.forEach(l => ligneRepoInstance.delete(l.id));
+        for (const ligne of lignes) {
+          ligneRepoInstance.create({
+            devisId: id,
+            description: ligne.description || '',
+            quantite: ligne.quantite || 0,
+            prixUnitaire: ligne.prixUnitaire || 0,
+            tauxTVA: ligne.tauxTVA || 0,
+            remise: ligne.remise || 0,
+            unite: ligne.unite || '',
+            reference: ligne.reference || '',
+            type: ligne.type || 'produit',
+            articleId: ligne.articleId || null,
+            ligneTotal: ligne.ligneTotal || 0,
+            ligneTotalTTC: ligne.ligneTotalTTC || 0
+          });
+        }
+      }
+
+      const montantTotal = (lignes || []).reduce((sum, l) => sum + (l.quantite || 0) * (l.prixUnitaire || 0), 0);
+
+      this.update(id, { ...devisData, montantTotal });
+
+      return this.getWithLignes(id);
+    });
+  }
+
   /**
-   * Transformer un devis en contrat
+    * Transformer un devis en contrat
    * @param {number} devisId - ID du devis
    * @param {Object} contratData - Données du contrat
    * @returns {Object} - Contrat créé

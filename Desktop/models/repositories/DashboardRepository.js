@@ -40,6 +40,15 @@ class DashboardRepository extends BaseRepository {
       FROM Employe
       WHERE entrepriseId = ? AND is_deleted = 0
     `).get(entrepriseId);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const presentsToday = db.prepare(`
+      SELECT COUNT(DISTINCT employeId) as count FROM Pointage
+      WHERE dateJour = ? AND statut NOT IN ('absent', 'non_pointe')
+      AND employeId IN (SELECT id FROM Employe WHERE entrepriseId = ? AND is_deleted = 0)
+    `).get(todayStr, entrepriseId);
+    employes.presentsToday = presentsToday.count || 0;
+
     stats.employes = employes;
 
     // Stocks - articles en alerte
@@ -63,7 +72,7 @@ class DashboardRepository extends BaseRepository {
       FROM Facture
       WHERE entrepriseId = ? AND is_deleted = 0
       AND statut IN ('emise', 'envoyee', 'partiellement_payee', 'emis')
-      AND dateEcheance < date('now')
+      AND dateEcheance < date('now', 'localtime')
     `).get(entrepriseId);
     stats.facturesRetard = facturesRetard;
 
@@ -295,7 +304,55 @@ class DashboardRepository extends BaseRepository {
             AND statut IN ('envoye', 'en_attente', 'brouillon')
         `).get(entrepriseId);
 
+        // Taux de conversion devis -> contrat
+        const totalDevis = db.prepare(`
+            SELECT COUNT(*) as count FROM Devis
+            WHERE entrepriseId = ? AND is_deleted = 0 AND statut = 'accepte'
+        `).get(entrepriseId).count || 0;
+        const totalContrats = db.prepare(`
+            SELECT COUNT(*) as count FROM Contrat
+            WHERE entrepriseId = ? AND is_deleted = 0
+        `).get(entrepriseId).count || 0;
+        stats.tauxConversion = totalDevis > 0 ? Math.round(totalContrats / totalDevis * 100) : 0;
+
         return stats;
+    }
+
+    /**
+     * Top 5 clients par chiffre d'affaires
+     */
+    getTopClients(entrepriseId, limit = 5) {
+        const stmt = db.prepare(`
+            SELECT c.id, c.nom, c.entreprise, c.type,
+                   COALESCE(SUM(f.montantTTC), 0) as caTotal,
+                   COUNT(f.id) as nbFactures
+            FROM Client c
+            LEFT JOIN Contrat co ON co.clientId = c.id AND co.is_deleted = 0
+            LEFT JOIN Facture f ON f.contratId = co.id AND f.is_deleted = 0
+            WHERE c.entrepriseId = ? AND c.is_deleted = 0
+            GROUP BY c.id
+            ORDER BY caTotal DESC
+            LIMIT ?
+        `);
+        return stmt.all(entrepriseId, limit);
+    }
+
+    /**
+     * CA par mois pour le commercial (12 derniers mois)
+     */
+    getCAByMois(entrepriseId) {
+        const stmt = db.prepare(`
+            SELECT
+                strftime('%Y-%m', f.dateEmission) as mois,
+                SUM(COALESCE(f.montantTTC, f.montant, 0)) as ca,
+                COUNT(f.id) as nbFactures
+            FROM Facture f
+            WHERE f.entrepriseId = ? AND f.is_deleted = 0
+            AND f.dateEmission >= date('now', '-12 months')
+            GROUP BY strftime('%Y-%m', f.dateEmission)
+            ORDER BY mois
+        `);
+        return stmt.all(entrepriseId);
     }
 
     /**
