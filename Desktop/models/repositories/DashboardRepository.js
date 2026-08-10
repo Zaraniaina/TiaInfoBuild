@@ -63,7 +63,7 @@ class DashboardRepository extends BaseRepository {
       FROM Facture
       WHERE entrepriseId = ? AND is_deleted = 0
       AND statut IN ('emise', 'envoyee', 'partiellement_payee', 'emis')
-      AND dateEcheance < date('now')
+      AND dateEcheance < date('now', 'localtime')
     `).get(entrepriseId);
     stats.facturesRetard = facturesRetard;
 
