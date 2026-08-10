@@ -976,7 +976,7 @@ function initDatabase() {
     const roles = [
       { id: 1, nom: 'Administrateur d\'Entreprise', code: 'ADMIN' },
       { id: 2, nom: 'Comptable / Responsable Financier', code: 'COMPTABLE' },
-      { id: 3, nom: 'Direction Générale / DAF', code: 'DIRECTION' },
+      { id: 3, nom: 'Direction Générale / DAF', code: 'DIRECTEUR' },
       { id: 4, nom: 'Chef de Chantier / Conducteur de Travaux', code: 'CHEF_CHANTIER' },
       { id: 5, nom: 'Chef de Projet / Directeur Technique', code: 'CHEF_PROJET' },
       { id: 6, nom: 'Responsable RH', code: 'RH' },

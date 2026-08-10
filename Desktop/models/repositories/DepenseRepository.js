@@ -64,7 +64,7 @@ class DepenseRepository extends BaseRepository {
       FROM Depense d
       JOIN Chantier c ON d.chantierId = c.id
       WHERE c.entrepriseId = ? AND d.is_deleted = 0 AND c.is_deleted = 0
-      AND (d.valideePar IS NULL OR d.valideePar = '')
+      AND (d.valideePar IS NULL OR d.valideePar = 0)
       ORDER BY d.dateDepense DESC
     `);
     return stmt.all(entrepriseId);

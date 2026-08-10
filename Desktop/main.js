@@ -4,6 +4,7 @@ const path = require('path')
 const { initDatabase } = require('./models/init')
 const fs = require('fs')
 const db = require('./models/db')
+const permissions = require('./shared/permissions')
 
 // Repositories
 const ChantierRepository = require('./models/repositories/ChantierRepository')
@@ -231,21 +232,21 @@ ipcMain.handle('session:clear', async () => { _session = null; return { success:
 // ============================================================
 // UTILISATEURS & RÔLES
 // ============================================================
-const rolesAdminRh = ['ADMIN', 'RH'];
+const rolesAdmin = permissions.PERMISSIONS.utilisateurs;
 
-secureHandle('utilisateurs:list', rolesAdminRh, (e, params) => utilisateurCtrl.getList(e, params))
-secureHandle('utilisateurs:getAll', rolesAdminRh, (e, params) => utilisateurCtrl.getList(e, params))
-secureHandle('utilisateurs:get', rolesAdminRh, (e, id) => utilisateurCtrl.getById(e, id))
-secureHandle('utilisateurs:create', rolesAdminRh, (e, data, entId) => utilisateurCtrl.create(e, data, entId))
-secureHandle('utilisateurs:update', rolesAdminRh, (e, id, data) => utilisateurCtrl.update(e, id, data))
-secureHandle('utilisateurs:delete', rolesAdminRh, (e, id) => utilisateurCtrl.delete(e, id))
-secureHandle('users:list', rolesAdminRh, (e, params) => utilisateurCtrl.getList(e, params))
-secureHandle('users:getAll', rolesAdminRh, (e, params) => utilisateurCtrl.getList(e, params))
-secureHandle('users:get', rolesAdminRh, (e, id) => utilisateurCtrl.getById(e, id))
-secureHandle('users:create', rolesAdminRh, (e, data, entId) => utilisateurCtrl.create(e, data, entId))
-secureHandle('users:update', rolesAdminRh, (e, id, data) => utilisateurCtrl.update(e, id, data))
-secureHandle('users:delete', rolesAdminRh, (e, id) => utilisateurCtrl.delete(e, id))
-secureHandle('roles:list', rolesAdminRh, async () => {
+secureHandle('utilisateurs:list', rolesAdmin, (e, params) => utilisateurCtrl.getList(e, params))
+secureHandle('utilisateurs:getAll', rolesAdmin, (e, params) => utilisateurCtrl.getList(e, params))
+secureHandle('utilisateurs:get', rolesAdmin, (e, id) => utilisateurCtrl.getById(e, id))
+secureHandle('utilisateurs:create', rolesAdmin, (e, data, entId) => utilisateurCtrl.create(e, data, entId))
+secureHandle('utilisateurs:update', rolesAdmin, (e, id, data) => utilisateurCtrl.update(e, id, data))
+secureHandle('utilisateurs:delete', rolesAdmin, (e, id) => utilisateurCtrl.delete(e, id))
+secureHandle('users:list', rolesAdmin, (e, params) => utilisateurCtrl.getList(e, params))
+secureHandle('users:getAll', rolesAdmin, (e, params) => utilisateurCtrl.getList(e, params))
+secureHandle('users:get', rolesAdmin, (e, id) => utilisateurCtrl.getById(e, id))
+secureHandle('users:create', rolesAdmin, (e, data, entId) => utilisateurCtrl.create(e, data, entId))
+secureHandle('users:update', rolesAdmin, (e, id, data) => utilisateurCtrl.update(e, id, data))
+secureHandle('users:delete', rolesAdmin, (e, id) => utilisateurCtrl.delete(e, id))
+secureHandle('roles:list', rolesAdmin, async () => {
   try {
     const roles = db.prepare("SELECT * FROM Role WHERE is_deleted = 0").all()
     return { success: true, data: roles }
@@ -255,9 +256,9 @@ secureHandle('roles:list', rolesAdminRh, async () => {
 // ============================================================
 // ENTREPRISE
 // ============================================================
-const rolesAdminDg = ['ADMIN', 'DIRECTEUR'];
+const rolesAdminDg = permissions.PERMISSIONS.entreprises.write;
 
-secureHandle('entreprises:get', [], (e, id) => {
+secureHandle('entreprises:get', ['ADMIN', 'DIRECTEUR'], (e, id) => {
   try { return db.prepare('SELECT * FROM Entreprise WHERE id = ?').get(id) || null }
   catch (err) { return null }
 })
@@ -275,7 +276,7 @@ secureHandle('entreprises:update', rolesAdminDg, (e, id, data) => {
 // ============================================================
 // CHANTIERS, PHASES, INCIDENTS, AFFECTATIONS
 // ============================================================
-const rolesChantiers = ['ADMIN', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'];
+const rolesChantiers = permissions.PERMISSIONS.chantiers;
 
 secureHandle('chantiers:list', rolesChantiers, (e, params) => chantierCtrl.getList(e, params))
 secureHandle('chantiers:get', rolesChantiers, (e, id) => chantierCtrl.getById(e, id))
@@ -316,7 +317,7 @@ secureHandle('affectations:delete', rolesChantiers, (e, id) => chantierCtrl.dele
 // ============================================================
 // RESSOURCES HUMAINES
 // ============================================================
-const rolesRH = ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'];
+const rolesRH = permissions.PERMISSIONS.employes.read;
 
 const rolesEmployesRead = ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE', 'COMMERCIAL'];
 const rolesEmployesWrite = ['ADMIN', 'RH'];
@@ -353,7 +354,7 @@ secureHandle('equipes:assignerChantier', rolesRH, (e, data) => safeRepo(() => re
 // ============================================================
 // STOCKS & FOURNISSEURS
 // ============================================================
-const rolesStocks = ['ADMIN', 'MAGASINIER', 'CHEF_CHANTIER'];
+const rolesStocks = permissions.PERMISSIONS.articles;
 
 secureHandle('articles:list', rolesStocks, (e, params) => stockCtrl.getListArticles(e, params))
 secureHandle('articles:get', rolesStocks, (e, id) => stockCtrl.getArticleById(e, id))
@@ -380,7 +381,7 @@ secureHandle('mouvements:delete', rolesStocks, (e, id) => safeRepo(() => repos.m
 // ============================================================
 // MATÉRIELS
 // ============================================================
-const rolesMateriel = ['ADMIN', 'MATERIEL', 'CHEF_CHANTIER'];
+const rolesMateriel = permissions.PERMISSIONS.materiels;
 
 secureHandle('materiels:list', rolesMateriel, (e, params) => materielCtrl.getListMateriels(e, params))
 secureHandle('materiels:get', rolesMateriel, (e, id) => materielCtrl.getMaterielById(e, id))
@@ -397,7 +398,7 @@ secureHandle('maintenances:update', rolesMateriel, (e, id, data) => materielCtrl
 // ============================================================
 // COMMERCIAL (Clients, Devis, Contrats, Factures, Paiements)
 // ============================================================
-const rolesCommercial = ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'];
+const rolesCommercial = permissions.PERMISSIONS.clients;
 
 secureHandle('clients:list', rolesCommercial, (e, params) => commercialCtrl.getListClients(e, params))
 secureHandle('clients:get', rolesCommercial, (e, id) => commercialCtrl.getClientById(e, id))
@@ -447,11 +448,11 @@ secureHandle('paiements:delete', rolesCommercial, (e, id) => safeRepo(() => repo
 // ============================================================
 // FINANCE & ALERTES
 // ============================================================
-const rolesFinance = ['ADMIN', 'COMPTABLE', 'DIRECTEUR'];
+const rolesFinance = permissions.PERMISSIONS.factures;
 
-const rolesDepensesRead = ['ADMIN', 'COMPTABLE', 'DIRECTEUR', 'CHEF_CHANTIER'];
-const rolesDepensesWrite = ['ADMIN', 'COMPTABLE', 'DIRECTEUR', 'CHEF_CHANTIER'];
-const rolesDepensesValidate = ['ADMIN', 'COMPTABLE', 'DIRECTEUR'];
+const rolesDepensesRead = permissions.PERMISSIONS.depenses.read;
+const rolesDepensesWrite = permissions.PERMISSIONS.depenses.write;
+const rolesDepensesValidate = permissions.PERMISSIONS.depenses.validate;
 
 secureHandle('depenses:byChantier', rolesDepensesRead, (e, id) => financeCtrl.getDepensesByChantier(e, id))
 secureHandle('depenses:totalByChantier', rolesDepensesRead, (e, id) => financeCtrl.getTotalDepensesByChantier(e, id))
@@ -554,6 +555,7 @@ ipcMain.handle('backup:list', () => {
 // ALERTES
 // ============================================================
 const allRoles = ['ADMIN', 'DIRECTEUR', 'COMPTABLE', 'RH', 'CHEF_CHANTIER', 'CHEF_PROJET', 'MATERIEL', 'MAGASINIER', 'COMMERCIAL'];
+const rolesAlertesWrite = ['ADMIN', 'DIRECTEUR', 'COMPTABLE'];
 secureHandle('alertes:list',           allRoles, (e, p) => alerteCtrl.getList(e, p))
 secureHandle('alertes:nonLues',        allRoles, (e, entId, limit) => alerteCtrl.getNonLues(e, entId, limit))
 secureHandle('alertes:countNonLues',   allRoles, (e, entId) => alerteCtrl.countNonLues(e, entId))
@@ -561,7 +563,7 @@ secureHandle('alertes:markAsRead',     allRoles, (e, id) => alerteCtrl.markAsRea
 secureHandle('alertes:marquerLue',     allRoles, (e, id) => alerteCtrl.marquerLue(e, id))
 secureHandle('alertes:markAllAsRead',  allRoles, (e, entId) => alerteCtrl.markAllAsRead(e, entId))
 secureHandle('alertes:marquerToutesLues', allRoles, (e, entId) => alerteCtrl.markAllAsRead(e, entId))
-secureHandle('alertes:creer',          allRoles, (e, data) => alerteCtrl.creer(e, data))
+secureHandle('alertes:creer',          rolesAlertesWrite, (e, data) => alerteCtrl.creer(e, data))
 secureHandle('alertes:delete',         allRoles, (e, id) => alerteCtrl.deleteAlerte(e, id))
 
 
