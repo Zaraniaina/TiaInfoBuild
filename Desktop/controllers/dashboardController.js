@@ -71,6 +71,44 @@ class DashboardController {
       return { success: false, error: error.message, data: [] }
     }
   }
+  /**
+   * Statistiques spécifiques RH
+   */
+  async getRHStats(event, entrepriseId) {
+    try {
+      const data = this.repos.dashboard.getRHStats(entrepriseId)
+      return { success: true, data: data || {} }
+    } catch (error) {
+      console.error('DashboardController.getRHStats error:', error)
+      return { success: false, error: error.message, data: {} }
+    }
+  }
+
+  /**
+   * Statistiques spécifiques Commercial
+   */
+  async getCommercialStats(event, entrepriseId) {
+    try {
+      const data = this.repos.dashboard.getCommercialStats(entrepriseId)
+      return { success: true, data: data || {} }
+    } catch (error) {
+      console.error('DashboardController.getCommercialStats error:', error)
+      return { success: false, error: error.message, data: {} }
+    }
+  }
+
+  /**
+   * Statistiques spécifiques Logistique
+   */
+  async getLogistiqueStats(event, entrepriseId) {
+    try {
+      const data = this.repos.dashboard.getLogistiqueStats(entrepriseId)
+      return { success: true, data: data || {} }
+    } catch (error) {
+      console.error('DashboardController.getLogistiqueStats error:', error)
+      return { success: false, error: error.message, data: {} }
+    }
+  }
 }
 
 module.exports = DashboardController

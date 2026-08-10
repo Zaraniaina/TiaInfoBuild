@@ -607,6 +607,9 @@ class ParametresController {
             }
         }
 
+        // Capturer le mot de passe en clair AVANT la soumission (pour le PDF)
+        const plainPassword = data.motDePasse || null;
+
         // Ne pas envoyer le mot de passe s'il est vide
         if (!data.motDePasse) {
             delete data.motDePasse;
@@ -617,8 +620,37 @@ class ParametresController {
                 await window.api.utilisateurs.invoke('update', editingId, data);
                 showToast('Utilisateur modifié avec succès', 'success');
             } else {
-                await window.api.utilisateurs.invoke('create', data, entrepriseId);
-                showToast('Utilisateur créé avec succès', 'success');
+                const response = await window.api.utilisateurs.invoke('create', data, entrepriseId);
+
+                // Message de succès personnalisé (avec info employé si créé)
+                if (response?.employeCreated) {
+                    showToast('✅ Utilisateur créé, fiche employé initialisée, RH notifié.', 'success');
+                } else {
+                    showToast('Utilisateur créé avec succès', 'success');
+                }
+
+                // Générer le PDF des credentials si un mot de passe a été saisi
+                if (plainPassword && response?.data) {
+                    const roleLabel = UTILISATEUR_ROLE_LABELS[data.role?.toUpperCase()] || data.role || '';
+                    const entrepriseNom = window.AppState?.entreprise?.nom || 'TIA INFO BUILD';
+                    const pdfData = {
+                        nom: data.nom || '',
+                        prenom: data.prenom || '',
+                        email: data.email || '',
+                        plainPassword,
+                        roleLabel,
+                        entrepriseNom
+                    };
+
+                    try {
+                        const pdfResult = await window.ipcRaw.invoke('utilisateurs:generateLoginPDF', pdfData);
+                        if (pdfResult?.success) {
+                            showToast('📄 PDF des informations de connexion généré et ouvert.', 'info');
+                        }
+                    } catch (pdfErr) {
+                        console.warn('PDF generation failed:', pdfErr);
+                    }
+                }
             }
 
             bootstrap.Modal.getInstance(document.getElementById('modalUtilisateur'))?.hide();

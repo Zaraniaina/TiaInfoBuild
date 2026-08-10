@@ -194,8 +194,35 @@ class ClientRepository {
   create(data, entrepriseId) {
     try {
       const existingCols = this.getTableColumns();
+      const entId = entrepriseId || data.entrepriseId || 1;
+
+      // Validation obligatoire
+      if (!data.nom || !data.nom.trim()) {
+        throw new Error('Le nom du client est obligatoire.');
+      }
+
+      // Unicité email (si fourni)
+      if (data.email && data.email.trim()) {
+        const existingEmail = db.prepare(
+          `SELECT id FROM Client WHERE email = ? AND entrepriseId = ? AND is_deleted = 0`
+        ).get(data.email.trim(), entId);
+        if (existingEmail) {
+          throw new Error('Un client avec cet email existe déjà.');
+        }
+      }
+
+      // Unicité téléphone (si fourni)
+      if (data.telephone && data.telephone.trim()) {
+        const existingPhone = db.prepare(
+          `SELECT id FROM Client WHERE telephone = ? AND entrepriseId = ? AND is_deleted = 0`
+        ).get(data.telephone.trim(), entId);
+        if (existingPhone) {
+          throw new Error('Un client avec ce numéro de téléphone existe déjà.');
+        }
+      }
+
       const payload = {
-        entrepriseId: entrepriseId || data.entrepriseId || 1,
+        entrepriseId: entId,
         nom: data.nom || 'Sans nom',
         type: data.type || 'particulier',
         civilite: data.civilite || 'M.',
@@ -246,6 +273,28 @@ class ClientRepository {
   update(id, data) {
     try {
       const existingCols = this.getTableColumns();
+      const current = this.getById(id);
+
+      // Unicité email (si modifié)
+      if (data.email && data.email.trim() && data.email.trim() !== (current?.email || '')) {
+        const existingEmail = db.prepare(
+          `SELECT id FROM Client WHERE email = ? AND entrepriseId = ? AND is_deleted = 0 AND id != ?`
+        ).get(data.email.trim(), current?.entrepriseId || 1, id);
+        if (existingEmail) {
+          throw new Error('Un client avec cet email existe déjà.');
+        }
+      }
+
+      // Unicité téléphone (si modifié)
+      if (data.telephone && data.telephone.trim() && data.telephone.trim() !== (current?.telephone || '')) {
+        const existingPhone = db.prepare(
+          `SELECT id FROM Client WHERE telephone = ? AND entrepriseId = ? AND is_deleted = 0 AND id != ?`
+        ).get(data.telephone.trim(), current?.entrepriseId || 1, id);
+        if (existingPhone) {
+          throw new Error('Un client avec ce numéro de téléphone existe déjà.');
+        }
+      }
+
       const allowed = [
         'nom', 'type', 'civilite', 'prenom', 'entreprise', 'siret', 'numeroTVA',
         'adresse', 'codePostal', 'ville', 'telephone', 'portable', 'email', 'siteWeb',

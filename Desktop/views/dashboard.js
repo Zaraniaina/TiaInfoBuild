@@ -58,6 +58,21 @@ class DashboardController {
                 rolePromises.push(this.loadTopChantiers(entrepriseId));
             }
 
+            // RH
+            if (this.hasRoleAccess(currentRoles, ['ADMIN', 'RH', 'DIRECTEUR'])) {
+                rolePromises.push(this.loadRHStats(entrepriseId));
+            }
+
+            // Commercial
+            if (this.hasRoleAccess(currentRoles, ['ADMIN', 'COMMERCIAL', 'DIRECTEUR'])) {
+                rolePromises.push(this.loadCommercialStats(entrepriseId));
+            }
+
+            // Logistique
+            if (this.hasRoleAccess(currentRoles, ['ADMIN', 'MAGASINIER', 'RESPONSABLE_MATERIEL', 'CHEF_CHANTIER'])) {
+                rolePromises.push(this.loadLogistiqueStats(entrepriseId));
+            }
+
             // Tous les rôles - activité récente
             rolePromises.push(this.loadActiviteRecente(entrepriseId));
 
@@ -100,8 +115,13 @@ class DashboardController {
         document.getElementById('facturesRetardCard')?.classList.toggle('d-none', !showFacturesRetard);
 
         // Graphique CA - visible pour rôles financiers
-        document.getElementById('caChart')?.closest('.card')?.classList.toggle('d-none', !showFinances);
-        document.getElementById('caChartEmpty')?.closest('.card')?.classList.toggle('d-none', !showFinances);
+        document.getElementById('cardCAChart')?.classList.toggle('d-none', !showFinances);
+
+        // Graphiques RH, Commercial, Logistique
+        const roles = window.AppState?.roles || [window.AppState?.roleCode || 'ADMIN'];
+        document.getElementById('cardRHChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'RH', 'DIRECTEUR']));
+        document.getElementById('cardCommercialChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'COMMERCIAL', 'DIRECTEUR']));
+        document.getElementById('cardLogistiqueChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'MAGASINIER', 'RESPONSABLE_MATERIEL', 'CHEF_CHANTIER']));
 
         document.querySelector('[data-route="chantiers/nouveau"]')?.classList.toggle('d-none', !showChantiers);
         document.querySelector('[data-route="devis/nouveau"]')?.classList.toggle('d-none', !hasAccess('devis'));
@@ -456,6 +476,170 @@ class DashboardController {
             </a>
         `).join('');
     }
+
+    /**
+     * Charger les stats RH
+     */
+    async loadRHStats(entrepriseId) {
+        try {
+            const result = await window.api.dashboard.invoke('getRHStats', entrepriseId);
+            if (result.success) {
+                this.renderRHChart(result.data);
+            }
+        } catch (error) {
+            console.error('Erreur chargement stats RH:', error);
+            document.getElementById('rhChartEmpty').style.display = 'block';
+            document.getElementById('rhChart').style.display = 'none';
+        }
+    }
+
+    renderRHChart(data) {
+        const canvas = document.getElementById('rhChart');
+        const emptyState = document.getElementById('rhChartEmpty');
+        if (!canvas) return;
+
+        if (!data || !data.pointagesMois || data.pointagesMois.length === 0) {
+            emptyState.style.display = 'block';
+            canvas.style.display = 'none';
+            return;
+        }
+
+        emptyState.style.display = 'none';
+        canvas.style.display = 'block';
+
+        const labels = data.pointagesMois.map(d => d.type);
+        const values = data.pointagesMois.map(d => d.count);
+
+        if (this.rhChartInstance) this.rhChartInstance.destroy();
+
+        if (typeof Chart === 'undefined') return;
+
+        const ctx = canvas.getContext('2d');
+        this.rhChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: ['#198754', '#ffc107', '#dc3545', '#6c757d']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+
+    /**
+     * Charger les stats Commercial
+     */
+    async loadCommercialStats(entrepriseId) {
+        try {
+            const result = await window.api.dashboard.invoke('getCommercialStats', entrepriseId);
+            if (result.success) {
+                this.renderCommercialChart(result.data);
+            }
+        } catch (error) {
+            console.error('Erreur chargement stats Commercial:', error);
+            document.getElementById('commercialChartEmpty').style.display = 'block';
+            document.getElementById('commercialChart').style.display = 'none';
+        }
+    }
+
+    renderCommercialChart(data) {
+        const canvas = document.getElementById('commercialChart');
+        const emptyState = document.getElementById('commercialChartEmpty');
+        if (!canvas) return;
+
+        if (!data || !data.devisParStatut || data.devisParStatut.length === 0) {
+            emptyState.style.display = 'block';
+            canvas.style.display = 'none';
+            return;
+        }
+
+        emptyState.style.display = 'none';
+        canvas.style.display = 'block';
+
+        const labels = data.devisParStatut.map(d => d.statut);
+        const values = data.devisParStatut.map(d => d.count);
+
+        if (this.commercialChartInstance) this.commercialChartInstance.destroy();
+
+        if (typeof Chart === 'undefined') return;
+
+        const ctx = canvas.getContext('2d');
+        this.commercialChartInstance = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: ['#0d6efd', '#198754', '#dc3545', '#ffc107', '#6c757d']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+
+    /**
+     * Charger les stats Logistique
+     */
+    async loadLogistiqueStats(entrepriseId) {
+        try {
+            const result = await window.api.dashboard.invoke('getLogistiqueStats', entrepriseId);
+            if (result.success) {
+                this.renderLogistiqueChart(result.data);
+            }
+        } catch (error) {
+            console.error('Erreur chargement stats Logistique:', error);
+            document.getElementById('logistiqueChartEmpty').style.display = 'block';
+            document.getElementById('logistiqueChart').style.display = 'none';
+        }
+    }
+
+    renderLogistiqueChart(data) {
+        const canvas = document.getElementById('logistiqueChart');
+        const emptyState = document.getElementById('logistiqueChartEmpty');
+        if (!canvas) return;
+
+        if (!data || !data.topArticlesConsommes || data.topArticlesConsommes.length === 0) {
+            emptyState.style.display = 'block';
+            canvas.style.display = 'none';
+            return;
+        }
+
+        emptyState.style.display = 'none';
+        canvas.style.display = 'block';
+
+        const labels = data.topArticlesConsommes.map(d => d.designation);
+        const values = data.topArticlesConsommes.map(d => d.quantiteSortie);
+
+        if (this.logistiqueChartInstance) this.logistiqueChartInstance.destroy();
+
+        if (typeof Chart === 'undefined') return;
+
+        const ctx = canvas.getContext('2d');
+        this.logistiqueChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Quantité consommée',
+                    data: values,
+                    backgroundColor: '#0dcaf0'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+
 
     // Utilitaires - utiliser la fonction globale pour la devise dynamique
     formatCurrency(amount) {
