@@ -74,9 +74,20 @@ class UtilisateurRepository extends BaseRepository {
       throw new Error("Le nom est obligatoire.");
     }
 
+    // Unicité email
     const existing = db.prepare(`SELECT id FROM Utilisateur WHERE email = ? AND is_deleted = 0`).get(data.email.trim());
     if (existing) {
       throw new Error("Un utilisateur avec cet email existe déjà.");
+    }
+
+    // Unicité téléphone (si fourni)
+    if (data.telephone && data.telephone.trim()) {
+      const existingPhone = db.prepare(
+        `SELECT id FROM Utilisateur WHERE telephone = ? AND is_deleted = 0`
+      ).get(data.telephone.trim());
+      if (existingPhone) {
+        throw new Error("Ce numéro de téléphone est déjà utilisé par un autre utilisateur.");
+      }
     }
 
     const targetEntrepriseId = parseInt(entrepriseId || data.entrepriseId, 10) || 1;
@@ -128,6 +139,26 @@ class UtilisateurRepository extends BaseRepository {
       ).get(targetEntrepriseId, id);
       if (existingAdmin) {
         throw new Error("Il ne peut y avoir qu'un seul administrateur par entreprise.");
+      }
+    }
+
+    // Unicité email (si modifié)
+    if (payload.email && payload.email.trim()) {
+      const existingEmail = db.prepare(
+        `SELECT id FROM Utilisateur WHERE email = ? AND is_deleted = 0 AND id != ?`
+      ).get(payload.email.trim(), id);
+      if (existingEmail) {
+        throw new Error("Un utilisateur avec cet email existe déjà.");
+      }
+    }
+
+    // Unicité téléphone (si fourni et modifié)
+    if (payload.telephone && payload.telephone.trim()) {
+      const existingPhone = db.prepare(
+        `SELECT id FROM Utilisateur WHERE telephone = ? AND is_deleted = 0 AND id != ?`
+      ).get(payload.telephone.trim(), id);
+      if (existingPhone) {
+        throw new Error("Ce numéro de téléphone est déjà utilisé par un autre utilisateur.");
       }
     }
 

@@ -314,14 +314,17 @@ secureHandle('affectations:delete', rolesChantiers, (e, id) => chantierCtrl.dele
 // ============================================================
 const rolesRH = ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'];
 
-secureHandle('employes:list', rolesRH, (e, params) => rhCtrl.getListEmployes(e, params))
-secureHandle('employes:get', rolesRH, (e, id) => rhCtrl.getEmployeById(e, id))
-secureHandle('employes:create', rolesRH, (e, data, entrepriseId) => rhCtrl.createEmploye(e, data, entrepriseId))
-secureHandle('employes:update', rolesRH, (e, id, data) => rhCtrl.updateEmploye(e, id, data))
-secureHandle('employes:delete', rolesRH, (e, id) => rhCtrl.deleteEmploye(e, id))
-secureHandle('employes:presentsToday', rolesRH, (e, entrepriseId) => rhCtrl.getPresentsToday(e, entrepriseId))
-secureHandle('employes:pointer', rolesRH, (e, data) => rhCtrl.pointer(e, data))
-secureHandle('employes:stats', rolesRH, (e, entrepriseId) => rhCtrl.getStatsEmployes(e, entrepriseId))
+const rolesEmployesRead = ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'];
+const rolesEmployesWrite = ['ADMIN', 'RH'];
+
+secureHandle('employes:list', rolesEmployesRead, (e, params) => rhCtrl.getListEmployes(e, params))
+secureHandle('employes:get', rolesEmployesRead, (e, id) => rhCtrl.getEmployeById(e, id))
+secureHandle('employes:create', rolesEmployesWrite, (e, data, entrepriseId) => rhCtrl.createEmploye(e, data, entrepriseId))
+secureHandle('employes:update', rolesEmployesWrite, (e, id, data) => rhCtrl.updateEmploye(e, id, data))
+secureHandle('employes:delete', rolesEmployesWrite, (e, id) => rhCtrl.deleteEmploye(e, id))
+secureHandle('employes:presentsToday', rolesEmployesRead, (e, entrepriseId) => rhCtrl.getPresentsToday(e, entrepriseId))
+secureHandle('employes:pointer', ['ADMIN', 'RH', 'CHEF_CHANTIER'], (e, data) => rhCtrl.pointer(e, data))
+secureHandle('employes:stats', rolesEmployesRead, (e, entrepriseId) => rhCtrl.getStatsEmployes(e, entrepriseId))
 
 secureHandle('pointages:list', rolesRH, (e, params) => rhCtrl.getListPointages(e, params))
 secureHandle('pointages:create', rolesRH, (e, data) => rhCtrl.createPointage(e, data))
@@ -388,7 +391,7 @@ secureHandle('maintenances:update', rolesMateriel, (e, id, data) => materielCtrl
 // ============================================================
 // COMMERCIAL (Clients, Devis, Contrats, Factures, Paiements)
 // ============================================================
-const rolesCommercial = ['ADMIN', 'COMMERCIAL', 'DIRECTION', 'COMPTABLE'];
+const rolesCommercial = ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'];
 
 secureHandle('clients:list', rolesCommercial, (e, params) => commercialCtrl.getListClients(e, params))
 secureHandle('clients:get', rolesCommercial, (e, id) => commercialCtrl.getClientById(e, id))
@@ -440,14 +443,18 @@ secureHandle('paiements:delete', rolesCommercial, (e, id) => safeRepo(() => repo
 // ============================================================
 const rolesFinance = ['ADMIN', 'COMPTABLE', 'DIRECTEUR'];
 
-secureHandle('depenses:byChantier', rolesFinance, (e, id) => financeCtrl.getDepensesByChantier(e, id))
-secureHandle('depenses:totalByChantier', rolesFinance, (e, id) => financeCtrl.getTotalDepensesByChantier(e, id))
-secureHandle('depenses:byCategorie', rolesFinance, (e, id) => financeCtrl.getDepensesByCategorie(e, id))
-secureHandle('depenses:enAttenteValidation', rolesFinance, (e, entrepriseId) => financeCtrl.getDepensesEnAttenteValidation(e, entrepriseId))
-secureHandle('depenses:create', rolesFinance, (e, data) => safeRepo(() => repos.depenses.create(data)))
-secureHandle('depenses:update', rolesFinance, (e, id, data) => safeRepo(() => repos.depenses.update(id, data)))
-secureHandle('depenses:delete', rolesFinance, (e, id) => safeRepo(() => repos.depenses.delete(id)))
-secureHandle('depenses:list', rolesFinance, (e, params) => safeRepo(() => repos.depenses.list(params)))
+const rolesDepensesRead = ['ADMIN', 'COMPTABLE', 'DIRECTEUR', 'CHEF_CHANTIER'];
+const rolesDepensesWrite = ['ADMIN', 'COMPTABLE', 'DIRECTEUR', 'CHEF_CHANTIER'];
+const rolesDepensesValidate = ['ADMIN', 'COMPTABLE', 'DIRECTEUR'];
+
+secureHandle('depenses:byChantier', rolesDepensesRead, (e, id) => financeCtrl.getDepensesByChantier(e, id))
+secureHandle('depenses:totalByChantier', rolesDepensesRead, (e, id) => financeCtrl.getTotalDepensesByChantier(e, id))
+secureHandle('depenses:byCategorie', rolesDepensesRead, (e, id) => financeCtrl.getDepensesByCategorie(e, id))
+secureHandle('depenses:enAttenteValidation', rolesDepensesValidate, (e, entrepriseId) => financeCtrl.getDepensesEnAttenteValidation(e, entrepriseId))
+secureHandle('depenses:create', rolesDepensesWrite, (e, data) => safeRepo(() => repos.depenses.create(data)))
+secureHandle('depenses:update', rolesDepensesWrite, (e, id, data) => safeRepo(() => repos.depenses.update(id, data)))
+secureHandle('depenses:delete', rolesDepensesValidate, (e, id) => safeRepo(() => repos.depenses.delete(id)))
+secureHandle('depenses:list', rolesDepensesRead, (e, params) => safeRepo(() => repos.depenses.list(params)))
 
 secureHandle('alertes:nonLues', [], (e, entrepriseId, limit) => financeCtrl.getAlertesNonLues(e, entrepriseId, limit))
 secureHandle('alertes:marquerLue', [], (e, id) => financeCtrl.marquerAlerteLue(e, id))
@@ -465,6 +472,11 @@ secureHandle('dashboard:getCAEvolution', [], (e, entrepriseId) => dashboardCtrl.
 secureHandle('dashboard:getTopChantiersBudget', [], (e, entrepriseId) => dashboardCtrl.getTopChantiersBudget(e, entrepriseId))
 secureHandle('dashboard:getActiviteRecente', [], (e, entrepriseId, limit) => dashboardCtrl.getActiviteRecente(e, entrepriseId, limit))
 secureHandle('dashboard:getFacturesRetard', ['ADMIN', 'COMPTABLE', 'DIRECTEUR'], (e, entrepriseId) => dashboardCtrl.getFacturesRetard(e, entrepriseId))
+
+secureHandle('dashboard:getRHStats', ['ADMIN', 'RH', 'DIRECTEUR'], (e, entrepriseId) => dashboardCtrl.getRHStats(e, entrepriseId))
+secureHandle('dashboard:getCommercialStats', ['ADMIN', 'COMMERCIAL', 'DIRECTEUR'], (e, entrepriseId) => dashboardCtrl.getCommercialStats(e, entrepriseId))
+secureHandle('dashboard:getLogistiqueStats', ['ADMIN', 'MAGASINIER', 'RESPONSABLE_MATERIEL', 'CHEF_CHANTIER'], (e, entrepriseId) => dashboardCtrl.getLogistiqueStats(e, entrepriseId))
+
 
 // ============================================================
 // SYNCHRONISATION
@@ -560,6 +572,179 @@ ipcMain.handle('notification:show', async (e, title, body) => {
   if (Notification.isSupported()) new Notification({ title, body }).show()
   return { success: true }
 })
+
+// ============================================================
+// PDF — GÉNÉRATION LOGIN CREDENTIALS
+// ============================================================
+
+/**
+ * Génère le HTML du PDF de credentials de connexion
+ */
+function generateLoginPDFHtml(userData) {
+  const dateStr = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const entrepriseNom = userData.entrepriseNom || 'TIA INFO BUILD';
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6fb; color: #1a1a2e; padding: 0; }
+    .page { width: 210mm; min-height: 297mm; padding: 30mm 25mm; background: white; }
+    .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 28px 32px; border-radius: 12px; margin-bottom: 32px; display: flex; align-items: center; gap: 20px; }
+    .header-logo { font-size: 40px; }
+    .header-text h1 { font-size: 22px; font-weight: 700; letter-spacing: 1px; }
+    .header-text p { font-size: 13px; opacity: 0.75; margin-top: 4px; }
+    .section-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #6c757d; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e9ecef; }
+    .credentials-box { background: #f8f9fa; border: 2px solid #dee2e6; border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+    .cred-row { display: flex; align-items: flex-start; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #e9ecef; }
+    .cred-row:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    .cred-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-right: 16px; flex-shrink: 0; }
+    .icon-person { background: #e8f4fd; }
+    .icon-email { background: #e8f5e9; }
+    .icon-lock { background: #fef3e2; }
+    .icon-role { background: #f3e5f5; }
+    .icon-date { background: #e8eaf6; }
+    .cred-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: #9e9e9e; margin-bottom: 4px; }
+    .cred-value { font-size: 16px; font-weight: 600; color: #1a1a2e; font-family: 'Courier New', monospace; }
+    .warning-box { background: linear-gradient(135deg, #fff8e1, #fff3cd); border: 1px solid #ffc107; border-radius: 10px; padding: 16px 20px; margin-bottom: 24px; display: flex; gap: 12px; align-items: flex-start; }
+    .warning-icon { font-size: 20px; flex-shrink: 0; }
+    .warning-text { font-size: 13px; line-height: 1.6; color: #856404; }
+    .warning-text strong { display: block; margin-bottom: 4px; font-size: 14px; }
+    .steps-box { border: 1px solid #dee2e6; border-radius: 10px; padding: 20px 24px; margin-bottom: 24px; }
+    .steps-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #1a1a2e; }
+    .step { display: flex; align-items: flex-start; margin-bottom: 10px; font-size: 13px; color: #495057; line-height: 1.5; }
+    .step-num { background: #0f3460; color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-right: 12px; flex-shrink: 0; margin-top: 1px; }
+    .footer { border-top: 1px solid #dee2e6; padding-top: 16px; display: flex; justify-content: space-between; align-items: center; color: #adb5bd; font-size: 11px; }
+    .confidential { background: #dc3545; color: white; padding: 3px 10px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+    @media print { .page { padding: 20mm 20mm; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="header-logo">🏗️</div>
+      <div class="header-text">
+        <h1>TIA INFO BUILD</h1>
+        <p>${entrepriseNom} — Informations de connexion</p>
+      </div>
+    </div>
+
+    <p class="section-title">Identifiants de connexion</p>
+    <div class="credentials-box">
+      <div class="cred-row">
+        <div class="cred-icon icon-person">👤</div>
+        <div>
+          <div class="cred-label">Nom complet</div>
+          <div class="cred-value">${userData.prenom || ''} ${userData.nom || ''}</div>
+        </div>
+      </div>
+      <div class="cred-row">
+        <div class="cred-icon icon-email">✉️</div>
+        <div>
+          <div class="cred-label">Identifiant (Email)</div>
+          <div class="cred-value">${userData.email || ''}</div>
+        </div>
+      </div>
+      <div class="cred-row">
+        <div class="cred-icon icon-lock">🔑</div>
+        <div>
+          <div class="cred-label">Mot de passe temporaire</div>
+          <div class="cred-value">${userData.plainPassword || '(non communiqué)'}</div>
+        </div>
+      </div>
+      <div class="cred-row">
+        <div class="cred-icon icon-role">🎭</div>
+        <div>
+          <div class="cred-label">Rôle dans l'application</div>
+          <div class="cred-value">${userData.roleLabel || ''}</div>
+        </div>
+      </div>
+      <div class="cred-row">
+        <div class="cred-icon icon-date">📅</div>
+        <div>
+          <div class="cred-label">Date de création du compte</div>
+          <div class="cred-value">${dateStr}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="warning-box">
+      <div class="warning-icon">⚠️</div>
+      <div class="warning-text">
+        <strong>Action requise dès la première connexion</strong>
+        Vous devez changer votre mot de passe après votre première connexion à l'application. Ce document est strictement confidentiel et doit être remis en mains propres au titulaire du compte.
+      </div>
+    </div>
+
+    <div class="steps-box">
+      <div class="steps-title">🚀 Comment se connecter</div>
+      <div class="step"><div class="step-num">1</div>Lancez l'application TIA INFO BUILD sur votre poste</div>
+      <div class="step"><div class="step-num">2</div>Saisissez votre adresse email et le mot de passe temporaire ci-dessus</div>
+      <div class="step"><div class="step-num">3</div>Accédez à Paramètres → Mon profil pour modifier votre mot de passe</div>
+      <div class="step"><div class="step-num">4</div>En cas de problème, contactez l'administrateur de votre entreprise</div>
+    </div>
+
+    <div class="footer">
+      <span>Document généré le ${new Date().toLocaleString('fr-FR')} • TIA INFO BUILD v1.0</span>
+      <span class="confidential">CONFIDENTIEL</span>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+ipcMain.handle('utilisateurs:generateLoginPDF', async (event, userData) => {
+  try {
+    // Créer une fenêtre BrowserWindow invisible pour le rendu PDF
+    const pdfWin = new BrowserWindow({
+      show: false,
+      width: 800,
+      height: 1100,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true
+      }
+    });
+
+    const htmlContent = generateLoginPDFHtml(userData);
+    await pdfWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
+
+    // Générer le PDF
+    const pdfData = await pdfWin.webContents.printToPDF({
+      printBackground: true,
+      pageSize: 'A4',
+      margins: { marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 }
+    });
+
+    pdfWin.close();
+
+    // Préparer le nom de fichier par défaut
+    const safeName = `${(userData.prenom || '').replace(/[^a-zA-Z0-9]/g, '_')}_${(userData.nom || '').replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const defaultFilename = `login_${safeName}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+    // Dialogue de sauvegarde
+    const { filePath, canceled } = await dialog.showSaveDialog({
+      title: 'Enregistrer les informations de connexion',
+      defaultPath: defaultFilename,
+      filters: [{ name: 'Fichier PDF', extensions: ['pdf'] }]
+    });
+
+    if (canceled || !filePath) {
+      return { success: false, error: 'Sauvegarde annulée' };
+    }
+
+    fs.writeFileSync(filePath, pdfData);
+
+    // Ouvrir le PDF dans le lecteur par défaut
+    await shell.openPath(filePath);
+
+    return { success: true, filePath };
+  } catch (error) {
+    console.error('utilisateurs:generateLoginPDF error:', error);
+    return { success: false, error: error.message };
+  }
+});
 
 // ============================================================
 // APP LIFECYCLE

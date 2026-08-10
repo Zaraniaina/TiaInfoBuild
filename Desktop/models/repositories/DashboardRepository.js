@@ -208,6 +208,93 @@ class DashboardRepository extends BaseRepository {
         `);
         return stmt.all(entrepriseId);
     }
+
+    /**
+     * Statistiques spécifiques RH
+     */
+    getRHStats(entrepriseId) {
+        const stats = {};
+        
+        // Pointages par type (pour le mois en cours)
+        const debutMois = new Date();
+        debutMois.setDate(1);
+        const debutMoisStr = debutMois.toISOString().split('T')[0];
+
+        stats.pointagesMois = db.prepare(`
+            SELECT type, COUNT(*) as count 
+            FROM Pointage 
+            WHERE employeId IN (SELECT id FROM Employe WHERE entrepriseId = ? AND is_deleted = 0)
+            AND dateJour >= ? 
+            GROUP BY type
+        `).all(entrepriseId, debutMoisStr);
+
+        // Heures supplémentaires en attente
+        stats.heuresSupAttente = db.prepare(`
+            SELECT COUNT(*) as count, SUM(nbHeures) as totalHeures 
+            FROM HeureSupplementaire 
+            WHERE employeId IN (SELECT id FROM Employe WHERE entrepriseId = ? AND is_deleted = 0)
+            AND statut = 'en_attente'
+        `).get(entrepriseId);
+
+        return stats;
+    }
+
+    /**
+     * Statistiques spécifiques Commercial
+     */
+    getCommercialStats(entrepriseId) {
+        const stats = {};
+
+        // Devis par statut (Accepté, Refusé, Envoyé, Brouillon)
+        stats.devisParStatut = db.prepare(`
+            SELECT statut, COUNT(*) as count, SUM(COALESCE(montantTTC, 0)) as totalTTC
+            FROM Devis
+            WHERE entrepriseId = ? AND is_deleted = 0
+            GROUP BY statut
+        `).all(entrepriseId);
+
+        // Nouveaux clients du mois
+        const debutMois = new Date();
+        debutMois.setDate(1);
+        const debutMoisStr = debutMois.toISOString().split('T')[0];
+
+        stats.nouveauxClients = db.prepare(`
+            SELECT COUNT(*) as count 
+            FROM Client
+            WHERE entrepriseId = ? AND is_deleted = 0
+            AND created_at >= ?
+        `).get(entrepriseId, debutMoisStr).count;
+
+        return stats;
+    }
+
+    /**
+     * Statistiques spécifiques Logistique / Matériel
+     */
+    getLogistiqueStats(entrepriseId) {
+        const stats = {};
+
+        // Répartition des états de matériels
+        stats.materielsParEtat = db.prepare(`
+            SELECT etat, COUNT(*) as count 
+            FROM Materiel
+            WHERE entrepriseId = ? AND is_deleted = 0
+            GROUP BY etat
+        `).all(entrepriseId);
+
+        // Top 5 articles les plus consommés (Mouvements de sortie)
+        stats.topArticlesConsommes = db.prepare(`
+            SELECT a.designation, SUM(m.quantite) as quantiteSortie
+            FROM MouvementStock m
+            JOIN Article a ON m.articleId = a.id
+            WHERE a.entrepriseId = ? AND m.type = 'sortie' AND m.is_deleted = 0
+            GROUP BY a.id, a.designation
+            ORDER BY quantiteSortie DESC
+            LIMIT 5
+        `).all(entrepriseId);
+
+        return stats;
+    }
 }
 
 module.exports = DashboardRepository;
