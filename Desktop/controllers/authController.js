@@ -181,6 +181,24 @@ async function handleRegister(event, data) {
       const userInfo = userStmt.run(serverUserId, nom || 'Admin', prenom || '', email, pwdHash, entInfo.lastInsertRowid);
 
       const newUser = db.prepare('SELECT * FROM Utilisateur WHERE id = ?').get(userInfo.lastInsertRowid);
+
+      // Créer une alerte pour inviter à créer un compte RH
+      try {
+        const alerteStmt = db.prepare(`
+          INSERT INTO Alerte (entrepriseId, titre, message, niveauGravite, typeEntite, statut, dateAlerte)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `);
+        alerteStmt.run(
+          entInfo.lastInsertRowid,
+          "Configuration initiale",
+          "Veuillez créer un compte pour le responsable RH afin de déléguer la gestion des employés.",
+          "info",
+          "systeme",
+          "non_lue",
+          new Date().toISOString()
+        );
+      } catch(e) { console.error('Erreur alerte RH:', e); }
+
       return { success: true, user: newUser, message: 'Inscription réussie sur le serveur distant et synchronisée en local !' };
     } catch (apiError) {
       console.error("Erreur API Django Inscription:", apiError.message);
@@ -196,6 +214,24 @@ async function handleRegister(event, data) {
       const userInfo = userStmt.run(nom || 'Admin', prenom || '', email, pwdHash, entInfo.lastInsertRowid);
 
       const newUser = db.prepare('SELECT * FROM Utilisateur WHERE id = ?').get(userInfo.lastInsertRowid);
+
+      // Créer une alerte pour inviter à créer un compte RH
+      try {
+        const alerteStmt = db.prepare(`
+          INSERT INTO Alerte (entrepriseId, titre, message, niveauGravite, typeEntite, statut, dateAlerte)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `);
+        alerteStmt.run(
+          entInfo.lastInsertRowid,
+          "Configuration initiale",
+          "Veuillez créer un compte pour le responsable RH afin de déléguer la gestion des employés.",
+          "info",
+          "systeme",
+          "non_lue",
+          new Date().toISOString()
+        );
+      } catch(e) { console.error('Erreur alerte RH:', e); }
+
       return {
         success: true,
         user: newUser,

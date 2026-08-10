@@ -31,6 +31,7 @@ const DashboardRepository = require('./models/repositories/DashboardRepository')
 const SyncRepository = require('./models/repositories/SyncRepository')
 const UtilisateurRepository = require('./models/repositories/UtilisateurRepository')
 const AffectationRessourceRepository = require('./models/repositories/AffectationRessourceRepository')
+const HistoriquePosteRepository = require('./models/repositories/HistoriquePosteRepository')
 
 // Controllers
 const { handleLogin, handleRegister } = require('./controllers/authController')
@@ -43,6 +44,7 @@ const FinanceController = require('./controllers/financeController')
 const DashboardController = require('./controllers/dashboardController')
 const SyncController = require('./controllers/syncController')
 const UtilisateurController = require('./controllers/utilisateurController')
+const AlerteController = require('./controllers/alerteController')
 
 // Services
 const SyncService = require('./services/syncService')
@@ -73,7 +75,8 @@ const repos = {
   maintenances: new MaintenanceRepository(),
   dashboard: new DashboardRepository(),
   sync: new SyncRepository(),
-  utilisateurs: new UtilisateurRepository()
+  utilisateurs: new UtilisateurRepository(),
+  historiquePostes: new HistoriquePosteRepository()
 }
 
 // Instanciation des contrôleurs
@@ -86,6 +89,7 @@ const financeCtrl = new FinanceController(repos)
 const dashboardCtrl = new DashboardController(repos)
 const syncCtrl = new SyncController(repos)
 const utilisateurCtrl = new UtilisateurController(repos)
+const alerteCtrl = new AlerteController(repos)
 
 // Instanciation des services
 const syncService = new SyncService(repos.sync)
@@ -325,6 +329,8 @@ secureHandle('employes:delete', rolesEmployesWrite, (e, id) => rhCtrl.deleteEmpl
 secureHandle('employes:presentsToday', rolesEmployesRead, (e, entrepriseId) => rhCtrl.getPresentsToday(e, entrepriseId))
 secureHandle('employes:pointer', ['ADMIN', 'RH', 'CHEF_CHANTIER'], (e, data) => rhCtrl.pointer(e, data))
 secureHandle('employes:stats', rolesEmployesRead, (e, entrepriseId) => rhCtrl.getStatsEmployes(e, entrepriseId))
+secureHandle('employes:changerPoste', rolesEmployesWrite, (e, employeId, data) => safeRepo(() => repos.employes.changerPoste(employeId, data)))
+secureHandle('employes:historiquePoste', rolesEmployesRead, (e, employeId) => safeRepo(() => repos.historiquePostes.getByEmploye(employeId)))
 
 secureHandle('pointages:list', rolesRH, (e, params) => rhCtrl.getListPointages(e, params))
 secureHandle('pointages:create', rolesRH, (e, data) => rhCtrl.createPointage(e, data))
@@ -456,12 +462,7 @@ secureHandle('depenses:update', rolesDepensesWrite, (e, id, data) => safeRepo(()
 secureHandle('depenses:delete', rolesDepensesValidate, (e, id) => safeRepo(() => repos.depenses.delete(id)))
 secureHandle('depenses:list', rolesDepensesRead, (e, params) => safeRepo(() => repos.depenses.list(params)))
 
-secureHandle('alertes:nonLues', [], (e, entrepriseId, limit) => financeCtrl.getAlertesNonLues(e, entrepriseId, limit))
-secureHandle('alertes:marquerLue', [], (e, id) => financeCtrl.marquerAlerteLue(e, id))
-secureHandle('alertes:marquerToutesLues', [], (e, entrepriseId) => financeCtrl.marquerToutesAlertesLues(e, entrepriseId))
-secureHandle('alertes:creer', [], (e, data) => financeCtrl.creerAlerte(e, data))
-secureHandle('alertes:countNonLues', [], (e, entrepriseId) => financeCtrl.countAlertesNonLues(e, entrepriseId))
-secureHandle('alertes:list', [], (e, params) => safeRepo(() => repos.alertes.list(params)))
+
 
 // ============================================================
 // DASHBOARD
@@ -546,6 +547,22 @@ ipcMain.handle('backup:list', () => {
     return fs.readdirSync(backupsDir).map(f => ({ fichier: f, date: fs.statSync(path.join(backupsDir, f)).mtime, taille: fs.statSync(path.join(backupsDir, f)).size }))
   } catch { return [] }
 })
+
+// ============================================================
+// ALERTES
+// ============================================================
+const allRoles = ['ADMIN', 'DIRECTEUR', 'COMPTABLE', 'RH', 'CHEF_CHANTIER', 'CHEF_PROJET', 'MATERIEL', 'MAGASINIER', 'COMMERCIAL'];
+secureHandle('alertes:list',           allRoles, (e, p) => alerteCtrl.getList(e, p))
+secureHandle('alertes:nonLues',        allRoles, (e, entId, limit) => alerteCtrl.getNonLues(e, entId, limit))
+secureHandle('alertes:countNonLues',   allRoles, (e, entId) => alerteCtrl.countNonLues(e, entId))
+secureHandle('alertes:markAsRead',     allRoles, (e, id) => alerteCtrl.markAsRead(e, id))
+secureHandle('alertes:marquerLue',     allRoles, (e, id) => alerteCtrl.marquerLue(e, id))
+secureHandle('alertes:markAllAsRead',  allRoles, (e, entId) => alerteCtrl.markAllAsRead(e, entId))
+secureHandle('alertes:marquerToutesLues', allRoles, (e, entId) => alerteCtrl.markAllAsRead(e, entId))
+secureHandle('alertes:creer',          allRoles, (e, data) => alerteCtrl.creer(e, data))
+secureHandle('alertes:delete',         allRoles, (e, id) => alerteCtrl.deleteAlerte(e, id))
+
+
 
 // ============================================================
 // UTILITAIRES SYSTÈMES

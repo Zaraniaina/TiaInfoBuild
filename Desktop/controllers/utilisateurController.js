@@ -80,18 +80,20 @@ class UtilisateurController {
         }
       }
 
-      // 3. Créer une notification d'alerte pour le RH
+      // 3. Créer une notification d'alerte pour le RH (uniquement si employe créé)
       if (!isAdmin && employeCreated && this.repos.alertes) {
         try {
           const prenom = (data.prenom || '').trim();
           const nom = (data.nom || '').trim();
           const roleLabel = this._getRoleLabel(roleId);
+          const nomComplet = [prenom, nom].filter(Boolean).join(' ') || 'Nouvel utilisateur';
 
           this.repos.alertes.creer({
             entrepriseId: targetEntrepriseId,
-            typeEntite: 'Utilisateur',
+            titre: 'Nouveau collaborateur à enregistrer',
+            typeEntite: 'Employe',
             entiteId: result.id,
-            message: `Nouvel utilisateur créé : ${prenom} ${nom} (${roleLabel}). Veuillez compléter le dossier RH dans le module Employés.`,
+            message: `${nomComplet} (${roleLabel}) vient d'intégrer l'entreprise. Veuillez compléter son dossier RH dans le module Employés.`,
             niveauGravite: 'info'
           });
         } catch (alerteErr) {

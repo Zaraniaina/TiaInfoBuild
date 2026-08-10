@@ -417,20 +417,140 @@ function initSidebar() {
 // TOPBAR
 // ============================================================
 function initTopbar() {
-  // Notifications
+  // Charger les notifications au démarrage
   loadNotifications();
+
+  // Rafraîchir à chaque ouverture du dropdown
+  const notifBtn = document.getElementById('notifBtn');
+  if (notifBtn) {
+    notifBtn.addEventListener('show.bs.dropdown', () => loadNotifications());
+  }
 }
 
 async function loadNotifications() {
   const notifBadge = document.getElementById('notifBadge');
-  if (!notifBadge || !window.AppState.entreprise) return;
+  const notifDropdown = document.getElementById('notifDropdown');
+  const notifEmpty = document.getElementById('notifEmpty');
+  if (!notifBadge || !window.AppState?.entreprise) return;
+
   try {
-    const result = await window.api.alertes.invoke('countNonLues', window.AppState.entreprise.id);
-    const count = result?.data || 0;
-    notifBadge.textContent = count;
+    const entrepriseId = window.AppState.entreprise.id;
+    const result = await window.api.alertes.invoke('nonLues', entrepriseId, 10);
+    const alertes = (result?.data || []);
+
+    // Badge
+    const count = alertes.length;
+    notifBadge.textContent = count > 9 ? '9+' : count;
     notifBadge.classList.toggle('d-none', count === 0);
-  } catch (e) { /* silencieux */ }
+
+    // Vider le dropdown (garder le header)
+    if (!notifDropdown) return;
+    // Reconstruire les items
+    const header = `
+      <li><h6 class="dropdown-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-bell me-1"></i>Notifications</span>
+        ${count > 0 ? `<button class="btn btn-link btn-sm p-0 text-secondary text-decoration-none" id="btnMarkAllReadDropdown">Tout marquer lu</button>` : ''}
+      </h6></li>
+      <li><hr class="dropdown-divider"></li>
+    `;
+
+    let items = '';
+    if (alertes.length === 0) {
+      items = `<li class="text-center text-secondary py-3 px-3" id="notifEmpty">
+        <i class="bi bi-bell-slash d-block mb-1" style="font-size:1.5rem;"></i>
+        <small>Aucune notification</small>
+      </li>`;
+    } else {
+      const graviteIcones = {
+        critique: 'bi-exclamation-circle-fill text-danger',
+        elevee: 'bi-exclamation-triangle-fill text-warning',
+        moyenne: 'bi-info-circle-fill text-info',
+        faible: 'bi-info-circle text-secondary',
+        info: 'bi-bell-fill text-primary'
+      };
+
+      // Mapper le typeEntite vers une route
+      const typeRoutes = {
+        Employe: 'employes',
+        Utilisateur: 'employes',
+        Chantier: 'chantiers',
+        Facture: 'factures',
+        Stock: 'stocks',
+        systeme: null
+      };
+
+      items = alertes.map(a => {
+        const icone = graviteIcones[a.niveauGravite] || 'bi-bell-fill text-primary';
+        const titre = a.titre || 'Notification';
+        const msg = (a.message || '').length > 70 ? a.message.substring(0, 70) + '…' : (a.message || '');
+        const route = typeRoutes[a.typeEntite] || null;
+        const timeStr = a.dateAlerte ? new Date(a.dateAlerte).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
+
+        return `<li>
+          <div class="dropdown-item notif-item d-flex align-items-start gap-2 py-2 px-3" style="white-space:normal; min-width:280px; max-width:340px; cursor:pointer;" data-alerte-id="${a.id}" data-route="${route || ''}">
+            <i class="bi ${icone} mt-1 flex-shrink-0"></i>
+            <div class="flex-grow-1 min-w-0">
+              <div class="d-flex justify-content-between align-items-start gap-1">
+                <strong class="small text-truncate">${titre}</strong>
+                <small class="text-secondary flex-shrink-0">${timeStr}</small>
+              </div>
+              <p class="mb-1 small text-secondary" style="font-size:0.78rem; line-height:1.3;">${msg}</p>
+              <div class="d-flex gap-2">
+                ${route ? `<a href="#${route}" data-route="${route}" class="btn btn-link btn-sm p-0 text-primary text-decoration-none" style="font-size:0.75rem;" onclick="event.stopPropagation()"><i class="bi bi-arrow-right me-1"></i>Voir</a>` : ''}
+                <button class="btn btn-link btn-sm p-0 text-secondary text-decoration-none notif-mark-read" data-id="${a.id}" style="font-size:0.75rem;"><i class="bi bi-check2 me-1"></i>Marquer lu</button>
+              </div>
+            </div>
+          </div>
+        </li>
+        <li><hr class="dropdown-divider my-0"></li>`;
+      }).join('');
+    }
+
+    notifDropdown.innerHTML = header + items;
+
+    // Events — marquer une alerte comme lue
+    notifDropdown.querySelectorAll('.notif-mark-read').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = parseInt(btn.dataset.id);
+        await window.api.alertes.invoke('markAsRead', id);
+        loadNotifications();
+      });
+    });
+
+    // Clic sur l'item → naviguer + marquer lu
+    notifDropdown.querySelectorAll('.notif-item').forEach(item => {
+      item.addEventListener('click', async () => {
+        const id = parseInt(item.dataset.alerteId);
+        const route = item.dataset.route;
+        await window.api.alertes.invoke('markAsRead', id);
+        if (route && window.router) window.router.navigate(route);
+        loadNotifications();
+      });
+    });
+
+    // Tout marquer lu
+    const btnMarkAll = notifDropdown.querySelector('#btnMarkAllReadDropdown');
+    if (btnMarkAll) {
+      btnMarkAll.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await window.api.alertes.invoke('markAllAsRead', entrepriseId);
+        loadNotifications();
+        if (window.showToast) window.showToast('Toutes les notifications marquées comme lues', 'success');
+      });
+    }
+
+  } catch (e) {
+    console.warn('loadNotifications error:', e);
+  }
 }
+
+// Rafraîchir les notifications toutes les 60 secondes
+setInterval(loadNotifications, 60000);
+
+// Exposer globalement pour mise à jour après création d'utilisateur
+window.updateDashboardAlertsBadge = loadNotifications;
+
 
 // ============================================================
 // USER UI

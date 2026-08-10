@@ -409,6 +409,9 @@ class ParametresController {
                             <button class="btn btn-outline-primary btn-edit" data-id="${u.id}" title="Modifier" ${canEditUsers ? '' : 'disabled'}>
                                 <i class="bi bi-pencil"></i>
                             </button>
+                            <button class="btn btn-outline-info btn-download-pdf" data-id="${u.id}" title="Télécharger accès PDF">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                            </button>
                             <button class="btn btn-outline-danger btn-delete" data-id="${u.id}" title="Supprimer" ${canDeleteUsers ? '' : 'disabled'}>
                                 <i class="bi bi-trash"></i>
                             </button>
@@ -422,10 +425,46 @@ class ParametresController {
             if (btn.disabled) return;
             btn.addEventListener('click', (e) => this.openModalEditionUtilisateur(e.currentTarget.dataset.id));
         });
+        tbody.querySelectorAll('.btn-download-pdf').forEach(btn => {
+            btn.addEventListener('click', (e) => this.downloadUtilisateurPDF(e.currentTarget.dataset.id));
+        });
         tbody.querySelectorAll('.btn-delete').forEach(btn => {
             if (btn.disabled) return;
             btn.addEventListener('click', (e) => this.confirmDeleteUtilisateur(e.currentTarget.dataset.id));
         });
+    }
+
+    /**
+     * Télécharger le PDF d'un utilisateur existant
+     */
+    async downloadUtilisateurPDF(id) {
+        try {
+            const user = this.utilisateurs.find(u => u.id === parseInt(id));
+            if (!user) return;
+            
+            let roleCode = normalizeUtilisateurRoleCode(user.roleCode || user.roleNom || '');
+            const roleLabel = UTILISATEUR_ROLE_LABELS[roleCode] || user.roleNom || user.roleCode || '—';
+            const entrepriseNom = window.AppState?.entreprise?.nom || 'TIA INFO BUILD';
+            
+            const pdfData = {
+                nom: user.nom || '',
+                prenom: user.prenom || '',
+                email: user.email || '',
+                plainPassword: '******** (Masqué pour sécurité)',
+                roleLabel,
+                entrepriseNom
+            };
+
+            const pdfResult = await window.ipcRaw.invoke('utilisateurs:generateLoginPDF', pdfData);
+            if (pdfResult?.success) {
+                if (window.showToast) window.showToast('📄 PDF des accès généré et ouvert.', 'info');
+            } else {
+                throw new Error(pdfResult?.error || 'Erreur inconnue lors de la génération PDF');
+            }
+        } catch (error) {
+            console.error('Erreur téléchargement PDF utilisateur:', error);
+            if (window.showToast) window.showToast(`Erreur: ${error.message}`, 'error');
+        }
     }
 
     /**

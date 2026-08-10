@@ -401,6 +401,26 @@ function initDatabase() {
     )
   `).run();
 
+  // Table historique des postes (carrière d'un employé)
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS HistoriquePoste (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      entrepriseId INTEGER NOT NULL,
+      employeId INTEGER NOT NULL,
+      poste TEXT NOT NULL,
+      typeContrat TEXT DEFAULT 'CDI',
+      salaireBase REAL DEFAULT 0,
+      dateDebut DATE NOT NULL,
+      dateFin DATE,
+      motifChangement TEXT,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (employeId) REFERENCES Employe(id) ON DELETE CASCADE,
+      FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id)
+    )
+  `).run();
+
   db.prepare(`
     CREATE TABLE IF NOT EXISTS Equipe (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -688,6 +708,7 @@ function initDatabase() {
       entrepriseId INTEGER NOT NULL,
       typeEntite TEXT,
       entiteId INTEGER,
+      titre TEXT,
       message TEXT,
       niveauGravite TEXT DEFAULT 'info',
       dateAlerte DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -730,7 +751,7 @@ function initDatabase() {
   const allTables = [
     'Entreprise', 'Role', 'Utilisateur', 'Preference',
     'Chantier', 'Phase', 'Incident', 'AffectationRessource',
-    'Employe', 'Equipe', 'MembreEquipe', 'AffectationChantier', 'Pointage', 'HeureSupplementaire',
+    'Employe', 'HistoriquePoste', 'Equipe', 'MembreEquipe', 'AffectationChantier', 'Pointage', 'HeureSupplementaire',
     'Materiel', 'AffectationMateriel', 'Maintenance', 'AlerteMateriel',
     'Article', 'Fournisseur', 'MouvementStock',
     'Client', 'ClientAdresse', 'Devis', 'LigneDevis', 'Contrat', 'Facture', 'Paiement',
@@ -802,6 +823,14 @@ function initDatabase() {
   ensureColumn('Entreprise', 'prefixeDevis', "TEXT DEFAULT 'DEV'");
   ensureColumn('Entreprise', 'prefixeFacture', "TEXT DEFAULT 'FAC'");
   ensureColumn('Entreprise', 'prefixeContrat', "TEXT DEFAULT 'CTR'");
+
+  // MIGRATIONS TABLE ALERTE
+  ensureColumn('Alerte', 'titre', 'TEXT');
+
+  // MIGRATIONS TABLE EMPLOYE
+  ensureColumn('Employe', 'typeContrat', "TEXT DEFAULT 'CDI'");
+  ensureColumn('Employe', 'dateDebutContrat', 'DATE');
+  ensureColumn('Employe', 'dateFinContrat', 'DATE');
 
   // ============================================================
   // TRIGGERS SQLite
