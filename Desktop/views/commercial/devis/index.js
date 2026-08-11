@@ -25,12 +25,18 @@ class DevisController {
      * Initialiser le contrôleur
      */
     async init() {
-        await this.loadClients();
-        await this.loadChantiers();
-        await this.loadArticles();
-        this.bindEvents();
-        await this.loadDevis();
-        await this.loadContrats();
+        try {
+            console.log('DevisController.init() called');
+            await this.loadClients();
+            await this.loadChantiers();
+            await this.loadArticles();
+            this.bindEvents();
+            await this.loadDevis();
+            await this.loadContrats();
+            console.log('DevisController.init() completed successfully');
+        } catch (error) {
+            console.error('Erreur dans DevisController.init():', error);
+        }
     }
 
     /**
@@ -169,8 +175,12 @@ class DevisController {
         });
 
         // Boutons
-        document.getElementById('btnNouveauDevis')?.addEventListener('click', () => this.openModalNouveauDevis());
-        document.getElementById('btnFirstDevis')?.addEventListener('click', () => this.openModalNouveauDevis());
+        const btnNouveau = document.getElementById('btnNouveauDevis');
+        const btnFirst = document.getElementById('btnFirstDevis');
+        console.log('btnNouveauDevis:', btnNouveau, 'display:', btnNouveau?.style.display);
+        console.log('btnFirstDevis:', btnFirst, 'display:', btnFirst?.style.display);
+        btnNouveau?.addEventListener('click', () => this.openModalNouveauDevis());
+        btnFirst?.addEventListener('click', () => this.openModalNouveauDevis());
         document.getElementById('btnRefreshDevis')?.addEventListener('click', () => this.loadDevis());
         document.getElementById('btnExportDevis')?.addEventListener('click', () => this.exportDevis());
         document.getElementById('btnNouveauContrat')?.addEventListener('click', () => this.openModalNouveauContrat());
@@ -452,6 +462,7 @@ class DevisController {
      * Ouvrir la modale pour nouveau devis
      */
     openModalNouveauDevis() {
+        console.log('openModalNouveauDevis called');
         this.devisEnEdition = null;
         this.lignesDevis = [];
         this.resetFormDevis();
@@ -468,14 +479,26 @@ class DevisController {
         document.getElementById('devisDateValidite').value = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
         // Générer numéro auto
-        this.generateNumeroDevis();
+        try {
+            await this.generateNumeroDevis();
+        } catch (e) {
+            console.error('Erreur génération numéro devis:', e);
+            document.getElementById('devisNumero').value = `DEV-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`;
+        }
 
         // Réinitialiser les totaux
         this.calculerTotauxDevis();
         this.renderLignesDevis();
 
-        const modal = new bootstrap.Modal(document.getElementById('modalDevis'));
-        modal.show();
+        const modalEl = document.getElementById('modalDevis');
+        console.log('Modal element:', modalEl);
+        if (modalEl) {
+            const modal = new bootstrap.Modal(modalEl);
+            console.log('Bootstrap modal:', modal);
+            modal.show();
+        } else {
+            console.error('Modal modalDevis non trouvée!');
+        }
     }
 
     /**
