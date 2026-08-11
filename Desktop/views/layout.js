@@ -59,12 +59,12 @@ const ROLE_SPACES = {
 
 // Routes autorisées par rôle
 const ROLE_ROUTES = {
-  ADMIN: ['dashboard', 'chantiers', 'employes', 'pointages', 'equipes', 'heures-sup', 'materiels', 'stocks', 'fournisseurs', 'mouvements', 'clients', 'devis', 'contrats', 'factures', 'paiements', 'finances', 'depenses', 'rapports', 'alertes', 'utilisateurs', 'parametres'],
-  DIRECTEUR: ['dashboard', 'chantiers', 'finances', 'depenses', 'rapports', 'alertes', 'employes', 'pointages', 'equipes', 'materiels', 'fournisseurs', 'clients', 'devis', 'contrats', 'factures', 'parametres'],
+  ADMIN: ['dashboard', 'chantiers', 'employes', 'pointages', 'equipes', 'heures-sup', 'materiels', 'stocks', 'fournisseurs', 'mouvements', 'clients', 'devis', 'contrats', 'factures', 'paiements', 'finances', 'depenses', 'rapports', 'alertes', 'utilisateurs', 'historique-logins', 'parametres'],
+  DIRECTEUR: ['dashboard', 'chantiers', 'finances', 'depenses', 'rapports', 'alertes', 'employes', 'pointages', 'equipes', 'materiels', 'fournisseurs', 'clients', 'devis', 'contrats', 'factures', 'historique-logins', 'parametres'],
   CHEF_CHANTIER: ['dashboard', 'chantiers', 'employes', 'pointages', 'equipes', 'heures-sup', 'materiels', 'stocks', 'fournisseurs', 'mouvements', 'depenses', 'alertes', 'parametres'],
   CHEF_PROJET: ['dashboard', 'chantiers', 'alertes', 'pointages', 'employes', 'equipes', 'parametres'],
   COMPTABLE: ['dashboard', 'finances', 'depenses', 'rapports', 'alertes', 'factures', 'paiements', 'clients', 'contrats', 'fournisseurs', 'employes', 'pointages', 'equipes', 'parametres'],
-  RH: ['dashboard', 'employes', 'pointages', 'equipes', 'heures-sup', 'alertes', 'parametres'],
+  RH: ['dashboard', 'employes', 'pointages', 'equipes', 'heures-sup', 'parametres'],
   MATERIEL: ['dashboard', 'materiels', 'alertes', 'chantiers', 'parametres'],
   MAGASINIER: ['dashboard', 'stocks', 'fournisseurs', 'mouvements', 'alertes', 'parametres'],
   COMMERCIAL: ['dashboard', 'clients', 'devis', 'contrats', 'factures', 'paiements', 'alertes', 'parametres']
@@ -469,21 +469,22 @@ async function loadNotifications() {
         info: 'bi-bell-fill text-primary'
       };
 
-      // Mapper le typeEntite vers une route
+      // Mapper le typeEntite vers une route (avec entiteId si dispo)
       const typeRoutes = {
-        Employe: 'employes',
-        Utilisateur: 'employes',
-        Chantier: 'chantiers',
-        Facture: 'factures',
-        Stock: 'stocks',
-        systeme: null
+        Employe: (a) => a.entiteId ? `employes/${a.entiteId}` : 'employes',
+        Utilisateur: (a) => a.entiteId ? `employes/${a.entiteId}` : 'employes',
+        Chantier: (a) => a.entiteId ? `chantiers/${a.entiteId}` : 'chantiers',
+        Facture: (a) => 'factures',
+        Stock: (a) => 'stocks',
+        systeme: () => null
       };
 
       items = alertes.map(a => {
         const icone = graviteIcones[a.niveauGravite] || 'bi-bell-fill text-primary';
         const titre = a.titre || 'Notification';
         const msg = (a.message || '').length > 70 ? a.message.substring(0, 70) + '…' : (a.message || '');
-        const route = typeRoutes[a.typeEntite] || null;
+        const routeFn = typeRoutes[a.typeEntite];
+        const route = routeFn ? routeFn(a) : null;
         const timeStr = a.dateAlerte ? new Date(a.dateAlerte).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
 
         return `<li>
@@ -583,6 +584,9 @@ function updateUserUI(user) {
   if (adminLabel) adminLabel.classList.toggle('d-none', !showSettings);
   const usersLink = document.getElementById('utilisateursLink');
   if (usersLink) usersLink.classList.toggle('d-none', !canManageUsers);
+  const historiqueLink = document.getElementById('historiqueLoginsLink');
+  const currentRole = window.AppState?.roleCode || 'ADMIN';
+  if (historiqueLink) historiqueLink.classList.toggle('d-none', !['ADMIN', 'DIRECTEUR'].includes(currentRole));
 
   const topbarSettingsLink = document.getElementById('topbarSettingsLink');
   if (topbarSettingsLink) topbarSettingsLink.style.display = showSettings ? '' : 'none';

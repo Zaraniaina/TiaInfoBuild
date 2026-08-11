@@ -326,6 +326,13 @@ window.router.add('parametres', async (to) => {
   }
 });
 
+window.router.add('historique-logins', async () => {
+  const html = await loadView('historique-logins/index.html');
+  document.getElementById('contentArea').innerHTML = html;
+  await window.loadScript('historique-logins/index.js');
+  if (window.historiqueConnexionsController) await window.historiqueConnexionsController.init();
+});
+
 // Helpers globaux
 window.showToast = function (message, type = 'info', duration = 3000) {
   const container = document.getElementById('toastContainer');

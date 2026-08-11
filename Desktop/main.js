@@ -225,6 +225,14 @@ ipcMain.handle('auth:register', async (e, data) => {
   return result;
 });
 
+ipcMain.handle('auth:changePassword', async (e, userId, data) => {
+  const result = await changePassword(e, userId, data);
+  if (result.success && result.user) {
+    _session = result.user;
+  }
+  return result;
+});
+
 ipcMain.handle('session:get', async () => ({ success: true, data: _session }))
 // Suppression de session:set qui permettait au frontend d'usurper une session
 ipcMain.handle('session:clear', async () => { _session = null; return { success: true } })
@@ -240,6 +248,7 @@ secureHandle('utilisateurs:get', rolesAdmin, (e, id) => utilisateurCtrl.getById(
 secureHandle('utilisateurs:create', rolesAdmin, (e, data, entId) => utilisateurCtrl.create(e, data, entId))
 secureHandle('utilisateurs:update', rolesAdmin, (e, id, data) => utilisateurCtrl.update(e, id, data))
 secureHandle('utilisateurs:delete', rolesAdmin, (e, id) => utilisateurCtrl.delete(e, id))
+secureHandle('utilisateurs:downloadCredentials', ['ADMIN', 'RH'], (e, id) => utilisateurCtrl.downloadCredentials(e, id))
 secureHandle('users:list', rolesAdmin, (e, params) => utilisateurCtrl.getList(e, params))
 secureHandle('users:getAll', rolesAdmin, (e, params) => utilisateurCtrl.getList(e, params))
 secureHandle('users:get', rolesAdmin, (e, id) => utilisateurCtrl.getById(e, id))
@@ -480,6 +489,27 @@ secureHandle('dashboard:getCommercialStats', ['ADMIN', 'COMMERCIAL', 'DIRECTEUR'
 secureHandle('dashboard:getLogistiqueStats', ['ADMIN', 'MAGASINIER', 'RESPONSABLE_MATERIEL', 'CHEF_CHANTIER'], (e, entrepriseId) => dashboardCtrl.getLogistiqueStats(e, entrepriseId))
 secureHandle('dashboard:getTopClients', ['ADMIN', 'COMMERCIAL', 'DIRECTEUR'], (e, entrepriseId) => dashboardCtrl.getTopClients(e, entrepriseId))
 secureHandle('dashboard:getCAByMois', ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'], (e, entrepriseId) => dashboardCtrl.getCAByMois(e, entrepriseId))
+secureHandle('loginHistory:list', ['ADMIN', 'DIRECTEUR'], (e, params) => safeRepo(() => {
+    const { entrepriseId, limit = 100, offset = 0, utilisateurId } = params || {};
+    let sql = `
+      SELECT lh.*, u.nom, u.prenom, u.email, r.nom as roleNom, r.code as roleCode
+      FROM LoginHistory lh
+      JOIN Utilisateur u ON lh.utilisateurId = u.id
+      LEFT JOIN Role r ON u.roleId = r.id AND r.is_deleted = 0
+      WHERE lh.is_deleted = 0 AND lh.entrepriseId = ?
+    `;
+    const allParams = [entrepriseId];
+    if (utilisateurId) {
+      sql += ' AND lh.utilisateurId = ?';
+      allParams.push(utilisateurId);
+    }
+    sql += ' ORDER BY lh.dateConnexion DESC LIMIT ? OFFSET ?';
+    allParams.push(limit, offset);
+    const items = db.prepare(sql).all(...allParams);
+    const totalStmt = db.prepare('SELECT COUNT(*) as total FROM LoginHistory WHERE is_deleted = 0 AND entrepriseId = ?' + (utilisateurId ? ' AND utilisateurId = ?' : ''));
+    const totalResult = utilisateurId ? totalStmt.get(entrepriseId, utilisateurId) : totalStmt.get(entrepriseId);
+    return { items, total: totalResult?.total || 0 };
+}))
 
 
 // ============================================================
@@ -557,7 +587,7 @@ ipcMain.handle('backup:list', () => {
 const allRoles = ['ADMIN', 'DIRECTEUR', 'COMPTABLE', 'RH', 'CHEF_CHANTIER', 'CHEF_PROJET', 'MATERIEL', 'MAGASINIER', 'COMMERCIAL'];
 const rolesAlertesWrite = ['ADMIN', 'DIRECTEUR', 'COMPTABLE'];
 secureHandle('alertes:list',           allRoles, (e, p) => alerteCtrl.getList(e, p))
-secureHandle('alertes:nonLues',        allRoles, (e, entId, limit) => alerteCtrl.getNonLues(e, entId, limit))
+secureHandle('alertes:nonLues',        allRoles, (e, entId, limit) => alerteCtrl.getNonLues(e, entId, limit, getSessionRoles()[0]))
 secureHandle('alertes:countNonLues',   allRoles, (e, entId) => alerteCtrl.countNonLues(e, entId))
 secureHandle('alertes:markAsRead',     allRoles, (e, id) => alerteCtrl.markAsRead(e, id))
 secureHandle('alertes:marquerLue',     allRoles, (e, id) => alerteCtrl.marquerLue(e, id))

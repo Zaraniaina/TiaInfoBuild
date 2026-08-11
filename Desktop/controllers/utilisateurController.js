@@ -33,13 +33,38 @@ class UtilisateurController {
     }
   }
 
+  async downloadCredentials(event, id) {
+    try {
+      const user = this.repos.utilisateurs.getWithRelations(id);
+      if (!user) return { success: false, error: 'Utilisateur non trouvé' };
+
+      const currentUser = event?.user || window.AppState?.user;
+      const currentRoles = currentUser?.roles || [currentUser?.roleCode || 'ADMIN'];
+      const isAdmin = currentRoles.includes('ADMIN');
+
+      if (!isAdmin) {
+        const mustChange = user.must_change_password === 1 || user.must_change_password === '1';
+        if (!mustChange) {
+          return { success: false, error: 'Cet utilisateur a déjà modifié son mot de passe. Seul l\'administrateur peut télécharger les identifiants.' };
+        }
+      }
+
+      return { success: true, data: user };
+    } catch (error) {
+      console.error('UtilisateurController.downloadCredentials error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   /**
    * Créer un utilisateur + auto-création dans Employe + notification RH
    */
   async create(event, data, entrepriseId) {
     try {
-      // 1. Créer l'utilisateur
-      const result = this.repos.utilisateurs.createUser(data, entrepriseId);
+      const createData = { ...data };
+      createData.must_change_password = 1;
+
+      const result = this.repos.utilisateurs.createUser(createData, entrepriseId);
 
       const targetEntrepriseId = parseInt(entrepriseId || data.entrepriseId, 10) || 1;
       const roleId = parseInt(data.roleId, 10) || 0;
@@ -47,6 +72,7 @@ class UtilisateurController {
 
       // 2. Auto-création dans la table Employe (sauf pour l'admin)
       let employeCreated = false;
+      let employeId = null;
       if (!isAdmin && this.repos.employes) {
         try {
           // Vérifier si un employé avec cet email existe déjà
@@ -71,8 +97,9 @@ class UtilisateurController {
               dateEmbauche: new Date().toISOString().split('T')[0],
               salaireBase: 0
             };
-            this.repos.employes.createWithValidation(employeData, targetEntrepriseId);
+            const employe = this.repos.employes.createWithValidation(employeData, targetEntrepriseId);
             employeCreated = true;
+            employeId = employe?.id || null;
           }
         } catch (empErr) {
           // L'échec de la création d'employé ne doit pas bloquer la création de l'utilisateur
@@ -81,7 +108,7 @@ class UtilisateurController {
       }
 
       // 3. Créer une notification d'alerte pour le RH (uniquement si employe créé)
-      if (!isAdmin && employeCreated && this.repos.alertes) {
+      if (!isAdmin && employeCreated && employeId && this.repos.alertes) {
         try {
           const prenom = (data.prenom || '').trim();
           const nom = (data.nom || '').trim();
@@ -92,9 +119,10 @@ class UtilisateurController {
             entrepriseId: targetEntrepriseId,
             titre: 'Nouveau collaborateur à enregistrer',
             typeEntite: 'Employe',
-            entiteId: result.id,
+            entiteId: employeId,
             message: `${nomComplet} (${roleLabel}) vient d'intégrer l'entreprise. Veuillez compléter son dossier RH dans le module Employés.`,
-            niveauGravite: 'info'
+            niveauGravite: 'info',
+            roleDestinataire: 'RH'
           });
         } catch (alerteErr) {
           console.warn('[UtilisateurController] Alerte creation failed:', alerteErr.message);
@@ -105,6 +133,7 @@ class UtilisateurController {
         success: true,
         data: result,
         employeCreated,
+        employeId,
         message: employeCreated
           ? 'Utilisateur créé et fiche employé initialisée. Le RH a été notifié pour compléter le dossier.'
           : 'Utilisateur créé avec succès.'
