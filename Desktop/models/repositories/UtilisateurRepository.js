@@ -37,6 +37,7 @@ class UtilisateurRepository extends BaseRepository {
     const sql = `
       SELECT u.id, u.server_id, u.entrepriseId, u.roleId, u.nom, u.prenom, u.email,
         u.telephone, u.statut, u.dateCreation, u.derniereConnexion, u.is_synced,
+        u.must_change_password, u.plainPassword,
         r.nom as roleNom, r.code as roleCode
       FROM Utilisateur u
       LEFT JOIN Role r ON u.roleId = r.id AND r.is_deleted = 0
@@ -55,6 +56,7 @@ class UtilisateurRepository extends BaseRepository {
     const user = db.prepare(`
       SELECT u.id, u.server_id, u.entrepriseId, u.roleId, u.nom, u.prenom, u.email,
         u.telephone, u.statut, u.dateCreation, u.derniereConnexion, u.is_synced,
+        u.must_change_password, u.plainPassword,
         r.nom as roleNom, r.code as roleCode
       FROM Utilisateur u
       LEFT JOIN Role r ON u.roleId = r.id AND r.is_deleted = 0
@@ -102,9 +104,11 @@ class UtilisateurRepository extends BaseRepository {
     }
 
     let pwdHash = '';
+    let plainPassword = '';
     if (data.password || data.motDePasse) {
       const pwd = data.password || data.motDePasse;
       pwdHash = bcrypt.hashSync(pwd, 10);
+      plainPassword = pwd;
     }
 
     const userData = {
@@ -114,6 +118,7 @@ class UtilisateurRepository extends BaseRepository {
       prenom: data.prenom?.trim() || '',
       email: data.email.trim(),
       motDePasseHash: pwdHash,
+      plainPassword,
       telephone: data.telephone?.trim() || '',
       statut: normalizeUtilisateurStatut(data.statut),
       is_synced: 0

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Historique des connexions - TIA INFO BUILD</title>
+  <link rel="stylesheet" href="../public/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" href="../public/bootstrap/bootstrap-icons/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="../public/tia-design.css">
+</head>
+<body>
+  <div class="app-shell" id="appShell">
+    <aside class="sidebar" id="sidebar" role="navigation" aria-label="Navigation principale">
+      <div class="sidebar-brand">
+        <div class="mark">TB</div>
+        <div>
+          <div class="brand-name">TIA INFO BUILD</div>
+          <div class="brand-sub">Gestion BTP</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav" id="sidebarNav">
+        <a href="#dashboard" class="sidebar-link" data-route="dashboard"><i class="bi bi-speedometer2"></i> Tableau de bord</a>
+        <a href="#utilisateurs" class="sidebar-link" data-route="utilisateurs"><i class="bi bi-person-gear"></i> Utilisateurs</a>
+        <a href="#historique-logins" class="sidebar-link active" data-route="historique-logins"><i class="bi bi-clock-history"></i> Historique connexions</a>
+      </nav>
+      <div class="sidebar-foot">
+        <button class="sidebar-link w-100 text-start" id="btnLogout"><i class="bi bi-box-arrow-right"></i> Déconnexion</button>
+      </div>
+    </aside>
+    <div class="sidebar-backdrop d-none" id="sidebarBackdrop" aria-hidden="true"></div>
+    <div class="main-area" id="mainArea">
+      <header class="topbar" role="banner">
+        <button class="btn btn-outline-secondary sidebar-toggle-btn d-lg-none" id="sidebarToggle" aria-label="Ouvrir le menu" aria-expanded="false"><i class="bi bi-list"></i></button>
+        <h1 class="page-heading" id="pageTitle">Historique des connexions</h1>
+      </header>
+      <main class="content-area" id="contentArea" role="main">
+        <div class="container-fluid py-4">
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Utilisateur</label>
+              <select class="form-select" id="filterUtilisateur">
+                <option value="">Tous les utilisateurs</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Statut</label>
+              <select class="form-select" id="filterStatut">
+                <option value="">Tous</option>
+                <option value="1">Réussis</option>
+                <option value="0">Échoués</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Date début</label>
+              <input type="date" class="form-control" id="filterDateDebut">
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-2">
+              <button class="btn btn-primary w-100" id="btnFiltrer"><i class="bi bi-funnel me-1"></i>Filtrer</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">Connexions</h5>
+              <div class="d-flex gap-2">
+                <button class="btn btn-outline-success btn-sm" id="btnExportCsv"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Exporter CSV</button>
+                <button class="btn btn-outline-danger btn-sm" id="btnExportPdf"><i class="bi bi-file-earmark-pdf me-1"></i>Exporter PDF</button>
+              </div>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>#</th>
+                      <th>Date / Heure</th>
+                      <th>Utilisateur</th>
+                      <th>Email</th>
+                      <th>Rôle</th>
+                      <th>Statut</th>
+                      <th>Adresse IP</th>
+                      <th>Motif échec</th>
+                    </tr>
+                  </thead>
+                  <tbody id="historiqueTbody">
+                    <tr><td colspan="8" class="text-center py-4 text-secondary">Chargement…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../public/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="index.js"></script>
+</body>
+</html>

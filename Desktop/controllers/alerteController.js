@@ -21,9 +21,9 @@ class AlerteController {
   }
 
   // Alertes non lues
-  getNonLues(event, entrepriseId, limit = 20) {
+  getNonLues(event, entrepriseId, limit = 20, roleDestinataire = null) {
     try {
-      const result = this.repos.alertes.getNonLues(entrepriseId, limit)
+      const result = this.repos.alertes.getNonLues(entrepriseId, limit, roleDestinataire)
       return { success: true, data: result }
     } catch (error) {
       return { success: false, error: error.message }

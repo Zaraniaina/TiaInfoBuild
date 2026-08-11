@@ -263,6 +263,7 @@ class ParametresController {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
 
+        // Le mot de passe est géré séparément via auth:changePassword
         if (!data.motDePasse) {
             delete data.motDePasse;
         }
@@ -273,7 +274,8 @@ class ParametresController {
                 throw new Error('Utilisateur introuvable.');
             }
 
-            const response = await window.api.utilisateurs.invoke('update', userId, data);
+            // Utiliser updateOwnProfile pour permettre à l'utilisateur de modifier son propre profil
+            const response = await window.api.utilisateurs.invoke('updateOwnProfile', userId, data);
             if (!response?.success) throw new Error(response?.error || 'Erreur mise à jour du profil.');
 
             const updatedUser = response.data;
@@ -386,8 +388,8 @@ class ParametresController {
             const roleLabel = UTILISATEUR_ROLE_LABELS[roleCode] || u.roleNom || u.roleCode || (u.roleId ? (UTILISATEUR_ROLE_OPTIONS.find(r => r.id === parseInt(u.roleId, 10))?.label || '—') : '—');
             const roleBadge = UTILISATEUR_ROLE_BADGES[roleCode] || 'bg-secondary';
 
-            // Le champ statut contient 'actif' ou 'inactif'
             const isActif = u.statut === 'actif' || u.statut === 'Actif';
+            const mustChange = u.must_change_password === 1 || u.must_change_password === '1';
 
             return `
                 <tr data-id="${u.id}">
@@ -395,14 +397,16 @@ class ParametresController {
                     <td>
                         <div class="fw-semibold">${this.escapeHtml(`${u.prenom} ${u.nom}`.trim())}</div>
                         <small class="text-secondary">${this.escapeHtml(u.telephone || '')}</small>
+                        ${mustChange ? '<br><span class="badge bg-warning text-dark mt-1">Premier login</span>' : ''}
                     </td>
                     <td>${this.escapeHtml(u.email)}</td>
-                    <td><span class="badge ${roleBadge}">${this.escapeHtml(roleLabel)}</span></td>
+                    <td><span class="badge ${roleBadge}">${this.escapeHtml(roleLabel)}</td>
                     <td class="d-none d-md-table-cell"><small>${u.derniereConnexion ? this.formatDateTime(u.derniereConnexion) : 'Jamais'}</small></td>
                     <td>
                         <span class="badge ${isActif ? 'bg-success' : 'bg-danger'}">
                             ${isActif ? 'Actif' : 'Inactif'}
                         </span>
+                        ${mustChange ? '<br><span class="badge bg-warning text-dark mt-1">Changement MDP requis</span>' : ''}
                     </td>
                     <td>
                         <div class="btn-group btn-group-sm">
@@ -441,23 +445,31 @@ class ParametresController {
         try {
             const user = this.utilisateurs.find(u => u.id === parseInt(id));
             if (!user) return;
-            
+
             let roleCode = normalizeUtilisateurRoleCode(user.roleCode || user.roleNom || '');
             const roleLabel = UTILISATEUR_ROLE_LABELS[roleCode] || user.roleNom || user.roleCode || '—';
             const entrepriseNom = window.AppState?.entreprise?.nom || 'TIA INFO BUILD';
-            
+
+            const isAdmin = window.AppState?.roles?.includes('ADMIN') || window.AppState?.roleCode === 'ADMIN';
+            const mustChange = user.must_change_password === 1 || user.must_change_password === '1';
+
+            if (!isAdmin && !mustChange) {
+                showToast('Cet utilisateur a déjà modifié son mot de passe. Seul l\'administrateur peut télécharger les identifiants.', 'warning');
+                return;
+            }
+
             const pdfData = {
                 nom: user.nom || '',
                 prenom: user.prenom || '',
                 email: user.email || '',
-                plainPassword: '******** (Masqué pour sécurité)',
+                plainPassword: isAdmin ? (user.plainPassword || 'Mot de passe modifié') : (mustChange ? (user.plainPassword || '') : '********'),
                 roleLabel,
                 entrepriseNom
             };
 
             const pdfResult = await window.ipcRaw.invoke('utilisateurs:generateLoginPDF', pdfData);
             if (pdfResult?.success) {
-                if (window.showToast) window.showToast('📄 PDF des accès généré et ouvert.', 'info');
+                showToast('📄 PDF des accès généré et ouvert.', 'info');
             } else {
                 throw new Error(pdfResult?.error || 'Erreur inconnue lors de la génération PDF');
             }
