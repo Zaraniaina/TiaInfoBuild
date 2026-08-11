@@ -84,6 +84,13 @@ class ContratRepository extends BaseRepository {
 
     return { ...contrat, devis, chantier, client, factures };
   }
+
+  /**
+   * Suppression logique d'un contrat
+   */
+  delete(id) {
+    return this.softDelete(id);
+  }
 }
 
 module.exports = ContratRepository;

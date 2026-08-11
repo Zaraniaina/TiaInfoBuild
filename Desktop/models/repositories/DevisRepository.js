@@ -137,6 +137,13 @@ class DevisRepository extends BaseRepository {
       statut: 'en_cours'
     });
   }
+
+  /**
+   * Suppression logique d'un devis
+   */
+  delete(id) {
+    return this.softDelete(id);
+  }
 }
 
 module.exports = DevisRepository;

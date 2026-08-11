@@ -96,6 +96,13 @@ class FactureRepository extends BaseRepository {
 
     return this.getWithPaiements(factureId);
   }
+
+  /**
+   * Suppression logique d'une facture
+   */
+  delete(id) {
+    return this.softDelete(id);
+  }
 }
 
 module.exports = FactureRepository;
