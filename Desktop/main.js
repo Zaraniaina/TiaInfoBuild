@@ -580,6 +580,38 @@ ipcMain.handle('backup:list', () => {
     return fs.readdirSync(backupsDir).map(f => ({ fichier: f, date: fs.statSync(path.join(backupsDir, f)).mtime, taille: fs.statSync(path.join(backupsDir, f)).size }))
   } catch { return [] }
 })
+ipcMain.handle('backup:import', async (event, fileData) => {
+  try {
+    // Écrire le fichier de backup comme nouvelle base SQLite
+    const backupPath = path.join(backupsDir, `backup_import_${Date.now()}.sqlite`)
+    fs.writeFileSync(backupPath, Buffer.from(fileData))
+    return { success: true, message: 'Backup importé avec succès. Redémarrez l\'application pour l\'appliquer.', path: backupPath }
+  } catch (err) { throw err }
+})
+ipcMain.handle('backup:download', async (event, filename) => {
+  try {
+    const filePath = path.join(backupsDir, filename)
+    if (!fs.existsSync(filePath)) throw new Error('Fichier non trouvé')
+    const data = fs.readFileSync(filePath)
+    return new Uint8Array(data)
+  } catch (err) { throw err }
+})
+ipcMain.handle('backup:delete', async (event, filename) => {
+  try {
+    const filePath = path.join(backupsDir, filename)
+    if (!fs.existsSync(filePath)) throw new Error('Fichier non trouvé')
+    fs.unlinkSync(filePath)
+    return { success: true }
+  } catch (err) { throw err }
+})
+ipcMain.handle('backup:setAutoConfig', async (event, config) => {
+  try {
+    // Sauvegarder la config de backup auto dans les préférences ou un fichier config
+    const configPath = path.join(app.getPath('userData'), 'backup-config.json')
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
+    return { success: true }
+  } catch (err) { throw err }
+})
 
 // ============================================================
 // ALERTES

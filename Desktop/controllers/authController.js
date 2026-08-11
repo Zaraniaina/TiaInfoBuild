@@ -32,7 +32,9 @@ function verifyPassword(inputPassword, storedHash) {
     return bcrypt.compareSync(inputPassword, storedHash);
   }
 
-  return inputPassword === storedHash;
+  // Fallback si le mot de passe a été stocké en texte brut - REJETER pour sécurité
+  console.warn('[SECURITY] Tentative de vérification avec mot de passe en clair détectée - REJETÉE');
+  return false;
 }
 
 /**

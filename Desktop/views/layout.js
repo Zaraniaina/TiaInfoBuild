@@ -71,8 +71,8 @@ const ROLE_ROUTES = {
 };
 
 const PERMISSION_MAP = {
-  'chantiers:create': ['ADMIN', 'DIRECTEUR', 'CHEF_PROJET'],
-  'chantiers:update': ['ADMIN', 'DIRECTEUR', 'CHEF_PROJET'],
+  'chantiers:create': ['ADMIN', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'],
+  'chantiers:update': ['ADMIN', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'],
   'chantiers:delete': ['ADMIN', 'DIRECTEUR'],
   'employes:list': ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'],
   'employes:get': ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'],

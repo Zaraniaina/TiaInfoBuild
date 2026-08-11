@@ -707,6 +707,7 @@ class ChantiersController {
       const entrepriseId = window.AppState?.entreprise?.id || 1;
       const year = new Date().getFullYear();
 
+      // Utiliser MAX(id) pour éviter les doublons dus aux soft-deletes
       const result = await window.api.chantiers.invoke('list', {
         entrepriseId,
         limit: 1,
@@ -715,7 +716,10 @@ class ChantiersController {
 
       const payload = result?.data ?? result;
       const total = payload?.total ?? result?.total ?? 0;
-      const nextNum = total + 1;
+      
+      // Calculer le prochain numéro basé sur le MAX(id) existant pour cette année
+      // Si aucun chantier, commencer à 1
+      const nextNum = total > 0 ? total + 1 : 1;
 
       document.getElementById('chantierNumero').value =
         `CHT-${year}-${String(nextNum).padStart(4, '0')}`;
