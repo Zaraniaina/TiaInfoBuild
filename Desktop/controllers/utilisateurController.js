@@ -33,13 +33,38 @@ class UtilisateurController {
     }
   }
 
+  async downloadCredentials(event, id) {
+    try {
+      const user = this.repos.utilisateurs.getWithRelations(id);
+      if (!user) return { success: false, error: 'Utilisateur non trouvé' };
+
+      const currentUser = event?.user || window.AppState?.user;
+      const currentRoles = currentUser?.roles || [currentUser?.roleCode || 'ADMIN'];
+      const isAdmin = currentRoles.includes('ADMIN');
+
+      if (!isAdmin) {
+        const mustChange = user.must_change_password === 1 || user.must_change_password === '1';
+        if (!mustChange) {
+          return { success: false, error: 'Cet utilisateur a déjà modifié son mot de passe. Seul l\'administrateur peut télécharger les identifiants.' };
+        }
+      }
+
+      return { success: true, data: user };
+    } catch (error) {
+      console.error('UtilisateurController.downloadCredentials error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   /**
    * Créer un utilisateur + auto-création dans Employe + notification RH
    */
   async create(event, data, entrepriseId) {
     try {
-      // 1. Créer l'utilisateur
-      const result = this.repos.utilisateurs.createUser(data, entrepriseId);
+      const createData = { ...data };
+      createData.must_change_password = 1;
+
+      const result = this.repos.utilisateurs.createUser(createData, entrepriseId);
 
       const targetEntrepriseId = parseInt(entrepriseId || data.entrepriseId, 10) || 1;
       const roleId = parseInt(data.roleId, 10) || 0;

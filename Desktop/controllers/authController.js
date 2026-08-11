@@ -18,7 +18,6 @@ function hashPassword(password) {
 function verifyPassword(inputPassword, storedHash) {
   if (!inputPassword || !storedHash) return false;
 
-  // Si le mot de passe en BDD est déjà un hash SHA-256 (longueur 64 hex) et non bcrypt
   if (storedHash.length === 64 && !storedHash.startsWith('$2')) {
     const crypto = require('crypto');
     const inputHash = crypto.createHash('sha256').update(inputPassword).digest('hex');
@@ -29,13 +28,27 @@ function verifyPassword(inputPassword, storedHash) {
     }
   }
 
-  // Si c'est un hash bcrypt
   if (storedHash.startsWith('$2')) {
     return bcrypt.compareSync(inputPassword, storedHash);
   }
 
-  // Fallback si le mot de passe a été stocké en texte brut
   return inputPassword === storedHash;
+}
+
+/**
+ * Enregistrer une entrée dans l'historique des connexions
+ */
+function logLogin(utilisateurId, entrepriseId, reussi, motifEchec = null) {
+  try {
+    const adresseIP = null;
+    const userAgent = null;
+    db.prepare(`
+      INSERT INTO LoginHistory (utilisateurId, entrepriseId, dateConnexion, adresseIP, userAgent, reussi, motifEchec)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(utilisateurId, entrepriseId, new Date().toISOString(), adresseIP, userAgent, reussi ? 1 : 0, motifEchec);
+  } catch (e) {
+    console.error('[Auth] Erreur log login:', e.message);
+  }
 }
 
 /**
@@ -78,11 +91,18 @@ async function handleLogin(event, data) {
     const localUser = stmt.get(email);
 
     if (localUser) {
-      // Vérification stricte du mot de passe haché (sans aucune clé en dur)
       if (verifyPassword(password, localUser.motDePasseHash)) {
         db.prepare('UPDATE Utilisateur SET derniereConnexion = CURRENT_TIMESTAMP WHERE id = ?').run(localUser.id);
+        logLogin(localUser.id, localUser.entrepriseId, true);
+
+        const mustChange = localUser.must_change_password === 1 || localUser.must_change_password === '1';
+        if (mustChange) {
+          return { success: true, user: localUser, must_change_password: true };
+        }
+
         return { success: true, user: localUser };
       } else {
+        logLogin(localUser.id, localUser.entrepriseId, false, 'Mot de passe incorrect');
         return { success: false, message: 'Mot de passe incorrect.' };
       }
     } else {
@@ -123,6 +143,13 @@ async function handleLogin(event, data) {
           );
 
           const newLocalUser = db.prepare('SELECT * FROM Utilisateur WHERE id = ?').get(info.lastInsertRowid);
+          logLogin(newLocalUser.id, newLocalUser.entrepriseId, true);
+
+          const mustChange = newLocalUser.must_change_password === 1 || newLocalUser.must_change_password === '1';
+          if (mustChange) {
+            return { success: true, user: newLocalUser, token: response.data.token, must_change_password: true };
+          }
+
           return { success: true, user: newLocalUser, token: response.data.token };
         } else {
           return { success: false, message: 'Identifiants invalides sur le serveur distant.' };
@@ -244,9 +271,47 @@ async function handleRegister(event, data) {
   }
 }
 
+/**
+ * Changer le mot de passe (first login ou volontaire)
+ */
+async function changePassword(event, userId, data) {
+  try {
+    const user = db.prepare('SELECT * FROM Utilisateur WHERE id = ? AND is_deleted = 0').get(userId);
+    if (!user) return { success: false, message: 'Utilisateur introuvable.' };
+
+    const currentPassword = data.currentPassword || data.ancienMotDePasse || '';
+    const newPassword = data.newPassword || data.motDePasse || '';
+
+    if (!currentPassword || !newPassword) {
+      return { success: false, message: 'Mot de passe actuel et nouveau mot de passe requis.' };
+    }
+
+    if (!verifyPassword(currentPassword, user.motDePasseHash)) {
+      logLogin(userId, user.entrepriseId, false, 'Mot de passe actuel incorrect lors du changement');
+      return { success: false, message: 'Mot de passe actuel incorrect.' };
+    }
+
+    if (newPassword.length < 6) {
+      return { success: false, message: 'Le nouveau mot de passe doit contenir au moins 6 caractères.' };
+    }
+
+    const newHash = hashPassword(newPassword);
+    db.prepare('UPDATE Utilisateur SET motDePasseHash = ?, must_change_password = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newHash, userId);
+
+    const updatedUser = db.prepare('SELECT * FROM Utilisateur WHERE id = ?').get(userId);
+    logLogin(userId, user.entrepriseId, true);
+
+    return { success: true, user: updatedUser, message: 'Mot de passe modifié avec succès.' };
+  } catch (error) {
+    console.error('Change password error:', error);
+    return { success: false, message: 'Erreur lors du changement de mot de passe.' };
+  }
+}
+
 module.exports = {
   handleLogin,
   handleRegister,
+  changePassword,
   hashPassword,
   verifyPassword
 };

@@ -89,6 +89,8 @@ function initDatabase() {
       statut TEXT DEFAULT 'actif',
       dateCreation DATETIME DEFAULT CURRENT_TIMESTAMP,
       derniereConnexion DATETIME,
+      must_change_password INTEGER DEFAULT 1,
+      credentialsDownloadedAt DATETIME,
       is_synced INTEGER DEFAULT 0,
       is_deleted INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -430,6 +432,7 @@ function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       server_id INTEGER UNIQUE,
       entrepriseId INTEGER NOT NULL,
+      utilisateurId INTEGER,
       matricule TEXT,
       nom TEXT NOT NULL,
       prenom TEXT,
@@ -445,6 +448,26 @@ function initDatabase() {
       is_deleted INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id),
+      FOREIGN KEY (utilisateurId) REFERENCES Utilisateur(id)
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS LoginHistory (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      utilisateurId INTEGER NOT NULL,
+      entrepriseId INTEGER,
+      dateConnexion DATETIME DEFAULT CURRENT_TIMESTAMP,
+      adresseIP TEXT,
+      userAgent TEXT,
+      reussi INTEGER DEFAULT 1,
+      motifEchec TEXT,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (utilisateurId) REFERENCES Utilisateur(id),
       FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id)
     )
   `).run();
@@ -803,7 +826,7 @@ function initDatabase() {
     'Materiel', 'AffectationMateriel', 'Maintenance', 'AlerteMateriel',
     'Article', 'Fournisseur', 'MouvementStock',
     'Client', 'ClientAdresse', 'Devis', 'LigneDevis', 'Contrat', 'Facture', 'Paiement',
-    'Depense', 'RapportFinancier', 'Alerte'
+    'Depense', 'RapportFinancier', 'Alerte', 'LoginHistory'
   ];
 
   allTables.forEach(tableName => {
@@ -875,10 +898,15 @@ function initDatabase() {
   // MIGRATIONS TABLE ALERTE
   ensureColumn('Alerte', 'titre', 'TEXT');
 
+  // MIGRATIONS TABLE UTILISATEUR
+  ensureColumn('Utilisateur', 'must_change_password', "INTEGER DEFAULT 1");
+  ensureColumn('Utilisateur', 'credentialsDownloadedAt', 'DATETIME');
+
   // MIGRATIONS TABLE EMPLOYE
   ensureColumn('Employe', 'typeContrat', "TEXT DEFAULT 'CDI'");
   ensureColumn('Employe', 'dateDebutContrat', 'DATE');
   ensureColumn('Employe', 'dateFinContrat', 'DATE');
+  ensureColumn('Employe', 'utilisateurId', 'INTEGER');
 
   // MIGRATIONS SPECIFIQUES - TABLE DEVIS
   ensureColumn('Devis', 'chantierId', 'INTEGER');
@@ -964,9 +992,6 @@ function initDatabase() {
 
   const entCount = db.prepare('SELECT COUNT(*) as count FROM Entreprise').get().count;
   if (entCount === 0) {
-    const bcrypt = require('bcryptjs');
-    const adminHash = bcrypt.hashSync('admin123', 10);
-
     db.prepare(`
       INSERT OR IGNORE INTO Entreprise (id, server_id, nom, devise, is_synced)
       VALUES (1, 1, 'TIA Construction', 'MGA', 1)
@@ -990,13 +1015,6 @@ function initDatabase() {
       for (const role of roles) insertRole.run(role);
     })();
 
-    db.prepare(`
-      INSERT OR IGNORE INTO Utilisateur (
-        id, server_id, nom, prenom, email, motDePasseHash, roleId, entrepriseId, is_synced
-      ) VALUES (
-        1, 1, 'Admin', 'TIA', 'admin@tiabuild.com', ?, 1, 1, 1
-      )
-    `).run(adminHash);
   }
 
   console.log("Base de données initialisée et migrée avec succès !");

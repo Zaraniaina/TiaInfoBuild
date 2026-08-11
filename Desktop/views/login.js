@@ -70,14 +70,20 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (response && response.success) {
-                // Gestion "Se souvenir de moi"
+                if (response.must_change_password) {
+                    showStatus('Première connexion : vous devez modifier votre mot de passe.', 'warning');
+                    setTimeout(() => {
+                        window.location.href = 'change-password.html?firstLogin=1';
+                    }, 1500);
+                    return;
+                }
+
                 if (rememberMe) {
                     localStorage.setItem('rememberedEmail', email);
                 } else {
                     localStorage.removeItem('rememberedEmail');
                 }
 
-                // Stocker la session utilisateur
                 if (response.user) {
                     localStorage.setItem('currentUser', JSON.stringify(response.user));
                 }
@@ -87,7 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 showStatus(response.message || 'Connexion réussie ! Redirection…', 'success');
 
-                // Rediriger vers l'App Shell (layout.html)
                 setTimeout(() => {
                     window.location.href = 'layout.html';
                 }, 800);
