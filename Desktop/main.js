@@ -197,6 +197,8 @@ function secureHandle(channel, allowedRoles, handler) {
       }
     }
 
+    // Injecter la session dans event.user pour les contrôleurs
+    event.user = _session;
     return handler(event, ...args);
   });
 }
@@ -247,6 +249,7 @@ secureHandle('utilisateurs:getAll', rolesAdmin, (e, params) => utilisateurCtrl.g
 secureHandle('utilisateurs:get', rolesAdmin, (e, id) => utilisateurCtrl.getById(e, id))
 secureHandle('utilisateurs:create', rolesAdmin, (e, data, entId) => utilisateurCtrl.create(e, data, entId))
 secureHandle('utilisateurs:update', rolesAdmin, (e, id, data) => utilisateurCtrl.update(e, id, data))
+secureHandle('utilisateurs:updateOwnProfile', [], (e, id, data) => utilisateurCtrl.updateOwnProfile(e, id, data))
 secureHandle('utilisateurs:delete', rolesAdmin, (e, id) => utilisateurCtrl.delete(e, id))
 secureHandle('utilisateurs:downloadCredentials', ['ADMIN', 'RH'], (e, id) => utilisateurCtrl.downloadCredentials(e, id))
 secureHandle('users:list', rolesAdmin, (e, params) => utilisateurCtrl.getList(e, params))

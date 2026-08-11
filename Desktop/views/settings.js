@@ -263,6 +263,7 @@ class ParametresController {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
 
+        // Le mot de passe est géré séparément via auth:changePassword
         if (!data.motDePasse) {
             delete data.motDePasse;
         }
@@ -273,7 +274,8 @@ class ParametresController {
                 throw new Error('Utilisateur introuvable.');
             }
 
-            const response = await window.api.utilisateurs.invoke('update', userId, data);
+            // Utiliser updateOwnProfile pour permettre à l'utilisateur de modifier son propre profil
+            const response = await window.api.utilisateurs.invoke('updateOwnProfile', userId, data);
             if (!response?.success) throw new Error(response?.error || 'Erreur mise à jour du profil.');
 
             const updatedUser = response.data;

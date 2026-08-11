@@ -154,6 +154,37 @@ class UtilisateurController {
     }
   }
 
+  /**
+   * Mettre à jour son propre profil (nom, prenom, email, telephone)
+   * Sans restriction RBAC, juste vérification ownership
+   */
+  async updateOwnProfile(event, id, data) {
+    try {
+      // Vérifier que l'utilisateur modifie son propre profil
+      const currentUser = event?.user;
+      if (!currentUser || currentUser.id !== parseInt(id, 10)) {
+        return { success: false, error: 'Non autorisé à modifier ce profil' };
+      }
+
+      // Filtrer les champs autorisés pour l'auto-modification
+      const allowedFields = ['nom', 'prenom', 'email', 'telephone', 'statut'];
+      const filteredData = {};
+      for (const key of allowedFields) {
+        if (data[key] !== undefined) filteredData[key] = data[key];
+      }
+
+      if (Object.keys(filteredData).length === 0) {
+        return { success: false, error: 'Aucun champ valide à mettre à jour' };
+      }
+
+      const result = this.repos.utilisateurs.updateUser(id, filteredData);
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('UtilisateurController.updateOwnProfile error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   async delete(event, id) {
     try {
       const result = this.repos.utilisateurs.softDelete(id);
