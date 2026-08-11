@@ -23,7 +23,22 @@ class FactureRepository extends BaseRepository {
     `).all(id);
 
     const totalPaye = paiements.reduce((sum, p) => sum + (p.montant || 0), 0);
-    const resteAPayer = (facture.montant || 0) - totalPaye;
+    const montantTotal = facture.montantTTC || facture.montant || 0;
+    const resteAPayer = montantTotal - totalPaye;
+
+    // Client - essayer d'abord avec clientId direct, sinon via contrat
+    let client = null;
+    if (facture.clientId) {
+      client = db.prepare('SELECT * FROM Client WHERE id = ? AND is_deleted = 0').get(facture.clientId);
+    }
+    
+    // Si pas de client trouvé et qu'il y a un contrat, essayer via le contrat
+    if (!client && facture.contratId) {
+      const contrat = db.prepare('SELECT * FROM Contrat WHERE id = ? AND is_deleted = 0').get(facture.contratId);
+      if (contrat && contrat.clientId) {
+        client = db.prepare('SELECT * FROM Client WHERE id = ? AND is_deleted = 0').get(contrat.clientId);
+      }
+    }
 
     // Contrat et chantier
     let contrat = null, chantier = null;
@@ -40,6 +55,7 @@ class FactureRepository extends BaseRepository {
       totalPaye,
       resteAPayer: Math.max(0, resteAPayer),
       estPayee: resteAPayer <= 0,
+      client,
       contrat,
       chantier
     };
@@ -53,12 +69,15 @@ class FactureRepository extends BaseRepository {
   getEnRetard(entrepriseId) {
     const today = new Date().toISOString().split('T')[0];
     const stmt = db.prepare(`
-      SELECT f.*, c.nom as clientNom, co.montant as contratMontant
+      SELECT f.*, 
+             COALESCE(c.nom, cl.nom) as clientNom, 
+             co.montant as contratMontant
       FROM Facture f
-      JOIN Contrat co ON f.contratId = co.id
-      JOIN Devis d ON co.devisId = d.id
-      JOIN Client c ON d.clientId = c.id
-      WHERE d.entrepriseId = ? AND f.is_deleted = 0 AND co.is_deleted = 0 AND d.is_deleted = 0 AND c.is_deleted = 0
+      LEFT JOIN Contrat co ON f.contratId = co.id AND co.is_deleted = 0
+      LEFT JOIN Devis d ON co.devisId = d.id AND d.is_deleted = 0
+      LEFT JOIN Client c ON d.clientId = c.id AND c.is_deleted = 0
+      LEFT JOIN Client cl ON f.clientId = cl.id AND cl.is_deleted = 0
+      WHERE f.entrepriseId = ? AND f.is_deleted = 0
       AND f.dateEcheance < ? AND f.statut != 'paye'
       ORDER BY f.dateEcheance
     `);
@@ -78,9 +97,13 @@ class FactureRepository extends BaseRepository {
     const paiementRepo = require('./PaiementRepository');
     const paiement = new paiementRepo().create({
       factureId,
+      entrepriseId: facture.entrepriseId,
       montant: paiementData.montant,
       modePaiement: paiementData.modePaiement,
-      datePaiement: paiementData.datePaiement || new Date().toISOString().split('T')[0]
+      datePaiement: paiementData.datePaiement || new Date().toISOString().split('T')[0],
+      reference: paiementData.reference,
+      banque: paiementData.banque,
+      notes: paiementData.notes
     });
 
     // Mettre à jour le statut de la facture

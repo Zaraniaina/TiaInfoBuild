@@ -659,6 +659,8 @@ class DevisController {
         const form = document.getElementById('formDevis');
         if (form) form.reset();
         document.getElementById('devisId').value = '';
+        const entrepriseId = window.AppState?.entreprise?.id || 1;
+        document.getElementById('devisEntrepriseId').value = entrepriseId;
         document.getElementById('devisClientId').value = '';
         document.getElementById('devisStatut').value = 'brouillon';
         document.getElementById('devisTVA').value = '20';
@@ -691,7 +693,9 @@ class DevisController {
      */
     fillFormDevis(d) {
         document.getElementById('devisId').value = d.id;
+        document.getElementById('devisEntrepriseId').value = d.entrepriseId || window.AppState?.entreprise?.id || 1;
         document.getElementById('devisNumero').value = d.numero || '';
+        document.getElementById('devisReference').value = d.reference || '';
         document.getElementById('devisDateCreation').value = d.dateCreation || '';
         document.getElementById('devisClient').value = d.clientId || '';
         document.getElementById('devisChantier').value = d.chantierId || '';
@@ -871,11 +875,13 @@ class DevisController {
 
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
+        const entrepriseId = window.AppState?.entreprise?.id || 1;
 
         data.tva = parseFloat(data.tva) || 20;
         data.acomptePourcent = parseFloat(data.acomptePourcent) || 0;
         data.clientId = parseInt(data.clientId) || null;
         data.chantierId = parseInt(data.chantierId) || null;
+        data.entrepriseId = entrepriseId;
         data.lignes = this.lignesDevis;
 
         // Ajouter les totaux calculés
@@ -933,6 +939,7 @@ class DevisController {
 
             // Remplir avec les données du devis source
             this.fillFormDevis(devis);
+            document.getElementById('devisId').value = ''; // Réinitialiser pour la duplication
             document.getElementById('devisNumero').value = ''; // Sera généré
             document.getElementById('devisStatut').value = 'brouillon';
             document.getElementById('devisDateEmission').value = new Date().toISOString().split('T')[0];
@@ -1201,6 +1208,8 @@ class DevisController {
         document.getElementById('modalContratLabel').textContent = devisSource ? 'Nouveau contrat (depuis devis)' : 'Nouveau contrat';
         document.getElementById('btnDeleteContrat').style.display = 'none';
 
+        const entrepriseId = window.AppState?.entreprise?.id || 1;
+        document.getElementById('contratEntrepriseId').value = entrepriseId;
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('contratDateSignature').value = today;
 
@@ -1238,6 +1247,7 @@ class DevisController {
 
             this.contratEnEdition = c;
             document.getElementById('contratId').value = c.id;
+            document.getElementById('contratEntrepriseId').value = c.entrepriseId || window.AppState?.entreprise?.id || 1;
             document.getElementById('contratNumero').value = c.reference || c.numero || '';
             document.getElementById('contratDevisId').value = c.devisId || '';
             document.getElementById('contratMontant').value = c.montantHT || c.montant || '';

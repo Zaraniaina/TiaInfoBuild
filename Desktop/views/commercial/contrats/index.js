@@ -213,6 +213,8 @@ class ContratsController {
         this.contratEnEdition = null;
         document.getElementById('formContrat')?.reset();
         document.getElementById('contratId').value = '';
+        const entrepriseId = window.AppState?.entreprise?.id || 1;
+        document.getElementById('contratEntrepriseId').value = entrepriseId;
         document.getElementById('contratDateDebut').value = new Date().toISOString().split('T')[0];
         document.getElementById('contratStatut').value = 'en_cours';
         document.getElementById('modalContratLabel').innerHTML = '<i class="bi bi-file-earmark-text me-2"></i>Nouveau contrat';
@@ -275,6 +277,7 @@ class ContratsController {
 
         this.contratEnEdition = contrat;
         document.getElementById('contratId').value = contrat.id;
+        document.getElementById('contratEntrepriseId').value = contrat.entrepriseId || window.AppState?.entreprise?.id || 1;
         document.getElementById('contratRef').value = contrat.reference || '';
         document.getElementById('contratType').value = contrat.typeContrat || 'travaux';
         document.getElementById('contratMontant').value = contrat.montant || '';

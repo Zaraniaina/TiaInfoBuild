@@ -74,6 +74,7 @@
             </div>
             <form id="formFacture">
                 <input type="hidden" id="factureId">
+                <input type="hidden" id="factureEntrepriseId">
                 <div class="modal-body">
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -81,9 +82,17 @@
                             <input type="text" class="form-control" id="factureNumero" placeholder="Ex: FAC-2023-001" required>
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label fw-bold">Client *</label>
+                            <select class="form-select" id="factureClient" required>
+                                <option value="">Sélectionner un client...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
                             <label class="form-label fw-bold">Contrat associé (Optionnel)</label>
                             <select class="form-select" id="factureContrat">
-                                <option value="">Sélectionner un contrat...</option>
+                                <option value="">Aucun contrat (facture directe)</option>
                             </select>
                         </div>
                     </div>
@@ -100,18 +109,27 @@
                     </div>
 
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label fw-bold">Montant HT <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <input type="number" step="0.01" class="form-control" id="factureMontantHT" required>
-                                <span class="input-group-text">€</span>
+                                <span class="input-group-text currency-symbol">Ar</span>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">TVA (%)</label>
+                            <select class="form-select" id="factureTVA">
+                                <option value="20">20%</option>
+                                <option value="10">10%</option>
+                                <option value="5.5">5.5%</option>
+                                <option value="0">Exonéré</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label fw-bold">Montant TTC <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <input type="number" step="0.01" class="form-control" id="factureMontantTTC" required>
-                                <span class="input-group-text">€</span>
+                                <span class="input-group-text currency-symbol">Ar</span>
                             </div>
                         </div>
                     </div>

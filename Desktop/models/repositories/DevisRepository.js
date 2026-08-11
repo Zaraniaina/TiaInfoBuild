@@ -10,7 +10,7 @@ class DevisRepository extends BaseRepository {
   /**
    * Récupérer un devis avec ses lignes
    * @param {number} id - ID devis
-   * @returns {Object|null} - Devis avec lignes
+   * @returns {Object|null} - Devis avec lignes et client
    */
   getWithLignes(id) {
     const devis = this.getById(id);
@@ -27,7 +27,13 @@ class DevisRepository extends BaseRepository {
       ? db.prepare('SELECT * FROM Client WHERE id = ? AND is_deleted = 0').get(devis.clientId)
       : null;
 
-    return { ...devis, lignes, client };
+    // Chantier
+    let chantier = null;
+    if (devis.chantierId) {
+      chantier = db.prepare('SELECT * FROM Chantier WHERE id = ? AND is_deleted = 0').get(devis.chantierId);
+    }
+
+    return { ...devis, lignes, client, chantier };
   }
 
   /**
