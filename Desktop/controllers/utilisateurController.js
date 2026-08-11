@@ -72,6 +72,7 @@ class UtilisateurController {
 
       // 2. Auto-création dans la table Employe (sauf pour l'admin)
       let employeCreated = false;
+      let employeId = null;
       if (!isAdmin && this.repos.employes) {
         try {
           // Vérifier si un employé avec cet email existe déjà
@@ -96,8 +97,9 @@ class UtilisateurController {
               dateEmbauche: new Date().toISOString().split('T')[0],
               salaireBase: 0
             };
-            this.repos.employes.createWithValidation(employeData, targetEntrepriseId);
+            const employe = this.repos.employes.createWithValidation(employeData, targetEntrepriseId);
             employeCreated = true;
+            employeId = employe?.id || null;
           }
         } catch (empErr) {
           // L'échec de la création d'employé ne doit pas bloquer la création de l'utilisateur
@@ -106,7 +108,7 @@ class UtilisateurController {
       }
 
       // 3. Créer une notification d'alerte pour le RH (uniquement si employe créé)
-      if (!isAdmin && employeCreated && this.repos.alertes) {
+      if (!isAdmin && employeCreated && employeId && this.repos.alertes) {
         try {
           const prenom = (data.prenom || '').trim();
           const nom = (data.nom || '').trim();
@@ -131,6 +133,7 @@ class UtilisateurController {
         success: true,
         data: result,
         employeCreated,
+        employeId,
         message: employeCreated
           ? 'Utilisateur créé et fiche employé initialisée. Le RH a été notifié pour compléter le dossier.'
           : 'Utilisateur créé avec succès.'
