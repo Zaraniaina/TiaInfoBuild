@@ -782,6 +782,7 @@ function initDatabase() {
       titre TEXT,
       message TEXT,
       niveauGravite TEXT DEFAULT 'info',
+      roleDestinataire TEXT,
       dateAlerte DATETIME DEFAULT CURRENT_TIMESTAMP,
       statut TEXT DEFAULT 'non_lue',
       is_synced INTEGER DEFAULT 0,
@@ -895,12 +896,14 @@ function initDatabase() {
   ensureColumn('Entreprise', 'prefixeFacture', "TEXT DEFAULT 'FAC'");
   ensureColumn('Entreprise', 'prefixeContrat', "TEXT DEFAULT 'CTR'");
 
-  // MIGRATIONS TABLE ALERTE
-  ensureColumn('Alerte', 'titre', 'TEXT');
-
   // MIGRATIONS TABLE UTILISATEUR
   ensureColumn('Utilisateur', 'must_change_password', "INTEGER DEFAULT 1");
   ensureColumn('Utilisateur', 'credentialsDownloadedAt', 'DATETIME');
+  ensureColumn('Utilisateur', 'plainPassword', 'TEXT');
+
+  // MIGRATIONS TABLE ALERTE
+  ensureColumn('Alerte', 'titre', 'TEXT');
+  ensureColumn('Alerte', 'roleDestinataire', 'TEXT');
 
   // MIGRATIONS TABLE EMPLOYE
   ensureColumn('Employe', 'typeContrat', "TEXT DEFAULT 'CDI'");

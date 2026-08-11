@@ -13,10 +13,17 @@ class AlerteRepository extends BaseRepository {
    * @param {number} limit - Limite
    * @returns {Array} - Alertes non lues
    */
-  getNonLues(entrepriseId, limit = 20) {
-    const stmt = db.prepare(`
+  getNonLues(entrepriseId, limit = 20, roleDestinataire = null) {
+    let sql = `
       SELECT * FROM Alerte
       WHERE entrepriseId = ? AND is_deleted = 0 AND statut = 'non_lue'
+    `;
+    const params = [entrepriseId];
+    if (roleDestinataire) {
+      sql += ` AND (roleDestinataire IS NULL OR roleDestinataire = ?)`;
+      params.push(roleDestinataire);
+    }
+    sql += `
       ORDER BY
         CASE niveauGravite
           WHEN 'critique' THEN 1
@@ -26,8 +33,10 @@ class AlerteRepository extends BaseRepository {
         END,
         dateAlerte DESC
       LIMIT ?
-    `);
-    return stmt.all(entrepriseId, limit);
+    `;
+    params.push(limit);
+    const stmt = db.prepare(sql);
+    return stmt.all(...params);
   }
 
   /**

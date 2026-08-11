@@ -117,9 +117,10 @@ class UtilisateurController {
             entrepriseId: targetEntrepriseId,
             titre: 'Nouveau collaborateur à enregistrer',
             typeEntite: 'Employe',
-            entiteId: result.id,
+            entiteId: employeId,
             message: `${nomComplet} (${roleLabel}) vient d'intégrer l'entreprise. Veuillez compléter son dossier RH dans le module Employés.`,
-            niveauGravite: 'info'
+            niveauGravite: 'info',
+            roleDestinataire: 'RH'
           });
         } catch (alerteErr) {
           console.warn('[UtilisateurController] Alerte creation failed:', alerteErr.message);

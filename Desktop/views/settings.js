@@ -460,7 +460,7 @@ class ParametresController {
                 nom: user.nom || '',
                 prenom: user.prenom || '',
                 email: user.email || '',
-                plainPassword: mustChange ? '******** (à récupérer avant première connexion)' : '******** (Masqué pour sécurité)',
+                plainPassword: isAdmin ? (user.plainPassword || 'Mot de passe modifié') : (mustChange ? (user.plainPassword || '') : '********'),
                 roleLabel,
                 entrepriseNom
             };

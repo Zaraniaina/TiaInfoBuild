@@ -296,7 +296,7 @@ async function changePassword(event, userId, data) {
     }
 
     const newHash = hashPassword(newPassword);
-    db.prepare('UPDATE Utilisateur SET motDePasseHash = ?, must_change_password = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newHash, userId);
+    db.prepare('UPDATE Utilisateur SET motDePasseHash = ?, plainPassword = NULL, must_change_password = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newHash, userId);
 
     const updatedUser = db.prepare('SELECT * FROM Utilisateur WHERE id = ?').get(userId);
     logLogin(userId, user.entrepriseId, true);
