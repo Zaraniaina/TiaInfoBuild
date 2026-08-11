@@ -363,10 +363,10 @@ class DashboardRepository extends BaseRepository {
 
         // Répartition des états de matériels
         stats.materielsParEtat = db.prepare(`
-            SELECT etat, COUNT(*) as count 
+            SELECT statut as etat, COUNT(*) as count 
             FROM Materiel
             WHERE entrepriseId = ? AND is_deleted = 0
-            GROUP BY etat
+            GROUP BY statut
         `).all(entrepriseId);
 
         // Valeur totale du stock
