@@ -179,6 +179,11 @@ class DevisController {
         const btnFirst = document.getElementById('btnFirstDevis');
         console.log('btnNouveauDevis:', btnNouveau, 'display:', btnNouveau?.style.display);
         console.log('btnFirstDevis:', btnFirst, 'display:', btnFirst?.style.display);
+        
+        if (!btnNouveau && !btnFirst) {
+            console.error('AUCUN BOUTON DE CRÉATION TROUVÉ ! Vérifiez que le HTML est bien chargé.');
+        }
+        
         btnNouveau?.addEventListener('click', () => this.openModalNouveauDevis());
         btnFirst?.addEventListener('click', () => this.openModalNouveauDevis());
         document.getElementById('btnRefreshDevis')?.addEventListener('click', () => this.loadDevis());
@@ -463,41 +468,63 @@ class DevisController {
      */
     openModalNouveauDevis() {
         console.log('openModalNouveauDevis called');
-        this.devisEnEdition = null;
-        this.lignesDevis = [];
-        this.resetFormDevis();
-        document.getElementById('modalDevisLabel').textContent = 'Nouveau devis';
-        document.getElementById('btnDeleteDevis').style.display = 'none';
-        document.getElementById('btnDupliquerDevis').style.display = 'none';
-        document.getElementById('btnEnvoyerDevis').style.display = 'none';
-        document.getElementById('btnTransformerContrat').style.display = 'none';
-
-        // Date du jour
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('devisDateEmission').value = today;
-        document.getElementById('devisDateCreation').value = today;
-        document.getElementById('devisDateValidite').value = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-        // Générer numéro auto
         try {
-            await this.generateNumeroDevis();
-        } catch (e) {
-            console.error('Erreur génération numéro devis:', e);
-            document.getElementById('devisNumero').value = `DEV-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`;
-        }
+            this.devisEnEdition = null;
+            this.lignesDevis = [];
+            this.resetFormDevis();
+            
+            // Vérifier que tous les éléments existent
+            const requiredElements = [
+                'modalDevisLabel', 'btnDeleteDevis', 'btnDupliquerDevis', 
+                'btnEnvoyerDevis', 'btnTransformerContrat', 'devisDateEmission',
+                'devisDateCreation', 'devisDateValidite', 'devisNumero', 'modalDevis'
+            ];
+            const missingElements = requiredElements.filter(id => !document.getElementById(id));
+            if (missingElements.length > 0) {
+                console.error('Éléments manquants:', missingElements);
+                throw new Error(`Éléments DOM manquants: ${missingElements.join(', ')}`);
+            }
+            
+            document.getElementById('modalDevisLabel').textContent = 'Nouveau devis';
+            document.getElementById('btnDeleteDevis').style.display = 'none';
+            document.getElementById('btnDupliquerDevis').style.display = 'none';
+            document.getElementById('btnEnvoyerDevis').style.display = 'none';
+            document.getElementById('btnTransformerContrat').style.display = 'none';
 
-        // Réinitialiser les totaux
-        this.calculerTotauxDevis();
-        this.renderLignesDevis();
+            // Date du jour
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('devisDateEmission').value = today;
+            document.getElementById('devisDateCreation').value = today;
+            document.getElementById('devisDateValidite').value = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-        const modalEl = document.getElementById('modalDevis');
-        console.log('Modal element:', modalEl);
-        if (modalEl) {
-            const modal = new bootstrap.Modal(modalEl);
-            console.log('Bootstrap modal:', modal);
-            modal.show();
-        } else {
-            console.error('Modal modalDevis non trouvée!');
+            // Générer numéro auto
+            try {
+                await this.generateNumeroDevis();
+            } catch (e) {
+                console.error('Erreur génération numéro devis:', e);
+                document.getElementById('devisNumero').value = `DEV-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`;
+            }
+
+            // Réinitialiser les totaux
+            this.calculerTotauxDevis();
+            this.renderLignesDevis();
+
+            const modalEl = document.getElementById('modalDevis');
+            console.log('Modal element:', modalEl);
+            if (modalEl) {
+                if (typeof bootstrap === 'undefined' || typeof bootstrap.Modal === 'undefined') {
+                    console.error('Bootstrap non chargé ou Modal non disponible!');
+                    throw new Error('Bootstrap.Modal non disponible');
+                }
+                const modal = new bootstrap.Modal(modalEl);
+                console.log('Bootstrap modal:', modal);
+                modal.show();
+            } else {
+                console.error('Modal modalDevis non trouvée!');
+            }
+        } catch (error) {
+            console.error('Erreur dans openModalNouveauDevis:', error);
+            showToast('Erreur lors de l\'ouverture du formulaire de devis: ' + error.message, 'error');
         }
     }
 

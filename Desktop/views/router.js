@@ -270,6 +270,8 @@ window.router.add('devis/nouveau', async (to) => {
   await window.loadScript('commercial/devis/index.js');
   if (window.devisController) {
     await window.devisController.init();
+    // Petit délai pour laisser le DOM se stabiliser
+    await new Promise(resolve => setTimeout(resolve, 100));
     const clientId = to.params?.clientId ? parseInt(to.params.clientId) : null;
     await window.devisController.openModalNouveauDevis();
     if (clientId) {
