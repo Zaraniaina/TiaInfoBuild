@@ -466,7 +466,7 @@ class DevisController {
     /**
      * Ouvrir la modale pour nouveau devis
      */
-    openModalNouveauDevis() {
+    async openModalNouveauDevis() {
         console.log('openModalNouveauDevis called');
         try {
             this.devisEnEdition = null;
@@ -941,7 +941,6 @@ class DevisController {
             data.montantTTC = this.devisTotaux.totalTTC;
         }
 
-        const entrepriseId = window.AppState?.entreprise?.id || 1;
         const isEdit = !!data.id;
         delete data.id;
 
