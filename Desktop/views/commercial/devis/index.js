@@ -84,21 +84,29 @@ class DevisController {
     /**
      * Remplir les selects clients
      */
-    populateClientSelects() {
-        const selects = document.querySelectorAll('#devisClient');
-        selects.forEach(select => {
-            const currentValue = select.value;
-            select.innerHTML = '<option value="">Sélectionner un client</option>';
-            this.clientsCache.forEach(c => {
-                const option = document.createElement('option');
-                option.value = c.id;
-                const nom = c.type === 'entreprise' ? c.entreprise : `${c.prenom} ${c.nom}`.trim();
-                option.textContent = nom + (c.email ? ` (${c.email})` : '');
-                select.appendChild(option);
-            });
-            select.value = currentValue;
+    /**
+* Remplir les selects clients avec indication du type
+*/
+populateClientSelects() {
+    const selects = document.querySelectorAll('#devisClient');
+    selects.forEach(select => {
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">Sélectionner un client</option>';
+        this.clientsCache.forEach(c => {
+            const option = document.createElement('option');
+            option.value = c.id;
+            const nom = c.type === 'entreprise' ? c.entreprise
+                      : c.type === 'public' ? `${c.entreprise || c.nom} (Marché public)`
+                      : `${c.prenom} ${c.nom}`.trim();
+            const typeIcon = c.type === 'entreprise' ? '🏢'
+                           : c.type === 'public' ? '🏛️'
+                           : '👤';
+            option.textContent = `${typeIcon} ${nom}` + (c.email ? ` (${c.email})` : '');
+            select.appendChild(option);
         });
-    }
+        select.value = currentValue;
+    });
+}
 
     /**
      * Remplir les selects chantiers
@@ -194,6 +202,8 @@ class DevisController {
         });
 
         // Formulaire devis
+        // Détection du type client à la sélection
+        document.getElementById('devisClient')?.addEventListener('change', (e) => this.onClientChangeDevis(e));
         document.getElementById('formDevis')?.addEventListener('submit', (e) => this.handleSubmitDevis(e));
         document.getElementById('btnDeleteDevis')?.addEventListener('click', () => this.confirmDeleteDevis());
         document.getElementById('btnDupliquerDevis')?.addEventListener('click', () => this.dupliquerDevis());
@@ -245,6 +255,109 @@ class DevisController {
         document.getElementById('ligneTotal').value = totalHT.toFixed(2);
         document.getElementById('ligneTotalTTC').value = totalTTC.toFixed(2);
     }
+    /**
+* Adapter le formulaire devis selon le type de client sélectionné
+*/
+onClientChangeDevis(e) {
+    const clientId = parseInt(e.target.value);
+    const client = this.clientsCache.find(c => c.id === clientId);
+    const infoBox = document.getElementById('devisClientInfo');
+    const badge = document.getElementById('devisClientTypeBadge');
+    const nomEl = document.getElementById('devisClientNom');
+    const detailsEl = document.getElementById('devisClientDetails');
+    const objetLabel = document.getElementById('devisObjetLabel');
+
+    if (!client) {
+        if (infoBox) infoBox.style.display = 'none';
+        return;
+    }
+
+    if (infoBox) infoBox.style.display = 'block';
+
+    // Config par type de client
+    const typeConfig = {
+        particulier: {
+            badge: 'bg-info',
+            label: '👤 Particulier',
+            nom: `${client.civilite || ''} ${client.prenom || ''} ${client.nom || ''}`.trim(),
+            details: `
+                ${client.adresse || client.adresses?.[0]?.ligne1 || ''} 
+                ${client.codePostal || client.adresses?.[0]?.codePostal || ''} 
+                ${client.ville || client.adresses?.[0]?.ville || ''}<br>
+                ${client.telephone ? '📞 ' + client.telephone : ''} 
+                ${client.portable ? '📱 ' + client.portable : ''}<br>
+                ${client.email ? '✉️ ' + client.email : ''}
+            `,
+            objetPlaceholder: 'Ex: Rénovation salle de bain, Extension maison...',
+            objetLabel: 'Objet du devis (Particulier)',
+            condPaiement: '30 jours',
+            acompte: 30
+        },
+        entreprise: {
+            badge: 'bg-primary',
+            label: '🏢 Entreprise',
+            nom: client.entreprise || `${client.prenom} ${client.nom}`.trim(),
+            details: `
+                ${client.siret ? 'SIRET/NIF : ' + client.siret + '<br>' : ''}
+                ${client.numeroTVA ? 'N° TVA : ' + client.numeroTVA + '<br>' : ''}
+                ${client.adresse || client.adresses?.[0]?.ligne1 || ''} 
+                ${client.codePostal || client.adresses?.[0]?.codePostal || ''} 
+                ${client.ville || client.adresses?.[0]?.ville || ''}<br>
+                ${client.telephone ? '📞 ' + client.telephone : ''} 
+                ${client.portable ? '📱 ' + client.portable : ''}<br>
+                ${client.email ? '✉️ ' + client.email : ''}
+            `,
+            objetPlaceholder: 'Ex: Construction bâtiment industriel, Aménagement locaux...',
+            objetLabel: 'Objet du devis (Entreprise)',
+            condPaiement: '30 jours',
+            acompte: 30
+        },
+        public: {
+            badge: 'bg-success',
+            label: '🏛️ Marché public',
+            nom: client.entreprise || `${client.prenom} ${client.nom}`.trim(),
+            details: `
+                ${client.siret ? 'Réf. administrative : ' + client.siret + '<br>' : ''}
+                ${client.numeroTVA ? 'N° TVA : ' + client.numeroTVA + '<br>' : ''}
+                ${client.adresse || client.adresses?.[0]?.ligne1 || ''} 
+                ${client.codePostal || client.adresses?.[0]?.codePostal || ''} 
+                ${client.ville || client.adresses?.[0]?.ville || ''}<br>
+                ${client.telephone ? '📞 ' + client.telephone : ''} 
+                ${client.email ? '✉️ ' + client.email : ''}
+            `,
+            objetPlaceholder: 'Ex: Réponse à appel d\'offres n°..., Travaux de voirie...',
+            objetLabel: 'Objet du devis (Marché public)',
+            condPaiement: '60 jours',
+            acompte: 0
+        }
+    };
+
+    const config = typeConfig[client.type] || typeConfig.particulier;
+
+    // Remplir l'affichage
+    if (badge) {
+        badge.className = `badge ${config.badge}`;
+        badge.textContent = config.label;
+    }
+    if (nomEl) nomEl.textContent = config.nom;
+    if (detailsEl) detailsEl.innerHTML = config.details;
+
+    // Adapter le label objet
+    if (objetLabel) objetLabel.textContent = config.objetLabel;
+    const objetInput = document.getElementById('devisObjet');
+    if (objetInput) objetInput.placeholder = config.objetPlaceholder;
+
+    // Adapter les conditions de paiement par défaut
+    const condPaiementSelect = document.getElementById('devisCondPaiement');
+    if (condPaiementSelect) condPaiementSelect.value = config.condPaiement;
+
+    // Adapter l'acompte par défaut
+    const acompteInput = document.getElementById('devisAcompte');
+    if (acompteInput) acompteInput.value = config.acompte;
+
+    // Stocker le type client pour la sauvegarde
+    this.typeClientDevis = client.type;
+}
 
     /**
      * Quand un article est sélectionné
