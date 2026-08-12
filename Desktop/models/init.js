@@ -382,7 +382,7 @@ function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       server_id INTEGER UNIQUE,
       entrepriseId INTEGER NOT NULL,
-      contratId INTEGER NOT NULL,
+      contratId INTEGER,
       clientId INTEGER,
       numero TEXT,
       dateEmission DATE DEFAULT (date('now')),
@@ -399,7 +399,8 @@ function initDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id),
-      FOREIGN KEY (contratId) REFERENCES Contrat(id) ON DELETE CASCADE
+      FOREIGN KEY (contratId) REFERENCES Contrat(id) ON DELETE CASCADE,
+      FOREIGN KEY (clientId) REFERENCES Client(id)
     )
   `).run();
 

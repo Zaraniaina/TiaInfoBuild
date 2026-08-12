@@ -77,6 +77,13 @@ class LigneDevisRepository extends BaseRepository {
       return nouvelles;
     });
   }
+
+  /**
+   * Suppression logique d'une ligne de devis
+   */
+  delete(id) {
+    return this.softDelete(id);
+  }
 }
 
 module.exports = LigneDevisRepository;

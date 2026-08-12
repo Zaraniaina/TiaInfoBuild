@@ -169,6 +169,7 @@
                 <div class="modal-body">
                     <input type="hidden" name="id" id="devisId">
                     <input type="hidden" name="clientId" id="devisClientId">
+                    <input type="hidden" name="entrepriseId" id="devisEntrepriseId">
 
                     <ul class="nav nav-tabs mb-3" id="devisTabsForm" role="tablist">
                         <li class="nav-item" role="presentation">
@@ -198,6 +199,10 @@
                                 <div class="col-md-6">
                                     <label class="form-label" for="devisNumero">Numéro</label>
                                     <input type="text" class="form-control" name="numero" id="devisNumero" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="devisReference">Référence</label>
+                                    <input type="text" class="form-control" name="reference" id="devisReference" placeholder="Ex: DEV-2026-001">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label" for="devisDateCreation">Date création</label>
@@ -494,6 +499,7 @@
                 <div class="modal-body">
                     <input type="hidden" name="id" id="contratId">
                     <input type="hidden" name="devisId" id="contratDevisId">
+                    <input type="hidden" name="entrepriseId" id="contratEntrepriseId">
 
                     <div class="row g-3">
                         <div class="col-md-6">

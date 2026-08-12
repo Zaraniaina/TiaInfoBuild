@@ -9,6 +9,7 @@ class FacturesController {
         this.pageSize = 20;
         this.filters = { search: '', statut: '' };
         this.contrats = [];
+        this.clients = [];
         this.factureEnEdition = null;
     }
 
@@ -21,14 +22,30 @@ class FacturesController {
     async loadReferences() {
         const entrepriseId = window.AppState?.entreprise?.id || 1;
         try {
+            // Charger les contrats
             const contratsResult = await window.api.contrats.invoke('list', { entrepriseId, limit: 1000, offset: 0 });
             if (contratsResult?.success && contratsResult.data?.items) {
                 this.contrats = contratsResult.data.items;
-                this.populateSelect('factureContrat', this.contrats, 'id', c => `Contrat #${c.id} - ${c.titre || ''}`);
+                this.populateSelect('factureContrat', this.contrats, 'id', c => `Contrat #${c.id} - ${c.titre || c.objet || ''}`);
+            }
+            
+            // Charger les clients
+            const clientsResult = await window.api.clients.invoke('list', { entrepriseId, limit: 1000 });
+            if (clientsResult?.success && clientsResult.data?.items) {
+                this.clients = clientsResult.data.items;
+                this.populateSelect('factureClient', this.clients, 'id', c => this.getClientDisplayName(c));
             }
         } catch (error) {
             console.error('Erreur chargement références factures:', error);
         }
+    }
+
+    getClientDisplayName(c) {
+        if (!c) return '';
+        if (c.type === 'entreprise' || c.type === 'public') {
+            return `${c.entreprise || c.nom || ''} ${c.prenom || ''}`.trim();
+        }
+        return `${c.civilite || ''} ${c.prenom || ''} ${c.nom || ''}`.trim();
     }
 
     populateSelect(elementId, items, valueKey, labelFn) {
@@ -81,11 +98,20 @@ class FacturesController {
             this.savePaiement();
         });
 
-        // Calcul automatique TTC depuis HT (TVA 20% par défaut)
-        document.getElementById('factureMontantHT')?.addEventListener('input', (e) => {
-            const ht = parseFloat(e.target.value) || 0;
-            document.getElementById('factureMontantTTC').value = (ht * 1.20).toFixed(2);
-        });
+        // Calcul automatique TTC depuis HT avec TVA sélectionnée
+        const htInput = document.getElementById('factureMontantHT');
+        const tvaSelect = document.getElementById('factureTVA');
+        const ttcInput = document.getElementById('factureMontantTTC');
+        
+        const calculateTTC = () => {
+            const ht = parseFloat(htInput?.value) || 0;
+            const tva = parseFloat(tvaSelect?.value) || 20;
+            const ttc = ht * (1 + tva / 100);
+            if (ttcInput) ttcInput.value = ttc.toFixed(2);
+        };
+        
+        htInput?.addEventListener('input', calculateTTC);
+        tvaSelect?.addEventListener('change', calculateTTC);
     }
 
     formatCurrency(amount) {
@@ -167,11 +193,12 @@ class FacturesController {
             // Un petit hack pour avoir client/reste à payer car list ne ramène pas tout
             // Normalement list devrait le ramener, ou on fera des getters.
             const reste = f.resteAPayer !== undefined ? f.resteAPayer : (f.montant || 0);
+            const clientName = f.client ? this.getClientDisplayName(f.client) : (f.clientId ? `Client #${f.clientId}` : '—');
             
             return `
             <tr>
                 <td class="fw-bold text-primary">${this.escHtml(f.numero || 'Brouillon')}</td>
-                <td>Client (ID: ${f.contratId || '-'})</td>
+                <td>${this.escHtml(clientName)}</td>
                 <td>${formatDate(f.dateEmission)}</td>
                 <td class="${new Date(f.dateEcheance) < new Date() && f.statut !== 'paye' ? 'text-danger fw-bold' : ''}">${formatDate(f.dateEcheance)}</td>
                 <td class="text-end fw-semibold">${formatMoney(f.montant)}</td>
@@ -201,6 +228,7 @@ class FacturesController {
         if (!form) return;
         form.reset();
         document.getElementById('factureId').value = '';
+        document.getElementById('factureEntrepriseId').value = window.AppState?.entreprise?.id || 1;
         this.factureEnEdition = null;
 
         if (id) {
@@ -211,11 +239,13 @@ class FacturesController {
                     this.factureEnEdition = f;
                     document.getElementById('factureId').value = f.id;
                     document.getElementById('factureNumero').value = f.numero || '';
+                    document.getElementById('factureClient').value = f.clientId || '';
                     document.getElementById('factureContrat').value = f.contratId || '';
                     document.getElementById('factureDateEmission').value = f.dateEmission ? f.dateEmission.split('T')[0] : '';
                     document.getElementById('factureDateEcheance').value = f.dateEcheance ? f.dateEcheance.split('T')[0] : '';
-                    document.getElementById('factureMontantTTC').value = f.montant || 0;
-                    document.getElementById('factureMontantHT').value = (f.montant / 1.20).toFixed(2);
+                    document.getElementById('factureMontantHT').value = f.montantHT || f.montant || 0;
+                    document.getElementById('factureMontantTTC').value = f.montantTTC || f.montant || 0;
+                    document.getElementById('factureTVA').value = f.tva ? f.tva.toString() : '20';
                     document.getElementById('factureStatut').value = f.statut || 'brouillon';
                     document.getElementById('factureNotes').value = f.notes || '';
                 }
@@ -229,6 +259,8 @@ class FacturesController {
             const echeance = new Date();
             echeance.setDate(echeance.getDate() + 30);
             document.getElementById('factureDateEcheance').value = echeance.toISOString().split('T')[0];
+            
+            document.getElementById('factureTVA').value = '20';
         }
 
         new bootstrap.Modal(document.getElementById('modalFacture')).show();
@@ -239,12 +271,21 @@ class FacturesController {
         const id = document.getElementById('factureId').value;
         const btnSave = document.querySelector('#formFacture button[type="submit"]');
 
+        const ht = parseFloat(document.getElementById('factureMontantHT').value) || 0;
+        const tva = parseFloat(document.getElementById('factureTVA').value) || 20;
+        const ttc = parseFloat(document.getElementById('factureMontantTTC').value) || 0;
+
         const data = {
             numero: document.getElementById('factureNumero').value,
+            clientId: document.getElementById('factureClient').value ? parseInt(document.getElementById('factureClient').value) : null,
             contratId: document.getElementById('factureContrat').value ? parseInt(document.getElementById('factureContrat').value) : null,
+            entrepriseId: entrepriseId,
             dateEmission: document.getElementById('factureDateEmission').value,
             dateEcheance: document.getElementById('factureDateEcheance').value,
-            montant: parseFloat(document.getElementById('factureMontantTTC').value),
+            montantHT: ht,
+            montant: ttc,
+            montantTTC: ttc,
+            tva: tva,
             statut: document.getElementById('factureStatut').value,
             notes: document.getElementById('factureNotes').value
         };
@@ -294,7 +335,9 @@ class FacturesController {
         if (!form) return;
         form.reset();
         
+        const entrepriseId = window.AppState?.entreprise?.id || 1;
         document.getElementById('paiementFactureId').value = factureId;
+        document.getElementById('paiementEntrepriseId').value = entrepriseId;
         document.getElementById('paiementDate').value = new Date().toISOString().split('T')[0];
         document.getElementById('paiementMontant').value = resteAPayer;
         

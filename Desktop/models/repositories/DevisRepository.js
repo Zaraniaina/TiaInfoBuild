@@ -10,7 +10,7 @@ class DevisRepository extends BaseRepository {
   /**
    * Récupérer un devis avec ses lignes
    * @param {number} id - ID devis
-   * @returns {Object|null} - Devis avec lignes
+   * @returns {Object|null} - Devis avec lignes et client
    */
   getWithLignes(id) {
     const devis = this.getById(id);
@@ -27,7 +27,13 @@ class DevisRepository extends BaseRepository {
       ? db.prepare('SELECT * FROM Client WHERE id = ? AND is_deleted = 0').get(devis.clientId)
       : null;
 
-    return { ...devis, lignes, client };
+    // Chantier
+    let chantier = null;
+    if (devis.chantierId) {
+      chantier = db.prepare('SELECT * FROM Chantier WHERE id = ? AND is_deleted = 0').get(devis.chantierId);
+    }
+
+    return { ...devis, lignes, client, chantier };
   }
 
   /**
@@ -40,22 +46,34 @@ class DevisRepository extends BaseRepository {
     const { lignes, ...devisData } = data;
 
     return db.transaction(() => {
-      // Calculer montant total
-      const montantTotal = (lignes || []).reduce((sum, l) => sum + (l.quantite || 0) * (l.prixUnitaire || 0), 0);
+      const lignesArr = Array.isArray(lignes) ? lignes : [];
 
-      // Créer le devis
+      const calcHT = lignesArr.reduce((s, l) => s + ((l.quantite || 0) * (l.prixUnitaire || 0) * (1 - (l.remise || 0) / 100)), 0);
+      const calcTVA = lignesArr.reduce((s, l) => {
+        const ht = (l.quantite || 0) * (l.prixUnitaire || 0) * (1 - (l.remise || 0) / 100);
+        return s + ht * ((l.tauxTVA || 0) / 100);
+      }, 0);
+      const calcTTC = calcHT + calcTVA;
+
+      const num = (v) => (v !== undefined && v !== null && v !== '' && !isNaN(Number(v))) ? Number(v) : null;
+      const montantHT = num(devisData.montantHT) ?? calcHT;
+      const montantTVA = num(devisData.montantTVA) ?? calcTVA;
+      const montantTTC = num(devisData.montantTTC) ?? calcTTC;
+
       const devis = this.create({
         ...devisData,
         entrepriseId,
-        montantTotal,
-        statut: 'brouillon',
-        dateCreation: new Date().toISOString().split('T')[0]
+        montantHT,
+        montantTVA,
+        montantTTC,
+        montantTotal: montantTTC,
+        statut: devisData.statut || 'brouillon',
+        dateCreation: devisData.dateCreation || new Date().toISOString().split('T')[0]
       }, entrepriseId);
 
-      // Créer les lignes
       const ligneRepo = require('./LigneDevisRepository');
       const ligneRepoInstance = new ligneRepo();
-      for (const ligne of (lignes || [])) {
+      for (const ligne of lignesArr) {
         ligneRepoInstance.create({
           devisId: devis.id,
           description: ligne.description || '',
@@ -67,8 +85,8 @@ class DevisRepository extends BaseRepository {
           tauxTVA: ligne.tauxTVA || 0,
           remise: ligne.remise || 0,
           unite: ligne.unite || '',
-          ligneTotal: ligne.ligneTotal || 0,
-          ligneTotalTTC: ligne.ligneTotalTTC || 0
+          ligneTotal: ligne.totalHT || 0,
+          ligneTotalTTC: ligne.totalTTC || 0
         });
       }
 
@@ -136,6 +154,13 @@ class DevisRepository extends BaseRepository {
       montant: devis.montantTotal,
       statut: 'en_cours'
     });
+  }
+
+  /**
+   * Suppression logique d'un devis
+   */
+  delete(id) {
+    return this.softDelete(id);
   }
 }
 

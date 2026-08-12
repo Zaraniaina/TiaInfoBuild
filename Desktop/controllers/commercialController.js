@@ -293,7 +293,7 @@ class CommercialController {
 
   async createFacture(event, data, entrepriseId) {
     try {
-      const result = this.repos.factures.create({ ...data, entrepriseId }, entrepriseId)
+      const result = this.repos.factures.create({ ...data, entrepriseId })
       return { success: true, data: result }
     } catch (error) {
       console.error('CommercialController.createFacture error:', error)

@@ -84,6 +84,38 @@ class ContratRepository extends BaseRepository {
 
     return { ...contrat, devis, chantier, client, factures };
   }
+
+  /**
+   * Créer un contrat avec gestion des relations
+   */
+  create(data) {
+    const payload = this._mapData(data);
+    const stmt = db.prepare(`
+      INSERT INTO Contrat (${payload.columns}) VALUES (${payload.placeholders})
+    `);
+    const info = stmt.run(...payload.values);
+    return this.getById(info.lastInsertRowid);
+  }
+
+  /**
+   * Mettre à jour un contrat
+   */
+  update(id, data) {
+    const { allowedKeys, values } = this._mapData(data);
+    if (!allowedKeys || allowedKeys.length === 0) return this.getById(id);
+
+    const setClause = allowedKeys.map(key => `${key} = ?`).concat(['is_synced = 0', 'updated_at = CURRENT_TIMESTAMP']).join(', ');
+    const stmt = db.prepare(`UPDATE Contrat SET ${setClause} WHERE id = ?`);
+    stmt.run(...values, id);
+    return this.getById(id);
+  }
+
+  /**
+   * Suppression logique d'un contrat
+   */
+  delete(id) {
+    return this.softDelete(id);
+  }
 }
 
 module.exports = ContratRepository;
