@@ -264,6 +264,26 @@ window.router.add('devis', async () => {
   if (window.devisController) await window.devisController.init();
 });
 
+window.router.add('devis/nouveau', async (to) => {
+  const html = await loadView('commercial/devis/index.html');
+  document.getElementById('contentArea').innerHTML = html;
+  await window.loadScript('commercial/devis/index.js');
+  if (window.devisController) {
+    await window.devisController.init();
+    const clientId = to.params?.clientId ? parseInt(to.params.clientId) : null;
+    await window.devisController.openModalNouveauDevis();
+    if (clientId) {
+      const sel = document.getElementById('devisClient');
+      if (sel) {
+        sel.value = String(clientId);
+        sel.dispatchEvent(new Event('change'));
+      }
+      const hidden = document.getElementById('devisClientId');
+      if (hidden) hidden.value = String(clientId);
+    }
+  }
+});
+
 window.router.add('contrats', async () => {
   const html = await loadView('commercial/contrats/index.html');
   document.getElementById('contentArea').innerHTML = html;

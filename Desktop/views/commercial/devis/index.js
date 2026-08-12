@@ -920,10 +920,12 @@ class DevisController {
 
         try {
             if (isEdit) {
-                await window.api.devis.invoke('update', parseInt(formData.get('id')), data);
+                const updateResult = await window.api.devis.invoke('update', parseInt(formData.get('id')), data);
+                if (updateResult?.success === false) throw new Error(updateResult?.error || 'Erreur lors de la modification du devis');
                 showToast('Devis modifié avec succès', 'success');
             } else {
-                await window.api.devis.invoke('create', data, entrepriseId);
+                const createResult = await window.api.devis.invoke('create', data, entrepriseId);
+                if (createResult?.success === false) throw new Error(createResult?.error || 'Erreur lors de la création du devis');
                 showToast('Devis créé avec succès', 'success');
             }
 
