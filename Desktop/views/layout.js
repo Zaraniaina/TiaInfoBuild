@@ -13,7 +13,7 @@ const ROLE_SPACES = {
   ADMIN: {
     label: 'Administration',
     icon: 'bi-shield-lock',
-    sections: ['pilotage', 'chantiers', 'rh', 'materiel', 'stocks', 'commercial', 'finance', 'administration']
+    sections: ['pilotage', 'administration']
   },
   DIRECTEUR: {
     label: 'Direction',
@@ -59,7 +59,7 @@ const ROLE_SPACES = {
 
 // Routes autorisées par rôle
 const ROLE_ROUTES = {
-  ADMIN: ['dashboard', 'chantiers', 'employes', 'pointages', 'equipes', 'heures-sup', 'materiels', 'stocks', 'fournisseurs', 'mouvements', 'clients', 'devis', 'contrats', 'factures', 'paiements', 'finances', 'depenses', 'rapports', 'alertes', 'utilisateurs', 'historique-logins', 'parametres'],
+  ADMIN: ['dashboard', 'parametres', 'historique-logins'],
   DIRECTEUR: ['dashboard', 'chantiers', 'finances', 'depenses', 'rapports', 'alertes', 'employes', 'pointages', 'equipes', 'materiels', 'fournisseurs', 'clients', 'devis', 'contrats', 'factures', 'historique-logins', 'parametres'],
   CHEF_CHANTIER: ['dashboard', 'chantiers', 'employes', 'pointages', 'equipes', 'heures-sup', 'materiels', 'stocks', 'fournisseurs', 'mouvements', 'depenses', 'alertes', 'parametres'],
   CHEF_PROJET: ['dashboard', 'chantiers', 'alertes', 'pointages', 'employes', 'equipes', 'parametres'],
@@ -270,6 +270,48 @@ function hasAccess(route) {
 // ============================================================
 function filterSidebarByRole(roleCode) {
   const currentRoles = window.AppState.roles && window.AppState.roles.length ? window.AppState.roles : getUserRoles(roleCode);
+  const isAdmin = currentRoles.includes('ADMIN');
+
+  if (isAdmin) {
+    const ADMIN_ALLOWED_ROUTES = ['dashboard', 'parametres', 'historique-logins'];
+    document.querySelectorAll('.sidebar-link[data-route]').forEach(link => {
+      const route = link.dataset.route;
+      link.style.display = ADMIN_ALLOWED_ROUTES.includes(route) ? '' : 'none';
+    });
+
+    document.querySelectorAll('.sidebar-section-label').forEach(label => {
+      const section = label.dataset.section;
+      if (section === 'pilotage' || section === 'administration') {
+        label.style.display = '';
+        let next = label.nextElementSibling;
+        while (next && !next.classList.contains('sidebar-section-label')) {
+          if (next.classList.contains('sidebar-link') && next.dataset.route) {
+            next.style.display = ADMIN_ALLOWED_ROUTES.includes(next.dataset.route) ? '' : 'none';
+          }
+          next = next.nextElementSibling;
+        }
+      } else {
+        label.style.display = 'none';
+        let next = label.nextElementSibling;
+        while (next && !next.classList.contains('sidebar-section-label')) {
+          if (next.classList.contains('sidebar-link')) next.style.display = 'none';
+          next = next.nextElementSibling;
+        }
+      }
+    });
+
+    const syncStatus = document.getElementById('syncStatus');
+    if (syncStatus) syncStatus.style.display = 'none';
+
+    const roleSpace = ROLE_SPACES['ADMIN'];
+    const spaceBadge = document.getElementById('roleSpaceBadge');
+    if (spaceBadge && roleSpace) {
+      spaceBadge.innerHTML = `<i class="bi ${roleSpace.icon} me-1"></i>${roleSpace.label}`;
+      spaceBadge.style.display = 'inline-flex';
+    }
+    return;
+  }
+
   const allowedSections = Array.from(new Set(currentRoles.flatMap(role => (ROLE_SPACES[role] || ROLE_SPACES.ADMIN).sections || [])));
 
   document.querySelectorAll('.sidebar-link[data-route]').forEach(link => {
