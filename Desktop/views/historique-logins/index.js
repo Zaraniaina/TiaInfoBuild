@@ -22,10 +22,19 @@ class HistoriqueConnexionsController {
         document.getElementById('btnExportPdf')?.addEventListener('click', () => this.exportPDF());
         document.getElementById('btnLogout')?.addEventListener('click', (e) => {
             e.preventDefault();
-            window.api?.auth?.invoke('logout').then(() => {
-                localStorage.removeItem('currentUser');
-                window.location.href = '../views/index.html';
-            });
+            const logoutModalEl = document.getElementById('logoutModal');
+            const logoutModal = logoutModalEl ? new bootstrap.Modal(logoutModalEl) : null;
+            if (logoutModal) {
+              logoutModal.show();
+            } else {
+              this.executeLogout();
+            }
+        });
+        document.getElementById('confirmLogoutBtn')?.addEventListener('click', async () => {
+            const logoutModalEl = document.getElementById('logoutModal');
+            const logoutModal = logoutModalEl ? new bootstrap.Modal(logoutModalEl) : null;
+            if (logoutModal) logoutModal.hide();
+            await this.executeLogout();
         });
     }
 
@@ -182,6 +191,15 @@ class HistoriqueConnexionsController {
             <script>window.onload = () => { window.print(); }<\/script>
         </body></html>`);
         printWindow.document.close();
+    }
+
+    async executeLogout() {
+        try {
+            await window.api?.auth?.invoke('logout');
+        } catch (e) { /* silencieux */ }
+        localStorage.removeItem('currentUser');
+        sessionStorage.clear();
+        window.location.href = '../views/index.html';
     }
 
     formatDate(dateStr) {
