@@ -476,7 +476,7 @@ class FinancesController {
                 'annulee': 'Annulée'
             }[f.statut] || f.statut;
 
-            const clientNom = f.client ? (f.client.type === 'entreprise' ? f.client.entreprise : `${f.client.prenom} ${f.client.nom}`.trim()) : '—';
+            const clientNom = this.getClientDisplayName(f.client);
             const chantierNom = f.chantier?.nom || f.devis?.numero || '—';
             const montantPaye = f.montantPaye || 0;
             const reste = (f.montantTTC || 0) - montantPaye;
@@ -675,7 +675,7 @@ class FinancesController {
             'annulee': 'bg-danger'
         }[f.statut] || 'bg-secondary';
 
-        const clientNom = f.client ? (f.client.type === 'entreprise' ? f.client.entreprise : `${f.client.prenom} ${f.client.nom}`.trim()) : '—';
+        const clientNom = this.getClientDisplayName(f.client);
         const montantPaye = f.montantPaye || 0;
         const reste = (f.montantTTC || 0) - montantPaye;
         const estEnRetard = f.dateEcheance && new Date(f.dateEcheance) < new Date() && f.statut !== 'payee' && f.statut !== 'annulee';
@@ -1097,8 +1097,41 @@ class FinancesController {
         const entrepriseId = window.AppState?.entreprise?.id || 1;
 
         try {
-            // TODO: Implémenter liste paiements globale
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-secondary">Liste des paiements à implémenter</td></tr>';
+            const result = await window.api.paiements.invoke('list', { entrepriseId, limit: 1000 });
+            let paiements = result?.items || result?.data?.items || [];
+
+            if (dateDebut) paiements = paiements.filter(p => p.datePaiement >= dateDebut);
+            if (dateFin) paiements = paiements.filter(p => p.datePaiement <= dateFin);
+            if (modeFilter) paiements = paiements.filter(p => p.modePaiement === modeFilter);
+
+            const factureIds = [...new Set(paiements.map(p => p.factureId).filter(Boolean))];
+            const factures = {};
+            for (const fid of factureIds) {
+                try {
+                    const f = await window.api.factures.invoke('get', fid);
+                    if (f) factures[fid] = f;
+                } catch (e) { /* silencieux */ }
+            }
+
+            if (paiements.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-secondary">Aucun paiement</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = paiements.map(p => {
+                const facture = factures[p.factureId];
+                const clientNom = facture?.client ? (facture.client.type === 'entreprise' ? facture.client.entreprise : `${facture.client.prenom} ${facture.client.nom}`.trim()) : `Facture #${p.factureId}`;
+                return `
+                    <tr>
+                        <td><small>${this.formatDate(p.datePaiement)}</small></td>
+                        <td>${facture ? this.escapeHtml(facture.numero) : '#' + p.factureId}</td>
+                        <td>${this.escapeHtml(clientNom)}</td>
+                        <td><strong class="text-success">${this.formatCurrency(p.montant)}</strong></td>
+                        <td><span class="badge bg-info">${p.modePaiement}</span></td>
+                        <td><small>${this.escapeHtml(p.reference || '—')}</small></td>
+                    </tr>
+                `;
+            }).join('');
         } catch (error) {
             console.error('Erreur chargement paiements:', error);
             tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Erreur chargement</td></tr>';
@@ -1120,22 +1153,23 @@ class FinancesController {
         const entrepriseId = window.AppState?.entreprise?.id || 1;
 
         try {
-            // Récupérer les chantiers pour avoir leurs dépenses
-            const result = await window.api.chantiers.invoke('list', { entrepriseId, limit: 50 });
+            const result = await window.api.depenses.invoke('list', { entrepriseId, limit: 1000 });
+            let allDepenses = result?.items || result?.data?.items || [];
 
-            let allDepenses = [];
-            for (const c of result.items || []) {
-                const depenses = await window.api.depenses.invoke('byChantier', c.id);
-                allDepenses.push(...depenses.map(d => ({ ...d, chantier: c })));
+            const chantierIds = [...new Set(allDepenses.map(d => d.chantierId).filter(Boolean))];
+            const chantiers = {};
+            for (const cid of chantierIds) {
+                try {
+                    const c = await window.api.chantiers.invoke('get', cid);
+                    if (c) chantiers[cid] = c;
+                } catch (e) { /* silencieux */ }
             }
 
-            // Filtrer
             if (dateDebut) allDepenses = allDepenses.filter(d => d.dateDepense >= dateDebut);
             if (dateFin) allDepenses = allDepenses.filter(d => d.dateDepense <= dateFin);
             if (categorieFilter) allDepenses = allDepenses.filter(d => d.categorie === categorieFilter);
 
             allDepenses.sort((a, b) => new Date(b.dateDepense) - new Date(a.dateDepense));
-            allDepenses = allDepenses.slice(0, 200);
 
             if (allDepenses.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-secondary">Aucune dépense</td></tr>';
@@ -1145,11 +1179,12 @@ class FinancesController {
             tbody.innerHTML = allDepenses.map(d => {
                 const valide = d.valideePar ? 'Validée' : 'En attente';
                 const valideClass = d.valideePar ? 'bg-success' : 'bg-warning text-dark';
+                const chantier = chantiers[d.chantierId];
 
                 return `
                     <tr>
                         <td>${this.formatDate(d.dateDepense)}</td>
-                        <td>${this.escapeHtml(d.chantier?.nom || '—')}</td>
+                        <td>${this.escapeHtml(chantier?.nom || '—')}</td>
                         <td><span class="badge bg-secondary">${d.categorie}</span></td>
                         <td>${this.escapeHtml(d.description || '—')}</td>
                         <td class="fw-semibold">${this.formatCurrency(d.montant || 0)}</td>
@@ -1292,6 +1327,82 @@ class FinancesController {
     }
 
     /**
+     * Soumission formulaire facture
+     */
+    async handleSubmitFacture(e) {
+        e.preventDefault();
+
+        const form = e.target;
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        const entrepriseId = window.AppState?.entreprise?.id || 1;
+        const id = document.getElementById('factureId').value;
+        const btnSave = document.querySelector('#formFacture button[type="submit"]');
+
+        const data = {
+            numero: document.getElementById('factureNumero').value,
+            type: document.getElementById('factureType').value,
+            clientId: document.getElementById('factureClient').value ? parseInt(document.getElementById('factureClient').value) : null,
+            devisId: document.getElementById('factureDevis').value ? parseInt(document.getElementById('factureDevis').value) : null,
+            chantierId: document.getElementById('factureChantier').value ? parseInt(document.getElementById('factureChantier').value) : null,
+            dateCreation: document.getElementById('factureDateCreation').value,
+            dateEmission: document.getElementById('factureDateEmission').value,
+            dateEcheance: document.getElementById('factureDateEcheance').value,
+            statut: document.getElementById('factureStatut').value,
+            tva: parseFloat(document.getElementById('factureTVA').value) || 20,
+            conditionsPaiement: document.getElementById('factureCondPaiement').value,
+            modePaiement: document.getElementById('factureModePaiement').value,
+            notes: document.getElementById('factureNotes').value,
+            entrepriseId: entrepriseId,
+            lignes: this.lignesFacture.map(l => ({
+                ...l,
+                quantite: parseFloat(l.quantite) || 0,
+                prixUnitaire: parseFloat(l.prixUnitaire) || 0,
+                remise: parseFloat(l.remise) || 0,
+                tauxTVA: parseFloat(l.tauxTVA) || 20
+            })),
+            paiements: this.paiementsFacture.map(p => ({
+                ...p,
+                montant: parseFloat(p.montant) || 0
+            }))
+        };
+
+        this.calculerTotauxFacture();
+        data.montantHT = this.factureTotaux?.totalHT || 0;
+        data.montantTTC = this.factureTotaux?.totalTTC || 0;
+        data.montant = data.montantTTC;
+        data.montantPaye = this.factureTotaux?.montantPaye || 0;
+
+        if (btnSave) btnSave.disabled = true;
+
+        try {
+            let result;
+            if (id) {
+                result = await window.api.factures.invoke('update', parseInt(id), data);
+            } else {
+                result = await window.api.factures.invoke('create', data, entrepriseId);
+            }
+
+            if (result?.success) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('modalFacture'));
+                if (modal) modal.hide();
+                showToast('Facture enregistrée', 'success');
+                await this.loadFactures();
+            } else {
+                showToast(result?.error || 'Erreur', 'error');
+            }
+        } catch (e) {
+            console.error('Erreur save facture', e);
+            showToast('Erreur lors de l\'enregistrement', 'error');
+        } finally {
+            if (btnSave) btnSave.disabled = false;
+        }
+    }
+
+    /**
      * Dupliquer facture
      */
     async dupliquerFacture(id) {
@@ -1353,7 +1464,7 @@ class FinancesController {
             const rows = result.items.map(f => [
                 f.numero,
                 f.type === 'acompte' ? 'Acompte' : f.type === 'solde' ? 'Solde' : f.type === 'avoir' ? 'Avoir' : 'Standard',
-                f.client ? (f.client.type === 'entreprise' ? f.client.entreprise : `${f.client.prenom} ${f.client.nom}`.trim()) : '',
+                client: this.getClientDisplayName(f.client),
                 f.chantier?.nom || f.devis?.numero || '',
                 f.dateEmission,
                 f.dateEcheance || '',
@@ -1411,6 +1522,14 @@ class FinancesController {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    getClientDisplayName(c) {
+        if (!c) return '—';
+        if (c.type === 'entreprise' || c.type === 'public') {
+            return `${c.entreprise || c.nom || ''} ${c.prenom || ''}`.trim() || '—';
+        }
+        return `${c.civilite || ''} ${c.prenom || ''} ${c.nom || ''}`.trim() || '—';
     }
 }
 
