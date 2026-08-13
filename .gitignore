@@ -13,3 +13,9 @@ tia_info_build.sqlite-shm
 tia_info_build.sqlite-wal
 Desktop/tia_info_build.sqlite
 plan_action.md
+.kombai
+roles_avec_admin_entreprise_tia_info_build.md
+implementation_plan.md
+conceptionTiaBuild.md
+.agents
+skills-lock.json
