@@ -1120,7 +1120,7 @@ class FinancesController {
 
             tbody.innerHTML = paiements.map(p => {
                 const facture = factures[p.factureId];
-                const clientNom = facture?.client ? (facture.client.type === 'entreprise' ? facture.client.entreprise : `${facture.client.prenom} ${facture.client.nom}`.trim()) : `Facture #${p.factureId}`;
+                const clientNom = facture ? this.getClientDisplayName(facture.client) : `Facture #${p.factureId}`;
                 return `
                     <tr>
                         <td><small>${this.formatDate(p.datePaiement)}</small></td>
@@ -1153,15 +1153,14 @@ class FinancesController {
         const entrepriseId = window.AppState?.entreprise?.id || 1;
 
         try {
-            const result = await window.api.depenses.invoke('list', { entrepriseId, limit: 1000 });
-            let allDepenses = result?.items || result?.data?.items || [];
+            const result = await window.api.chantiers.invoke('list', { entrepriseId, limit: 100 });
+            const chantiers = result?.items || result?.data?.items || [];
 
-            const chantierIds = [...new Set(allDepenses.map(d => d.chantierId).filter(Boolean))];
-            const chantiers = {};
-            for (const cid of chantierIds) {
+            let allDepenses = [];
+            for (const c of chantiers) {
                 try {
-                    const c = await window.api.chantiers.invoke('get', cid);
-                    if (c) chantiers[cid] = c;
+                    const depenses = await window.api.depenses.invoke('byChantier', c.id);
+                    allDepenses.push(...depenses.map(d => ({ ...d, chantier: c })));
                 } catch (e) { /* silencieux */ }
             }
 
@@ -1170,6 +1169,7 @@ class FinancesController {
             if (categorieFilter) allDepenses = allDepenses.filter(d => d.categorie === categorieFilter);
 
             allDepenses.sort((a, b) => new Date(b.dateDepense) - new Date(a.dateDepense));
+            allDepenses = allDepenses.slice(0, 200);
 
             if (allDepenses.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-secondary">Aucune dépense</td></tr>';
@@ -1179,17 +1179,16 @@ class FinancesController {
             tbody.innerHTML = allDepenses.map(d => {
                 const valide = d.valideePar ? 'Validée' : 'En attente';
                 const valideClass = d.valideePar ? 'bg-success' : 'bg-warning text-dark';
-                const chantier = chantiers[d.chantierId];
 
                 return `
                     <tr>
                         <td>${this.formatDate(d.dateDepense)}</td>
-                        <td>${this.escapeHtml(chantier?.nom || '—')}</td>
+                        <td>${this.escapeHtml(d.chantier?.nom || '—')}</td>
                         <td><span class="badge bg-secondary">${d.categorie}</span></td>
                         <td>${this.escapeHtml(d.description || '—')}</td>
                         <td class="fw-semibold">${this.formatCurrency(d.montant || 0)}</td>
                         <td><span class="badge ${valideClass}">${valide}</span></td>
-                        <td>${d.valideePar ? this.escapeHtml(`${d.valideePar?.prenom} ${d.valideePar?.nom}`.trim()) : '—'}</td>
+                        <td>${d.valideePar ? this.escapeHtml(`${d.valideePar?.prenom || ''} ${d.valideePar?.nom || ''}`.trim()) : '—'}</td>
                     </tr>
                 `;
             }).join('');
@@ -1464,7 +1463,7 @@ class FinancesController {
             const rows = result.items.map(f => [
                 f.numero,
                 f.type === 'acompte' ? 'Acompte' : f.type === 'solde' ? 'Solde' : f.type === 'avoir' ? 'Avoir' : 'Standard',
-                client: this.getClientDisplayName(f.client),
+                this.getClientDisplayName(f.client),
                 f.chantier?.nom || f.devis?.numero || '',
                 f.dateEmission,
                 f.dateEcheance || '',
