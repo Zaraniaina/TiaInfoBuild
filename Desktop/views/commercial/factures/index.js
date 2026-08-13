@@ -122,6 +122,7 @@ class FacturesController {
             maximumFractionDigits: 0
         }).format(amount || 0);
     }
+
     async loadFactures() {
         const entrepriseId = window.AppState?.entreprise?.id || 1;
         const tbody = document.getElementById('facturesTbody');

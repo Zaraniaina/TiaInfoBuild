@@ -75,9 +75,9 @@
             </nav>
 
             <div class="sidebar-foot">
-                <a href="{% url 'accounts:logout' %}" class="sidebar-link" style="border:none;">
+                <button type="button" class="sidebar-link" style="border:none;background:none;width:100%;text-align:left;" data-bs-toggle="modal" data-bs-target="#logoutModal">
                     <i class="fa-solid fa-arrow-right-from-bracket"></i> Déconnexion
-                </a>
+                </button>
             </div>
         </aside>
 
@@ -134,6 +134,29 @@
         }
     </script>
     {% block extra_js %}{% endblock %}
+
+    <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="logoutModalLabel">
+                        <i class="fa-solid fa-arrow-right-from-bracket me-2 text-danger"></i>Confirmer la déconnexion
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">Vous êtes sur le point de vous déconnecter de votre compte. Voulez-vous continuer ?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <form method="post" action="{% url 'accounts:logout' %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Se déconnecter</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
