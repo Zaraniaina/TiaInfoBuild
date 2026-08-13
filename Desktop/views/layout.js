@@ -638,12 +638,28 @@ function updateUserUI(user) {
 // USER MENU & LOGOUT
 // ============================================================
 function initUserMenu() {
-  document.querySelectorAll('#logoutLink, #btnLogout').forEach(link => {
+  const logoutTriggers = document.querySelectorAll('#logoutLink, #btnLogout');
+  const logoutModalEl = document.getElementById('logoutModal');
+  const logoutModal = logoutModalEl ? new bootstrap.Modal(logoutModalEl) : null;
+
+  logoutTriggers.forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
-      handleLogout();
+      if (logoutModal) {
+        logoutModal.show();
+      } else {
+        handleLogout();
+      }
     });
   });
+
+  const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+  if (confirmLogoutBtn) {
+    confirmLogoutBtn.addEventListener('click', async () => {
+      if (logoutModal) logoutModal.hide();
+      await handleLogout();
+    });
+  }
 }
 
 async function handleLogout() {

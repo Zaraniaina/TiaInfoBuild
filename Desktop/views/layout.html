@@ -197,6 +197,33 @@
 <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 <div id="modalsContainer"></div>
 
+<!-- Modal de confirmation de déconnexion -->
+<div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <div class="d-flex align-items-center gap-2">
+          <div class="d-flex align-items-center justify-content-center" style="width:32px;height:32px;border-radius:8px;background:var(--tia-danger-soft);">
+            <i class="bi bi-box-arrow-right text-danger"></i>
+          </div>
+          <h5 class="modal-title fw-semibold" id="logoutModalLabel">Confirmer la déconnexion</h5>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2">Vous êtes sur le point de vous déconnecter de votre compte.</p>
+        <p class="mb-0 small text-secondary">Assurez-vous d'avoir sauvegardé votre travail avant de quitter.</p>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-danger" id="confirmLogoutBtn">
+          <i class="bi bi-box-arrow-right me-1"></i>Se déconnecter
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="../public/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="../public/chartjs/chart.umd.js"></script>
 <script src="router.js"></script>
