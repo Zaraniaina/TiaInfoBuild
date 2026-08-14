@@ -170,7 +170,7 @@ class FacturesController {
         const getStatutBadge = (statut) => {
             switch(statut) {
                 case 'paye': return '<span class="badge bg-success">Payée</span>';
-                case 'partiel': return '<span class="badge bg-warning text-dark">Partielle</span>';
+                case 'partiellement_payee': return '<span class="badge bg-warning text-dark">Partielle</span>';
                 case 'emise': return '<span class="badge bg-primary">Émise</span>';
                 case 'annulee': return '<span class="badge bg-secondary">Annulée</span>';
                 case 'brouillon':
