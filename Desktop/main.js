@@ -33,6 +33,7 @@ const SyncRepository = require('./models/repositories/SyncRepository')
 const UtilisateurRepository = require('./models/repositories/UtilisateurRepository')
 const AffectationRessourceRepository = require('./models/repositories/AffectationRessourceRepository')
 const HistoriquePosteRepository = require('./models/repositories/HistoriquePosteRepository')
+const AuditLogRepository = require('./models/repositories/AuditLogRepository')
 
 // Controllers
 const { handleLogin, handleRegister } = require('./controllers/authController')
@@ -46,6 +47,7 @@ const DashboardController = require('./controllers/dashboardController')
 const SyncController = require('./controllers/syncController')
 const UtilisateurController = require('./controllers/utilisateurController')
 const AlerteController = require('./controllers/alerteController')
+const AuditController = require('./controllers/auditController')
 
 // Services
 const SyncService = require('./services/syncService')
@@ -77,7 +79,8 @@ const repos = {
   dashboard: new DashboardRepository(),
   sync: new SyncRepository(),
   utilisateurs: new UtilisateurRepository(),
-  historiquePostes: new HistoriquePosteRepository()
+  historiquePostes: new HistoriquePosteRepository(),
+  auditLog: new AuditLogRepository()
 }
 
 // Instanciation des contrôleurs
@@ -91,6 +94,7 @@ const dashboardCtrl = new DashboardController(repos)
 const syncCtrl = new SyncController(repos)
 const utilisateurCtrl = new UtilisateurController(repos)
 const alerteCtrl = new AlerteController(repos)
+const auditCtrl = new AuditController(repos)
 
 // Instanciation des services
 const syncService = new SyncService(repos.sync)
@@ -197,8 +201,33 @@ function secureHandle(channel, allowedRoles, handler) {
       }
     }
 
-    // Injecter la session dans event.user pour les contrôleurs
     event.user = _session;
+
+    const auditChannels = [
+      'utilisateurs:create', 'utilisateurs:update', 'utilisateurs:delete',
+      'chantiers:create', 'chantiers:update', 'chantiers:delete',
+      'depenses:create', 'depenses:update', 'depenses:delete',
+      'factures:create', 'factures:update', 'factures:delete',
+      'entreprises:update'
+    ];
+
+    if (auditChannels.includes(channel)) {
+      try {
+        const module = channel.split(':')[0];
+        const entityId = args[0] || args[1] || null;
+        repos.auditLog.log({
+          entrepriseId: _session.entrepriseId,
+          utilisateurId: _session.id,
+          action: channel,
+          module,
+          entityId,
+          payload: { args }
+        });
+      } catch (auditErr) {
+        console.error('[Audit] Logging failed:', auditErr.message);
+      }
+    }
+
     return handler(event, ...args);
   });
 }
@@ -251,7 +280,7 @@ secureHandle('utilisateurs:create', rolesAdmin, (e, data, entId) => utilisateurC
 secureHandle('utilisateurs:update', rolesAdmin, (e, id, data) => utilisateurCtrl.update(e, id, data))
 secureHandle('utilisateurs:updateOwnProfile', [], (e, id, data) => utilisateurCtrl.updateOwnProfile(e, id, data))
 secureHandle('utilisateurs:delete', rolesAdmin, (e, id) => utilisateurCtrl.delete(e, id))
-secureHandle('utilisateurs:downloadCredentials', ['ADMIN', 'RH'], (e, id) => utilisateurCtrl.downloadCredentials(e, id))
+secureHandle('utilisateurs:downloadCredentials', ['ADMIN'], (e, id) => utilisateurCtrl.downloadCredentials(e, id))
 secureHandle('users:list', rolesAdmin, (e, params) => utilisateurCtrl.getList(e, params))
 secureHandle('users:getAll', rolesAdmin, (e, params) => utilisateurCtrl.getList(e, params))
 secureHandle('users:get', rolesAdmin, (e, id) => utilisateurCtrl.getById(e, id))
@@ -331,7 +360,7 @@ secureHandle('affectations:delete', rolesChantiers, (e, id) => chantierCtrl.dele
 // ============================================================
 const rolesRH = permissions.PERMISSIONS.employes.read;
 
-const rolesEmployesRead = ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE', 'COMMERCIAL'];
+const rolesEmployesRead = ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'];
 const rolesEmployesWrite = ['ADMIN', 'RH'];
 
 secureHandle('employes:list', rolesEmployesRead, (e, params) => rhCtrl.getListEmployes(e, params))
@@ -367,69 +396,74 @@ secureHandle('equipes:assignerChantier', rolesRH, (e, data) => safeRepo(() => re
 // STOCKS & FOURNISSEURS
 // ============================================================
 const rolesStocks = permissions.PERMISSIONS.articles;
+const rolesStocksWrite = Array.isArray(rolesStocks) ? rolesStocks : (rolesStocks.write || []);
+const rolesFournisseurs = permissions.PERMISSIONS.fournisseurs;
+const rolesFournisseursWrite = Array.isArray(rolesFournisseurs) ? rolesFournisseurs : (rolesFournisseurs.write || []);
 
 secureHandle('articles:list', rolesStocks, (e, params) => stockCtrl.getListArticles(e, params))
 secureHandle('articles:get', rolesStocks, (e, id) => stockCtrl.getArticleById(e, id))
-secureHandle('articles:create', rolesStocks, (e, data, entrepriseId) => stockCtrl.createArticle(e, data, entrepriseId))
-secureHandle('articles:update', rolesStocks, (e, id, data) => stockCtrl.updateArticle(e, id, data))
-secureHandle('articles:delete', rolesStocks, (e, id) => stockCtrl.deleteArticle(e, id))
+secureHandle('articles:create', rolesStocksWrite, (e, data, entrepriseId) => stockCtrl.createArticle(e, data, entrepriseId))
+secureHandle('articles:update', rolesStocksWrite, (e, id, data) => stockCtrl.updateArticle(e, id, data))
+secureHandle('articles:delete', rolesStocksWrite, (e, id) => stockCtrl.deleteArticle(e, id))
 secureHandle('articles:enAlerte', rolesStocks, (e, entrepriseId) => stockCtrl.getArticlesEnAlerte(e, entrepriseId))
-secureHandle('articles:updateStock', rolesStocks, (e, articleId, qte, type, opt) => stockCtrl.updateStockArticle(e, articleId, qte, type, opt))
+secureHandle('articles:updateStock', rolesStocksWrite, (e, articleId, qte, type, opt) => stockCtrl.updateStockArticle(e, articleId, qte, type, opt))
 secureHandle('articles:stats', rolesStocks, (e, entrepriseId) => stockCtrl.getStatsArticles(e, entrepriseId))
 
-secureHandle('fournisseurs:list', rolesStocks, (e, params) => stockCtrl.getListFournisseurs(e, params))
-secureHandle('fournisseurs:get', rolesStocks, (e, id) => safeRepo(() => repos.fournisseurs.getById(id)))
-secureHandle('fournisseurs:create', rolesStocks, (e, data, entrepriseId) => stockCtrl.createFournisseur(e, data, entrepriseId))
-secureHandle('fournisseurs:update', rolesStocks, (e, id, data) => stockCtrl.updateFournisseur(e, id, data))
-secureHandle('fournisseurs:delete', rolesStocks, (e, id) => stockCtrl.deleteFournisseur(e, id))
+secureHandle('fournisseurs:list', rolesFournisseurs, (e, params) => stockCtrl.getListFournisseurs(e, params))
+secureHandle('fournisseurs:get', rolesFournisseurs, (e, id) => safeRepo(() => repos.fournisseurs.getById(id)))
+secureHandle('fournisseurs:create', rolesFournisseursWrite, (e, data, entrepriseId) => stockCtrl.createFournisseur(e, data, entrepriseId))
+secureHandle('fournisseurs:update', rolesFournisseursWrite, (e, id, data) => stockCtrl.updateFournisseur(e, id, data))
+secureHandle('fournisseurs:delete', rolesFournisseursWrite, (e, id) => stockCtrl.deleteFournisseur(e, id))
 
 secureHandle('mouvements:byArticle', rolesStocks, (e, id) => stockCtrl.getMouvementsByArticle(e, id))
 secureHandle('mouvements:byChantier', rolesStocks, (e, id) => stockCtrl.getMouvementsByChantier(e, id))
 secureHandle('mouvements:byPeriode', rolesStocks, (e, params) => stockCtrl.getMouvementsByPeriode(e, params.entrepriseId, params.dateDebut, params.dateFin))
 secureHandle('mouvements:stats', rolesStocks, (e, params) => stockCtrl.getMouvementsStats(e, params.entrepriseId, params.dateDebut, params.dateFin))
-secureHandle('mouvements:create', rolesStocks, (e, data) => safeRepo(() => repos.mouvements.create(data)))
-secureHandle('mouvements:delete', rolesStocks, (e, id) => safeRepo(() => repos.mouvements.delete(id)))
+secureHandle('mouvements:create', rolesStocksWrite, (e, data) => safeRepo(() => repos.mouvements.create(data)))
+secureHandle('mouvements:delete', rolesStocksWrite, (e, id) => safeRepo(() => repos.mouvements.delete(id)))
 
 // ============================================================
 // MATÉRIELS
 // ============================================================
 const rolesMateriel = permissions.PERMISSIONS.materiels;
+const rolesMaterielWrite = Array.isArray(rolesMateriel) ? rolesMateriel : (rolesMateriel.write || []);
 
 secureHandle('materiels:list', rolesMateriel, (e, params) => materielCtrl.getListMateriels(e, params))
 secureHandle('materiels:get', rolesMateriel, (e, id) => materielCtrl.getMaterielById(e, id))
-secureHandle('materiels:create', rolesMateriel, (e, data, entrepriseId) => materielCtrl.createMateriel(e, data, entrepriseId))
-secureHandle('materiels:update', rolesMateriel, (e, id, data) => materielCtrl.updateMateriel(e, id, data))
-secureHandle('materiels:delete', rolesMateriel, (e, id) => materielCtrl.deleteMateriel(e, id))
+secureHandle('materiels:create', rolesMaterielWrite, (e, data, entrepriseId) => materielCtrl.createMateriel(e, data, entrepriseId))
+secureHandle('materiels:update', rolesMaterielWrite, (e, id, data) => materielCtrl.updateMateriel(e, id, data))
+secureHandle('materiels:delete', rolesMaterielWrite, (e, id) => materielCtrl.deleteMateriel(e, id))
 secureHandle('materiels:stats', rolesMateriel, (e, entrepriseId) => materielCtrl.getStatsMateriels(e, entrepriseId))
 secureHandle('materiels:disponibles', rolesMateriel, (e, entrepriseId) => materielCtrl.getDisponibles(e, entrepriseId))
 secureHandle('materiels:maintenanceEnRetard', rolesMateriel, (e, entrepriseId) => materielCtrl.getMaintenanceEnRetard(e, entrepriseId))
 secureHandle('maintenances:list', rolesMateriel, (e, params) => materielCtrl.getListMaintenances(e, params))
-secureHandle('maintenances:create', rolesMateriel, (e, data) => materielCtrl.createMaintenance(e, data))
-secureHandle('maintenances:update', rolesMateriel, (e, id, data) => materielCtrl.updateMaintenance(e, id, data))
+secureHandle('maintenances:create', rolesMaterielWrite, (e, data) => materielCtrl.createMaintenance(e, data))
+secureHandle('maintenances:update', rolesMaterielWrite, (e, id, data) => materielCtrl.updateMaintenance(e, id, data))
 
 // ============================================================
 // COMMERCIAL (Clients, Devis, Contrats, Factures, Paiements)
 // ============================================================
 const rolesCommercial = permissions.PERMISSIONS.clients;
+const rolesCommercialWrite = Array.isArray(rolesCommercial) ? rolesCommercial : (rolesCommercial.write || []);
 
 secureHandle('clients:list', rolesCommercial, (e, params) => commercialCtrl.getListClients(e, params))
 secureHandle('clients:get', rolesCommercial, (e, id) => commercialCtrl.getClientById(e, id))
-secureHandle('clients:create', rolesCommercial, (e, data, entrepriseId) => commercialCtrl.createClient(e, data, entrepriseId))
-secureHandle('clients:update', rolesCommercial, (e, id, data) => commercialCtrl.updateClient(e, id, data))
-secureHandle('clients:delete', rolesCommercial, (e, id) => commercialCtrl.deleteClient(e, id))
+secureHandle('clients:create', rolesCommercialWrite, (e, data, entrepriseId) => commercialCtrl.createClient(e, data, entrepriseId))
+secureHandle('clients:update', rolesCommercialWrite, (e, id, data) => commercialCtrl.updateClient(e, id, data))
+secureHandle('clients:delete', rolesCommercialWrite, (e, id) => commercialCtrl.deleteClient(e, id))
 
 secureHandle('clientAdresses:list', rolesCommercial, (e, clientId) => commercialCtrl.getClientAdresses(e, clientId))
-secureHandle('clientAdresses:create', rolesCommercial, (e, clientId, data) => commercialCtrl.createClientAdresse(e, clientId, data))
-secureHandle('clientAdresses:update', rolesCommercial, (e, id, data) => commercialCtrl.updateClientAdresse(e, id, data))
-secureHandle('clientAdresses:delete', rolesCommercial, (e, id) => commercialCtrl.deleteClientAdresse(e, id))
+secureHandle('clientAdresses:create', rolesCommercialWrite, (e, clientId, data) => commercialCtrl.createClientAdresse(e, clientId, data))
+secureHandle('clientAdresses:update', rolesCommercialWrite, (e, id, data) => commercialCtrl.updateClientAdresse(e, id, data))
+secureHandle('clientAdresses:delete', rolesCommercialWrite, (e, id) => commercialCtrl.deleteClientAdresse(e, id))
 
 secureHandle('devis:list', rolesCommercial, (e, params) => commercialCtrl.getListDevis(e, params))
 secureHandle('devis:get', rolesCommercial, (e, id) => commercialCtrl.getDevisById(e, id))
-secureHandle('devis:create', rolesCommercial, (e, data, entrepriseId) => commercialCtrl.createDevis(e, data, entrepriseId))
-secureHandle('devis:update', rolesCommercial, (e, id, data) => commercialCtrl.updateDevis(e, id, data))
-secureHandle('devis:delete', rolesCommercial, (e, id) => safeRepo(() => repos.devis.delete(id)))
-secureHandle('devis:transformerEnContrat', rolesCommercial, (e, devisId, data) => commercialCtrl.transformerDevisEnContrat(e, devisId, data))
-secureHandle('devis:saveLignes', rolesCommercial, (e, devisId, lignes) => safeRepo(() => {
+secureHandle('devis:create', rolesCommercialWrite, (e, data, entrepriseId) => commercialCtrl.createDevis(e, data, entrepriseId))
+secureHandle('devis:update', rolesCommercialWrite, (e, id, data) => commercialCtrl.updateDevis(e, id, data))
+secureHandle('devis:delete', rolesCommercialWrite, (e, id) => safeRepo(() => repos.devis.delete(id)))
+secureHandle('devis:transformerEnContrat', rolesCommercialWrite, (e, devisId, data) => commercialCtrl.transformerDevisEnContrat(e, devisId, data))
+secureHandle('devis:saveLignes', rolesCommercialWrite, (e, devisId, lignes) => safeRepo(() => {
   // Supprimer les anciennes lignes et recréer
   const existing = repos.lignesDevis.getByDevis(devisId)
   if (existing) existing.forEach(l => repos.lignesDevis.delete(l.id))
@@ -439,23 +473,23 @@ secureHandle('devis:saveLignes', rolesCommercial, (e, devisId, lignes) => safeRe
 
 secureHandle('contrats:list', rolesCommercial, (e, params) => commercialCtrl.getListContrats(e, params))
 secureHandle('contrats:get', rolesCommercial, (e, id) => commercialCtrl.getContratById(e, id))
-secureHandle('contrats:create', rolesCommercial, (e, data) => safeRepo(() => repos.contrats.create(data)))
-secureHandle('contrats:update', rolesCommercial, (e, id, data) => safeRepo(() => repos.contrats.update(id, data)))
-secureHandle('contrats:delete', rolesCommercial, (e, id) => safeRepo(() => repos.contrats.delete(id)))
+secureHandle('contrats:create', rolesCommercialWrite, (e, data) => safeRepo(() => repos.contrats.create(data)))
+secureHandle('contrats:update', rolesCommercialWrite, (e, id, data) => safeRepo(() => repos.contrats.update(id, data)))
+secureHandle('contrats:delete', rolesCommercialWrite, (e, id) => safeRepo(() => repos.contrats.delete(id)))
 
 secureHandle('factures:list', rolesCommercial, (e, params) => commercialCtrl.getListFactures(e, params))
 secureHandle('factures:get', rolesCommercial, (e, id) => commercialCtrl.getFactureById(e, id))
-secureHandle('factures:create', rolesCommercial, (e, data, entrepriseId) => commercialCtrl.createFacture(e, data, entrepriseId))
-secureHandle('factures:update', rolesCommercial, (e, id, data) => commercialCtrl.updateFacture(e, id, data))
-secureHandle('factures:delete', rolesCommercial, (e, id) => commercialCtrl.deleteFacture(e, id))
+secureHandle('factures:create', rolesCommercialWrite, (e, data, entrepriseId) => commercialCtrl.createFacture(e, data, entrepriseId))
+secureHandle('factures:update', rolesCommercialWrite, (e, id, data) => commercialCtrl.updateFacture(e, id, data))
+secureHandle('factures:delete', rolesCommercialWrite, (e, id) => commercialCtrl.deleteFacture(e, id))
 secureHandle('factures:enRetard', rolesCommercial, (e, entrepriseId) => commercialCtrl.getFacturesEnRetard(e, entrepriseId))
-secureHandle('factures:ajouterPaiement', rolesCommercial, (e, factureId, data) => commercialCtrl.ajouterPaiementFacture(e, factureId, data))
+secureHandle('factures:ajouterPaiement', rolesCommercialWrite, (e, factureId, data) => commercialCtrl.ajouterPaiementFacture(e, factureId, data))
 
 secureHandle('paiements:byFacture', rolesCommercial, (e, id) => commercialCtrl.getPaiementsByFacture(e, id))
 secureHandle('paiements:list', rolesCommercial, (e, params) => safeRepo(() => repos.paiements.list(params)))
-secureHandle('paiements:create', rolesCommercial, (e, data) => safeRepo(() => repos.paiements.create(data)))
-secureHandle('paiements:update', rolesCommercial, (e, id, data) => safeRepo(() => repos.paiements.update(id, data)))
-secureHandle('paiements:delete', rolesCommercial, (e, id) => safeRepo(() => repos.paiements.delete(id)))
+secureHandle('paiements:create', rolesCommercialWrite, (e, data) => safeRepo(() => repos.paiements.create(data)))
+secureHandle('paiements:update', rolesCommercialWrite, (e, id, data) => safeRepo(() => repos.paiements.update(id, data)))
+secureHandle('paiements:delete', rolesCommercialWrite, (e, id) => safeRepo(() => repos.paiements.delete(id)))
 
 // ============================================================
 // FINANCE & ALERTES
@@ -489,7 +523,7 @@ secureHandle('dashboard:getFacturesRetard', ['ADMIN', 'COMPTABLE', 'DIRECTEUR'],
 
 secureHandle('dashboard:getRHStats', ['ADMIN', 'RH', 'DIRECTEUR'], (e, entrepriseId) => dashboardCtrl.getRHStats(e, entrepriseId))
 secureHandle('dashboard:getCommercialStats', ['ADMIN', 'COMMERCIAL', 'DIRECTEUR'], (e, entrepriseId) => dashboardCtrl.getCommercialStats(e, entrepriseId))
-secureHandle('dashboard:getLogistiqueStats', ['ADMIN', 'MAGASINIER', 'RESPONSABLE_MATERIEL', 'CHEF_CHANTIER'], (e, entrepriseId) => dashboardCtrl.getLogistiqueStats(e, entrepriseId))
+secureHandle('dashboard:getLogistiqueStats', ['ADMIN', 'MAGASINIER', 'MATERIEL', 'CHEF_CHANTIER'], (e, entrepriseId) => dashboardCtrl.getLogistiqueStats(e, entrepriseId))
 secureHandle('dashboard:getTopClients', ['ADMIN', 'COMMERCIAL', 'DIRECTEUR'], (e, entrepriseId) => dashboardCtrl.getTopClients(e, entrepriseId))
 secureHandle('dashboard:getCAByMois', ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'], (e, entrepriseId) => dashboardCtrl.getCAByMois(e, entrepriseId))
 secureHandle('loginHistory:list', ['ADMIN', 'DIRECTEUR'], (e, params) => safeRepo(() => {
@@ -583,6 +617,13 @@ ipcMain.handle('backup:list', () => {
     return fs.readdirSync(backupsDir).map(f => ({ fichier: f, date: fs.statSync(path.join(backupsDir, f)).mtime, taille: fs.statSync(path.join(backupsDir, f)).size }))
   } catch { return [] }
 })
+
+// ============================================================
+// AUDIT LOG
+// ============================================================
+secureHandle('audit:recent', ['ADMIN', 'DIRECTEUR'], (e, entrepriseId, limit) => auditCtrl.getRecent(e, entrepriseId, limit))
+secureHandle('audit:byModule', ['ADMIN', 'DIRECTEUR'], (e, entrepriseId, module, limit, offset) => auditCtrl.getByModule(e, entrepriseId, module, limit, offset))
+secureHandle('audit:byUtilisateur', ['ADMIN', 'DIRECTEUR'], (e, entrepriseId, utilisateurId, limit, offset) => auditCtrl.getByUtilisateur(e, entrepriseId, utilisateurId, limit, offset))
 
 // ============================================================
 // ALERTES

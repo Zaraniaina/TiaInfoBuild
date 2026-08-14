@@ -91,8 +91,14 @@ async function handleLogin(event, data) {
     const localUser = stmt.get(email);
 
     if (localUser) {
+      const lockedUntil = localUser.locked_until ? new Date(localUser.locked_until) : null;
+      if (lockedUntil && lockedUntil > new Date()) {
+        const remaining = Math.ceil((lockedUntil - new Date()) / 60000);
+        return { success: false, message: `Compte temporairement verrouillé. Réessayez dans ${remaining} min.` };
+      }
+
       if (verifyPassword(password, localUser.motDePasseHash)) {
-        db.prepare('UPDATE Utilisateur SET derniereConnexion = CURRENT_TIMESTAMP WHERE id = ?').run(localUser.id);
+        db.prepare('UPDATE Utilisateur SET derniereConnexion = CURRENT_TIMESTAMP, login_attempts = 0, locked_until = NULL WHERE id = ?').run(localUser.id);
         logLogin(localUser.id, localUser.entrepriseId, true);
 
         const mustChange = localUser.must_change_password === 1 || localUser.must_change_password === '1';
@@ -102,7 +108,18 @@ async function handleLogin(event, data) {
 
         return { success: true, user: localUser };
       } else {
+        const attempts = (localUser.login_attempts || 0) + 1;
+        let lockedUntil = null;
+        if (attempts >= 3) {
+          const delayMinutes = attempts === 3 ? 1 : attempts === 4 ? 5 : 15;
+          lockedUntil = new Date(Date.now() + delayMinutes * 60000).toISOString();
+        }
+        db.prepare('UPDATE Utilisateur SET login_attempts = ?, locked_until = ? WHERE id = ?').run(attempts, lockedUntil, localUser.id);
         logLogin(localUser.id, localUser.entrepriseId, false, 'Mot de passe incorrect');
+
+        if (lockedUntil) {
+          return { success: false, message: 'Trop de tentatives échouées. Compte verrouillé temporairement.' };
+        }
         return { success: false, message: 'Mot de passe incorrect.' };
       }
     } else {

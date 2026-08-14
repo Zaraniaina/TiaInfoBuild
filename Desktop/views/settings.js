@@ -306,13 +306,22 @@ class ParametresController {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
 
+        const logoFile = document.getElementById('entLogo')?.files?.[0];
+        if (logoFile) {
+            try {
+                data.logo = await this.fileToBase64(logoFile);
+            } catch (err) {
+                showToast('Erreur lors de la lecture du logo', 'error');
+                return;
+            }
+        }
+
         const entrepriseId = window.AppState?.entreprise?.id || 1;
 
         try {
             await window.api.entreprises.invoke('update', entrepriseId, data);
             showToast('Informations entreprise enregistrées', 'success');
 
-            // Mettre à jour l'état global
             if (window.AppState) {
                 window.AppState.entreprise = { ...window.AppState.entreprise, ...data };
             }
@@ -827,6 +836,15 @@ class ParametresController {
             console.error('Erreur sauvegarde préférences:', error);
             showToast(`Erreur: ${error.message}`, 'error');
         }
+    }
+
+    fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
     }
 
     /**

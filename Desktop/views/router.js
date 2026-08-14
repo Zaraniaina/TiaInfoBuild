@@ -355,6 +355,13 @@ window.router.add('historique-logins', async () => {
   if (window.historiqueConnexionsController) await window.historiqueConnexionsController.init();
 });
 
+window.router.add('audit-log', async () => {
+  const html = await loadView('audit-log/index.html');
+  document.getElementById('contentArea').innerHTML = html;
+  await window.loadScript('audit-log/index.js');
+  if (window.auditLogController) await window.auditLogController.init();
+});
+
 // Helpers globaux
 window.showToast = function (message, type = 'info', duration = 3000) {
   const container = document.getElementById('toastContainer');
