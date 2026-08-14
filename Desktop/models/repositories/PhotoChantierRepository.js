@@ -34,4 +34,4 @@ class PhotoChantierRepository extends BaseRepository {
   }
 }
 
-module.exports = new PhotoChantierRepository();
+module.exports = PhotoChantierRepository;
