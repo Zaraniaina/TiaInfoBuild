@@ -395,6 +395,14 @@ class ChantiersController {
       this.populateRessourceSelect(e.target.value);
     });
 
+    document.getElementById('btnAjouterPhoto')?.addEventListener('click', () => {
+      document.getElementById('inputPhotoChantier')?.click();
+    });
+
+    document.getElementById('inputPhotoChantier')?.addEventListener('change', (e) => {
+      this.handlePhotoUpload(e);
+    });
+
     document.getElementById('btnEditFromDetail')?.addEventListener('click', () => {
       this.hideModal('modalChantierDetail');
 
@@ -621,12 +629,16 @@ class ChantiersController {
     this.renderPhasesDraft();
     this.renderIncidentsTab([]);
     this.renderAffectationsTab([]);
+    this.renderPhotos([]);
 
     document.getElementById('modalChantierLabel').innerHTML =
       '<i class="bi bi-building me-2"></i>Nouveau chantier';
 
     document.getElementById('btnDeleteChantier').style.display = 'none';
     delete document.getElementById('btnDeleteChantier').dataset.id;
+
+    const btnPhoto = document.getElementById('btnAjouterPhoto');
+    if (btnPhoto) btnPhoto.disabled = true;
 
     this.generateNumeroChantier();
 
@@ -658,6 +670,10 @@ class ChantiersController {
       this.renderPhasesDraft();
       this.renderIncidentsTab(chantier.incidents || []);
       this.renderAffectationsTab(chantier.affectations || []);
+      this.loadPhotos(chantier.id);
+
+      const btnPhoto = document.getElementById('btnAjouterPhoto');
+      if (btnPhoto) btnPhoto.disabled = false;
 
       document.getElementById('modalChantierLabel').innerHTML =
         `<i class="bi bi-building me-2"></i>Modifier : ${this.escapeHtml(chantier.nom)}`;
@@ -1433,6 +1449,146 @@ class ChantiersController {
       console.error('Erreur suppression affectation:', error);
       this.toast(error.message || 'Erreur lors de la suppression de l’affectation', 'error');
     }
+  }
+
+  async loadPhotos(chantierId) {
+    try {
+      const result = await window.api.chantiers.invoke('photos:list', chantierId);
+      const photos = result?.data ?? result ?? [];
+      this.renderPhotos(photos);
+    } catch (error) {
+      console.error('Erreur chargement photos:', error);
+    }
+  }
+
+  renderPhotos(photos) {
+    const container = document.getElementById('photosChantierContainer');
+    if (!container) return;
+
+    if (!photos.length) {
+      container.innerHTML = '<div class="col-12 text-center py-4 text-secondary">Aucune photo</div>';
+      return;
+    }
+
+    container.innerHTML = photos.map(p => `
+      <div class="col-md-4 col-sm-6 mb-3">
+        <div class="card h-100">
+          <img src="data:${p.contentType || 'image/jpeg'};base64,${p.donnees}"
+               class="card-img-top photo-chantier-img"
+               style="height: 200px; object-fit: cover; cursor: pointer;"
+               data-photo-id="${p.id}"
+               alt="${this.escapeHtml(p.nom || 'Photo chantier')}">
+          <div class="card-body p-2 d-flex justify-content-between align-items-center">
+            <small class="text-truncate">${this.escapeHtml(p.nom || 'Photo')}</small>
+            <button class="btn btn-sm btn-outline-danger btn-delete-photo" data-id="${p.id}">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('.photo-chantier-img').forEach(img => {
+      img.addEventListener('click', (e) => {
+        const photoId = e.target.dataset.photoId;
+        this.openPhotoLightbox(photoId, photos);
+      });
+    });
+
+    container.querySelectorAll('.btn-delete-photo').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = parseInt(e.currentTarget.dataset.id, 10);
+        await this.deletePhoto(id);
+      });
+    });
+  }
+
+  async handlePhotoUpload(e) {
+    const file = e.target.files[0];
+    if (!file || !this.chantierEnEdition?.id) return;
+
+    try {
+      const base64 = await this.fileToBase64(file);
+      const entrepriseId = window.AppState?.entreprise?.id || 1;
+
+      const result = await window.api.chantiers.invoke('photos:create', this.chantierEnEdition.id, {
+        nom: file.name,
+        donnees: base64,
+        contentType: file.type,
+        taille: file.size
+      }, entrepriseId);
+
+      if (result?.success === false) {
+        throw new Error(result.error || 'Erreur lors de l\'upload de la photo');
+      }
+
+      this.toast('Photo ajoutée', 'success');
+      await this.loadPhotos(this.chantierEnEdition.id);
+      e.target.value = '';
+    } catch (error) {
+      console.error('Erreur upload photo:', error);
+      this.toast(error.message || 'Erreur lors de l\'upload de la photo', 'error');
+    }
+  }
+
+  async deletePhoto(id) {
+    if (!confirm('Supprimer cette photo ?')) return;
+
+    try {
+      const result = await window.api.chantiers.invoke('photos:delete', id);
+      if (result?.success === false) {
+        throw new Error(result.error || 'Erreur lors de la suppression de la photo');
+      }
+
+      this.toast('Photo supprimée', 'success');
+      if (this.chantierEnEdition?.id) {
+        await this.loadPhotos(this.chantierEnEdition.id);
+      }
+    } catch (error) {
+      console.error('Erreur suppression photo:', error);
+      this.toast(error.message || 'Erreur lors de la suppression de la photo', 'error');
+    }
+  }
+
+  openPhotoLightbox(photoId, photos) {
+    const photo = photos.find(p => p.id == photoId);
+    if (!photo) return;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal fade show';
+    modal.style.display = 'block';
+    modal.style.background = 'rgba(0,0,0,0.8)';
+    modal.innerHTML = `
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content bg-transparent border-0 shadow-none">
+          <div class="modal-body p-0 text-center">
+            <img src="data:${photo.contentType || 'image/jpeg'};base64,${photo.donnees}"
+                 style="max-width: 100%; max-height: 80vh; object-fit: contain;">
+          </div>
+          <div class="modal-footer justify-content-center border-0 bg-transparent">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Fermer</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+
+    document.body.appendChild(modal);
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    modal.addEventListener('hidden.bs.modal', () => modal.remove());
+  }
+
+  fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = error => reject(error);
+    });
   }
 
   async refreshChantierRelations() {

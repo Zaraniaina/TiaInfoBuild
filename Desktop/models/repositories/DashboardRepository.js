@@ -156,7 +156,7 @@ class DashboardRepository extends BaseRepository {
       FROM Facture f
       WHERE f.entrepriseId = ? AND f.is_deleted = 0
       AND f.statut IN ('emise', 'envoyee', 'partiellement_payee', 'emis')
-      AND f.dateEcheance < date('now')
+      AND f.dateEcheance < date('now', 'localtime')
       ORDER BY f.dateEcheance
       LIMIT ?
     `).all(entrepriseId, limit);
@@ -211,7 +211,7 @@ class DashboardRepository extends BaseRepository {
             LEFT JOIN Client c ON f.clientId = c.id
             WHERE f.entrepriseId = ? AND f.is_deleted = 0
             AND f.statut IN ('emise', 'envoyee', 'partiellement_payee', 'emis')
-            AND f.dateEcheance < date('now')
+            AND f.dateEcheance < date('now', 'localtime')
             ORDER BY f.dateEcheance ASC
             LIMIT 10
         `);

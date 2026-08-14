@@ -150,6 +150,13 @@
                 <i class="bi bi-people me-1"></i>Ressources
               </button>
             </li>
+
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="tab-photos-tab" data-bs-toggle="tab"
+                      data-bs-target="#tab-photos" type="button" role="tab">
+                <i class="bi bi-camera me-1"></i>Photos
+              </button>
+            </li>
           </ul>
 
           <div class="tab-content" id="chantierTabsContent">
@@ -305,6 +312,20 @@
 
               <div id="affectationsContainer">
                 <!-- Affectations chargées dynamiquement -->
+              </div>
+            </div>
+
+            <!-- Onglet Photos -->
+            <div class="tab-pane fade" id="tab-photos" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">Photos du chantier</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="btnAjouterPhoto">
+                  <i class="bi bi-camera me-1"></i>Ajouter une photo
+                </button>
+                <input type="file" id="inputPhotoChantier" accept="image/*" style="display: none;">
+              </div>
+              <div id="photosChantierContainer" class="row g-3">
+                <!-- Photos chargées dynamiquement -->
               </div>
             </div>
           </div>

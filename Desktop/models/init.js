@@ -300,6 +300,24 @@ function initDatabase() {
     )
   `).run();
 
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS PhotoChantier (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      entrepriseId INTEGER NOT NULL,
+      chantierId INTEGER NOT NULL,
+      nom TEXT,
+      donnees TEXT NOT NULL,
+      contentType TEXT DEFAULT 'image/jpeg',
+      taille INTEGER DEFAULT 0,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (chantierId) REFERENCES Chantier(id) ON DELETE CASCADE
+    )
+  `).run();
+
   // ============================================================
   // 4. COMMERCIAL SUITE — Devis, Contrat, Factures
   // ============================================================

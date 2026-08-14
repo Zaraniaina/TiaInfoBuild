@@ -10,6 +10,7 @@ const permissions = require('./shared/permissions')
 const ChantierRepository = require('./models/repositories/ChantierRepository')
 const PhaseRepository = require('./models/repositories/PhaseRepository')
 const IncidentRepository = require('./models/repositories/IncidentRepository')
+const PhotoChantierRepository = require('./models/repositories/PhotoChantierRepository')
 const EmployeRepository = require('./models/repositories/EmployeRepository')
 const PointageRepository = require('./models/repositories/PointageRepository')
 const HeureSupplementaireRepository = require('./models/repositories/HeureSupplementaireRepository')
@@ -58,6 +59,7 @@ const repos = {
   affectations: new AffectationRessourceRepository(),
   phases: new PhaseRepository(),
   incidents: new IncidentRepository(),
+  photosChantier: new PhotoChantierRepository(),
   employes: new EmployeRepository(),
   pointages: new PointageRepository(),
   heuresSup: new HeureSupplementaireRepository(),
@@ -355,6 +357,10 @@ secureHandle('affectations:create', rolesChantiers, (e, data) => chantierCtrl.cr
 secureHandle('affectations:update', rolesChantiers, (e, id, data) => chantierCtrl.updateAffectation(e, id, data))
 secureHandle('affectations:delete', rolesChantiers, (e, id) => chantierCtrl.deleteAffectation(e, id))
 
+secureHandle('photos:list', rolesChantiers, (e, chantierId) => chantierCtrl.getPhotos(e, chantierId))
+secureHandle('photos:create', rolesChantiers, (e, chantierId, data, entrepriseId) => chantierCtrl.createPhoto(e, chantierId, data, entrepriseId))
+secureHandle('photos:delete', rolesChantiers, (e, id) => chantierCtrl.deletePhoto(e, id))
+
 // ============================================================
 // RESSOURCES HUMAINES
 // ============================================================
@@ -616,6 +622,45 @@ ipcMain.handle('backup:list', () => {
     if (!fs.existsSync(backupsDir)) return []
     return fs.readdirSync(backupsDir).map(f => ({ fichier: f, date: fs.statSync(path.join(backupsDir, f)).mtime, taille: fs.statSync(path.join(backupsDir, f)).size }))
   } catch { return [] }
+})
+ipcMain.handle('backup:import', async (e, data) => {
+  try {
+    if (!fs.existsSync(backupsDir)) fs.mkdirSync(backupsDir, { recursive: true })
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0] + '_' + new Date().toISOString().replace(/[:.]/g, '-').split('T')[1].slice(0, 8)
+    const filename = `import_${timestamp}.sqlite`
+    fs.writeFileSync(path.join(backupsDir, filename), Buffer.from(data))
+    return { success: true, filename }
+  } catch (err) { throw err }
+})
+ipcMain.handle('backup:download', (e, filename) => {
+  try {
+    const filePath = path.join(backupsDir, filename)
+    if (!fs.existsSync(filePath)) throw new Error('Fichier introuvable')
+    const data = fs.readFileSync(filePath)
+    return new Uint8Array(data)
+  } catch (err) { throw err }
+})
+ipcMain.handle('backup:restore', async (e, filename) => {
+  try {
+    const src = path.join(backupsDir, filename)
+    if (!fs.existsSync(src)) throw new Error('Fichier introuvable')
+    fs.copyFileSync(src, dbPath)
+    return { success: true }
+  } catch (err) { throw err }
+})
+ipcMain.handle('backup:delete', (e, filename) => {
+  try {
+    const filePath = path.join(backupsDir, filename)
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
+    return { success: true }
+  } catch (err) { throw err }
+})
+ipcMain.handle('backup:setAutoConfig', (e, config) => {
+  try {
+    const configPath = path.join(app.getPath('userData'), 'backup-config.json')
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
+    return { success: true }
+  } catch (err) { throw err }
 })
 
 // ============================================================

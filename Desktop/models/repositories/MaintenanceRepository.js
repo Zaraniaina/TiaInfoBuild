@@ -39,7 +39,7 @@ class MaintenanceRepository extends BaseRepository {
       WHERE mat.entrepriseId = ? AND m.is_deleted = 0
       AND m.prochaineDateEcheance IS NOT NULL
       AND m.prochaineDateEcheance <= ?
-      AND m.prochaineDateEcheance >= date('now')
+      AND m.prochaineDateEcheance >= date('now', 'localtime')
       ORDER BY m.prochaineDateEcheance
     `);
     return stmt.all(entrepriseId, dateLimiteStr);
