@@ -9,6 +9,7 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   verbose: true,
+  maxWorkers: 1,
   projects: [
     {
       displayName: 'unit',

@@ -37,7 +37,7 @@ class ArticleRepository extends BaseRepository {
       throw new Error('typeMouvement doit être "entree" ou "sortie"');
     }
 
-    return db.transaction(() => {
+    const transaction = db.transaction(() => {
       // Récupérer l'article
       const article = this.getById(articleId);
       if (!article) throw new Error('Article non trouvé');
@@ -68,6 +68,7 @@ class ArticleRepository extends BaseRepository {
 
       return { article: this.getById(articleId), mouvement };
     });
+    return transaction();
   }
 
   /**

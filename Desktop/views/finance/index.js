@@ -1245,12 +1245,13 @@ class FinancesController {
 
         const entrepriseId = window.AppState?.entreprise?.id || 1;
         const isEdit = !!data.id;
+        const depenseId = data.id ? parseInt(data.id) : null;
         delete data.id;
 
         try {
-            if (isEdit) {
-                // TODO: Implémenter update dépense
-                showToast('Modification dépense à implémenter', 'info');
+            if (isEdit && depenseId) {
+                await window.api.depenses.invoke('update', depenseId, data);
+                showToast('Dépense modifiée avec succès', 'success');
             } else {
                 await window.api.depenses.invoke('create', data, entrepriseId);
                 showToast('Dépense créée avec succès', 'success');
@@ -1409,14 +1410,15 @@ class FinancesController {
         if (!factureId) return;
 
         try {
-            const facture = await window.api.factures.invoke('get', parseInt(factureId));
-            if (!facture) {
-                showToast('Facture non trouvée', 'error');
+            const result = await window.api.factures.invoke('dupliquer', parseInt(factureId));
+            if (!result?.success) {
+                showToast(result?.error || 'Erreur lors de la duplication', 'error');
                 return;
             }
 
+            const nouvelleFacture = result.data;
             this.factureEnEdition = null;
-            this.lignesFacture = (facture.lignes || []).map(l => ({ ...l, id: undefined }));
+            this.lignesFacture = [];
             this.paiementsFacture = [];
             this.resetFormFacture();
             document.getElementById('modalFactureLabel').textContent = 'Nouvelle facture (copie)';
@@ -1424,18 +1426,19 @@ class FinancesController {
             document.getElementById('btnDupliquerFacture').style.display = 'none';
             document.getElementById('btnEnvoyerFacture').style.display = 'none';
 
-            this.fillFormFacture(facture);
-            document.getElementById('factureNumero').value = '';
-            document.getElementById('factureStatut').value = 'brouillon';
-            document.getElementById('factureDateEmission').value = new Date().toISOString().split('T')[0];
-            document.getElementById('factureDateCreation').value = new Date().toISOString().split('T')[0];
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('factureNumero').value = nouvelleFacture.numero || '';
+            document.getElementById('factureDateCreation').value = today;
+            document.getElementById('factureDateEmission').value = today;
             document.getElementById('factureDateEcheance').value = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            document.getElementById('factureStatut').value = 'brouillon';
 
             this.renderLignesFacture();
             this.calculerTotauxFacture();
 
             const modal = new bootstrap.Modal(document.getElementById('modalFacture'));
             modal.show();
+            showToast('Facture dupliquée avec succès', 'success');
 
         } catch (error) {
             console.error('Erreur duplication:', error);
@@ -1447,8 +1450,21 @@ class FinancesController {
      * Envoyer facture
      */
     async envoyerFacture(id) {
-        // TODO: Implémenter envoi email
-        showToast('Envoi par email à implémenter', 'info');
+        const factureId = id || this.factureEnEdition?.id;
+        if (!factureId) return;
+
+        try {
+            const result = await window.api.factures.invoke('envoyer', parseInt(factureId));
+            if (result?.success) {
+                showToast('Facture envoyée par email avec succès', 'success');
+                await this.loadFactures();
+            } else {
+                showToast(result?.error || 'Erreur lors de l\'envoi', 'error');
+            }
+        } catch (error) {
+            console.error('Erreur envoi facture:', error);
+            showToast('Erreur lors de l\'envoi par email', 'error');
+        }
     }
 
     /**
