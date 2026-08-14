@@ -108,6 +108,9 @@
       <a href="#historique-logins" class="sidebar-link d-none" data-route="historique-logins" id="historiqueLoginsLink">
         <i class="bi bi-clock-history"></i> Historique connexions
       </a>
+      <a href="#audit-log" class="sidebar-link d-none" data-route="audit-log" id="auditLogLink">
+        <i class="bi bi-journal-text"></i> Journal d'audit
+      </a>
 
       <!-- SYNC STATUS -->
       <div class="sidebar-section-label">Synchronisation</div>
@@ -158,6 +161,11 @@
             <li class="text-center text-secondary py-3" id="notifEmpty">Aucune notification</li>
           </ul>
         </div>
+        <!-- Theme toggle -->
+        <button class="btn btn-outline-secondary d-none d-md-inline-flex align-items-center gap-1"
+          id="btnThemeToggle" title="Changer le thème">
+          <i class="bi bi-moon" id="themeIcon"></i>
+        </button>
         <!-- Sync -->
         <button class="btn btn-outline-secondary d-none d-md-inline-flex align-items-center gap-1"
           id="btnSync" title="Synchroniser maintenant">

@@ -710,12 +710,14 @@ class ChantiersController {
       const result = await window.api.chantiers.invoke('list', {
         entrepriseId,
         limit: 1,
-        search: `CHT-${year}`
+        offset: 0,
+        sort: 'id_desc'
       });
 
       const payload = result?.data ?? result;
-      const total = payload?.total ?? result?.total ?? 0;
-      const nextNum = total + 1;
+      const items = Array.isArray(payload?.items) ? payload.items : (Array.isArray(payload) ? payload : []);
+      const maxId = items.length ? Math.max(...items.map(i => i.id || 0)) : 0;
+      const nextNum = maxId + 1;
 
       document.getElementById('chantierNumero').value =
         `CHT-${year}-${String(nextNum).padStart(4, '0')}`;

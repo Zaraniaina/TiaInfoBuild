@@ -188,6 +188,22 @@ class UtilisateurController {
   async delete(event, id) {
     try {
       const result = this.repos.utilisateurs.softDelete(id);
+
+      const user = this.repos.utilisateurs.getById(id);
+      const roleId = user?.roleId;
+      if (roleId !== 1 && this.repos.employes) {
+        try {
+          const employe = db.prepare(
+            'SELECT id FROM Employe WHERE email = ? AND entrepriseId = ? AND is_deleted = 0'
+          ).get(user?.email, user?.entrepriseId);
+          if (employe) {
+            this.repos.employes.softDelete(employe.id);
+          }
+        } catch (empErr) {
+          console.warn('[UtilisateurController] Soft-delete employe failed:', empErr.message);
+        }
+      }
+
       return { success: true, data: result };
     } catch (error) {
       console.error('UtilisateurController.delete error:', error);

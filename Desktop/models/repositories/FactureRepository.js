@@ -67,7 +67,7 @@ class FactureRepository extends BaseRepository {
    * @returns {Array} - Factures échues non payées
    */
   getEnRetard(entrepriseId) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = db.prepare("SELECT date('now', 'localtime') as today").get().today;
     const stmt = db.prepare(`
       SELECT f.*, 
              COALESCE(c.nom, cl.nom) as clientNom, 

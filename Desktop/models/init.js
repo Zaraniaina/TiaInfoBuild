@@ -91,6 +91,8 @@ function initDatabase() {
       derniereConnexion DATETIME,
       must_change_password INTEGER DEFAULT 1,
       credentialsDownloadedAt DATETIME,
+      login_attempts INTEGER DEFAULT 0,
+      locked_until DATETIME,
       is_synced INTEGER DEFAULT 0,
       is_deleted INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -99,6 +101,9 @@ function initDatabase() {
       FOREIGN KEY (roleId) REFERENCES Role(id)
     )
   `).run();
+
+  ensureColumn('Utilisateur', 'login_attempts', 'INTEGER DEFAULT 0');
+  ensureColumn('Utilisateur', 'locked_until', 'DATETIME');
 
   db.prepare(`
     CREATE TABLE IF NOT EXISTS Preference (
@@ -115,6 +120,24 @@ function initDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (userId) REFERENCES Utilisateur(id)
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS AuditLog (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      entrepriseId INTEGER,
+      utilisateurId INTEGER,
+      action TEXT NOT NULL,
+      module TEXT NOT NULL,
+      entityId INTEGER,
+      payload TEXT,
+      dateAction DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (utilisateurId) REFERENCES Utilisateur(id)
     )
   `).run();
 

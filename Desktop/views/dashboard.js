@@ -71,7 +71,7 @@ class DashboardController {
             }
 
             // Logistique
-            if (this.hasRoleAccess(currentRoles, ['ADMIN', 'MAGASINIER', 'RESPONSABLE_MATERIEL', 'CHEF_CHANTIER'])) {
+            if (this.hasRoleAccess(currentRoles, ['ADMIN', 'MAGASINIER', 'MATERIEL', 'CHEF_CHANTIER'])) {
                 rolePromises.push(this.loadLogistiqueStats(entrepriseId));
             }
 
@@ -124,7 +124,7 @@ class DashboardController {
         document.getElementById('cardRHChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'RH', 'DIRECTEUR']));
         document.getElementById('cardCommercialChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'COMMERCIAL', 'DIRECTEUR']));
         document.getElementById('cardCAByMoisChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE']));
-        document.getElementById('cardLogistiqueChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'MAGASINIER', 'RESPONSABLE_MATERIEL', 'CHEF_CHANTIER']));
+        document.getElementById('cardLogistiqueChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'MAGASINIER', 'MATERIEL', 'CHEF_CHANTIER']));
 
         document.querySelector('[data-route="chantiers/nouveau"]')?.classList.toggle('d-none', !showChantiers);
         document.querySelector('[data-route="devis/nouveau"]')?.classList.toggle('d-none', !hasAccess('devis'));
@@ -237,7 +237,7 @@ class DashboardController {
             data: {
                 labels,
                 datasets: [{
-                    label: 'CA (€)',
+                    label: `CA (${window.getCurrencySymbol ? window.getCurrencySymbol() : 'Ar'})`,
                     data: values,
                     borderColor: '#0d6efd',
                     backgroundColor: 'rgba(13, 110, 253, 0.1)',
