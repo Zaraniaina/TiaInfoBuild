@@ -53,7 +53,7 @@ class LigneDevisRepository extends BaseRepository {
    * @returns {Array} - Lignes finales
    */
   remplacerLignes(devisId, lignes) {
-    return db.transaction(() => {
+    const transaction = db.transaction(() => {
       // Soft delete anciennes lignes
       db.prepare('UPDATE LigneDevis SET is_deleted = 1, is_synced = 0 WHERE devisId = ? AND is_deleted = 0')
         .run(devisId);
@@ -76,6 +76,7 @@ class LigneDevisRepository extends BaseRepository {
 
       return nouvelles;
     });
+    return transaction();
   }
 
   /**

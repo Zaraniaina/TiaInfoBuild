@@ -52,6 +52,7 @@ const AuditController = require('./controllers/auditController')
 
 // Services
 const SyncService = require('./services/syncService')
+const { sendInvoiceEmail } = require('./services/emailService')
 
 // Instanciation unique de tous les repositories
 const repos = {
@@ -210,7 +211,10 @@ function secureHandle(channel, allowedRoles, handler) {
       'chantiers:create', 'chantiers:update', 'chantiers:delete',
       'depenses:create', 'depenses:update', 'depenses:delete',
       'factures:create', 'factures:update', 'factures:delete',
-      'entreprises:update'
+      'factures:ajouterPaiement', 'factures:envoyer', 'factures:dupliquer',
+      'entreprises:update',
+      'photos:create', 'photos:delete',
+      'backup:import', 'backup:restore', 'backup:delete'
     ];
 
     if (auditChannels.includes(channel)) {
@@ -307,7 +311,7 @@ secureHandle('entreprises:get', ['ADMIN', 'DIRECTEUR'], (e, id) => {
 })
 secureHandle('entreprises:update', rolesAdminDg, (e, id, data) => {
   try {
-    const allowed = ['nom','nomCommercial','siret','numeroTVA','codeAPE','adresse','codePostal','ville','telephone','email','siteWeb','prefixeDevis','prefixeFacture','prefixeContrat','tvaDefaut','delaiPaiementDefaut','validiteDevis','mentionsLegales','devise']
+    const allowed = ['nom','nomCommercial','siret','numeroTVA','codeAPE','adresse','codePostal','ville','telephone','email','siteWeb','prefixeDevis','prefixeFacture','prefixeContrat','tvaDefaut','delaiPaiementDefaut','validiteDevis','mentionsLegales','devise','smtpHost','smtpPort','smtpUser','smtpPass','smtpFrom','smtpSecure']
     const fields = Object.keys(data).filter(k => allowed.includes(k))
     if (fields.length === 0) return { success: true }
     const setClause = fields.map(f => `${f} = @${f}`).join(', ')
@@ -490,6 +494,83 @@ secureHandle('factures:update', rolesCommercialWrite, (e, id, data) => commercia
 secureHandle('factures:delete', rolesCommercialWrite, (e, id) => commercialCtrl.deleteFacture(e, id))
 secureHandle('factures:enRetard', rolesCommercial, (e, entrepriseId) => commercialCtrl.getFacturesEnRetard(e, entrepriseId))
 secureHandle('factures:ajouterPaiement', rolesCommercialWrite, (e, factureId, data) => commercialCtrl.ajouterPaiementFacture(e, factureId, data))
+secureHandle('factures:envoyer', ['ADMIN', 'COMMERCIAL', 'COMPTABLE'], async (e, factureId) => {
+  try {
+    const facture = repos.factures.getWithPaiements(factureId);
+    if (!facture) return { success: false, error: 'Facture non trouvée' };
+
+    const entreprise = db.prepare('SELECT * FROM Entreprise WHERE id = ?').get(facture.entrepriseId);
+    const client = db.prepare('SELECT * FROM Client WHERE id = ?').get(facture.clientId);
+
+    if (!client?.email) return { success: false, error: 'Le client n\'a pas d\'adresse email' };
+
+    const smtpConfig = {
+      host: entreprise?.smtpHost,
+      port: entreprise?.smtpPort || 587,
+      user: entreprise?.smtpUser,
+      pass: entreprise?.smtpPass,
+      from: entreprise?.smtpFrom || entreprise?.email,
+      secure: entreprise?.smtpSecure === 1
+    };
+
+    if (!smtpConfig.host) return { success: false, error: 'Configuration SMTP manquante. Veuillez configurer les paramètres SMTP dans les paramètres de l\'entreprise.' };
+
+    const html = `
+      <h2>Facture ${facture.numero}</h2>
+      <p>Bonjour,</p>
+      <p>Veuillez trouver ci-joint votre facture ${facture.numero} d'un montant de ${(facture.montantTTC || 0).toFixed(2)}.</p>
+      <p>Date d'émission: ${facture.dateEmission}</p>
+      <p>Date d'échéance: ${facture.dateEcheance}</p>
+      <p>Cordialement,<br>${entreprise?.nom || 'TIA INFO BUILD'}</p>
+    `;
+
+    const pdfWindow = new BrowserWindow({ show: false });
+    const pdfData = await pdfWindow.webContents.printToPDF({});
+    pdfWindow.close();
+
+    await sendInvoiceEmail({
+      to: client.email,
+      subject: `Facture ${facture.numero} - ${entreprise?.nom || 'TIA INFO BUILD'}`,
+      html,
+      pdfBuffer: Buffer.from(pdfData),
+      pdfFilename: `facture_${facture.numero}.pdf`,
+      smtpConfig
+    });
+
+    return { success: true, message: 'Facture envoyée par email' };
+  } catch (error) {
+    console.error('factures:envoyer error:', error);
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('factures:dupliquer', rolesCommercialWrite, async (e, factureId) => {
+  try {
+    const facture = repos.factures.getById(factureId);
+    if (!facture) return { success: false, error: 'Facture non trouvée' };
+
+    const year = new Date().getFullYear();
+    const countResult = db.prepare('SELECT COUNT(*) as count FROM Facture WHERE entrepriseId = ? AND numero LIKE ?').get(facture.entrepriseId, `FAC-${year}-%`);
+    const nextNum = (countResult?.count || 0) + 1;
+    const newNumero = `FAC-${year}-${String(nextNum).padStart(5, '0')}`;
+
+    const newFacture = repos.factures.create({
+      ...facture,
+      id: undefined,
+      numero: newNumero,
+      dateCreation: new Date().toISOString().split('T')[0],
+      dateEmission: new Date().toISOString().split('T')[0],
+      dateEcheance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      statut: 'brouillon',
+      montantPaye: 0,
+      is_synced: 0
+    });
+
+    return { success: true, data: newFacture };
+  } catch (error) {
+    console.error('factures:dupliquer error:', error);
+    return { success: false, error: error.message };
+  }
+})
 
 secureHandle('paiements:byFacture', rolesCommercial, (e, id) => commercialCtrl.getPaiementsByFacture(e, id))
 secureHandle('paiements:list', rolesCommercial, (e, params) => safeRepo(() => repos.paiements.list(params)))

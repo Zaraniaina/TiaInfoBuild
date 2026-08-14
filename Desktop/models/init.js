@@ -53,6 +53,12 @@ function initDatabase() {
       delaiPaiementDefaut TEXT DEFAULT '30 jours',
       validiteDevis INTEGER DEFAULT 30,
       mentionsLegales TEXT,
+      smtpHost TEXT,
+      smtpPort INTEGER DEFAULT 587,
+      smtpUser TEXT,
+      smtpPass TEXT,
+      smtpFrom TEXT,
+      smtpSecure INTEGER DEFAULT 1,
       dateCreation DATETIME DEFAULT CURRENT_TIMESTAMP,
       is_synced INTEGER DEFAULT 0,
       is_deleted INTEGER DEFAULT 0,
@@ -996,6 +1002,14 @@ function initDatabase() {
   ensureColumn('Contrat', 'garantieMois', 'INTEGER DEFAULT 0');
   ensureColumn('Contrat', 'objet', 'TEXT');
   ensureColumn('Contrat', 'notes', 'TEXT');
+
+  // MIGRATIONS SPECIFIQUES - TABLE ENTREPRISE (SMTP)
+  ensureColumn('Entreprise', 'smtpHost', 'TEXT');
+  ensureColumn('Entreprise', 'smtpPort', 'INTEGER DEFAULT 587');
+  ensureColumn('Entreprise', 'smtpUser', 'TEXT');
+  ensureColumn('Entreprise', 'smtpPass', 'TEXT');
+  ensureColumn('Entreprise', 'smtpFrom', 'TEXT');
+  ensureColumn('Entreprise', 'smtpSecure', 'INTEGER DEFAULT 1');
 
   // MIGRATIONS SPECIFIQUES - TABLE FACTURE
   ensureColumn('Facture', 'clientId', 'INTEGER');
