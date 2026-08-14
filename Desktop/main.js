@@ -147,14 +147,14 @@ function safeRepo(fn) {
 // ============================================================
 const ROLE_CODE_ALIASES = {
   ADMIN: ['admin', 'administrateur', 'entreprise'],
-  DIRECTEUR: ['direction', 'daf', 'directeur'],
+  DIRECTEUR: ['direction', 'daf', 'directeur', 'direction générale'],
   COMPTABLE: ['comptable', 'finance'],
   RH: ['rh', 'responsable rh', 'responsable_rh'],
-  MATERIEL: ['materiel', 'responsable materiel', 'responsable_materiel', 'logisticien'],
+  MATERIEL: ['materiel', 'logisticien'],
   MAGASINIER: ['magasinier', 'stock'],
   COMMERCIAL: ['commercial'],
   CHEF_CHANTIER: ['chef de chantier', 'conducteur', 'chef_chantier'],
-  CHEF_PROJET: ['chef de projet', 'chef_projet']
+  CHEF_PROJET: ['chef de projet', 'chef_projet', 'directeur technique']
 };
 
 function normalizeRoleCode(rawRole) {
@@ -558,58 +558,69 @@ secureHandle('loginHistory:list', ['ADMIN', 'DIRECTEUR'], (e, params) => safeRep
 // ============================================================
 // SYNCHRONISATION
 // ============================================================
-ipcMain.handle('sync:getConfig', (e) => syncCtrl.getConfig(e))
-ipcMain.handle('sync:setConfig', (e, config) => syncCtrl.setConfig(e, config))
-ipcMain.handle('sync:getHistory', (e, limit) => syncCtrl.getHistory(e, limit))
-ipcMain.handle('sync:getStatus', (e) => syncCtrl.getStatus(e))
-ipcMain.handle('sync:status', () => syncService.getStatus())
-ipcMain.handle('sync:push', () => syncCtrl.push())
-ipcMain.handle('sync:pull', () => syncCtrl.pull())
-ipcMain.handle('sync:testConnection', (e) => syncCtrl.testConnection(e))
-ipcMain.handle('sync:syncNow', (e) => syncCtrl.syncNow(e))
-ipcMain.handle('sync:setAutoConfig', (e, config) => syncCtrl.setAutoConfig(e, config))
+secureHandle('sync:getConfig', ['ADMIN', 'DIRECTEUR'], (e) => syncCtrl.getConfig(e))
+secureHandle('sync:setConfig', ['ADMIN'], (e, config) => syncCtrl.setConfig(e, config))
+secureHandle('sync:getHistory', ['ADMIN', 'DIRECTEUR'], (e, limit) => syncCtrl.getHistory(e, limit))
+secureHandle('sync:getStatus', ['ADMIN', 'DIRECTEUR'], (e) => syncCtrl.getStatus(e))
+secureHandle('sync:status', ['ADMIN', 'DIRECTEUR'], () => syncService.getStatus())
+secureHandle('sync:push', ['ADMIN'], () => syncCtrl.push())
+secureHandle('sync:pull', ['ADMIN'], () => syncCtrl.pull())
+secureHandle('sync:testConnection', ['ADMIN'], (e) => syncCtrl.testConnection(e))
+secureHandle('sync:syncNow', ['ADMIN'], (e) => syncCtrl.syncNow(e))
+secureHandle('sync:setAutoConfig', ['ADMIN'], (e, config) => syncCtrl.setAutoConfig(e, config))
 
 // ============================================================
 // PRÉFÉRENCES UTILISATEUR
 // ============================================================
-ipcMain.handle('preferences:get', (e, userId) => safeRepo(() => {
-  const row = db.prepare('SELECT * FROM Preference WHERE userId = ?').get(userId)
-  return row || {}
-}))
-ipcMain.handle('preferences:update', (e, userId, data) => safeRepo(() => {
-  const existing = db.prepare('SELECT id FROM Preference WHERE userId = ?').get(userId)
-  if (existing) {
-    db.prepare(`
-      UPDATE Preference 
-      SET theme = @theme, langue = @langue, dateFormat = @dateFormat, devise = @devise,
-          notifEmail = @notifEmail, notifPush = @notifPush, 
-          notifFacturesRetard = @notifFacturesRetard, notifStockBas = @notifStockBas
-      WHERE userId = @userId
-    `).run({ ...data, userId })
-  } else {
-    db.prepare(`
-      INSERT INTO Preference (
-        userId, theme, langue, dateFormat, devise, 
-        notifEmail, notifPush, notifFacturesRetard, notifStockBas
-      ) VALUES (
-        @userId, @theme, @langue, @dateFormat, @devise, 
-        @notifEmail, @notifPush, @notifFacturesRetard, @notifStockBas
-      )
-    `).run({ ...data, userId })
+secureHandle('preferences:get', ['ADMIN', 'RH'], async (e, userId) => {
+  if (userId !== _session.id && !['ADMIN', 'RH'].includes(getSessionRoles()[0])) {
+    return { success: false, error: 'Accès refusé' };
   }
-  return data
-}))
+  return safeRepo(() => {
+    const row = db.prepare('SELECT * FROM Preference WHERE userId = ?').get(userId)
+    return row || {}
+  })
+})
+secureHandle('preferences:update', ['ADMIN', 'RH'], async (e, userId, data) => {
+  if (userId !== _session.id && !['ADMIN', 'RH'].includes(getSessionRoles()[0])) {
+    return { success: false, error: 'Accès refusé' };
+  }
+  return safeRepo(() => {
+    const existing = db.prepare('SELECT id FROM Preference WHERE userId = ?').get(userId)
+    if (existing) {
+      db.prepare(`
+        UPDATE Preference 
+        SET theme = @theme, langue = @langue, dateFormat = @dateFormat, devise = @devise,
+            notifEmail = @notifEmail, notifPush = @notifPush, 
+            notifFacturesRetard = @notifFacturesRetard, notifStockBas = @notifStockBas
+        WHERE userId = @userId
+      `).run({ ...data, userId })
+    } else {
+      db.prepare(`
+        INSERT INTO Preference (
+          userId, theme, langue, dateFormat, devise, 
+          notifEmail, notifPush, notifFacturesRetard, notifStockBas
+        ) VALUES (
+          @userId, @theme, @langue, @dateFormat, @devise, 
+          @notifEmail, @notifPush, @notifFacturesRetard, @notifStockBas
+        )
+      `).run({ ...data, userId })
+    }
+    return data
+  })
+})
 
 // ============================================================
 // BACKUP
 // ============================================================
-ipcMain.handle('backup:exportSQLite', async () => {
+const backupRoles = ['ADMIN', 'DIRECTEUR'];
+secureHandle('backup:exportSQLite', backupRoles, async () => {
   try {
     const data = fs.readFileSync(dbPath)
     return new Uint8Array(data)
   } catch (err) { throw err }
 })
-ipcMain.handle('backup:exportSQL', async () => {
+secureHandle('backup:exportSQL', backupRoles, async () => {
   try {
     const tables = db.prepare("SELECT name, sql FROM sqlite_master WHERE type='table'").all()
     let sql = ''
@@ -617,13 +628,13 @@ ipcMain.handle('backup:exportSQL', async () => {
     return new Uint8Array(Buffer.from(sql))
   } catch (err) { throw err }
 })
-ipcMain.handle('backup:list', () => {
+secureHandle('backup:list', backupRoles, () => {
   try {
     if (!fs.existsSync(backupsDir)) return []
     return fs.readdirSync(backupsDir).map(f => ({ fichier: f, date: fs.statSync(path.join(backupsDir, f)).mtime, taille: fs.statSync(path.join(backupsDir, f)).size }))
   } catch { return [] }
 })
-ipcMain.handle('backup:import', async (e, data) => {
+secureHandle('backup:import', backupRoles, async (e, data) => {
   try {
     if (!fs.existsSync(backupsDir)) fs.mkdirSync(backupsDir, { recursive: true })
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0] + '_' + new Date().toISOString().replace(/[:.]/g, '-').split('T')[1].slice(0, 8)
@@ -632,7 +643,7 @@ ipcMain.handle('backup:import', async (e, data) => {
     return { success: true, filename }
   } catch (err) { throw err }
 })
-ipcMain.handle('backup:download', (e, filename) => {
+secureHandle('backup:download', backupRoles, (e, filename) => {
   try {
     const filePath = path.join(backupsDir, filename)
     if (!fs.existsSync(filePath)) throw new Error('Fichier introuvable')
@@ -640,7 +651,7 @@ ipcMain.handle('backup:download', (e, filename) => {
     return new Uint8Array(data)
   } catch (err) { throw err }
 })
-ipcMain.handle('backup:restore', async (e, filename) => {
+secureHandle('backup:restore', backupRoles, async (e, filename) => {
   try {
     const src = path.join(backupsDir, filename)
     if (!fs.existsSync(src)) throw new Error('Fichier introuvable')
@@ -648,14 +659,14 @@ ipcMain.handle('backup:restore', async (e, filename) => {
     return { success: true }
   } catch (err) { throw err }
 })
-ipcMain.handle('backup:delete', (e, filename) => {
+secureHandle('backup:delete', backupRoles, (e, filename) => {
   try {
     const filePath = path.join(backupsDir, filename)
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
     return { success: true }
   } catch (err) { throw err }
 })
-ipcMain.handle('backup:setAutoConfig', (e, config) => {
+secureHandle('backup:setAutoConfig', backupRoles, (e, config) => {
   try {
     const configPath = path.join(app.getPath('userData'), 'backup-config.json')
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
@@ -675,6 +686,7 @@ secureHandle('audit:byUtilisateur', ['ADMIN', 'DIRECTEUR'], (e, entrepriseId, ut
 // ============================================================
 const allRoles = ['ADMIN', 'DIRECTEUR', 'COMPTABLE', 'RH', 'CHEF_CHANTIER', 'CHEF_PROJET', 'MATERIEL', 'MAGASINIER', 'COMMERCIAL'];
 const rolesAlertesWrite = ['ADMIN', 'DIRECTEUR', 'COMPTABLE'];
+const rolesAlertesDelete = ['ADMIN', 'DIRECTEUR', 'COMPTABLE'];
 secureHandle('alertes:list',           allRoles, (e, p) => alerteCtrl.getList(e, p))
 secureHandle('alertes:nonLues',        allRoles, (e, entId, limit) => alerteCtrl.getNonLues(e, entId, limit, getSessionRoles()[0]))
 secureHandle('alertes:countNonLues',   allRoles, (e, entId) => alerteCtrl.countNonLues(e, entId))
@@ -683,7 +695,7 @@ secureHandle('alertes:marquerLue',     allRoles, (e, id) => alerteCtrl.marquerLu
 secureHandle('alertes:markAllAsRead',  allRoles, (e, entId) => alerteCtrl.markAllAsRead(e, entId))
 secureHandle('alertes:marquerToutesLues', allRoles, (e, entId) => alerteCtrl.markAllAsRead(e, entId))
 secureHandle('alertes:creer',          rolesAlertesWrite, (e, data) => alerteCtrl.creer(e, data))
-secureHandle('alertes:delete',         allRoles, (e, id) => alerteCtrl.deleteAlerte(e, id))
+secureHandle('alertes:delete',         rolesAlertesDelete, (e, id) => alerteCtrl.deleteAlerte(e, id))
 
 
 

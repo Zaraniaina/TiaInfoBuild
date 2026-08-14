@@ -6,6 +6,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const backendPermissionsPath = path.join(root, 'shared', 'permissions.js');
 const frontendPermissionsPath = path.join(root, 'views', 'layout.js');
+const mainJsPath = path.join(root, 'main.js');
 
 function extractBackendPermissions() {
   const content = fs.readFileSync(backendPermissionsPath, 'utf8');
@@ -26,6 +27,19 @@ function extractFrontendRoleRoutes() {
   const match = content.match(/const ROLE_ROUTES = ({[\s\S]*?};)/);
   if (!match) throw new Error('ROLE_ROUTES object not found in views/layout.js');
   return match[1];
+}
+
+function extractMainJsSecureHandles() {
+  const content = fs.readFileSync(mainJsPath, 'utf8');
+  const matches = content.matchAll(/secureHandle\('([^']+)',\s*\[([^\]]+)\]|secureHandle\('([^']+)',\s*([A-Za-z0-9_]+)/g);
+  const channels = [];
+  for (const m of matches) {
+    const channel = m[1] || m[3];
+    const rolesStr = m[2] || m[4];
+    const roles = rolesStr.split(',').map(r => r.trim().replace(/['"]/g, ''));
+    channels.push({ channel, roles });
+  }
+  return channels;
 }
 
 function normalizeRole(role) {
@@ -77,7 +91,10 @@ function checkPermissionConsistency() {
       const backendReadRoles = readMatch ? extractRolesFromString(readMatch[0]) : [];
       const backendWriteRoles = writeMatch ? extractRolesFromString(writeMatch[0]) : [];
 
-      const expectedBackend = action === 'list' || action === 'get' ? backendReadRoles : backendWriteRoles;
+      let expectedBackend = backendReadRoles;
+      if (action === 'create' || action === 'update' || action === 'delete') {
+        expectedBackend = backendWriteRoles;
+      }
 
       const normalizedFrontend = frontendRoles.map(normalizeRole);
       const normalizedBackend = expectedBackend.map(normalizeRole);
@@ -113,6 +130,50 @@ function checkPermissionConsistency() {
     console.log(`⚠️  ${warnings.length} avertissement(s) :\n`);
     warnings.forEach(w => console.log('  - ' + w));
     console.log();
+  }
+
+  return errors.length === 0 ? 0 : 1;
+}
+
+function checkMainJsSecureHandles() {
+  console.log('🔍 Vérification de la cohérence des canaux secureHandle dans main.js...\n');
+
+  const mainChannels = extractMainJsSecureHandles();
+  const frontendSource = extractFrontendPermissionMap();
+  const frontendKeys = (frontendSource.match(/\b'([^']+)':\s*\[/g) || []).map(m => m.replace(/\s*\[/g, '').replace(/'/g, '').trim());
+
+  const errors = [];
+  const warnings = [];
+
+  const frontendModules = new Set(frontendKeys.map(k => k.split(':')[0]));
+
+  for (const { channel, roles } of mainChannels) {
+    const [module] = channel.split(':');
+    if (!frontendModules.has(module)) {
+      warnings.push(`Canal backend "${channel}" sans module frontend correspondant`);
+      continue;
+    }
+
+    const frontendMatch = frontendSource.match(new RegExp(`'${module}:\\*':\\s*\\[[\\s\\S]*?\\]`));
+    if (!frontendMatch) {
+      warnings.push(`Canal backend "${channel}" sans entrée générique frontend correspondante`);
+      continue;
+    }
+  }
+
+  if (errors.length === 0 && warnings.length === 0) {
+    console.log('✅ Tous les canaux secureHandle ont un équivalent frontend.\n');
+  } else {
+    if (errors.length > 0) {
+      console.log(`❌ ${errors.length} erreur(s) :\n`);
+      errors.forEach(e => console.log('  - ' + e));
+      console.log();
+    }
+    if (warnings.length > 0) {
+      console.log(`⚠️  ${warnings.length} avertissement(s) :\n`);
+      warnings.forEach(w => console.log('  - ' + w));
+      console.log();
+    }
   }
 
   return errors.length === 0 ? 0 : 1;
@@ -155,6 +216,7 @@ function checkRoleRoutesConsistency() {
 }
 
 const exitCode = checkPermissionConsistency();
+const mainJsExitCode = checkMainJsSecureHandles();
 const routesExitCode = checkRoleRoutesConsistency();
 
-process.exit(Math.max(exitCode, routesExitCode));
+process.exit(Math.max(exitCode, mainJsExitCode, routesExitCode));

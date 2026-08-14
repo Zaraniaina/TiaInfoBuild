@@ -62,7 +62,7 @@ const ROLE_ROUTES = {
   ADMIN: ['dashboard', 'parametres', 'historique-logins', 'audit-log'],
   DIRECTEUR: ['dashboard', 'chantiers', 'finances', 'depenses', 'rapports', 'alertes', 'employes', 'pointages', 'equipes', 'materiels', 'fournisseurs', 'clients', 'devis', 'contrats', 'factures', 'historique-logins', 'audit-log', 'parametres'],
   CHEF_CHANTIER: ['dashboard', 'chantiers', 'employes', 'pointages', 'equipes', 'heures-sup', 'materiels', 'stocks', 'fournisseurs', 'mouvements', 'depenses', 'alertes', 'parametres'],
-  CHEF_PROJET: ['dashboard', 'chantiers', 'alertes', 'pointages', 'employes', 'equipes', 'parametres'],
+  CHEF_PROJET: ['dashboard', 'chantiers', 'alertes', 'pointages', 'employes', 'equipes', 'heures-sup', 'materiels', 'depenses', 'parametres'],
   COMPTABLE: ['dashboard', 'finances', 'depenses', 'rapports', 'alertes', 'factures', 'paiements', 'clients', 'contrats', 'fournisseurs', 'employes', 'pointages', 'equipes', 'devis', 'parametres'],
   RH: ['dashboard', 'employes', 'pointages', 'equipes', 'heures-sup', 'parametres'],
   MATERIEL: ['dashboard', 'materiels', 'alertes', 'chantiers', 'parametres'],
@@ -71,9 +71,9 @@ const ROLE_ROUTES = {
 };
 
 const PERMISSION_MAP = {
-  'chantiers:create': ['ADMIN', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMMERCIAL'],
-  'chantiers:update': ['ADMIN', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMMERCIAL'],
-  'chantiers:delete': ['ADMIN', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMMERCIAL'], 
+  'chantiers:create': ['ADMIN', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'],
+  'chantiers:update': ['ADMIN', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'],
+  'chantiers:delete': ['ADMIN', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'], 
   'employes:list': ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'],
   'employes:get': ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'],
   'employes:create': ['ADMIN', 'RH'],
@@ -102,7 +102,7 @@ const PERMISSION_MAP = {
   'mouvements:list': ['ADMIN', 'MAGASINIER', 'CHEF_CHANTIER'],
   'mouvements:create': ['ADMIN', 'MAGASINIER'],
   'mouvements:delete': ['ADMIN', 'MAGASINIER'],
-  'materiels:list': ['ADMIN', 'MATERIEL', 'CHEF_CHANTIER'],
+  'materiels:list': ['ADMIN', 'MATERIEL', 'CHEF_CHANTIER', 'CHEF_PROJET'],
   'materiels:create': ['ADMIN', 'MATERIEL'],
   'materiels:update': ['ADMIN', 'MATERIEL'],
   'materiels:delete': ['ADMIN', 'MATERIEL'],
@@ -122,15 +122,17 @@ const PERMISSION_MAP = {
   'factures:update': ['ADMIN', 'COMMERCIAL'], 
   'factures:dupliquer': ['ADMIN', 'COMMERCIAL'],
   'factures:envoyer': ['ADMIN', 'COMMERCIAL'],
-  'paiements:list': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
+  'paiements:list': ['ADMIN', 'COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'],
   'paiements:create': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
+  'paiements:update': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
+  'paiements:delete': ['ADMIN', 'COMPTABLE'],
   'utilisateurs:list': ['ADMIN'],
   'utilisateurs:create': ['ADMIN'],
   'utilisateurs:update': ['ADMIN'],
   'utilisateurs:delete': ['ADMIN'],
   'entreprises:update': ['ADMIN'],
   'depenses:list': ['ADMIN', 'COMPTABLE', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'],
-  'depenses:create': ['ADMIN', 'COMPTABLE', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'],
+  'depenses:create': ['ADMIN', 'COMPTABLE', 'DIRECTEUR'],
   'depenses:update': ['ADMIN', 'COMPTABLE', 'DIRECTEUR'],
   'depenses:delete': ['ADMIN', 'COMPTABLE', 'DIRECTEUR'],
   'factures:ajouterPaiement': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
@@ -148,7 +150,7 @@ const ROLE_CODE_ALIASES = {
   DIRECTEUR: ['direction', 'daf', 'directeur', 'direction générale'],
   COMPTABLE: ['comptable', 'finance', 'responsable financier'],
   RH: ['rh', 'responsable rh', 'responsablerh', 'responsable rh'],
-  MATERIEL: ['materiel', 'responsable materiel', 'responsable_materiel', 'logisticien'],
+  MATERIEL: ['materiel', 'logisticien'],
   MAGASINIER: ['magasinier', 'stock', 'magasin'],
   COMMERCIAL: ['commercial', 'responsable commercial'],
   CHEF_CHANTIER: ['chef de chantier', 'conducteur', 'chef_chantier', 'chef chantier'],
@@ -189,8 +191,27 @@ function isRoleAllowed(allowedRoles, currentRoles) {
 function hasPermission(action, module) {
   const permissionKey = `${module}:${action}`;
   const currentRoles = getCurrentRoleCodes();
-  const allowed = PERMISSION_MAP[permissionKey];
-  return isRoleAllowed(allowed, currentRoles);
+  
+  const directMatch = PERMISSION_MAP[permissionKey];
+  if (directMatch) {
+    return isRoleAllowed(directMatch, currentRoles);
+  }
+  
+  const readKey = `${module}:list`;
+  const writeActions = ['create', 'update', 'delete'];
+  let fallbackKey = null;
+  if (writeActions.includes(action)) {
+    fallbackKey = `${module}:create`;
+  } else {
+    fallbackKey = readKey;
+  }
+  
+  const fallbackMatch = PERMISSION_MAP[fallbackKey];
+  if (fallbackMatch) {
+    return isRoleAllowed(fallbackMatch, currentRoles);
+  }
+  
+  return false;
 }
 
 // État global
