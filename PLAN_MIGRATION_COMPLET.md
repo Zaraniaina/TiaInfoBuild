@@ -6,7 +6,7 @@
 ## 1. RÉSUMÉ DU PROJET
 
 **Objectif** : Recréer à 100% l'application Desktop Electron TiaInfoBuild en application web avec:
-- **Backend**: FastAPI + SQLAlchemy + Alembic + PostgreSQL
+- **Backend**: FastAPI + SQLAlchemy + Alembic + MySQL
 - **Frontend**: React 19 + TypeScript + Vite + Bootstrap 5 + Chart.js
 - **Auth**: JWT Access Token + Refresh Token (rotation)
 - **Nouveau rôle**: Super Admin (propriétaire SaaS qui gère les entreprises/clientes)
@@ -28,7 +28,7 @@
 | Backend API | FastAPI 0.141 | Performances async, auto OpenAPI, typage fort |
 | ORM | SQLAlchemy 2.0 async | Support async natif, Alembic, mature |
 | Migrations | Alembic 1.19 | Versioning schéma base |
-| Base de données | PostgreSQL 16 | ACID, JSONB, performant multi-tenant |
+| Base de données | MySQL 8.0 | ACID, JSON column, performant multi-tenant, local |
 | Auth | JWT + Refresh Token | PyJWT, rotation, sécurisé |
 | Frontend | React 19 + TS | Hooks, Server Components |
 | Build | Vite 8 | HMR rapide, ESM natif |
@@ -206,7 +206,6 @@ Web/backend/
 ├── requirements-dev.txt
 ├── .env.example
 ├── .env
-├── Dockerfile
 └── run.py                      # Lanceur manuel uvicorn
 ```
 
@@ -651,25 +650,25 @@ Le fichier `alembic/versions/001_initial_schema.py` contiendra la création comp
 
 ---
 
-## 6. PLAN DE MIGRATION DES DONNÉES (SQLite → PostgreSQL)
+## 6. PLAN DE MIGRATION DES DONNÉES (SQLite → MySQL)
 
 ### 6.1 Script: `app/scripts/migrate_sqlite.py`
 
 ```python
 """
-Script de migration des données du Desktop (SQLite) vers la Web (PostgreSQL).
+Script de migration des données du Desktop (SQLite) vers la Web (MySQL).
 
 Étapes:
 1. Lire le fichier Desktop/tia_info_build.sqlite
 2. Transformer les données (mapping colonnes, rôles)
-3. Insérer dans la base PostgreSQL web
+3. Insérer dans la base MySQL web
 4. Logs détaillés
 """
 ```
 
-### 6.2 Mapping Colonnes SQLite → PostgreSQL
+### 6.2 Mapping Colonnes SQLite → MySQL
 
-| Table SQLite | Table PostgreSQL | Mapping Colonnes |
+| Table SQLite | Table MySQL | Mapping Colonnes |
 |--------------|------------------|-----------------|
 | Utilisateur | utilisateurs | id→id (réattribué), email→email, motDePasseHash→mot_de_passe_hash, roleId→role_id, entrepriseId→entreprise_id, is_deleted→is_deleted, createdAt→created_at, updatedAt→updated_at, dateCreation→date_creation, derniereConnexion→derniere_connexion, statut→statut, telephone→telephone, nom→nom, prenom→prenom |
 | Role | roles | id→id, nom→nom, code→code, permissions→permissions (JSON) |
@@ -969,12 +968,12 @@ src/utils/format.ts, export.ts
 fastapi==0.141.1
 uvicorn[standard]==0.30.6
 SQLAlchemy==2.0.52
-psycopg[binary]==3.2.5
+aiomysql==0.2.0
 alembic==1.19.1
 python-jose[cryptography]==3.3.2
 PyJWT==2.13.0
 pwdlib[argon2]==0.2.1
-python-multipart==0.0.00.00.32
+python-multipart==0.0.0.32
 email-validator==2.3.0
 python-rapidjson==1.20.1
 pydantic==2.13.4
@@ -1042,16 +1041,17 @@ pip install -r requirements.txt
 pip install -r requirements-dev.txt
 
 # Config .env (copie depuis .env.example)
-# DATABASE_URL=postgresql+asyncpg://tia_user:tia_password@localhost:5432/tia_build_db
+# DATABASE_URL=mysql+aiomysql://tia_user:tia_password@localhost:3306/tia_build_db
 # SECRET_KEY=<generer avec: python -c "import secrets; print(secrets.token_urlsafe(32))">
 # ALGORITHM=HS256
 # ACCESS_TOKEN_EXPIRE_MINUTES=15
 # REFRESH_TOKEN_EXPIRE_DAYS=7
 
-# Créer la base PostgreSQL (via pgAdmin ou psql)
-# psql -U postgres -c "CREATE DATABASE tia_build_db;"
-# psql -U postgres -c "CREATE USER tia_user WITH PASSWORD 'tia_password';"
-# psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE tia_build_db TO tia_user;"
+# Créer la base MySQL (via MySQL Workbench, phpMyAdmin ou mysql CLI)
+# mysql -u root -p -e "CREATE DATABASE tia_build_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+# mysql -u root -p -e "CREATE USER 'tia_user'@'localhost' IDENTIFIED BY 'tia_password';"
+# mysql -u root -p -e "GRANT ALL PRIVILEGES ON tia_build_db.* TO 'tia_user'@'localhost';"
+# mysql -u root -p -e "FLUSH PRIVILEGES;"
 
 # Migrations
 alembic upgrade head
@@ -1115,7 +1115,24 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 | Risque | Mitigation |
 |--------|------------|
-| PostgreSQL non installé | Fournir Docker Compose pour PostgreSQL |
+| MySQL 8.0 non installé | MySQL installé localement (sans Docker) — Télécharger depuis https://dev.mysql.com/downloads/ |
+
+### Services externes (à installer localement)
+
+```bash
+# 1. Installer MySQL 8.0
+# Télécharger depuis https://dev.mysql.com/downloads/mysql/
+# Ou via l'installateur MySQL Installer
+
+# 2. Démarrer le service MySQL
+# Via MySQL Workbench ou services Windows
+
+# 3. Créer la base et l'utilisateur
+# mysql -u root -p -e "CREATE DATABASE tia_build_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+# mysql -u root -p -e "CREATE USER 'tia_user'@'localhost' IDENTIFIED BY 'tia_password';"
+# mysql -u root -p -e "GRANT ALL PRIVILEGES ON tia_build_db.* TO 'tia_user'@'localhost';"
+# mysql -u root -p -e "FLUSH PRIVILEGES;"
+```
 | Différences schema Desktop ↔ Web | Script de mapping + logs détaillés |
 | Auth JWT complexe | Implémenté token rotation + refresh auto frontend |
 | RBAC UI (data-permission) | Component PermissionGuard + hooks usePermissions |
@@ -1125,41 +1142,16 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 | Différence UI Desktop ↔ Web | Design system CSS identique + composants matchés |
 | Super admin entreprise_id NULL | Gérer NULL dans tous les queries multi-tenant |
 
-### Docker Compose (fichier à créer)
-```yaml
-# Web/docker-compose.yml
-services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: tia_build_db
-      POSTGRES_USER: tia_user
-      POSTGRES_PASSWORD: tia_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-  
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
+### MySQL Installation (au lieu de Docker Compose)
 
-  backend:
-    build: ./backend
-    env_file: ./backend/.env
-    ports:
-      - "8000:8000"
-    depends_on: [db, redis]
-
-  frontend:
-    build: ./frontend
-    ports:
-      - "5173:80"
-    depends_on: [backend]
-
-volumes:
-  postgres_data:
+```bash
+# 1. Installer MySQL 8.0 depuis https://dev.mysql.com/downloads/mysql/
+# 2. Démarrer le service MySQL
+# 3. Créer la base et l'utilisateur
+# mysql -u root -p -e "CREATE DATABASE tia_build_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+# mysql -u root -p -e "CREATE USER 'tia_user'@'localhost' IDENTIFIED BY 'tia_password';"
+# mysql -u root -p -e "GRANT ALL PRIVILEGES ON tia_build_db.* TO 'tia_user'@'localhost';"
+# mysql -u root -p -e "FLUSH PRIVILEGES;"
 ```
 
 ---
@@ -1182,11 +1174,34 @@ volumes:
 - [ ] Tests frontend passent (vitest)
 - [ ] Migration Desktop → Web possible
 - [ ] README complet
-- [ ] Docker Compose fonctionnel
+- [ ] MySQL correctement configurée
 
 ---
 
 *Document généré le 2026-08-18*
 *Analyse Desktop basée sur: Desktop/views/, Desktop/controllers/, Desktop/models/, Desktop/services/, Desktop/shared/*
 *Plan d'implémentation: 21 jours estimés (3 semaines)*
-*Stack: FastAPI + React + TypeScript + Bootstrap 5 + PostgreSQL
+*Stack: FastAPI + React + TypeScript + Bootstrap 5 + MySQL 8.0
+
+---
+
+## ANNEXE A: FICHIERS CRÉÉS PAR CE PLAN
+
+### Backend (déjà créés)
+1. `Web/backend/requirements.txt` — 36 dépendances (FastAPI + SQLAlchemy + aiomysql + Alembic)
+2. `Web/backend/.env.example` — Variables d'environnement complètes
+3. `Web/backend/alembic.ini` — Configuration Alembic (MySQL)
+4. `Web/backend/alembic/versions/001_initial_schema.py` — Tables de base
+5. `Web/backend/alembic/versions/002_chantiers_schema.py` — Tables chantiers, phases, incidents
+6. `Web/backend/alembic/versions/003_roles_and_historique_poste.py` — Seed rôles + table historique_postes
+7. `Web/backend/alembic/versions/004_remaining_modules.py` — Tables RH, matériels, stocks, commercial
+8. `Web/backend/alembic/versions/005_finance_alertes_sync.py` — Tables finance, alertes, sync_queue
+9. `Web/backend/schema.sql` — Schéma SQL complet (35 tables + index)
+10. `Web/backend/REFERENCE_API_ENDPOINTS.md` — 70+ endpoints documentés
+
+### Frontend (déjà créés)
+1. `Web/frontend/src/types/index.ts` — Types TypeScript (26 interfaces)
+2. `Web/frontend/src/utils/permissions.ts` — Module RBAC (12 rôles, PERMISSION_MAP)
+
+### Planification
+1. `PLAN_MIGRATION_COMPLET.md` — Ce fichier (plan d'architecture + implémentation)*

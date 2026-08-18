@@ -1,5 +1,5 @@
 -- Schema SQL complet pour TIA INFO BUILD Web
--- PostgreSQL 16 compatible
+-- MySQL 8.0 compatible
 -- 35 tables: 11 tables transversales + 24 tables métier
 -- Convention: snake_case, soft delete (is_deleted), multi-tenant (entreprise_id)
 
@@ -9,7 +9,7 @@
 
 -- 1. Entreprise (multi-tenant)
 CREATE TABLE IF NOT EXISTS entreprises (
-    id                  SERIAL PRIMARY KEY,
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
     nom                 VARCHAR(255) NOT NULL,
     nom_commercial      VARCHAR(255),
     adresse             TEXT,
@@ -31,27 +31,27 @@ CREATE TABLE IF NOT EXISTS entreprises (
     delai_paiement_defaut INTEGER DEFAULT 30,
     validite_devis      INTEGER DEFAULT 30,
     mentions_legales    TEXT,
-    actif               BOOLEAN DEFAULT TRUE,
-    date_creation       TIMESTAMP DEFAULT NOW(),
-    created_at          TIMESTAMP DEFAULT NOW(),
-    updated_at          TIMESTAMP DEFAULT NOW()
+    actif               TINYINT(1) DEFAULT 1,
+    date_creation       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 2. Role (RBAC)
 CREATE TABLE IF NOT EXISTS roles (
-    id          SERIAL PRIMARY KEY,
+    id          INT AUTO_INCREMENT PRIMARY KEY,
     nom         VARCHAR(100) NOT NULL,
     description TEXT,
     code        VARCHAR(50) UNIQUE NOT NULL,
-    permissions JSONB DEFAULT '{}',
-    is_system   BOOLEAN DEFAULT FALSE,
-    created_at  TIMESTAMP DEFAULT NOW(),
-    updated_at  TIMESTAMP DEFAULT NOW()
+    permissions JSON,
+    is_system   TINYINT(1) DEFAULT 0,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 3. Utilisateur (entreprise_id=NULL pour super_admin)
 CREATE TABLE IF NOT EXISTS utilisateurs (
-    id                    SERIAL PRIMARY KEY,
+    id                    INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id         INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     role_id               INTEGER REFERENCES roles(id),
     nom                   VARCHAR(100) NOT NULL,
@@ -60,47 +60,47 @@ CREATE TABLE IF NOT EXISTS utilisateurs (
     telephone             VARCHAR(50),
     mot_de_passe_hash     VARCHAR(255) NOT NULL,
     statut                VARCHAR(20) DEFAULT 'actif',
-    date_creation         TIMESTAMP DEFAULT NOW(),
+    date_creation         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     derniere_connexion    TIMESTAMP,
-    must_change_password  BOOLEAN DEFAULT FALSE,
-    created_at            TIMESTAMP DEFAULT NOW(),
-    updated_at            TIMESTAMP DEFAULT NOW()
+    must_change_password  TINYINT(1) DEFAULT 0,
+    created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 4. Preference utilisateur
 CREATE TABLE IF NOT EXISTS preferences (
-    id                     SERIAL PRIMARY KEY,
+    id                     INT AUTO_INCREMENT PRIMARY KEY,
     user_id               INTEGER UNIQUE REFERENCES utilisateurs(id) ON DELETE CASCADE,
     theme                 VARCHAR(20) DEFAULT 'auto',
     langue                VARCHAR(10) DEFAULT 'fr',
     date_format           VARCHAR(20) DEFAULT 'DD/MM/YYYY',
     devise                VARCHAR(10) DEFAULT 'MGA',
-    notif_email           BOOLEAN DEFAULT TRUE,
-    notif_push            BOOLEAN DEFAULT TRUE,
-    notif_factures_retard BOOLEAN DEFAULT TRUE,
-    notif_stock_bas       BOOLEAN DEFAULT TRUE,
-    created_at            TIMESTAMP DEFAULT NOW(),
-    updated_at            TIMESTAMP DEFAULT NOW()
+    notif_email           TINYINT(1) DEFAULT 1,
+    notif_push            TINYINT(1) DEFAULT 1,
+    notif_factures_retard TINYINT(1) DEFAULT 1,
+    notif_stock_bas       TINYINT(1) DEFAULT 1,
+    created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 5. HistoriqueConnexion (logs)
 CREATE TABLE IF NOT EXISTS historique_connexions (
-    id            SERIAL PRIMARY KEY,
+    id            INT AUTO_INCREMENT PRIMARY KEY,
     utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL,
     ip_address    VARCHAR(45),
     user_agent    TEXT,
-    reussi        BOOLEAN DEFAULT TRUE,
-    date_connexion TIMESTAMP DEFAULT NOW()
+    reussi        TINYINT(1) DEFAULT 1,
+    date_connexion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 6. RefreshToken (JWT refresh rotation)
 CREATE TABLE IF NOT EXISTS refresh_tokens (
-    id             SERIAL PRIMARY KEY,
+    id             INT AUTO_INCREMENT PRIMARY KEY,
     utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE CASCADE,
     token_hash     VARCHAR(255) UNIQUE NOT NULL,
     expires_at     TIMESTAMP NOT NULL,
-    revoked        BOOLEAN DEFAULT FALSE,
-    created_at     TIMESTAMP DEFAULT NOW()
+    revoked        TINYINT(1) DEFAULT 0,
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================================================
@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 
 -- 7. Chantier
 CREATE TABLE IF NOT EXISTS chantiers (
-    id                 SERIAL PRIMARY KEY,
+    id                 INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id      INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     client_id          INTEGER REFERENCES clients(id),
     chef_chantier_id   INTEGER REFERENCES utilisateurs(id),
@@ -128,14 +128,14 @@ CREATE TABLE IF NOT EXISTS chantiers (
     tva                NUMERIC(5,2) DEFAULT 20.00,
     statut             VARCHAR(20) DEFAULT 'planification',
     description        TEXT,
-    is_deleted         BOOLEAN DEFAULT FALSE,
-    created_at         TIMESTAMP DEFAULT NOW(),
-    updated_at         TIMESTAMP DEFAULT NOW()
+    is_deleted         TINYINT(1) DEFAULT 0,
+    created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 8. Phase
 CREATE TABLE IF NOT EXISTS phases (
-    id            SERIAL PRIMARY KEY,
+    id            INT AUTO_INCREMENT PRIMARY KEY,
     chantier_id   INTEGER REFERENCES chantiers(id) ON DELETE CASCADE,
     nom           VARCHAR(255) NOT NULL,
     description   TEXT,
@@ -145,14 +145,14 @@ CREATE TABLE IF NOT EXISTS phases (
     avancement_pct INTEGER DEFAULT 0,
     statut        VARCHAR(20) DEFAULT 'non_commencee',
     ordre         INTEGER DEFAULT 0,
-    is_deleted    BOOLEAN DEFAULT FALSE,
-    created_at    TIMESTAMP DEFAULT NOW(),
-    updated_at    TIMESTAMP DEFAULT NOW()
+    is_deleted    TINYINT(1) DEFAULT 0,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 9. Incident
 CREATE TABLE IF NOT EXISTS incidents (
-    id            SERIAL PRIMARY KEY,
+    id            INT AUTO_INCREMENT PRIMARY KEY,
     chantier_id   INTEGER REFERENCES chantiers(id) ON DELETE CASCADE,
     declare_par   INTEGER REFERENCES utilisateurs(id),
     titre         VARCHAR(255) NOT NULL,
@@ -160,23 +160,23 @@ CREATE TABLE IF NOT EXISTS incidents (
     date_incident DATE DEFAULT CURRENT_DATE,
     gravite       VARCHAR(20) DEFAULT 'moyenne',
     statut        VARCHAR(20) DEFAULT 'signale',
-    is_deleted    BOOLEAN DEFAULT FALSE,
-    created_at    TIMESTAMP DEFAULT NOW(),
-    updated_at    TIMESTAMP DEFAULT NOW()
+    is_deleted    TINYINT(1) DEFAULT 0,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 10. AffectationRessource
 CREATE TABLE IF NOT EXISTS affectation_ressources (
-    id            SERIAL PRIMARY KEY,
+    id            INT AUTO_INCREMENT PRIMARY KEY,
     chantier_id   INTEGER REFERENCES chantiers(id) ON DELETE CASCADE,
     type_ressource VARCHAR(20) NOT NULL,
     ressource_id   INTEGER NOT NULL,
     date_debut    DATE,
     date_fin      DATE,
     role          VARCHAR(100),
-    is_deleted    BOOLEAN DEFAULT FALSE,
-    created_at    TIMESTAMP DEFAULT NOW(),
-    updated_at    TIMESTAMP DEFAULT NOW()
+    is_deleted    TINYINT(1) DEFAULT 0,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================================================
@@ -185,7 +185,7 @@ CREATE TABLE IF NOT EXISTS affectation_ressources (
 
 -- 11. Employé
 CREATE TABLE IF NOT EXISTS employes (
-    id                 SERIAL PRIMARY KEY,
+    id                 INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id      INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     matricule          VARCHAR(50),
     nom                VARCHAR(100) NOT NULL,
@@ -201,14 +201,14 @@ CREATE TABLE IF NOT EXISTS employes (
     email              VARCHAR(255),
     adresse            TEXT,
     statut             VARCHAR(20) DEFAULT 'actif',
-    is_deleted         BOOLEAN DEFAULT FALSE,
-    created_at         TIMESTAMP DEFAULT NOW(),
-    updated_at         TIMESTAMP DEFAULT NOW()
+    is_deleted         TINYINT(1) DEFAULT 0,
+    created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 12. Équipe
 CREATE TABLE IF NOT EXISTS equipes (
-    id             SERIAL PRIMARY KEY,
+    id             INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id  INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     chef_equipe_id INTEGER REFERENCES employes(id),
     nom            VARCHAR(255) NOT NULL,
@@ -216,41 +216,41 @@ CREATE TABLE IF NOT EXISTS equipes (
     specialite     VARCHAR(100),
     date_creation  DATE DEFAULT CURRENT_DATE,
     statut         VARCHAR(20) DEFAULT 'active',
-    is_deleted     BOOLEAN DEFAULT FALSE,
-    created_at     TIMESTAMP DEFAULT NOW(),
-    updated_at     TIMESTAMP DEFAULT NOW()
+    is_deleted     TINYINT(1) DEFAULT 0,
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 13. MembreEquipe
 CREATE TABLE IF NOT EXISTS membres_equipe (
-    id            SERIAL PRIMARY KEY,
+    id            INT AUTO_INCREMENT PRIMARY KEY,
     equipe_id     INTEGER REFERENCES equipes(id) ON DELETE CASCADE,
     employe_id    INTEGER REFERENCES employes(id) ON DELETE CASCADE,
     date_debut    DATE DEFAULT CURRENT_DATE,
     date_fin      DATE,
     role          VARCHAR(100),
-    is_deleted    BOOLEAN DEFAULT FALSE,
-    created_at    TIMESTAMP DEFAULT NOW(),
-    updated_at    TIMESTAMP DEFAULT NOW(),
+    is_deleted    TINYINT(1) DEFAULT 0,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(equipe_id, employe_id, date_debut)
 );
 
 -- 14. AffectationChantier (employés → chantier)
 CREATE TABLE IF NOT EXISTS affectation_chantiers (
-    id          SERIAL PRIMARY KEY,
+    id          INT AUTO_INCREMENT PRIMARY KEY,
     employe_id  INTEGER REFERENCES employes(id) ON DELETE CASCADE,
     chantier_id INTEGER REFERENCES chantiers(id) ON DELETE CASCADE,
     date_debut  DATE,
     date_fin    DATE,
     role        VARCHAR(100),
-    is_deleted  BOOLEAN DEFAULT FALSE,
-    created_at  TIMESTAMP DEFAULT NOW(),
-    updated_at  TIMESTAMP DEFAULT NOW()
+    is_deleted  TINYINT(1) DEFAULT 0,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 15. Pointage
 CREATE TABLE IF NOT EXISTS pointages (
-    id              SERIAL PRIMARY KEY,
+    id              INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id   INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     employe_id      INTEGER REFERENCES employes(id) ON DELETE CASCADE,
     chantier_id     INTEGER REFERENCES chantiers(id),
@@ -260,15 +260,15 @@ CREATE TABLE IF NOT EXISTS pointages (
     heures_total    NUMERIC(4,2) DEFAULT 0,
     type            VARCHAR(20) DEFAULT 'present',
     notes           TEXT,
-    is_deleted      BOOLEAN DEFAULT FALSE,
-    created_at      TIMESTAMP DEFAULT NOW(),
-    updated_at      TIMESTAMP DEFAULT NOW(),
+    is_deleted      TINYINT(1) DEFAULT 0,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(employe_id, date_jour)
 );
 
 -- 16. HeureSupplementaire
 CREATE TABLE IF NOT EXISTS heures_supplementaires (
-    id               SERIAL PRIMARY KEY,
+    id               INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id    INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     employe_id       INTEGER REFERENCES employes(id) ON DELETE CASCADE,
     chantier_id      INTEGER REFERENCES chantiers(id),
@@ -278,14 +278,14 @@ CREATE TABLE IF NOT EXISTS heures_supplementaires (
     motif            TEXT,
     statut           VARCHAR(20) DEFAULT 'en_attente',
     type_compensation VARCHAR(20) DEFAULT 'paiement',
-    is_deleted       BOOLEAN DEFAULT FALSE,
-    created_at       TIMESTAMP DEFAULT NOW(),
-    updated_at       TIMESTAMP DEFAULT NOW()
+    is_deleted       TINYINT(1) DEFAULT 0,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 17. HistoriquePoste
 CREATE TABLE IF NOT EXISTS historique_postes (
-    id               SERIAL PRIMARY KEY,
+    id               INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id    INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     employe_id       INTEGER REFERENCES employes(id) ON DELETE CASCADE,
     poste            VARCHAR(100) NOT NULL,
@@ -294,9 +294,9 @@ CREATE TABLE IF NOT EXISTS historique_postes (
     date_debut       DATE NOT NULL,
     date_fin         DATE,
     motif_changement TEXT,
-    is_deleted       BOOLEAN DEFAULT FALSE,
-    created_at       TIMESTAMP DEFAULT NOW(),
-    updated_at       TIMESTAMP DEFAULT NOW()
+    is_deleted       TINYINT(1) DEFAULT 0,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================================================
@@ -305,7 +305,7 @@ CREATE TABLE IF NOT EXISTS historique_postes (
 
 -- 18. Materiel
 CREATE TABLE IF NOT EXISTS materiaux (
-    id               SERIAL PRIMARY KEY,
+    id               INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id    INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     nom              VARCHAR(255) NOT NULL,
     designation      VARCHAR(255),
@@ -317,26 +317,26 @@ CREATE TABLE IF NOT EXISTS materiaux (
     valeur_achat     NUMERIC(12,2) DEFAULT 0,
     description      TEXT,
     statut           VARCHAR(20) DEFAULT 'disponible',
-    is_deleted       BOOLEAN DEFAULT FALSE,
-    created_at       TIMESTAMP DEFAULT NOW(),
-    updated_at       TIMESTAMP DEFAULT NOW()
+    is_deleted       TINYINT(1) DEFAULT 0,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 19. AffectationMateriel
 CREATE TABLE IF NOT EXISTS affectation_materiaux (
-    id          SERIAL PRIMARY KEY,
+    id          INT AUTO_INCREMENT PRIMARY KEY,
     materiel_id INTEGER REFERENCES materiaux(id) ON DELETE CASCADE,
     chantier_id INTEGER REFERENCES chantiers(id) ON DELETE CASCADE,
     date_debut  DATE,
     date_fin    DATE,
-    is_deleted  BOOLEAN DEFAULT FALSE,
-    created_at  TIMESTAMP DEFAULT NOW(),
-    updated_at  TIMESTAMP DEFAULT NOW()
+    is_deleted  TINYINT(1) DEFAULT 0,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 20. Maintenance
 CREATE TABLE IF NOT EXISTS maintenances (
-    id                    SERIAL PRIMARY KEY,
+    id                    INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id         INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     materiel_id           INTEGER REFERENCES materiaux(id) ON DELETE CASCADE,
     date_maintenance      DATE NOT NULL,
@@ -345,23 +345,23 @@ CREATE TABLE IF NOT EXISTS maintenances (
     description           TEXT,
     prochaine_date_echeance DATE,
     technicien            VARCHAR(255),
-    is_deleted            BOOLEAN DEFAULT FALSE,
-    created_at            TIMESTAMP DEFAULT NOW(),
-    updated_at            TIMESTAMP DEFAULT NOW()
+    is_deleted            TINYINT(1) DEFAULT 0,
+    created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 21. AlerteMateriel
 CREATE TABLE IF NOT EXISTS alertes_materiel (
-    id          SERIAL PRIMARY KEY,
+    id          INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     materiel_id INTEGER REFERENCES materiaux(id),
     type        VARCHAR(50),
     message     TEXT,
-    date_alerte TIMESTAMP DEFAULT NOW(),
+    date_alerte TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     statut      VARCHAR(20) DEFAULT 'ouverte',
-    is_deleted  BOOLEAN DEFAULT FALSE,
-    created_at  TIMESTAMP DEFAULT NOW(),
-    updated_at  TIMESTAMP DEFAULT NOW()
+    is_deleted  TINYINT(1) DEFAULT 0,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================================================
@@ -370,7 +370,7 @@ CREATE TABLE IF NOT EXISTS alertes_materiel (
 
 -- 22. Article
 CREATE TABLE IF NOT EXISTS articles (
-    id              SERIAL PRIMARY KEY,
+    id              INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id   INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     reference       VARCHAR(100) UNIQUE,
     nom             VARCHAR(255) NOT NULL,
@@ -388,14 +388,14 @@ CREATE TABLE IF NOT EXISTS articles (
     fournisseur_id  INTEGER REFERENCES fournisseurs(id),
     code_barre      VARCHAR(100),
     emplacement     VARCHAR(100),
-    is_deleted      BOOLEAN DEFAULT FALSE,
-    created_at      TIMESTAMP DEFAULT NOW(),
-    updated_at      TIMESTAMP DEFAULT NOW()
+    is_deleted      TINYINT(1) DEFAULT 0,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 23. Fournisseur
 CREATE TABLE IF NOT EXISTS fournisseurs (
-    id                SERIAL PRIMARY KEY,
+    id                INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id     INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     nom               VARCHAR(255) NOT NULL,
     contact           VARCHAR(255),
@@ -408,27 +408,27 @@ CREATE TABLE IF NOT EXISTS fournisseurs (
     siret             VARCHAR(50),
     conditions_paiement TEXT,
     notes             TEXT,
-    is_deleted        BOOLEAN DEFAULT FALSE,
-    created_at        TIMESTAMP DEFAULT NOW(),
-    updated_at        TIMESTAMP DEFAULT NOW()
+    is_deleted        TINYINT(1) DEFAULT 0,
+    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 24. MouvementStock
 CREATE TABLE IF NOT EXISTS mouvements_stock (
-    id              SERIAL PRIMARY KEY,
+    id              INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id   INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     article_id      INTEGER REFERENCES articles(id) ON DELETE CASCADE,
     type_mouvement  VARCHAR(20) NOT NULL,
-    date_mouvement  TIMESTAMP DEFAULT NOW(),
+    date_mouvement  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     quantite        NUMERIC(10,2) NOT NULL,
     prix_unitaire   NUMERIC(10,2) DEFAULT 0,
     chantier_id     INTEGER REFERENCES chantiers(id),
     fournisseur_id  INTEGER REFERENCES fournisseurs(id),
     reference       VARCHAR(100),
     notes           TEXT,
-    is_deleted      BOOLEAN DEFAULT FALSE,
-    created_at      TIMESTAMP DEFAULT NOW(),
-    updated_at      TIMESTAMP DEFAULT NOW()
+    is_deleted      TINYINT(1) DEFAULT 0,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================================================
@@ -437,7 +437,7 @@ CREATE TABLE IF NOT EXISTS mouvements_stock (
 
 -- 25. Client
 CREATE TABLE IF NOT EXISTS clients (
-    id               SERIAL PRIMARY KEY,
+    id               INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id    INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     type             VARCHAR(20) DEFAULT 'particulier',
     civilite         VARCHAR(20),
@@ -465,30 +465,30 @@ CREATE TABLE IF NOT EXISTS clients (
     notes            TEXT,
     ca_total         NUMERIC(12,2) DEFAULT 0,
     dernier_contact  TIMESTAMP,
-    is_deleted       BOOLEAN DEFAULT FALSE,
-    created_at       TIMESTAMP DEFAULT NOW(),
-    updated_at       TIMESTAMP DEFAULT NOW()
+    is_deleted       TINYINT(1) DEFAULT 0,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 26. ClientAdresse
 CREATE TABLE IF NOT EXISTS client_adresses (
-    id        SERIAL PRIMARY KEY,
+    id        INT AUTO_INCREMENT PRIMARY KEY,
     client_id INTEGER REFERENCES clients(id) ON DELETE CASCADE,
     type      VARCHAR(20) NOT NULL,
-    defaut    BOOLEAN DEFAULT FALSE,
+    defaut    TINYINT(1) DEFAULT 0,
     ligne1    VARCHAR(255) NOT NULL,
     ligne2    VARCHAR(255),
     code_postal VARCHAR(20),
     ville     VARCHAR(100),
     pays      VARCHAR(100) DEFAULT 'Madagascar',
-    is_deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    is_deleted TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 27. Devis
 CREATE TABLE IF NOT EXISTS devis (
-    id              SERIAL PRIMARY KEY,
+    id              INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id   INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     client_id       INTEGER REFERENCES clients(id) ON DELETE CASCADE,
     numero          VARCHAR(50) UNIQUE NOT NULL,
@@ -502,14 +502,14 @@ CREATE TABLE IF NOT EXISTS devis (
     conditions_paiement TEXT,
     mode_paiement   VARCHAR(50),
     notes           TEXT,
-    is_deleted      BOOLEAN DEFAULT FALSE,
-    created_at      TIMESTAMP DEFAULT NOW(),
-    updated_at      TIMESTAMP DEFAULT NOW()
+    is_deleted      TINYINT(1) DEFAULT 0,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 28. LigneDevis
 CREATE TABLE IF NOT EXISTS lignes_devis (
-    id            SERIAL PRIMARY KEY,
+    id            INT AUTO_INCREMENT PRIMARY KEY,
     devis_id      INTEGER REFERENCES devis(id) ON DELETE CASCADE,
     type          VARCHAR(20) DEFAULT 'article',
     article_id    INTEGER REFERENCES articles(id),
@@ -522,14 +522,14 @@ CREATE TABLE IF NOT EXISTS lignes_devis (
     total_ht      NUMERIC(12,2) DEFAULT 0,
     total_ttc     NUMERIC(12,2) DEFAULT 0,
     ordre          INTEGER DEFAULT 0,
-    is_deleted    BOOLEAN DEFAULT FALSE,
-    created_at    TIMESTAMP DEFAULT NOW(),
-    updated_at    TIMESTAMP DEFAULT NOW()
+    is_deleted    TINYINT(1) DEFAULT 0,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 29. Contrat
 CREATE TABLE IF NOT EXISTS contrats (
-    id                 SERIAL PRIMARY KEY,
+    id                 INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id      INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     client_id          INTEGER REFERENCES clients(id) ON DELETE CASCADE,
     reference          VARCHAR(50) UNIQUE NOT NULL,
@@ -545,14 +545,14 @@ CREATE TABLE IF NOT EXISTS contrats (
     date_signature     DATE,
     garantie_mois      INTEGER DEFAULT 12,
     notes              TEXT,
-    is_deleted         BOOLEAN DEFAULT FALSE,
-    created_at         TIMESTAMP DEFAULT NOW(),
-    updated_at         TIMESTAMP DEFAULT NOW()
+    is_deleted         TINYINT(1) DEFAULT 0,
+    created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 30. Facture
 CREATE TABLE IF NOT EXISTS factures (
-    id              SERIAL PRIMARY KEY,
+    id              INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id   INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     contrat_id      INTEGER REFERENCES contrats(id),
     client_id       INTEGER REFERENCES clients(id) ON DELETE CASCADE,
@@ -569,14 +569,14 @@ CREATE TABLE IF NOT EXISTS factures (
     mode_paiement   VARCHAR(50),
     notes           TEXT,
     montant_paye    NUMERIC(12,2) DEFAULT 0,
-    is_deleted      BOOLEAN DEFAULT FALSE,
-    created_at      TIMESTAMP DEFAULT NOW(),
-    updated_at      TIMESTAMP DEFAULT NOW()
+    is_deleted      TINYINT(1) DEFAULT 0,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 31. Paiement
 CREATE TABLE IF NOT EXISTS paiements (
-    id              SERIAL PRIMARY KEY,
+    id              INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id   INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     facture_id      INTEGER REFERENCES factures(id) ON DELETE CASCADE,
     montant         NUMERIC(12,2) NOT NULL,
@@ -585,9 +585,9 @@ CREATE TABLE IF NOT EXISTS paiements (
     reference       VARCHAR(100),
     banque          VARCHAR(100),
     notes           TEXT,
-    is_deleted      BOOLEAN DEFAULT FALSE,
-    created_at      TIMESTAMP DEFAULT NOW(),
-    updated_at      TIMESTAMP DEFAULT NOW()
+    is_deleted      TINYINT(1) DEFAULT 0,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================================================
@@ -596,7 +596,7 @@ CREATE TABLE IF NOT EXISTS paiements (
 
 -- 32. Depense
 CREATE TABLE IF NOT EXISTS depenses (
-    id               SERIAL PRIMARY KEY,
+    id               INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id    INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     chantier_id      INTEGER REFERENCES chantiers(id),
     description      TEXT NOT NULL,
@@ -610,29 +610,29 @@ CREATE TABLE IF NOT EXISTS depenses (
     mode_paiement    VARCHAR(50),
     validee_par      INTEGER REFERENCES utilisateurs(id),
     notes            TEXT,
-    is_deleted       BOOLEAN DEFAULT FALSE,
-    created_at       TIMESTAMP DEFAULT NOW(),
-    updated_at       TIMESTAMP DEFAULT NOW()
+    is_deleted       TINYINT(1) DEFAULT 0,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 33. RapportFinancier
 CREATE TABLE IF NOT EXISTS rapports_financiers (
-    id               SERIAL PRIMARY KEY,
+    id               INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id    INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     chantier_id      INTEGER REFERENCES chantiers(id),
     periode          VARCHAR(20),
     chiffre_affaires NUMERIC(12,2) DEFAULT 0,
     depenses_total   NUMERIC(12,2) DEFAULT 0,
     marge            NUMERIC(12,2) DEFAULT 0,
-    date_generation  TIMESTAMP DEFAULT NOW(),
-    is_deleted       BOOLEAN DEFAULT FALSE,
-    created_at       TIMESTAMP DEFAULT NOW(),
-    updated_at       TIMESTAMP DEFAULT NOW()
+    date_generation  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_deleted       TINYINT(1) DEFAULT 0,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 34. Alerte
 CREATE TABLE IF NOT EXISTS alertes (
-    id              SERIAL PRIMARY KEY,
+    id              INT AUTO_INCREMENT PRIMARY KEY,
     entreprise_id   INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
     titre           VARCHAR(255) NOT NULL,
     message         TEXT,
@@ -640,26 +640,26 @@ CREATE TABLE IF NOT EXISTS alertes (
     entite_id       INTEGER,
     niveau_gravite  VARCHAR(20) DEFAULT 'info',
     statut          VARCHAR(20) DEFAULT 'non_lue',
-    lue             BOOLEAN DEFAULT FALSE,
+    lue             TINYINT(1) DEFAULT 0,
     date_lecture    TIMESTAMP,
-    is_deleted      BOOLEAN DEFAULT FALSE,
-    created_at      TIMESTAMP DEFAULT NOW(),
-    updated_at      TIMESTAMP DEFAULT NOW()
+    is_deleted      TINYINT(1) DEFAULT 0,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 35. SyncQueue
 CREATE TABLE IF NOT EXISTS sync_queue (
-    id            SERIAL PRIMARY KEY,
+    id            INT AUTO_INCREMENT PRIMARY KEY,
     table_name    VARCHAR(100) NOT NULL,
     record_id     INTEGER NOT NULL,
     server_id     INTEGER,
     operation     VARCHAR(20) NOT NULL,
-    payload       JSONB,
+    payload       JSON,
     status        VARCHAR(20) DEFAULT 'pending',
     retry_count   INTEGER DEFAULT 0,
     error_message TEXT,
-    created_at    TIMESTAMP DEFAULT NOW(),
-    updated_at    TIMESTAMP DEFAULT NOW()
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================================================

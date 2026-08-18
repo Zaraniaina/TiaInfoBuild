@@ -1,0 +1,307 @@
+"""Router pour la gestion des stocks, articles, fournisseurs et mouvements."""
+from datetime import date, datetime
+from typing import Any
+from typing_extensions import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.database import get_db
+from app.dependencies.auth import get_current_active_user
+from app.crud.article import ArticleCRUD
+from app.crud.fournisseur import FournisseurCRUD
+from app.crud.mouvement_stock import MouvementStockCRUD
+from app.crud.base import BaseCRUD
+from app.models.article import Article
+from app.models.fournisseur import Fournisseur
+from app.models.mouvement_stock import MouvementStock
+from app.schemas.article import (
+    ArticleCreate,
+    ArticleUpdate,
+    ArticleResponse,
+    ArticleList,
+    StockAdjustmentRequest,
+)
+from app.schemas.fournisseur import (
+    FournisseurCreate,
+    FournisseurUpdate,
+    FournisseurResponse,
+    FournisseurList,
+)
+from app.schemas.mouvement_stock import (
+    MouvementStockCreate,
+    MouvementStockResponse,
+    MouvementStockList,
+)
+
+router = APIRouter()
+CurrentUser = Annotated[dict[str, Any], Depends(get_current_active_user)]
+DbSession = Annotated[AsyncSession, Depends(get_db)]
+
+
+# --- Articles ---
+
+@router.get("/articles", response_model=dict)
+async def list_articles(
+    payload: CurrentUser,
+    db: DbSession,
+    search: str | None = Query(default=None, description="Recherche par nom ou référence"),
+    categorie: str | None = Query(default=None),
+    fournisseur_id: int | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=25, ge=1, le=100),
+):
+    entreprise_id = payload.get("entreprise_id")
+    crud = ArticleCRUD()
+    skip = (page - 1) * size
+
+    query = select(Article).where(Article.is_deleted == False)
+    if entreprise_id is not None:
+        query = query.where(Article.entreprise_id == entreprise_id)
+    if search:
+        query = query.where(
+            (Article.nom.ilike(f"%{search}%")) | (Article.reference.ilike(f"%{search}%"))
+        )
+    if categorie:
+        query = query.where(Article.categorie == categorie)
+    if fournisseur_id:
+        query = query.where(Article.fournisseur_id == fournisseur_id)
+
+    count_query = select(func.count()).select_from(query.subquery())
+    total = (await db.execute(count_query)).scalar_one() or 0
+
+    result = await db.execute(query.offset(skip).limit(size))
+    items = result.scalars().all()
+
+    return {
+        "items": [ArticleList.model_validate(item) for item in items],
+        "total": total,
+        "page": page,
+        "size": size,
+    }
+
+
+@router.post("/articles", response_model=ArticleResponse, status_code=status.HTTP_201_CREATED)
+async def create_article(
+    payload: CurrentUser,
+    obj_in: ArticleCreate,
+    db: DbSession,
+):
+    entreprise_id = payload.get("entreprise_id")
+    data = obj_in.model_dump(exclude_unset=True)
+    if entreprise_id is not None and not data.get("entreprise_id"):
+        data["entreprise_id"] = entreprise_id
+    crud = ArticleCRUD()
+    article = await crud.create(db, data)
+    await db.refresh(article)
+    return ArticleResponse.model_validate(article)
+
+
+@router.put("/articles/{id}", response_model=ArticleResponse)
+async def update_article(
+    payload: CurrentUser,
+    db: DbSession,
+    id: int,
+    obj_in: ArticleUpdate,
+):
+    entreprise_id = payload.get("entreprise_id")
+    crud = ArticleCRUD()
+    article = await crud.get(db, id)
+    if not article or article.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article non trouvé")
+    if entreprise_id is not None and article.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    data = obj_in.model_dump(exclude_unset=True)
+    updated = await crud.update(db, article, data)
+    await db.refresh(updated)
+    return ArticleResponse.model_validate(updated)
+
+
+@router.put("/articles/{id}/stock", response_model=ArticleResponse)
+async def adjust_stock(
+    payload: CurrentUser,
+    db: DbSession,
+    id: int,
+    obj_in: StockAdjustmentRequest,
+):
+    entreprise_id = payload.get("entreprise_id")
+    crud = ArticleCRUD()
+    article = await crud.get(db, id)
+    if not article or article.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article non trouvé")
+    if entreprise_id is not None and article.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    if obj_in.type_mouvement == "sortie" and article.stock_actuel < obj_in.quantite:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Stock insuffisant pour cette sortie",
+        )
+
+    article.stock_actuel = float(article.stock_actuel or 0)
+    if obj_in.type_mouvement in ("entree", "inventaire", "ajustement"):
+        article.stock_actuel += obj_in.quantite
+    else:
+        article.stock_actuel -= obj_in.quantite
+
+    mouvement = MouvementStock(
+        entreprise_id=entreprise_id or 0,
+        article_id=id,
+        type_mouvement=obj_in.type_mouvement,
+        quantite=obj_in.quantite,
+        prix_unitaire=obj_in.prix_unitaire or 0,
+        chantier_id=obj_in.chantier_id,
+        fournisseur_id=obj_in.fournisseur_id,
+        reference=obj_in.reference,
+        notes=obj_in.notes,
+    )
+    db.add(mouvement)
+    await db.flush()
+    await db.refresh(article)
+    return ArticleResponse.model_validate(article)
+
+
+@router.get("/articles/en-alerte", response_model=list[ArticleResponse])
+async def articles_en_alerte(
+    payload: CurrentUser,
+    db: DbSession,
+):
+    entreprise_id = payload.get("entreprise_id")
+    if entreprise_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Entreprise requise")
+
+    crud = ArticleCRUD()
+    items = await crud.get_en_alerte(db, entreprise_id)
+    return [ArticleResponse.model_validate(item) for item in items]
+
+
+# --- Fournisseurs ---
+
+@router.get("/fournisseurs", response_model=dict)
+async def list_fournisseurs(
+    payload: CurrentUser,
+    db: DbSession,
+    search: str | None = Query(default=None, description="Recherche par nom"),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=25, ge=1, le=100),
+):
+    entreprise_id = payload.get("entreprise_id")
+    crud = FournisseurCRUD()
+    skip = (page - 1) * size
+
+    query = select(Fournisseur).where(Fournisseur.is_deleted == False)
+    if entreprise_id is not None:
+        query = query.where(Fournisseur.entreprise_id == entreprise_id)
+    if search:
+        query = query.where(Fournisseur.nom.ilike(f"%{search}%"))
+
+    count_query = select(func.count()).select_from(query.subquery())
+    total = (await db.execute(count_query)).scalar_one() or 0
+
+    result = await db.execute(query.offset(skip).limit(size))
+    items = result.scalars().all()
+
+    return {
+        "items": [FournisseurList.model_validate(item) for item in items],
+        "total": total,
+        "page": page,
+        "size": size,
+    }
+
+
+@router.post("/fournisseurs", response_model=FournisseurResponse, status_code=status.HTTP_201_CREATED)
+async def create_fournisseur(
+    payload: CurrentUser,
+    obj_in: FournisseurCreate,
+    db: DbSession,
+):
+    entreprise_id = payload.get("entreprise_id")
+    data = obj_in.model_dump(exclude_unset=True)
+    if entreprise_id is not None and not data.get("entreprise_id"):
+        data["entreprise_id"] = entreprise_id
+    crud = FournisseurCRUD()
+    fournisseur = await crud.create(db, data)
+    await db.refresh(fournisseur)
+    return FournisseurResponse.model_validate(fournisseur)
+
+
+@router.put("/fournisseurs/{id}", response_model=FournisseurResponse)
+async def update_fournisseur(
+    payload: CurrentUser,
+    db: DbSession,
+    id: int,
+    obj_in: FournisseurUpdate,
+):
+    entreprise_id = payload.get("entreprise_id")
+    crud = FournisseurCRUD()
+    fournisseur = await crud.get(db, id)
+    if not fournisseur or fournisseur.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fournisseur non trouvé")
+    if entreprise_id is not None and fournisseur.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    data = obj_in.model_dump(exclude_unset=True)
+    updated = await crud.update(db, fournisseur, data)
+    await db.refresh(updated)
+    return FournisseurResponse.model_validate(updated)
+
+
+# --- Mouvements de stock ---
+
+@router.get("/mouvements", response_model=dict)
+async def list_mouvements(
+    payload: CurrentUser,
+    db: DbSession,
+    article_id: int | None = Query(default=None),
+    date_debut: date | None = Query(default=None),
+    date_fin: date | None = Query(default=None),
+    type_mouvement: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=25, ge=1, le=100),
+):
+    entreprise_id = payload.get("entreprise_id")
+    crud = MouvementStockCRUD()
+    skip = (page - 1) * size
+
+    query = select(MouvementStock).where(MouvementStock.is_deleted == False)
+    if entreprise_id is not None:
+        query = query.where(MouvementStock.entreprise_id == entreprise_id)
+    if article_id:
+        query = query.where(MouvementStock.article_id == article_id)
+    if date_debut:
+        query = query.where(MouvementStock.date_mouvement >= date_debut)
+    if date_fin:
+        query = query.where(MouvementStock.date_mouvement <= date_fin)
+    if type_mouvement:
+        query = query.where(MouvementStock.type_mouvement == type_mouvement)
+
+    count_query = select(func.count()).select_from(query.subquery())
+    total = (await db.execute(count_query)).scalar_one() or 0
+
+    result = await db.execute(query.offset(skip).limit(size))
+    items = result.scalars().all()
+
+    return {
+        "items": [MouvementStockList.model_validate(item) for item in items],
+        "total": total,
+        "page": page,
+        "size": size,
+    }
+
+
+@router.post("/mouvements", response_model=MouvementStockResponse, status_code=status.HTTP_201_CREATED)
+async def create_mouvement(
+    payload: CurrentUser,
+    obj_in: MouvementStockCreate,
+    db: DbSession,
+):
+    entreprise_id = payload.get("entreprise_id")
+    data = obj_in.model_dump(exclude_unset=True)
+    if entreprise_id is not None and not data.get("entreprise_id"):
+        data["entreprise_id"] = entreprise_id
+    crud = MouvementStockCRUD()
+    mouvement = await crud.create(db, data)
+    await db.refresh(mouvement)
+    return MouvementStockResponse.model_validate(mouvement)
