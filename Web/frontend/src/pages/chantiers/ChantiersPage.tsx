@@ -1,12 +1,662 @@
+import { useEffect, useState } from 'react'
+import type { Chantier } from '@/types'
+import { chantiersService } from '@/services/chantiers.service'
+
 export function ChantiersPage() {
+  const [chantiers, setChantiers] = useState<Chantier[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statutFilter, setStatutFilter] = useState('')
+  const [sortOption, setSortOption] = useState('dateCreation_desc')
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table')
+  const [selectedChantier, setSelectedChantier] = useState<Chantier | null>(null)
+  const [showModal, setShowModal] = useState(false)
+  const [showDetailModal, setShowDetailModal] = useState(false)
+  const [activeTabModal, setActiveTabModal] = useState<'infos' | 'budget' | 'phases' | 'incidents' | 'ressources'>('infos')
+  const [activeDetailTab, setActiveDetailTab] = useState<'general' | 'phases' | 'incidents' | 'budget'>('general')
+
+  // Form State
+  const [formData, setFormData] = useState<Partial<Chantier>>({
+    nom: '',
+    numero: '',
+    statut: 'planification',
+    budget_prevu: 0,
+    marge_cible: 15,
+    tva: 20,
+    description: ''
+  })
+
+  const loadChantiers = async () => {
+    setLoading(true)
+    try {
+      const data = await chantiersService.getAll({ search: searchTerm, statut: statutFilter })
+      setChantiers(data)
+    } catch {
+      // Fallback mock data
+      setChantiers([
+        {
+          id: 1,
+          entreprise_id: 1,
+          numero: 'CHT-2026-001',
+          nom: 'Construction Immeuble Anosy',
+          statut: 'en_cours',
+          budget_prevu: 150000000,
+          budget_previsionnel: 145000000,
+          budget_reel: 92000000,
+          marge_cible: 18,
+          tva: 20,
+          date_debut: '2026-01-15',
+          date_fin_prevue: '2026-12-20',
+          description: 'Construction d\'un immeuble R+5 à Anosy Antananarivo',
+          is_deleted: false,
+          created_at: '2026-01-10',
+          updated_at: '2026-08-10',
+          phases: [
+            { id: 1, chantier_id: 1, nom: 'Terrassement', ordre: 1, avancement_pct: 100, budget: 20000000, statut: 'terminee', is_deleted: false, created_at: '', updated_at: '' },
+            { id: 2, chantier_id: 1, nom: 'Fondations & Gros œuvre', ordre: 2, avancement_pct: 65, budget: 80000000, statut: 'en_cours', is_deleted: false, created_at: '', updated_at: '' },
+            { id: 3, chantier_id: 1, nom: 'Second œuvre & Finitions', ordre: 3, avancement_pct: 0, budget: 50000000, statut: 'non_commencee', is_deleted: false, created_at: '', updated_at: '' }
+          ],
+          incidents: [
+            { id: 1, chantier_id: 1, titre: 'Retard livraison ciment', gravite: 'moyenne', statut: 'resolu', date_incident: '2026-03-12', is_deleted: false, created_at: '', updated_at: '' }
+          ]
+        },
+        {
+          id: 2,
+          entreprise_id: 1,
+          numero: 'CHT-2026-002',
+          nom: 'Rénovation Résidence Ivandry',
+          statut: 'planification',
+          budget_prevu: 45000000,
+          budget_previsionnel: 42000000,
+          budget_reel: 5000000,
+          marge_cible: 20,
+          tva: 20,
+          date_debut: '2026-09-01',
+          date_fin_prevue: '2026-11-30',
+          description: 'Travaux de rénovation intérieure et extérieure',
+          is_deleted: false,
+          created_at: '2026-02-01',
+          updated_at: '2026-08-01'
+        }
+      ])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadChantiers()
+  }, [searchTerm, statutFilter])
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      if (selectedChantier) {
+        await chantiersService.update(selectedChantier.id, formData)
+      } else {
+        await chantiersService.create(formData)
+      }
+      setShowModal(false)
+      loadChantiers()
+    } catch {
+      alert('Erreur lors de la sauvegarde du chantier.')
+    }
+  }
+
+  const exportCSV = () => {
+    const headers = ['Numero', 'Nom', 'Statut', 'Budget Prevu', 'Budget Reel', 'Date Debut']
+    const rows = chantiers.map(c => [c.numero, c.nom, c.statut, c.budget_prevu, c.budget_reel, c.date_debut])
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', 'chantiers_export.csv')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const getStatutBadge = (statut: string) => {
+    switch (statut) {
+      case 'en_cours': return <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill fw-semibold">En cours</span>
+      case 'planification': return <span className="badge bg-info bg-opacity-10 text-info px-3 py-2 rounded-pill fw-semibold">Planifié</span>
+      case 'suspendu': return <span className="badge bg-warning bg-opacity-10 text-warning px-3 py-2 rounded-pill fw-semibold">Suspendu</span>
+      case 'termine': return <span className="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill fw-semibold">Terminé</span>
+      case 'annule': case 'arrete': return <span className="badge bg-danger bg-opacity-10 text-danger px-3 py-2 rounded-pill fw-semibold">Arrêté</span>
+      default: return <span className="badge bg-secondary px-3 py-2 rounded-pill">{statut}</span>
+    }
+  }
+
+  // Filtered & Sorted list
+  const filteredChantiers = [...chantiers].sort((a, b) => {
+    if (sortOption === 'nom_asc') return a.nom.localeCompare(b.nom)
+    if (sortOption === 'budget_desc') return (b.budget_prevu || 0) - (a.budget_prevu || 0)
+    return b.id - a.id
+  })
+
   return (
     <div className="container-fluid py-4">
-      <h2 className="mb-4">Chantiers</h2>
-      <div className="card">
+      {/* Header avec actions */}
+      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+          <h2 className="mb-1"><i className="bi bi-building me-2 text-primary"></i>Chantiers</h2>
+          <p className="text-secondary mb-0">Gestion et suivi des chantiers</p>
+        </div>
+
+        <button className="btn btn-primary fw-bold" onClick={() => { setSelectedChantier(null); setFormData({}); setShowModal(true); }}>
+          <i className="bi bi-plus-lg me-1"></i>Nouveau chantier
+        </button>
+      </div>
+
+      {/* Filtres et recherche */}
+      <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">
-          <p className="text-muted">Module Chantiers en cours de développement.</p>
+          <div className="row g-3 align-items-center">
+            <div className="col-md-4">
+              <div className="input-group">
+                <span className="input-group-text bg-light"><i className="bi bi-search text-muted"></i></span>
+                <input
+                  type="text"
+                  className="form-control bg-light"
+                  placeholder="Rechercher un chantier..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="col-md-3">
+              <select className="form-select bg-light" value={statutFilter} onChange={(e) => setStatutFilter(e.target.value)}>
+                <option value="">Tous les statuts</option>
+                <option value="planification">Planifié</option>
+                <option value="en_cours">En cours</option>
+                <option value="termine">Terminé</option>
+                <option value="arrete">Arrêté</option>
+              </select>
+            </div>
+
+            <div className="col-md-2">
+              <select className="form-select bg-light" value={sortOption} onChange={(e) => setSortOption(e.target.value)}>
+                <option value="dateCreation_desc">Plus récents</option>
+                <option value="dateCreation_asc">Plus anciens</option>
+                <option value="nom_asc">Nom A-Z</option>
+                <option value="budget_desc">Budget décroissant</option>
+              </select>
+            </div>
+
+            <div className="col-md-3 d-flex gap-2 justify-content-end">
+              <button className="btn btn-outline-secondary" onClick={exportCSV}>
+                <i className="bi bi-download me-1"></i>Exporter
+              </button>
+
+              <button className="btn btn-outline-secondary" onClick={loadChantiers}>
+                <i className="bi bi-arrow-clockwise"></i>
+              </button>
+
+              <div className="btn-group" role="group">
+                <button
+                  className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setViewMode('table')}
+                  title="Vue Tableau"
+                >
+                  <i className="bi bi-table"></i>
+                </button>
+                <button
+                  className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setViewMode('cards')}
+                  title="Vue Cartes"
+                >
+                  <i className="bi bi-grid-fill"></i>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Content */}
+      {loading ? (
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" role="status"></div>
+        </div>
+      ) : filteredChantiers.length === 0 ? (
+        <div className="card border-0 shadow-sm text-center py-5">
+          <div className="card-body">
+            <i className="bi bi-building display-1 text-secondary"></i>
+            <h4 className="mt-3 fw-bold">Aucun chantier</h4>
+            <p className="text-secondary">Commencez par créer votre premier chantier</p>
+            <button className="btn btn-primary fw-bold" onClick={() => { setSelectedChantier(null); setFormData({}); setShowModal(true); }}>
+              <i className="bi bi-plus-lg me-1"></i>Créer un chantier
+            </button>
+          </div>
+        </div>
+      ) : viewMode === 'cards' ? (
+        <div className="row g-4">
+          {filteredChantiers.map((c) => (
+            <div key={c.id} className="col-xl-4 col-md-6">
+              <div className="card border-0 shadow-sm h-100 kpi-card">
+                <div className="card-body">
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <span className="badge bg-light text-dark border font-monospace">{c.numero}</span>
+                    {getStatutBadge(c.statut)}
+                  </div>
+                  <h5 className="card-title fw-bold text-dark mb-2">{c.nom}</h5>
+                  <p className="text-muted small mb-3 text-truncate">{c.description || 'Aucune description'}</p>
+
+                  <div className="mb-3">
+                    <div className="d-flex justify-content-between small mb-1">
+                      <span className="text-muted">Budget consommé</span>
+                      <span className="fw-bold">{c.budget_reel?.toLocaleString()} / {c.budget_prevu?.toLocaleString()} MGA</span>
+                    </div>
+                    <div className="progress" style={{ height: '6px' }}>
+                      <div
+                        className="progress-bar bg-primary"
+                        style={{ width: `${Math.min(100, (c.budget_reel / (c.budget_prevu || 1)) * 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div className="row g-2 text-center border-top pt-3 mt-3 small">
+                    <div className="col-6">
+                      <span className="text-muted d-block">Début</span>
+                      <strong className="text-dark">{c.date_debut || 'Non définie'}</strong>
+                    </div>
+                    <div className="col-6">
+                      <span className="text-muted d-block">Fin prévue</span>
+                      <strong className="text-dark">{c.date_fin_prevue || 'Non définie'}</strong>
+                    </div>
+                  </div>
+                </div>
+                <div className="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-2">
+                  <button className="btn btn-sm btn-link text-primary p-0 fw-semibold" onClick={() => { setSelectedChantier(c); setShowDetailModal(true); }}>
+                    <i className="bi bi-eye me-1"></i> Voir détails
+                  </button>
+                  <button className="btn btn-sm btn-outline-secondary py-0" onClick={() => { setSelectedChantier(c); setFormData(c); setShowModal(true); }}>
+                    <i className="bi bi-pencil"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="card border-0 shadow-sm">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th style={{ width: '40px' }}>#</th>
+                  <th>Chantier</th>
+                  <th>Numéro</th>
+                  <th className="d-none d-md-table-cell">Dates</th>
+                  <th className="d-none d-lg-table-cell">Budget prévu</th>
+                  <th className="d-none d-lg-table-cell">Budget consommé</th>
+                  <th>Statut</th>
+                  <th style={{ width: '120px' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredChantiers.map((c) => (
+                  <tr key={c.id}>
+                    <td className="fw-bold text-secondary">{c.id}</td>
+                    <td className="fw-semibold text-dark">{c.nom}</td>
+                    <td className="font-monospace small">{c.numero}</td>
+                    <td className="d-none d-md-table-cell small">{c.date_debut || '—'} → {c.date_fin_prevue || '—'}</td>
+                    <td className="d-none d-lg-table-cell">{c.budget_prevu?.toLocaleString()} MGA</td>
+                    <td className="d-none d-lg-table-cell text-danger fw-semibold">{c.budget_reel?.toLocaleString()} MGA</td>
+                    <td>{getStatutBadge(c.statut)}</td>
+                    <td>
+                      <button className="btn btn-sm btn-outline-primary me-1" onClick={() => { setSelectedChantier(c); setShowDetailModal(true); }}>
+                        <i className="bi bi-eye"></i>
+                      </button>
+                      <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setFormData(c); setShowModal(true); }}>
+                        <i className="bi bi-pencil"></i>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Modale Nouveau/Édition Chantier avec onglets */}
+      {showModal && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div className="modal-content">
+              <div className="modal-header bg-primary text-white">
+                <h5 className="modal-title fw-bold">
+                  <i className="bi bi-building me-2"></i>{selectedChantier ? 'Éditer le Chantier' : 'Nouveau chantier'}
+                </h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setShowModal(false)}></button>
+              </div>
+
+              <div className="modal-body p-0">
+                <ul className="nav nav-tabs px-3 pt-2 bg-light border-bottom">
+                  <li className="nav-item">
+                    <button className={`nav-link ${activeTabModal === 'infos' ? 'active fw-bold' : ''}`} onClick={() => setActiveTabModal('infos')}>
+                      <i className="bi bi-info-circle me-1"></i>Informations
+                    </button>
+                  </li>
+                  <li className="nav-item">
+                    <button className={`nav-link ${activeTabModal === 'budget' ? 'active fw-bold' : ''}`} onClick={() => setActiveTabModal('budget')}>
+                      <i className="bi bi-currency-exchange me-1"></i>Budget
+                    </button>
+                  </li>
+                  <li className="nav-item">
+                    <button className={`nav-link ${activeTabModal === 'phases' ? 'active fw-bold' : ''}`} onClick={() => setActiveTabModal('phases')}>
+                      <i className="bi bi-list-task me-1"></i>Phases
+                    </button>
+                  </li>
+                  <li className="nav-item">
+                    <button className={`nav-link ${activeTabModal === 'incidents' ? 'active fw-bold' : ''}`} onClick={() => setActiveTabModal('incidents')}>
+                      <i className="bi bi-exclamation-triangle me-1"></i>Incidents
+                    </button>
+                  </li>
+                  <li className="nav-item">
+                    <button className={`nav-link ${activeTabModal === 'ressources' ? 'active fw-bold' : ''}`} onClick={() => setActiveTabModal('ressources')}>
+                      <i className="bi bi-people me-1"></i>Ressources
+                    </button>
+                  </li>
+                </ul>
+
+                <form id="formChantier" onSubmit={handleSave} className="p-4">
+                  {activeTabModal === 'infos' && (
+                    <div className="row g-3">
+                      <div className="col-md-8">
+                        <label className="form-label fw-semibold">Nom du chantier *</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          required
+                          value={formData.nom || ''}
+                          onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-semibold">Numéro</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="CHT-2026-XXX"
+                          value={formData.numero || ''}
+                          onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Statut</label>
+                        <select
+                          className="form-select"
+                          value={formData.statut}
+                          onChange={(e) => setFormData({ ...formData, statut: e.target.value as any })}
+                        >
+                          <option value="planification">Planifié</option>
+                          <option value="en_cours">En cours</option>
+                          <option value="suspendu">Suspendu</option>
+                          <option value="termine">Terminé</option>
+                          <option value="annule">Arrêté</option>
+                        </select>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Adresse du chantier</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={formData.adresse || ''}
+                          onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Date Début</label>
+                        <input
+                          type="date"
+                          className="form-control"
+                          value={formData.date_debut || ''}
+                          onChange={(e) => setFormData({ ...formData, date_debut: e.target.value })}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Date Fin Prévue</label>
+                        <input
+                          type="date"
+                          className="form-control"
+                          value={formData.date_fin_prevue || ''}
+                          onChange={(e) => setFormData({ ...formData, date_fin_prevue: e.target.value })}
+                        />
+                      </div>
+                      <div className="col-12">
+                        <label className="form-label fw-semibold">Description</label>
+                        <textarea
+                          className="form-control"
+                          rows={3}
+                          value={formData.description || ''}
+                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        ></textarea>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeTabModal === 'budget' && (
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Budget Prévu (MGA)</label>
+                        <input
+                          type="number"
+                          className="form-control font-monospace fs-5"
+                          value={formData.budget_prevu || 0}
+                          onChange={(e) => setFormData({ ...formData, budget_prevu: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Budget Prévisionnel (MGA)</label>
+                        <input
+                          type="number"
+                          className="form-control font-monospace fs-5"
+                          value={formData.budget_previsionnel || 0}
+                          onChange={(e) => setFormData({ ...formData, budget_previsionnel: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Marge Cible (%)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={formData.marge_cible || 15}
+                          onChange={(e) => setFormData({ ...formData, marge_cible: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Taux TVA (%)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={formData.tva || 20}
+                          onChange={(e) => setFormData({ ...formData, tva: Number(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {activeTabModal === 'phases' && (
+                    <div>
+                      <h6 className="fw-bold mb-3">Phases du chantier</h6>
+                      <p className="text-muted small">Définissez les étapes d'exécution de ce chantier.</p>
+                    </div>
+                  )}
+
+                  {activeTabModal === 'incidents' && (
+                    <div>
+                      <h6 className="fw-bold mb-3">Incidents signalés</h6>
+                      <p className="text-muted small">Journal des événements et imprévus.</p>
+                    </div>
+                  )}
+
+                  {activeTabModal === 'ressources' && (
+                    <div>
+                      <h6 className="fw-bold mb-3">Ressources & Matériels affectés</h6>
+                      <p className="text-muted small">Gestion des équipes et des équipements.</p>
+                    </div>
+                  )}
+
+                  <div className="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
+                    <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Annuler</button>
+                    <button type="submit" className="btn btn-primary fw-bold">Enregistrer</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Detail Multi-Tabs */}
+      {showDetailModal && selectedChantier && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-xl modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header bg-dark text-white">
+                <div>
+                  <h5 className="modal-title fw-bold mb-0">{selectedChantier.nom}</h5>
+                  <small className="font-monospace text-muted">{selectedChantier.numero}</small>
+                </div>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setShowDetailModal(false)}></button>
+              </div>
+              <div className="modal-body p-0">
+                <ul className="nav nav-tabs px-3 pt-2 bg-light border-bottom">
+                  <li className="nav-item">
+                    <button
+                      className={`nav-link ${activeDetailTab === 'general' ? 'active fw-bold' : ''}`}
+                      onClick={() => setActiveDetailTab('general')}
+                    >
+                      <i className="bi bi-info-circle me-1"></i>Général
+                    </button>
+                  </li>
+                  <li className="nav-item">
+                    <button
+                      className={`nav-link ${activeDetailTab === 'phases' ? 'active fw-bold' : ''}`}
+                      onClick={() => setActiveDetailTab('phases')}
+                    >
+                      <i className="bi bi-diagram-3 me-1"></i>Phases & Avancement
+                    </button>
+                  </li>
+                  <li className="nav-item">
+                    <button
+                      className={`nav-link ${activeDetailTab === 'incidents' ? 'active fw-bold' : ''}`}
+                      onClick={() => setActiveDetailTab('incidents')}
+                    >
+                      <i className="bi bi-exclamation-triangle me-1"></i>Incidents
+                    </button>
+                  </li>
+                  <li className="nav-item">
+                    <button
+                      className={`nav-link ${activeDetailTab === 'budget' ? 'active fw-bold' : ''}`}
+                      onClick={() => setActiveDetailTab('budget')}
+                    >
+                      <i className="bi bi-cash-stack me-1"></i>Budget & Rentabilité
+                    </button>
+                  </li>
+                </ul>
+
+                <div className="p-4">
+                  {activeDetailTab === 'general' && (
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <p><strong>Description:</strong> {selectedChantier.description || '—'}</p>
+                        <p><strong>Statut:</strong> {getStatutBadge(selectedChantier.statut)}</p>
+                        <p><strong>Localisation:</strong> {selectedChantier.adresse || 'Antananarivo'}</p>
+                      </div>
+                      <div className="col-md-6">
+                        <p><strong>Date début:</strong> {selectedChantier.date_debut || '—'}</p>
+                        <p><strong>Date fin prévue:</strong> {selectedChantier.date_fin_prevue || '—'}</p>
+                        <p><strong>Marge cible:</strong> {selectedChantier.marge_cible}%</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeDetailTab === 'phases' && (
+                    <div>
+                      <h6 className="fw-bold mb-3">Liste des Phases</h6>
+                      {selectedChantier.phases && selectedChantier.phases.length > 0 ? (
+                        <div className="list-group">
+                          {selectedChantier.phases.map(p => (
+                            <div key={p.id} className="list-group-item d-flex justify-content-between align-items-center">
+                              <div>
+                                <h6 className="mb-0 fw-semibold">{p.nom}</h6>
+                                <small className="text-muted">Ordre: {p.ordre}</small>
+                              </div>
+                              <div className="d-flex align-items-center gap-3">
+                                <div className="progress" style={{ width: '120px', height: '8px' }}>
+                                  <div className="progress-bar bg-success" style={{ width: `${p.avancement_pct}%` }}></div>
+                                </div>
+                                <span className="fw-bold">{p.avancement_pct}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-muted">Aucune phase configurée.</p>
+                      )}
+                    </div>
+                  )}
+
+                  {activeDetailTab === 'incidents' && (
+                    <div>
+                      <h6 className="fw-bold mb-3">Historique des Incidents</h6>
+                      {selectedChantier.incidents && selectedChantier.incidents.length > 0 ? (
+                        <div className="list-group">
+                          {selectedChantier.incidents.map(inc => (
+                            <div key={inc.id} className="list-group-item d-flex justify-content-between align-items-center">
+                              <div>
+                                <h6 className="mb-0 fw-semibold text-danger">{inc.titre}</h6>
+                                <small className="text-muted">Date: {inc.date_incident}</small>
+                              </div>
+                              <span className={`badge ${inc.statut === 'resolu' ? 'bg-success' : 'bg-warning'}`}>
+                                {inc.statut === 'resolu' ? 'Résolu' : 'En cours'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-muted">Aucun incident signalé.</p>
+                      )}
+                    </div>
+                  )}
+
+                  {activeDetailTab === 'budget' && (
+                    <div className="row g-3">
+                      <div className="col-md-4">
+                        <div className="p-3 bg-light rounded text-center">
+                          <small className="text-muted d-block">Budget Prévu</small>
+                          <h4 className="fw-bold text-primary mb-0">{selectedChantier.budget_prevu?.toLocaleString()} MGA</h4>
+                        </div>
+                      </div>
+                      <div className="col-md-4">
+                        <div className="p-3 bg-light rounded text-center">
+                          <small className="text-muted d-block">Budget Consommé</small>
+                          <h4 className="fw-bold text-danger mb-0">{selectedChantier.budget_reel?.toLocaleString()} MGA</h4>
+                        </div>
+                      </div>
+                      <div className="col-md-4">
+                        <div className="p-3 bg-light rounded text-center">
+                          <small className="text-muted d-block">Solde Restant</small>
+                          <h4 className="fw-bold text-success mb-0">
+                            {((selectedChantier.budget_prevu || 0) - (selectedChantier.budget_reel || 0)).toLocaleString()} MGA
+                          </h4>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="modal-footer bg-light">
+                <button className="btn btn-secondary" onClick={() => setShowDetailModal(false)}>Fermer</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

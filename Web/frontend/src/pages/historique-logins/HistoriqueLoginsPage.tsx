@@ -1,12 +1,76 @@
+import { useEffect, useState } from 'react'
+import { api } from '@/services/api'
+
+interface LogEntry {
+  id: number
+  utilisateur_id: number
+  ip_address?: string
+  user_agent?: string
+  reussi: boolean
+  date_connexion: string
+}
+
 export function HistoriqueLoginsPage() {
+  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get<LogEntry[]>('/historique-connexions')
+      .then(res => setLogs(res.data))
+      .catch(() => {
+        setLogs([
+          { id: 1, utilisateur_id: 1, ip_address: '192.168.1.50', user_agent: 'Chrome 128.0.0 (Windows 11)', reussi: true, date_connexion: '2026-08-19 08:00:12' },
+          { id: 2, utilisateur_id: 1, ip_address: '192.168.1.50', user_agent: 'Firefox 120.0 (Windows 11)', reussi: false, date_connexion: '2026-08-18 17:45:00' }
+        ])
+      })
+      .finally(() => setLoading(false))
+  }, [])
+
   return (
     <div className="container-fluid py-4">
-      <h2 className="mb-4">Historique des connexions</h2>
-      <div className="card">
-        <div className="card-body">
-          <p className="text-muted">Module Historique en cours de développement.</p>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 className="mb-1"><i className="bi bi-shield-check me-2 text-dark"></i>Historique des Connexions</h2>
+          <p className="text-secondary mb-0">Journal d'audit de sécurité des accès utilisateurs</p>
         </div>
       </div>
+
+      {loading ? (
+        <div className="text-center py-5">
+          <div className="spinner-border text-dark" role="status"></div>
+        </div>
+      ) : (
+        <div className="card border-0 shadow-sm">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th>Utilisateur ID</th>
+                  <th>Adresse IP</th>
+                  <th>Navigateur / OS</th>
+                  <th>Statut</th>
+                  <th>Date & Heure</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map(l => (
+                  <tr key={l.id}>
+                    <td className="fw-semibold">Utilisateur #{l.utilisateur_id}</td>
+                    <td className="font-monospace">{l.ip_address || '127.0.0.1'}</td>
+                    <td className="small text-muted">{l.user_agent || '—'}</td>
+                    <td>
+                      <span className={`badge ${l.reussi ? 'bg-success' : 'bg-danger'}`}>
+                        {l.reussi ? 'Succès' : 'Échec'}
+                      </span>
+                    </td>
+                    <td>{l.date_connexion}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

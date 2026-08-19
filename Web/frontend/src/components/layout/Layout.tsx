@@ -1,17 +1,14 @@
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
-import { useUIStore } from '@/stores/ui.store'
 
 export function Layout() {
-  const { sidebarOpen } = useUIStore()
-
   return (
-    <div className="app-layout">
+    <div className="app-shell">
       <Sidebar />
-      <div className={`main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-collapsed'}`}>
+      <div className="main-area">
         <Topbar />
-        <main className="page-content">
+        <main className="flex-grow-1">
           <Outlet />
         </main>
       </div>

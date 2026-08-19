@@ -1,63 +1,129 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUIStore } from '@/stores/ui.store'
-import { PERMISSION_MAP } from '@/utils/permissions'
-import type { RoleCode } from '@/utils/permissions'
 
-const menuItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: 'bi-speedometer2', permission: 'dashboard:read' },
-  { path: '/chantiers', label: 'Chantiers', icon: 'bi-building', permission: 'chantiers:read' },
-  { path: '/rh', label: 'Ressources Humaines', icon: 'bi-people', permission: 'rh:read' },
-  { path: '/stocks', label: 'Stocks', icon: 'bi-box-seam', permission: 'stocks:read' },
-  { path: '/commercial', label: 'Commercial', icon: 'bi-cart', permission: 'commercial:read' },
-  { path: '/finance', label: 'Finance', icon: 'bi-currency-dollar', permission: 'finance:read' },
-  { path: '/materiels', label: 'Matériels', icon: 'bi-tools', permission: 'materiels:read' },
-  { path: '/alertes', label: 'Alertes', icon: 'bi-bell', permission: 'alertes:read' },
-  { path: '/historique-logins', label: 'Historique', icon: 'bi-clock-history', permission: 'parametres:read' },
-  { path: '/settings', label: 'Paramètres', icon: 'bi-gear', permission: 'parametres:read' },
+interface SectionGroup {
+  label: string
+  items: {
+    path: string
+    label: string
+    icon: string
+  }[]
+}
+
+const navSections: SectionGroup[] = [
+  {
+    label: 'Pilotage',
+    items: [
+      { path: '/dashboard', label: 'Tableau de bord', icon: 'bi-speedometer2' },
+      { path: '/chantiers', label: 'Chantiers', icon: 'bi-building' }
+    ]
+  },
+  {
+    label: 'Finances',
+    items: [
+      { path: '/finance', label: 'Finances & Dépenses', icon: 'bi-currency-exchange' }
+    ]
+  },
+  {
+    label: 'Ressources Humaines',
+    items: [
+      { path: '/rh', label: 'Employés & Pointages', icon: 'bi-people' }
+    ]
+  },
+  {
+    label: 'Matériel',
+    items: [
+      { path: '/materiels', label: 'Matériels & Engins', icon: 'bi-tools' }
+    ]
+  },
+  {
+    label: 'Stocks',
+    items: [
+      { path: '/stocks', label: 'Articles & Inventaire', icon: 'bi-box-seam' }
+    ]
+  },
+  {
+    label: 'Commercial',
+    items: [
+      { path: '/commercial', label: 'Clients & Devis', icon: 'bi-cart' }
+    ]
+  },
+  {
+    label: 'Administration',
+    items: [
+      { path: '/alertes', label: 'Alertes Système', icon: 'bi-bell' },
+      { path: '/historique-logins', label: 'Historique connexions', icon: 'bi-clock-history' },
+      { path: '/settings', label: 'Paramètres', icon: 'bi-gear' }
+    ]
+  }
 ]
 
 export function Sidebar() {
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const { sidebarOpen } = useUIStore()
-  const roleCode = user?.role_code || ''
-
-  const hasPermission = (permission: string) => {
-    const permissions = PERMISSION_MAP[roleCode as RoleCode] || []
-    return permissions['*'] === '*' || permissions[permission] === '*' || permissions[permission]?.includes('read')
-  }
-
-  const filteredMenu = menuItems.filter(item => hasPermission(item.permission))
 
   return (
-    <aside className={`sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
-      <div className="sidebar-header">
-        <div className="sidebar-logo">
-          <i className="bi bi-building"></i>
-          {sidebarOpen && <span className="sidebar-title">TIA INFO BUILD</span>}
-        </div>
+    <aside className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
+      <div className="sidebar-brand">
+        <div className="mark">TB</div>
+        {sidebarOpen && (
+          <div>
+            <div className="brand-name">TIA INFO BUILD</div>
+            <div className="brand-sub">Gestion BTP</div>
+          </div>
+        )}
       </div>
 
+      {sidebarOpen && user && (
+        <div className="px-3 py-2">
+          <span className="badge bg-primary bg-opacity-10 text-primary w-100 py-2 text-center small fw-bold">
+            {(user as any).role_code || 'UTILISATEUR'}
+          </span>
+        </div>
+      )}
+
+
       <nav className="sidebar-nav">
-        {filteredMenu.map(item => {
-          const isActive = location.pathname.startsWith(item.path)
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`sidebar-link ${isActive ? 'active' : ''}`}
-              title={!sidebarOpen ? item.label : undefined}
-            >
-              <i className={`bi ${item.icon}`}></i>
-              {sidebarOpen && <span>{item.label}</span>}
-            </Link>
-          )
-        })}
+        {navSections.map((section, idx) => (
+          <div key={idx} className="mb-2">
+            {sidebarOpen && (
+              <div className="sidebar-section-label">
+                {section.label}
+              </div>
+            )}
+            {section.items.map(item => {
+              const isActive = location.pathname.startsWith(item.path)
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`sidebar-link ${isActive ? 'active' : ''}`}
+                  title={!sidebarOpen ? item.label : undefined}
+                >
+                  <i className={`bi ${item.icon}`}></i>
+                  {sidebarOpen && <span>{item.label}</span>}
+                </Link>
+              )
+            })}
+          </div>
+        ))}
       </nav>
 
-      <div className="sidebar-footer">
-        <button className="sidebar-link logout-btn" onClick={logout}>
+      <div className="sidebar-foot">
+        {sidebarOpen && user && (
+          <div className="user-info d-flex align-items-center gap-2 mb-2">
+            <div className="avatar-badge bg-warning text-dark font-monospace fw-bold px-2 py-1 rounded">
+              {user.prenom?.[0] || 'U'}{user.nom?.[0] || ''}
+            </div>
+            <div className="flex-grow-1 text-truncate">
+              <div className="small fw-semibold text-white text-truncate">{user.prenom} {user.nom}</div>
+              <small className="text-muted text-truncate d-block" style={{ fontSize: '0.72rem' }}>{user.email}</small>
+            </div>
+          </div>
+        )}
+        <button className="sidebar-link w-100 border-0 bg-transparent text-danger mt-1" onClick={logout}>
           <i className="bi bi-box-arrow-right"></i>
           {sidebarOpen && <span>Déconnexion</span>}
         </button>
