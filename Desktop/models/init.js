@@ -953,6 +953,149 @@ function initDatabase() {
     )
   `).run();
 
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS SystemMetric (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      valeur REAL,
+      donnees TEXT,
+      dateMesure DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS UserTemplate (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      entrepriseId INTEGER,
+      nom TEXT NOT NULL,
+      description TEXT,
+      roleId INTEGER,
+      donnees TEXT,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id),
+      FOREIGN KEY (roleId) REFERENCES Role(id)
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS CustomRole (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      entrepriseId INTEGER,
+      nom TEXT NOT NULL,
+      description TEXT,
+      code TEXT UNIQUE,
+      isSystem INTEGER DEFAULT 0,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id)
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS CustomRolePermission (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      customRoleId INTEGER NOT NULL,
+      module TEXT NOT NULL,
+      action TEXT NOT NULL,
+      scope TEXT,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (customRoleId) REFERENCES CustomRole(id) ON DELETE CASCADE
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS HabilitationChantier (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      utilisateurId INTEGER NOT NULL,
+      chantierId INTEGER NOT NULL,
+      module TEXT NOT NULL,
+      permissions TEXT,
+      dateDebut DATE,
+      dateFin DATE,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (utilisateurId) REFERENCES Utilisateur(id) ON DELETE CASCADE,
+      FOREIGN KEY (chantierId) REFERENCES Chantier(id) ON DELETE CASCADE,
+      UNIQUE(utilisateurId, chantierId, module)
+    )
+  `).run();
+
+  // ============================================================
+  // 9B. DEMANDE DE SUPPORT (Ticketing utilisateur)
+  // ============================================================
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS DemandeSupport (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      entrepriseId INTEGER NOT NULL,
+      utilisateurId INTEGER NOT NULL,
+      sujet TEXT NOT NULL,
+      description TEXT,
+      priorite TEXT DEFAULT 'normale' CHECK (priorite IN ('basse', 'normale', 'haute', 'urgente')),
+      statut TEXT DEFAULT 'ouverte' CHECK (statut IN ('ouverte', 'en_cours', 'resolue', 'fermee')),
+      reponse TEXT,
+      dateTraitement DATETIME,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id),
+      FOREIGN KEY (utilisateurId) REFERENCES Utilisateur(id)
+    )
+  `).run();
+
+  // ============================================================
+  // 9C. CONFIGURATION D'INTÉGRATIONS (SAGE, QuickBooks, AD, Google)
+  // ============================================================
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS IntegrationConfig (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      entrepriseId INTEGER NOT NULL,
+      type TEXT NOT NULL CHECK (type IN ('SAGE', 'QUICKBOOKS', 'ACTIVE_DIRECTORY', 'GOOGLE_WORKSPACE', 'AUTRE')),
+      nom TEXT NOT NULL,
+      actif INTEGER DEFAULT 0,
+      parametres TEXT,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id)
+    )
+  `).run();
+
+  // ============================================================
+  // 9D. CONFIGURATION SYSTÈME (Seuils de maintenance préventive, etc.)
+  // ============================================================
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS SystemConfig (
+      cle TEXT PRIMARY KEY,
+      valeur TEXT,
+      description TEXT,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+
   // ============================================================
   // 9. TABLE DE SYNCHRONISATION
   // ============================================================
@@ -988,7 +1131,9 @@ function initDatabase() {
     'Article', 'Fournisseur', 'MouvementStock',
     'Client', 'ClientAdresse', 'Devis', 'LigneDevis', 'Contrat', 'Facture', 'Paiement',
     'Depense', 'RapportFinancier', 'Alerte', 'LoginHistory',
-    'BudgetPrevisionnel', 'SousTraitant', 'AffectationSousTraitant', 'CatalogueDevis', 'Notification'
+    'BudgetPrevisionnel', 'SousTraitant', 'AffectationSousTraitant', 'CatalogueDevis', 'Notification',
+    'SystemMetric', 'UserTemplate', 'CustomRole', 'CustomRolePermission', 'HabilitationChantier',
+    'DemandeSupport', 'IntegrationConfig', 'SystemConfig'
   ];
 
   allTables.forEach(tableName => {

@@ -46,6 +46,48 @@
                 <i class="bi bi-cloud-arrow-up me-1"></i>Synchronisation
             </button>
         </li>
+        <li class="nav-item" role="presentation" id="nav-habilitations-tab">
+            <button class="nav-link" id="tab-habilitations-tab" data-bs-toggle="tab" data-bs-target="#tab-habilitations"
+                type="button" role="tab">
+                <i class="bi bi-shield-check me-1"></i>Habilitations
+            </button>
+        </li>
+        <li class="nav-item" role="presentation" id="nav-custom-roles-tab">
+            <button class="nav-link" id="tab-custom-roles-tab" data-bs-toggle="tab" data-bs-target="#tab-custom-roles"
+                type="button" role="tab">
+                <i class="bi bi-person-badge me-1"></i>Rôles personnalisés
+            </button>
+        </li>
+        <li class="nav-item" role="presentation" id="nav-templates-tab">
+            <button class="nav-link" id="tab-templates-tab" data-bs-toggle="tab" data-bs-target="#tab-templates"
+                type="button" role="tab">
+                <i class="bi bi-diagram-3 me-1"></i>Templates utilisateurs
+            </button>
+        </li>
+        <li class="nav-item" role="presentation" id="nav-maintenance-tab">
+            <button class="nav-link" id="tab-maintenance-tab" data-bs-toggle="tab" data-bs-target="#tab-maintenance"
+                type="button" role="tab">
+                <i class="bi bi-heart-pulse me-1"></i>Maintenance
+            </button>
+        </li>
+        <li class="nav-item" role="presentation" id="nav-monitoring-tab">
+            <button class="nav-link" id="tab-monitoring-tab" data-bs-toggle="tab" data-bs-target="#tab-monitoring"
+                type="button" role="tab">
+                <i class="bi bi-activity me-1"></i>Monitoring
+            </button>
+        </li>
+        <li class="nav-item" role="presentation" id="nav-support-tab">
+            <button class="nav-link" id="tab-support-tab" data-bs-toggle="tab" data-bs-target="#tab-support"
+                type="button" role="tab">
+                <i class="bi bi-life-preserver me-1"></i>Support
+            </button>
+        </li>
+        <li class="nav-item" role="presentation" id="nav-integrations-tab">
+            <button class="nav-link" id="tab-integrations-tab" data-bs-toggle="tab" data-bs-target="#tab-integrations"
+                type="button" role="tab">
+                <i class="bi bi-plug me-1"></i>Intégrations
+            </button>
+        </li>
     </ul>
 
     <div class="tab-content" id="parametresTabsContent">
@@ -222,15 +264,44 @@
                     </form>
                 </div>
             </div>
+
+            <!-- Test SMTP -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-envelope me-2"></i>Test SMTP</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-secondary">Testez votre configuration SMTP en envoyant un email de test.</p>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary" id="btnTestSmtp">
+                            <i class="bi bi-send me-1"></i>Envoyer un email de test
+                        </button>
+                    </div>
+                    <div id="smtpTestResult" class="mt-3" style="display: none;">
+                        <div class="alert" role="alert">
+                            <span id="smtpTestMessage"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Onglet Utilisateurs -->
         <div class="tab-pane fade" id="tab-utilisateurs" role="tabpanel">
-            <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                 <h5 class="mb-0"><i class="bi bi-people me-2"></i>Gestion des utilisateurs</h5>
-                <button class="btn btn-sm btn-primary" id="btnNouvelUtilisateur">
-                    <i class="bi bi-person-plus me-1"></i>Nouvel utilisateur
-                </button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" id="btnExportCsv">
+                        <i class="bi bi-filetype-csv me-1"></i>Exporter CSV
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" id="btnImportCsv">
+                        <i class="bi bi-upload me-1"></i>Importer CSV
+                    </button>
+                    <input type="file" id="importCsvFile" accept=".csv" style="display: none;">
+                    <button class="btn btn-sm btn-primary" id="btnNouvelUtilisateur">
+                        <i class="bi bi-person-plus me-1"></i>Nouvel utilisateur
+                    </button>
+                </div>
             </div>
             <div class="card">
                 <div class="card-body p-0">
@@ -599,6 +670,397 @@
                 </div>
             </div>
         </div>
+
+        <!-- Onglet Habilitations -->
+        <div class="tab-pane fade" id="tab-habilitations" role="tabpanel">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-shield-check me-2"></i>Habilitations par chantier</h5>
+                    <button class="btn btn-sm btn-primary" id="btnNouvelleHabilitation">
+                        <i class="bi bi-plus-circle me-1"></i>Nouvelle habilitation
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="habilitationsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Utilisateur</th>
+                                    <th>Chantier</th>
+                                    <th>Module</th>
+                                    <th>Permissions</th>
+                                    <th>Période</th>
+                                    <th style="width: 100px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="habilitationsTbody">
+                                <!-- Rempli par JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Onglet Rôles personnalisés -->
+        <div class="tab-pane fade" id="tab-custom-roles" role="tabpanel">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Rôles personnalisés</h5>
+                    <button class="btn btn-sm btn-primary" id="btnNouveauCustomRole">
+                        <i class="bi bi-plus-circle me-1"></i>Nouveau rôle
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="customRolesTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nom</th>
+                                    <th>Code</th>
+                                    <th>Permissions</th>
+                                    <th>Description</th>
+                                    <th style="width: 100px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customRolesTbody">
+                                <!-- Rempli par JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Onglet Templates utilisateurs -->
+        <div class="tab-pane fade" id="tab-templates" role="tabpanel">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Templates utilisateurs</h5>
+                    <button class="btn btn-sm btn-primary" id="btnNouveauTemplate">
+                        <i class="bi bi-plus-circle me-1"></i>Nouveau template
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="templatesTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nom</th>
+                                    <th>Rôle</th>
+                                    <th>Description</th>
+                                    <th style="width: 100px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="templatesTbody">
+                                <!-- Rempli par JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- ONGLET MAINTENANCE PRÉVENTIVE                              -->
+        <!-- ============================================================ -->
+        <div class="tab-pane fade" id="tab-maintenance" role="tabpanel">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-heart-pulse me-2"></i>Seuils de maintenance</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="formMaintenance">
+                                <div class="mb-3">
+                                    <label class="form-label" for="maintDbSize">Alerte si taille base > (MB)</label>
+                                    <input type="number" class="form-control" name="dbSizeAlertMB" id="maintDbSize" min="1" value="500">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="maintErrCount">Alerte si erreurs 24h > </label>
+                                    <input type="number" class="form-control" name="errorRateAlertCount" id="maintErrCount" min="1" value="20">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="maintInterval">Intervalle monitoring (min)</label>
+                                    <input type="number" class="form-control" name="monitorIntervalMin" id="maintInterval" min="1" max="120" value="5">
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save me-1"></i>Enregistrer les seuils
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-shield-exclamation me-2"></i>Vérification manuelle</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-secondary">Lance une vérification immédiate de la santé du système et génère une alerte admin si un seuil est dépassé.</p>
+                            <button class="btn btn-warning" id="btnRunMaintenance">
+                                <i class="bi bi-play-circle me-1"></i>Lancer la vérification
+                            </button>
+                            <div id="maintenanceResult" class="mt-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- ONGLET MONITORING                                          -->
+        <!-- ============================================================ -->
+        <div class="tab-pane fade" id="tab-monitoring" role="tabpanel">
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-activity me-2"></i>Monitoring système (7 derniers jours)</h5>
+                            <button class="btn btn-sm btn-outline-primary" id="btnRefreshMonitoring">
+                                <i class="bi bi-arrow-clockwise me-1"></i>Actualiser
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <h6 class="text-secondary">Erreurs / jour</h6>
+                                    <canvas id="monitorErrorsChart" height="180"></canvas>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6 class="text-secondary">Taille base (MB)</h6>
+                                    <canvas id="monitorDbChart" height="180"></canvas>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6 class="text-secondary">Utilisateurs actifs / jour</h6>
+                                    <canvas id="monitorUsersChart" height="180"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- ONGLET SUPPORT (TICKETING)                                 -->
+        <!-- ============================================================ -->
+        <div class="tab-pane fade" id="tab-support" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0"><i class="bi bi-life-preserver me-2"></i>Support utilisateur</h5>
+                <button class="btn btn-sm btn-primary" id="btnNouvelleDemande">
+                    <i class="bi bi-plus-circle me-1"></i>Nouvelle demande
+                </button>
+            </div>
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="supportTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Sujet</th>
+                                    <th>Demandeur</th>
+                                    <th>Priorité</th>
+                                    <th>Statut</th>
+                                    <th>Date</th>
+                                    <th style="width: 120px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="supportTbody">
+                                <!-- Rempli par JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- ONGLET INTÉGRATIONS                                        -->
+        <!-- ============================================================ -->
+        <div class="tab-pane fade" id="tab-integrations" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0"><i class="bi bi-plug me-2"></i>Intégrations & connecteurs</h5>
+                <button class="btn btn-sm btn-primary" id="btnNouvelleIntegration">
+                    <i class="bi bi-plus-circle me-1"></i>Nouveau connecteur
+                </button>
+            </div>
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-cloud-download me-2"></i>Import annuaire (Active Directory / Google Workspace)</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-secondary">Importez un export CSV d'annuaire (colonnes: email;nom;prenom;telephone;role;statut) pour créer les comptes en masse.</p>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-5">
+                            <label class="form-label">Rôle par défaut</label>
+                            <select class="form-select" id="importRoleDefaut">
+                                <option value="9">Commercial</option>
+                                <option value="6">RH</option>
+                                <option value="4">Chef de Chantier</option>
+                                <option value="8">Magasinier</option>
+                                <option value="7">Responsable Matériel</option>
+                                <option value="2">Comptable</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="file" class="form-control" id="importAnnuaireFile" accept=".csv">
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-success w-100" id="btnImportAnnuaire">
+                                <i class="bi bi-upload me-1"></i>Importer
+                            </button>
+                        </div>
+                    </div>
+                    <div id="importAnnuaireResult" class="mt-2"></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-receipt me-2"></i>Export comptable (SAGE / QuickBooks)</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-secondary">Exportez le journal des écritures (factures + dépenses) au format CSV pour vos logiciels comptables.</p>
+                    <button class="btn btn-outline-primary" id="btnExportCompta">
+                        <i class="bi bi-download me-1"></i>Exporter les écritures
+                    </button>
+                </div>
+            </div>
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-diagram-2 me-2"></i>Connecteurs configurés</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="integrationsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nom</th>
+                                    <th>Type</th>
+                                    <th>Statut</th>
+                                    <th style="width: 120px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="integrationsTbody">
+                                <!-- Rempli par JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modale Nouvelle Demande de Support -->
+<div class="modal fade" id="modalDemandeSupport" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-life-preserver me-2"></i>Nouvelle demande de support</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formDemandeSupport">
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="demandeId">
+                    <div class="mb-3">
+                        <label class="form-label required">Sujet *</label>
+                        <input type="text" class="form-control" name="sujet" id="demandeSujet" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Priorité</label>
+                        <select class="form-select" name="priorite" id="demandePriorite">
+                            <option value="basse">Basse</option>
+                            <option value="normale" selected>Normale</option>
+                            <option value="haute">Haute</option>
+                            <option value="urgente">Urgente</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="description" id="demandeDescription" rows="4"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Envoyer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modale Réponse Support (ADMIN) -->
+<div class="modal fade" id="modalReponseSupport" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-reply me-2"></i>Répondre à la demande</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formReponseSupport">
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="reponseDemandeId">
+                    <div id="reponseDemandeSujet" class="mb-2 fw-semibold"></div>
+                    <div class="mb-3">
+                        <label class="form-label">Réponse / résolution</label>
+                        <textarea class="form-control" name="reponse" id="reponseTexte" rows="4" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nouveau statut</label>
+                        <select class="form-select" name="statut" id="reponseStatut">
+                            <option value="en_cours">En cours</option>
+                            <option value="resolue" selected>Résolue</option>
+                            <option value="fermee">Fermée</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modale Nouvelle Intégration -->
+<div class="modal fade" id="modalIntegration" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plug me-2"></i>Connecteur d'intégration</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formIntegration">
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="integrationId">
+                    <div class="mb-3">
+                        <label class="form-label">Type</label>
+                        <select class="form-select" name="type" id="integrationType">
+                            <option value="SAGE">SAGE</option>
+                            <option value="QUICKBOOKS">QuickBooks</option>
+                            <option value="ACTIVE_DIRECTORY">Active Directory</option>
+                            <option value="GOOGLE_WORKSPACE">Google Workspace</option>
+                            <option value="AUTRE">Autre</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nom</label>
+                        <input type="text" class="form-control" name="nom" id="integrationNom">
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="actif" id="integrationActif">
+                        <label class="form-check-label" for="integrationActif">Connecteur actif</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -696,6 +1158,166 @@
                     <i class="bi bi-trash me-1"></i>Supprimer
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modale Nouvelle Habilitation Chantier -->
+<div class="modal fade" id="modalHabilitation" tabindex="-1" aria-labelledby="modalHabilitationLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalHabilitationLabel"><i class="bi bi-shield-check me-2"></i>Habilitation chantier</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <form id="formHabilitation" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="habilitationId">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label required" for="habilitationUtilisateur">Utilisateur *</label>
+                            <select class="form-select" name="utilisateurId" id="habilitationUtilisateur" required>
+                                <option value="" selected disabled>Choisir un utilisateur</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label required" for="habilitationChantier">Chantier *</label>
+                            <select class="form-select" name="chantierId" id="habilitationChantier" required>
+                                <option value="" selected disabled>Choisir un chantier</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label required" for="habilitationModule">Module *</label>
+                            <select class="form-select" name="module" id="habilitationModule" required>
+                                <option value="general" selected>Général</option>
+                                <option value="chantiers">Chantiers</option>
+                                <option value="stocks">Stocks</option>
+                                <option value="finances">Finances</option>
+                                <option value="rh">Ressources Humaines</option>
+                                <option value="commercial">Commercial</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="habilitationPermissions">Permissions (JSON)</label>
+                            <input type="text" class="form-control" name="permissions" id="habilitationPermissions" placeholder='["read", "write"]'>
+                            <div class="form-text">Format JSON: ["read", "write"]</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="habilitationDateDebut">Date début</label>
+                            <input type="date" class="form-control" name="dateDebut" id="habilitationDateDebut">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="habilitationDateFin">Date fin</label>
+                            <input type="date" class="form-control" name="dateFin" id="habilitationDateFin">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-outline-danger" id="btnDeleteHabilitation" style="display: none;">
+                        <i class="bi bi-trash me-1"></i>Supprimer
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i>Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modale Nouveau Rôle Personnalisé -->
+<div class="modal fade" id="modalCustomRole" tabindex="-1" aria-labelledby="modalCustomRoleLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCustomRoleLabel"><i class="bi bi-person-badge me-2"></i>Rôle personnalisé</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <form id="formCustomRole" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="customRoleId">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label required" for="customRoleNom">Nom *</label>
+                            <input type="text" class="form-control" name="nom" id="customRoleNom" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="customRoleCode">Code</label>
+                            <input type="text" class="form-control" name="code" id="customRoleCode" placeholder="Ex: CUSTOM_ROLE_A">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="customRoleDescription">Description</label>
+                            <textarea class="form-control" name="description" id="customRoleDescription" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-outline-danger" id="btnDeleteCustomRole" style="display: none;">
+                        <i class="bi bi-trash me-1"></i>Supprimer
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i>Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modale Nouveau Template Utilisateur -->
+<div class="modal fade" id="modalTemplate" tabindex="-1" aria-labelledby="modalTemplateLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTemplateLabel"><i class="bi bi-diagram-3 me-2"></i>Template utilisateur</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <form id="formTemplate" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="templateId">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label required" for="templateNom">Nom *</label>
+                            <input type="text" class="form-control" name="nom" id="templateNom" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="templateRole">Rôle</label>
+                            <select class="form-select" name="roleId" id="templateRole">
+                                <option value="" selected disabled>Choisir un rôle</option>
+                                <option value="1">Administrateur d'Entreprise</option>
+                                <option value="2">Comptable / Responsable Financier</option>
+                                <option value="3">Direction Générale / DAF</option>
+                                <option value="4">Chef de Chantier / Conducteur de Travaux</option>
+                                <option value="5">Chef de Projet / Directeur Technique</option>
+                                <option value="6">Responsable RH</option>
+                                <option value="7">Responsable Matériel / Logisticien</option>
+                                <option value="8">Magasinier / Responsable Stock</option>
+                                <option value="9">Commercial / Responsable Commercial</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="templateDescription">Description</label>
+                            <textarea class="form-control" name="description" id="templateDescription" rows="2"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="templateDonnees">Données pré-configurées (JSON)</label>
+                            <textarea class="form-control" name="donnees" id="templateDonnees" rows="3" placeholder='{"statut": "actif", "telephone": ""}'></textarea>
+                            <div class="form-text">Format JSON avec les valeurs par défaut</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-outline-danger" id="btnDeleteTemplate" style="display: none;">
+                        <i class="bi bi-trash me-1"></i>Supprimer
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i>Enregistrer
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
