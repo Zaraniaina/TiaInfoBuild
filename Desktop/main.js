@@ -39,6 +39,13 @@ const BudgetPrevisionnelRepository = require('./models/repositories/BudgetPrevis
 const SousTraitantRepository = require('./models/repositories/SousTraitantRepository')
 const CatalogueDevisRepository = require('./models/repositories/CatalogueDevisRepository')
 const NotificationRepository = require('./models/repositories/NotificationRepository')
+const UserTemplateRepository = require('./models/repositories/UserTemplateRepository')
+const CustomRoleRepository = require('./models/repositories/CustomRoleRepository')
+const HabilitationChantierRepository = require('./models/repositories/HabilitationChantierRepository')
+const SystemMetricRepository = require('./models/repositories/SystemMetricRepository')
+const DemandeSupportRepository = require('./models/repositories/DemandeSupportRepository')
+const IntegrationConfigRepository = require('./models/repositories/IntegrationConfigRepository')
+const SystemConfigRepository = require('./models/repositories/SystemConfigRepository')
 
 // Controllers
 const { handleLogin, handleRegister } = require('./controllers/authController')
@@ -95,7 +102,14 @@ const repos = {
   budgetPrevisionnels: new BudgetPrevisionnelRepository(),
   sousTraitants: new SousTraitantRepository(),
   catalogues: new CatalogueDevisRepository(),
-  notifications: new NotificationRepository()
+  notifications: new NotificationRepository(),
+  userTemplates: new UserTemplateRepository(),
+  customRoles: new CustomRoleRepository(),
+  habilitationChantiers: new HabilitationChantierRepository(),
+  systemMetrics: new SystemMetricRepository(),
+  demandesSupport: new DemandeSupportRepository(),
+  integrations: new IntegrationConfigRepository(),
+  systemConfig: new SystemConfigRepository()
 }
 
 // Instanciation des contrôleurs
@@ -903,8 +917,29 @@ secureHandle('backup:setAutoConfig', backupRoles, (e, config) => {
   try {
     const configPath = path.join(app.getPath('userData'), 'backup-config.json')
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
+    startScheduledBackup()
     return { success: true }
   } catch (err) { throw err }
+})
+
+secureHandle('backup:getAutoConfig', backupRoles, (e) => {
+  try {
+    const configPath = path.join(app.getPath('userData'), 'backup-config.json')
+    if (!fs.existsSync(configPath)) return { success: true, data: null }
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+    return { success: true, data: config }
+  } catch (err) {
+    return { success: true, data: null }
+  }
+})
+
+secureHandle('backup:runScheduled', ['ADMIN'], (e) => {
+  try {
+    const result = runScheduledBackupNow()
+    return result
+  } catch (err) {
+    return { success: false, error: err.message }
+  }
 })
 
 // ============================================================
@@ -1117,7 +1152,6 @@ function generateLoginPDFHtml(userData) {
 
 ipcMain.handle('utilisateurs:generateLoginPDF', async (event, userData) => {
   try {
-    // Créer une fenêtre BrowserWindow invisible pour le rendu PDF
     const pdfWin = new BrowserWindow({
       show: false,
       width: 800,
@@ -1131,7 +1165,6 @@ ipcMain.handle('utilisateurs:generateLoginPDF', async (event, userData) => {
     const htmlContent = generateLoginPDFHtml(userData);
     await pdfWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
 
-    // Générer le PDF
     const pdfData = await pdfWin.webContents.printToPDF({
       printBackground: true,
       pageSize: 'A4',
@@ -1140,11 +1173,9 @@ ipcMain.handle('utilisateurs:generateLoginPDF', async (event, userData) => {
 
     pdfWin.close();
 
-    // Préparer le nom de fichier par défaut
     const safeName = `${(userData.prenom || '').replace(/[^a-zA-Z0-9]/g, '_')}_${(userData.nom || '').replace(/[^a-zA-Z0-9]/g, '_')}`;
     const defaultFilename = `login_${safeName}_${new Date().toISOString().split('T')[0]}.pdf`;
 
-    // Dialogue de sauvegarde
     const { filePath, canceled } = await dialog.showSaveDialog({
       title: 'Enregistrer les informations de connexion',
       defaultPath: defaultFilename,
@@ -1156,8 +1187,6 @@ ipcMain.handle('utilisateurs:generateLoginPDF', async (event, userData) => {
     }
 
     fs.writeFileSync(filePath, pdfData);
-
-    // Ouvrir le PDF dans le lecteur par défaut
     await shell.openPath(filePath);
 
     return { success: true, filePath };
@@ -1166,6 +1195,865 @@ ipcMain.handle('utilisateurs:generateLoginPDF', async (event, userData) => {
     return { success: false, error: error.message };
   }
 });
+
+// ============================================================
+// CSV IMPORT/EXPORT UTILISATEURS
+// ============================================================
+function escapeCsv(value) {
+  if (value === null || value === undefined) return '';
+  const str = String(value);
+  if (str.includes(',') || str.includes(';') || str.includes('"') || str.includes('\n')) {
+    return '"' + str.replace(/"/g, '""') + '"';
+  }
+  return str;
+}
+
+/**
+ * Importer des utilisateurs depuis un CSV (export Active Directory / Google Workspace)
+ * Colonnes attendues: email, nom, prenom, telephone, role, statut
+ */
+async function importerDepuisCsv(csvContent, entrepriseId, defautRoleId) {
+  if (!csvContent || typeof csvContent !== 'string') {
+    return { success: false, error: 'Contenu CSV invalide' };
+  }
+  const lines = csvContent.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return { success: false, error: 'CSV vide ou sans en-tête' };
+
+  const headers = lines[0].split(';').map(h => h.trim().toLowerCase());
+  const emailIdx = headers.findIndex(h => h === 'email');
+  const nomIdx = headers.findIndex(h => h === 'nom');
+  const prenomIdx = headers.findIndex(h => h === 'prenom');
+  const telIdx = headers.findIndex(h => h === 'telephone');
+  const roleIdx = headers.findIndex(h => h === 'role' || h === 'rolecode');
+  const statutIdx = headers.findIndex(h => h === 'statut');
+  if (emailIdx === -1 || nomIdx === -1) {
+    return { success: false, error: 'CSV doit contenir les colonnes "email" et "nom"' };
+  }
+
+  const roleMap = { admin: 1, comptable: 2, direction: 3, chef_chantier: 4, chef_projet: 5, rh: 6, materiel: 7, magasinier: 8, commercial: 9 };
+  const defRole = parseInt(defautRoleId, 10) || 9;
+  const creees = [], erreurs = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(';').map(c => c.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+    const email = cols[emailIdx];
+    const nom = cols[nomIdx];
+    if (!email || !nom) { erreurs.push({ ligne: i + 1, erreur: 'Email et nom requis' }); continue; }
+    try {
+      let roleId = defRole;
+      if (roleIdx !== -1 && cols[roleIdx]) {
+        const code = cols[roleIdx].trim().toLowerCase().replace(/'/g, '');
+        if (roleMap[code]) roleId = roleMap[code];
+      }
+      const pwd = Math.random().toString(36).slice(-10) + 'A1!';
+      const user = repos.utilisateurs.createUser({
+        nom,
+        prenom: prenomIdx !== -1 ? cols[prenomIdx] : '',
+        email,
+        telephone: telIdx !== -1 ? cols[telIdx] : '',
+        roleId,
+        statut: statutIdx !== -1 && cols[statutIdx] ? cols[statutIdx] : 'actif',
+        motDePasse: pwd
+      }, entrepriseId);
+      creees.push({ id: user.id, email, nom });
+    } catch (err) {
+      erreurs.push({ ligne: i + 1, erreur: err.message });
+    }
+  }
+
+  return { success: true, data: { creees, erreurs, total: creees.length, echecs: erreurs.length } };
+}
+
+secureHandle('utilisateurs:exportCsv', ['ADMIN'], (e) => {
+  try {
+    const entrepriseId = _session.entrepriseId || 1;
+    const users = repos.utilisateurs.getListWithRole({ entrepriseId, limit: 1000 });
+    if (!users || users.length === 0) {
+      return { success: false, error: 'Aucun utilisateur à exporter' };
+    }
+
+    const headers = ['ID', 'Nom', 'Prenom', 'Email', 'Telephone', 'Role', 'Statut', 'DateCreation'];
+    const rows = users.map(u => [
+      u.id, u.nom || '', u.prenom || '', u.email || '', u.telephone || '',
+      u.roleNom || u.roleCode || '', u.statut || '', u.dateCreation || ''
+    ]);
+
+    const csvContent = [
+      headers.join(';'),
+      ...rows.map(r => r.map(escapeCsv).join(';'))
+    ].join('\n');
+
+    return { success: true, data: csvContent, filename: `utilisateurs_${entrepriseId}_${new Date().toISOString().split('T')[0]}.csv` };
+  } catch (error) {
+    console.error('utilisateurs:exportCsv error:', error);
+    return { success: false, error: error.message };
+  }
+})
+
+secureHandle('utilisateurs:importCsv', ['ADMIN'], async (e, csvContent) => {
+  try {
+    if (!csvContent || typeof csvContent !== 'string') {
+      return { success: false, error: 'Contenu CSV invalide' };
+    }
+
+    const lines = csvContent.split(/\r?\n/).filter(line => line.trim());
+    if (lines.length < 2) {
+      return { success: false, error: 'CSV vide ou sans en-tête' };
+    }
+
+    const headers = lines[0].split(';').map(h => h.trim().toLowerCase());
+    const emailIdx = headers.findIndex(h => h === 'email');
+    const nomIdx = headers.findIndex(h => h === 'nom');
+    const prenomIdx = headers.findIndex(h => h === 'prenom');
+    const telephoneIdx = headers.findIndex(h => h === 'telephone');
+    const roleIdx = headers.findIndex(h => h === 'role' || h === 'rolecode');
+    const statutIdx = headers.findIndex(h => h === 'statut');
+
+    if (emailIdx === -1 || nomIdx === -1) {
+      return { success: false, error: 'CSV doit contenir les colonnes "email" et "nom"' };
+    }
+
+    const results = [];
+    const errors = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(';').map(c => c.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+      const email = cols[emailIdx];
+      const nom = cols[nomIdx];
+
+      if (!email || !nom) {
+        errors.push({ line: i + 1, error: 'Email et nom requis' });
+        continue;
+      }
+
+      const existing = db.prepare(`SELECT id FROM Utilisateur WHERE email = ? AND is_deleted = 0`).get(email);
+      if (existing) {
+        errors.push({ line: i + 1, error: `Email ${email} existe déjà` });
+        continue;
+      }
+
+      let roleCode = 'UTILISATEUR';
+      if (roleIdx !== -1 && cols[roleIdx]) {
+        const rawRole = cols[roleIdx].toUpperCase();
+        const roleMap = {
+          'ADMIN': 'ADMIN', 'ADMINISTRATEUR': 'ADMIN',
+          'COMPTABLE': 'COMPTABLE', 'FINANCE': 'COMPTABLE',
+          'DIRECTEUR': 'DIRECTEUR', 'DIRECTION': 'DIRECTEUR', 'DAF': 'DIRECTEUR',
+          'CHEF CHANTIER': 'CHEF_CHANTIER', 'CHEF_CHANTIER': 'CHEF_CHANTIER',
+          'CHEF PROJET': 'CHEF_PROJET', 'CHEF_PROJET': 'CHEF_PROJET',
+          'RH': 'RH',
+          'MATERIEL': 'MATERIEL', 'LOGISTICIEN': 'MATERIEL',
+          'MAGASINIER': 'MAGASINIER', 'STOCK': 'MAGASINIER',
+          'COMMERCIAL': 'COMMERCIAL'
+        };
+        roleCode = roleMap[rawRole] || 'UTILISATEUR';
+      }
+
+      const roleRow = db.prepare(`SELECT id FROM Role WHERE code = ? AND is_deleted = 0`).get(roleCode);
+      const roleId = roleRow ? roleRow.id : 9;
+
+      try {
+        const userData = {
+          nom: nom,
+          prenom: prenomIdx !== -1 ? (cols[prenomIdx] || '') : '',
+          email: email,
+          telephone: telephoneIdx !== -1 ? (cols[telephoneIdx] || '') : '',
+          roleId: roleId,
+          statut: statutIdx !== -1 ? cols[statutIdx] : 'actif',
+          password: Math.random().toString(36).slice(-8)
+        };
+
+        const result = await utilisateurCtrl.create(e, userData, _session.entrepriseId);
+        if (result.success) {
+          results.push({ line: i + 1, email, nom, status: 'created' });
+        } else {
+          errors.push({ line: i + 1, error: result.error });
+        }
+      } catch (err) {
+        errors.push({ line: i + 1, error: err.message });
+      }
+    }
+
+    return {
+      success: true,
+      data: { imported: results.length, errors: errors.length, details: results, errorDetails: errors }
+    };
+  } catch (error) {
+    console.error('utilisateurs:importCsv error:', error);
+    return { success: false, error: error.message };
+  }
+})
+
+// ============================================================
+// TEST SMTP
+// ============================================================
+secureHandle('entreprises:testSmtp', ['ADMIN'], async (e) => {
+  try {
+    const entrepriseId = _session.entrepriseId || 1;
+    const entreprise = db.prepare(`SELECT * FROM Entreprise WHERE id = ?`).get(entrepriseId);
+
+    if (!entreprise) {
+      return { success: false, error: 'Entreprise introuvable' };
+    }
+
+    const smtpConfig = {
+      host: entreprise.smtpHost,
+      port: parseInt(entreprise.smtpPort) || 587,
+      user: entreprise.smtpUser,
+      pass: entreprise.smtpPass,
+      from: entreprise.smtpFrom || entreprise.email,
+      secure: entreprise.smtpSecure === 1 || entreprise.smtpPort === 465
+    };
+
+    if (!smtpConfig.host) {
+      return { success: false, error: 'Configuration SMTP incomplète. Veuillez renseigner au moins le serveur SMTP (hôte).' };
+    }
+
+    const { sendInvoiceEmail } = require('./services/emailService');
+    const testHtml = `
+      <h2>Test SMTP TIA INFO BUILD</h2>
+      <p>Ce message confirme que votre configuration SMTP fonctionne correctement.</p>
+      <p><strong>Date:</strong> ${new Date().toLocaleString('fr-FR')}</p>
+      <p><strong>Entreprise:</strong> ${entreprise.nom || 'N/A'}</p>
+      <hr>
+      <p style="color: #6c757d; font-size: 12px;">Message automatique généré par TIA INFO BUILD</p>
+    `;
+
+    const result = await sendInvoiceEmail({
+      to: entreprise.email || entreprise.smtpUser,
+      subject: `[TEST SMTP] Configuration TIA INFO BUILD - ${new Date().toLocaleDateString('fr-FR')}`,
+      html: testHtml,
+      smtpConfig
+    });
+
+    return { success: true, message: 'Email de test envoyé avec succès', result };
+  } catch (error) {
+    console.error('entreprises:testSmtp error:', error);
+    return { success: false, error: error.message };
+  }
+})
+
+// ============================================================
+// SANTÉ SYSTÈME
+// ============================================================
+secureHandle('system:getHealth', ['ADMIN'], (e) => {
+  try {
+    const summary = repos.systemMetrics.getHealthSummary(_session.entrepriseId || 1);
+    
+    let dbFileSize = summary.dbSize;
+    try {
+      if (fs.existsSync(dbPath)) {
+        dbFileSize = fs.statSync(dbPath).size;
+      }
+    } catch (fsErr) {
+      dbFileSize = summary.dbSize || 0;
+    }
+    
+    const recentErrors = db.prepare(`
+      SELECT action, dateAction, payload FROM AuditLog
+      WHERE (action LIKE '%error%' OR action LIKE '%erreur%' OR action LIKE '%fail%')
+      AND dateAction >= datetime('now', '-24 hours') AND is_deleted = 0
+      ORDER BY dateAction DESC LIMIT 10
+    `).all();
+
+    const recentErrorsCount = db.prepare(`
+      SELECT COUNT(*) as count FROM AuditLog
+      WHERE (action LIKE '%error%' OR action LIKE '%erreur%' OR action LIKE '%fail%')
+      AND dateAction >= datetime('now', '-24 hours') AND is_deleted = 0
+    `).get();
+
+    const connectedUsers = db.prepare(`
+      SELECT COUNT(DISTINCT utilisateurId) as count FROM LoginHistory
+      WHERE dateConnexion >= datetime('now', '-1 hour') AND is_deleted = 0
+    `).get();
+
+    return {
+      success: true,
+      data: {
+        dbSize: dbFileSize,
+        dbSizeFormatted: formatBytes(dbFileSize),
+        connectedUsers: connectedUsers?.count || 0,
+        recentErrors: recentErrorsCount?.count || 0,
+        recentErrorDetails: recentErrors,
+        timestamp: new Date().toISOString()
+      }
+    };
+  } catch (error) {
+    console.error('system:getHealth error:', error);
+    return { success: false, error: error.message };
+  }
+})
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+}
+
+// ============================================================
+// MAINTENANCE PRÉVENTIVE & MONITORING
+// ============================================================
+secureHandle('system:getMaintenanceConfig', ['ADMIN'], (e) => {
+  try {
+    const config = {
+      dbSizeAlertMB: repos.systemConfig.getInt('dbSizeAlertMB', 500),
+      errorRateAlertCount: repos.systemConfig.getInt('errorRateAlertCount', 20),
+      monitorIntervalMin: repos.systemConfig.getInt('monitorIntervalMin', 5)
+    };
+    return { success: true, data: config };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+secureHandle('system:setMaintenanceConfig', ['ADMIN'], (e, config) => {
+  try {
+    if (config.dbSizeAlertMB !== undefined) repos.systemConfig.set('dbSizeAlertMB', parseInt(config.dbSizeAlertMB, 10) || 500);
+    if (config.errorRateAlertCount !== undefined) repos.systemConfig.set('errorRateAlertCount', parseInt(config.errorRateAlertCount, 10) || 20);
+    if (config.monitorIntervalMin !== undefined) repos.systemConfig.set('monitorIntervalMin', parseInt(config.monitorIntervalMin, 10) || 5);
+    return { success: true, message: 'Configuration de maintenance enregistrée' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+secureHandle('system:runMaintenanceCheck', ['ADMIN'], (e) => {
+  try {
+    const entrepriseId = _session.entrepriseId || 1;
+    let dbSize = 0;
+    try { if (fs.existsSync(dbPath)) dbSize = fs.statSync(dbPath).size; } catch (_) {}
+
+    const dbSizeMB = dbSize / (1024 * 1024);
+    const seuilMB = repos.systemConfig.getInt('dbSizeAlertMB', 500);
+    const seuilErreurs = repos.systemConfig.getInt('errorRateAlertCount', 20);
+
+    const recentErrors = db.prepare(`
+      SELECT COUNT(*) as count FROM AuditLog
+      WHERE (action LIKE '%error%' OR action LIKE '%erreur%' OR action LIKE '%fail%')
+      AND dateAction >= datetime('now', '-24 hours') AND is_deleted = 0
+    `).get();
+
+    const alertes = [];
+    if (dbSizeMB > seuilMB) {
+      alertes.push(`Taille de la base (${dbSizeMB.toFixed(1)} MB) supérieure au seuil (${seuilMB} MB).`);
+    }
+    if ((recentErrors?.count || 0) > seuilErreurs) {
+      alertes.push(`Nombre d'erreurs sur 24h (${recentErrors.count}) supérieur au seuil (${seuilErreurs}).`);
+    }
+
+    if (alertes.length > 0 && repos.alertes) {
+      repos.alertes.creer({
+        entrepriseId,
+        titre: 'Alerte maintenance préventive',
+        typeEntite: 'Systeme',
+        message: alertes.join(' '),
+        niveauGravite: 'avertissement',
+        roleDestinataire: 'ADMIN'
+      });
+    }
+
+    return {
+      success: true,
+      data: {
+        dbSizeMB: parseFloat(dbSizeMB.toFixed(2)),
+        seuilMB,
+        recentErrors: recentErrors?.count || 0,
+        seuilErreurs,
+        alertes
+      }
+    };
+  } catch (error) {
+    console.error('system:runMaintenanceCheck error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+secureHandle('system:getMonitoring', ['ADMIN'], (e, jours = 7) => {
+  try {
+    const nbJours = Math.min(Math.max(parseInt(jours, 10) || 7, 1), 90);
+    const errors = db.prepare(`
+      SELECT date(dateAction) as jour, COUNT(*) as count
+      FROM AuditLog
+      WHERE (action LIKE '%error%' OR action LIKE '%erreur%' OR action LIKE '%fail%')
+        AND dateAction >= datetime('now', '-' || ? || ' days') AND is_deleted = 0
+      GROUP BY date(dateAction) ORDER BY jour ASC
+    `).all(nbJours);
+
+    const dbTrend = repos.systemMetrics.getByType('dbSizeMB', nbJours * 10)
+      .map(m => ({ jour: (m.dateMesure || '').slice(0, 10), valeur: m.valeur }))
+      .reverse();
+
+    const usersTrend = repos.systemMetrics.getByType('activeUsers', nbJours * 10)
+      .map(m => ({ jour: (m.dateMesure || '').slice(0, 10), valeur: m.valeur }))
+      .reverse();
+
+    return { success: true, data: { errors, dbTrend, usersTrend, jours: nbJours } };
+  } catch (error) {
+    console.error('system:getMonitoring error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// ============================================================
+// SUPPORT UTILISATEUR (TICKETING)
+// ============================================================
+secureHandle('support:list', ['ADMIN'], (e, params) => {
+  try {
+    const entrepriseId = _session.entrepriseId || 1;
+    const items = repos.demandesSupport.getListByEntreprise(entrepriseId, params || {});
+    return { success: true, data: items };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+secureHandle('support:listMine', [], (e, params) => {
+  try {
+    const items = repos.demandesSupport.getByUtilisateur(_session.id, params || {});
+    return { success: true, data: items };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+secureHandle('support:get', [], (e, id) => {
+  try {
+    const demande = repos.demandesSupport.getWithRelations(id);
+    if (!demande) return { success: false, error: 'Demande introuvable' };
+    const isAdmin = getSessionRoles().includes('ADMIN');
+    if (!isAdmin && demande.utilisateurId !== _session.id) {
+      return { success: false, error: 'Accès refusé' };
+    }
+    return { success: true, data: demande };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+secureHandle('support:create', [], (e, data) => {
+  try {
+    if (!data.sujet || !data.sujet.trim()) return { success: false, error: 'Le sujet est obligatoire' };
+    const payload = {
+      entrepriseId: _session.entrepriseId || 1,
+      utilisateurId: _session.id,
+      sujet: data.sujet.trim(),
+      description: (data.description || '').trim(),
+      priorite: data.priorite || 'normale',
+      statut: 'ouverte'
+    };
+    const item = repos.demandesSupport.create(payload);
+    return { success: true, data: item, message: 'Demande de support envoyée' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+secureHandle('support:respond', ['ADMIN'], (e, id, reponse, statut) => {
+  try {
+    const item = repos.demandesSupport.repondre(id, reponse, statut || 'resolue');
+    if (!item) return { success: false, error: 'Demande introuvable' };
+    return { success: true, data: item, message: 'Réponse enregistrée' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+secureHandle('support:delete', ['ADMIN'], (e, id) => {
+  try {
+    const ok = repos.demandesSupport.softDelete(id);
+    return { success: ok };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// ============================================================
+// INTÉGRATIONS (SAGE, QuickBooks, AD, Google Workspace)
+// ============================================================
+secureHandle('integrations:list', ['ADMIN'], (e, params) => {
+  try {
+    const items = repos.integrations.getListByEntreprise(_session.entrepriseId || 1, params || {});
+    return { success: true, data: items };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+secureHandle('integrations:get', ['ADMIN'], (e, id) => {
+  try {
+    return { success: true, data: repos.integrations.getById(id) };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+secureHandle('integrations:create', ['ADMIN'], (e, data) => {
+  try {
+    const payload = {
+      entrepriseId: _session.entrepriseId || 1,
+      type: data.type,
+      nom: data.nom || data.type,
+      actif: data.actif ? 1 : 0,
+      parametres: data.parametres ? JSON.stringify(data.parametres) : null
+    };
+    const item = repos.integrations.create(payload);
+    return { success: true, data: item };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+secureHandle('integrations:update', ['ADMIN'], (e, id, data) => {
+  try {
+    const payload = {};
+    if (data.nom !== undefined) payload.nom = data.nom;
+    if (data.actif !== undefined) payload.actif = data.actif ? 1 : 0;
+    if (data.parametres !== undefined) payload.parametres = typeof data.parametres === 'string' ? data.parametres : JSON.stringify(data.parametres || {});
+    const item = repos.integrations.update(id, payload);
+    return { success: true, data: item };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+secureHandle('integrations:delete', ['ADMIN'], (e, id) => {
+  try {
+    return { success: repos.integrations.softDelete(id) };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+secureHandle('integrations:importDirectory', ['ADMIN'], async (e, csvContent, defautRoleId) => {
+  try {
+    const result = await importerDepuisCsv(csvContent, _session.entrepriseId || 1, defautRoleId);
+    return result;
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+secureHandle('integrations:exportCompta', ['ADMIN'], (e) => {
+  try {
+    const entrepriseId = _session.entrepriseId || 1;
+    const factures = db.prepare(`
+      SELECT f.numero, f.dateEmission, f.montantHT, f.tva, f.montantTTC, f.statut, c.nom as clientNom
+      FROM Facture f LEFT JOIN Client c ON f.clientId = c.id
+      WHERE f.entrepriseId = ? AND f.is_deleted = 0 ORDER BY f.dateEmission ASC
+    `).all(entrepriseId);
+    const depenses = db.prepare(`
+      SELECT d.categorie, d.dateDepense, d.montant, d.statutValidation, ch.nom as chantierNom
+      FROM Depense d LEFT JOIN Chantier ch ON d.chantierId = ch.id
+      WHERE d.entrepriseId = ? AND d.is_deleted = 0 ORDER BY d.dateDepense ASC
+    `).all(entrepriseId);
+
+    const lignes = [];
+    factures.forEach(f => lignes.push(['FACTURE', f.numero, f.dateEmission, f.clientNom || '', f.montantHT || 0, f.tva || 0, f.montantTTC || 0, f.statut]));
+    depenses.forEach(d => lignes.push(['DEPENSE', d.categorie, d.dateDepense, d.chantierNom || '', '', '', d.montant || 0, d.statutValidation || '']));
+
+    const csv = [
+      ['Type', 'Reference', 'Date', 'Tiers', 'MontantHT', 'TVA', 'MontantTTC', 'Statut'].join(';'),
+      ...lignes.map(l => l.map(v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`).join(';'))
+    ].join('\n');
+
+    return { success: true, data: csv, filename: `ecritures_comptables_${new Date().toISOString().split('T')[0]}.csv` };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// ============================================================
+// TEMPLATES UTILISATEURS
+// ============================================================
+secureHandle('userTemplates:list', ['ADMIN'], (e, params) => {
+  try {
+    const entrepriseId = _session.entrepriseId || 1;
+    const items = repos.userTemplates.getListWithRole({ entrepriseId, limit: 100 });
+    return { success: true, data: items };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('userTemplates:get', ['ADMIN'], (e, id) => {
+  try {
+    const item = repos.userTemplates.getWithRole(id);
+    return { success: true, data: item };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('userTemplates:create', ['ADMIN'], (e, data) => {
+  try {
+    const entrepriseId = _session.entrepriseId || 1;
+    const item = repos.userTemplates.createTemplate(data, entrepriseId);
+    return { success: true, data: item };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('userTemplates:update', ['ADMIN'], (e, id, data) => {
+  try {
+    const item = repos.userTemplates.updateTemplate(id, data);
+    return { success: true, data: item };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('userTemplates:delete', ['ADMIN'], (e, id) => {
+  try {
+    const result = repos.userTemplates.softDelete(id);
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+
+// ============================================================
+// RÔLES PERSONNALISÉS
+// ============================================================
+secureHandle('customRoles:list', ['ADMIN'], (e, params) => {
+  try {
+    const entrepriseId = _session.entrepriseId || 1;
+    const items = repos.customRoles.getListWithDetails({ entrepriseId, limit: 100 });
+    return { success: true, data: items };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('customRoles:get', ['ADMIN'], (e, id) => {
+  try {
+    const item = repos.customRoles.getWithPermissions(id);
+    return { success: true, data: item };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('customRoles:create', ['ADMIN'], (e, data) => {
+  try {
+    const entrepriseId = _session.entrepriseId || 1;
+    const item = repos.customRoles.createRole(data, entrepriseId);
+    return { success: true, data: item };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('customRoles:update', ['ADMIN'], (e, id, data) => {
+  try {
+    const item = repos.customRoles.update(id, data);
+    return { success: true, data: item };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('customRoles:delete', ['ADMIN'], (e, id) => {
+  try {
+    const result = repos.customRoles.softDelete(id);
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('customRoles:getPermissions', ['ADMIN'], (e, customRoleId) => {
+  try {
+    const perms = repos.customRoles.getPermissions(customRoleId);
+    return { success: true, data: perms };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('customRoles:addPermission', ['ADMIN'], (e, customRoleId, module, action, scope) => {
+  try {
+    const result = repos.customRoles.addPermission(customRoleId, module, action, scope);
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('customRoles:removePermission', ['ADMIN'], (e, permissionId) => {
+  try {
+    const result = repos.customRoles.removePermission(permissionId);
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+
+// ============================================================
+// HABILITATIONS CHANTIER
+// ============================================================
+secureHandle('habilitationChantier:list', ['ADMIN'], (e, params) => {
+  try {
+    const utilisateurId = params?.utilisateurId;
+    const chantierId = params?.chantierId;
+    let items = [];
+    if (utilisateurId) {
+      items = repos.habilitationChantiers.getByUtilisateur(utilisateurId);
+    } else if (chantierId) {
+      items = repos.habilitationChantiers.getByChantier(chantierId);
+    } else {
+      items = db.prepare(`
+        SELECT hc.*, u.nom as utilisateurNom, u.prenom as utilisateurPrenom, c.nom as chantierNom, c.numero as chantierNumero
+        FROM HabilitationChantier hc
+        JOIN Utilisateur u ON hc.utilisateurId = u.id AND u.is_deleted = 0
+        JOIN Chantier c ON hc.chantierId = c.id AND c.is_deleted = 0
+        WHERE hc.is_deleted = 0
+        ORDER BY hc.created_at DESC LIMIT 200
+      `).all();
+    }
+    return { success: true, data: items };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('habilitationChantier:getByUtilisateur', ['ADMIN'], (e, utilisateurId) => {
+  try {
+    const items = repos.habilitationChantiers.getByUtilisateur(utilisateurId);
+    return { success: true, data: items };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('habilitationChantier:getByChantier', ['ADMIN'], (e, chantierId) => {
+  try {
+    const items = repos.habilitationChantiers.getByChantier(chantierId);
+    return { success: true, data: items };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('habilitationChantier:create', ['ADMIN'], (e, data) => {
+  try {
+    const item = repos.habilitationChantiers.createHabilitation(data);
+    return { success: true, data: item };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('habilitationChantier:update', ['ADMIN'], (e, id, data) => {
+  try {
+    const item = repos.habilitationChantiers.updateHabilitation(id, data);
+    return { success: true, data: item };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+secureHandle('habilitationChantier:delete', ['ADMIN'], (e, id) => {
+  try {
+    const result = repos.habilitationChantiers.softDelete(id);
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+
+// ============================================================
+// SAUVEGARDE AUTOMATIQUE PLANIFIÉE
+// ============================================================
+let _scheduledBackupTimer = null;
+
+function loadAutoBackupConfig() {
+  try {
+    const configPath = path.join(app.getPath('userData'), 'backup-config.json');
+    if (!fs.existsSync(configPath)) return null;
+    return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  } catch (err) {
+    return null;
+  }
+}
+
+function runScheduledBackupNow() {
+  try {
+    if (!fs.existsSync(backupsDir)) fs.mkdirSync(backupsDir, { recursive: true });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `auto_${timestamp}.sqlite`;
+    fs.copyFileSync(dbPath, path.join(backupsDir, filename));
+
+    // Respect de la rétention (suppression des anciens)
+    const cfg = loadAutoBackupConfig() || {};
+    const retention = parseInt(cfg.retention, 10) || 30;
+    const files = fs.readdirSync(backupsDir)
+      .filter(f => f.startsWith('auto_') && f.endsWith('.sqlite'))
+      .map(f => ({ f, mtime: fs.statSync(path.join(backupsDir, f)).mtime }))
+      .sort((a, b) => b.mtime - a.mtime);
+    const now = Date.now();
+    files.forEach(({ f, mtime }) => {
+      const ageDays = (now - mtime.getTime()) / (1000 * 60 * 60 * 24);
+      if (ageDays > retention) {
+        try { fs.unlinkSync(path.join(backupsDir, f)); } catch (_) {}
+      }
+    });
+
+    return { success: true, filename, message: 'Sauvegarde automatique effectuée' };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+function startScheduledBackup() {
+  if (_scheduledBackupTimer) { clearInterval(_scheduledBackupTimer); _scheduledBackupTimer = null; }
+  const cfg = loadAutoBackupConfig();
+  if (!cfg || !cfg.autoBackup) return;
+
+  const shouldRunToday = () => {
+    const now = new Date();
+    const [h, m] = (cfg.heure || '02:00').split(':').map(Number);
+    const freq = cfg.frequence || 'daily';
+    if (now.getHours() === h && now.getMinutes() === m) {
+      if (freq === 'daily') return true;
+      if (freq === 'weekly') return now.getDay() === 1; // lundi
+      if (freq === 'monthly') return now.getDate() === 1;
+    }
+    return false;
+  };
+
+  _scheduledBackupTimer = setInterval(() => {
+    try {
+      if (shouldRunToday()) {
+        const res = runScheduledBackupNow();
+        if (res.success) console.log('[Backup] Sauvegarde automatique:', res.filename);
+      }
+    } catch (err) {
+      console.error('[Backup] Erreur planification:', err.message);
+    }
+  }, 60 * 1000);
+  console.log('[Backup] Planificateur de sauvegarde automatique démarré');
+}
+
+// ============================================================
+// MONITORING PÉRIODIQUE (enregistrement des métriques)
+// ============================================================
+let _monitoringTimer = null;
+
+function recordSystemMetrics() {
+  try {
+    const entrepriseId = 1;
+    let dbSize = 0;
+    try { if (fs.existsSync(dbPath)) dbSize = fs.statSync(dbPath).size; } catch (_) {}
+    const connected = db.prepare(`
+      SELECT COUNT(DISTINCT utilisateurId) as count FROM LoginHistory
+      WHERE dateConnexion >= datetime('now', '-1 hour') AND is_deleted = 0
+    `).get();
+    const errors = db.prepare(`
+      SELECT COUNT(*) as count FROM AuditLog
+      WHERE (action LIKE '%error%' OR action LIKE '%erreur%' OR action LIKE '%fail%')
+      AND dateAction >= datetime('now', '-24 hours') AND is_deleted = 0
+    `).get();
+    repos.systemMetrics.recordMetric('dbSizeMB', (dbSize / (1024 * 1024)).toFixed(2));
+    repos.systemMetrics.recordMetric('activeUsers', connected?.count || 0);
+    repos.systemMetrics.recordMetric('errorCount', errors?.count || 0);
+  } catch (err) {
+    console.warn('[Monitoring] Enregistrement métriques échoué:', err.message);
+  }
+}
+
+function startMonitoring() {
+  if (_monitoringTimer) clearInterval(_monitoringTimer);
+  const intervalMin = repos.systemConfig.getInt('monitorIntervalMin', 5);
+  recordSystemMetrics();
+  _monitoringTimer = setInterval(recordSystemMetrics, Math.max(1, intervalMin) * 60 * 1000);
+}
 
 // ============================================================
 // APP LIFECYCLE
@@ -1178,6 +2066,8 @@ app.whenReady().then(() => {
   } catch (e) {
     console.warn('[Main] Purge notifications échouée:', e.message)
   }
+  startScheduledBackup()
+  startMonitoring()
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

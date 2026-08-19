@@ -113,6 +113,13 @@ class ParametresController {
                 else if (tab === 'sauvegarde') this.loadBackups();
                 else if (tab === 'sync') this.loadSyncHistory();
                 else if (tab === 'profil') this.loadCurrentUserProfile();
+                else if (tab === 'habilitations') this.loadHabilitations();
+                else if (tab === 'custom-roles') this.loadCustomRoles();
+                else if (tab === 'templates') this.loadTemplates();
+                else if (tab === 'maintenance') this.loadMaintenanceConfig();
+                else if (tab === 'monitoring') this.loadMonitoring();
+                else if (tab === 'support') this.loadSupport();
+                else if (tab === 'integrations') this.loadIntegrations();
             });
         });
 
@@ -147,6 +154,49 @@ class ParametresController {
         document.getElementById('btnExportDB')?.addEventListener('click', () => this.exportDatabase());
         document.getElementById('btnExportSQL')?.addEventListener('click', () => this.exportSQL());
         document.getElementById('btnImportDB')?.addEventListener('click', () => this.importDatabase());
+
+        // Boutons CSV utilisateurs
+        document.getElementById('btnExportCsv')?.addEventListener('click', () => this.exportUsersCsv());
+        document.getElementById('btnImportCsv')?.addEventListener('click', () => {
+            document.getElementById('importCsvFile')?.click();
+        });
+        document.getElementById('importCsvFile')?.addEventListener('change', (e) => this.importUsersCsv(e));
+
+        // Bouton test SMTP
+        document.getElementById('btnTestSmtp')?.addEventListener('click', () => this.testSmtp());
+
+        // Habilitations chantier
+        document.getElementById('btnNouvelleHabilitation')?.addEventListener('click', () => this.openModalHabilitation());
+        document.getElementById('formHabilitation')?.addEventListener('submit', (e) => this.handleSubmitHabilitation(e));
+        document.getElementById('btnDeleteHabilitation')?.addEventListener('click', () => this.confirmDeleteHabilitation());
+
+        // Rôles personnalisés
+        document.getElementById('btnNouveauCustomRole')?.addEventListener('click', () => this.openModalCustomRole());
+        document.getElementById('formCustomRole')?.addEventListener('submit', (e) => this.handleSubmitCustomRole(e));
+        document.getElementById('btnDeleteCustomRole')?.addEventListener('click', () => this.confirmDeleteCustomRole());
+
+        // Templates utilisateurs
+        document.getElementById('btnNouveauTemplate')?.addEventListener('click', () => this.openModalTemplate());
+        document.getElementById('formTemplate')?.addEventListener('submit', (e) => this.handleSubmitTemplate(e));
+        document.getElementById('btnDeleteTemplate')?.addEventListener('click', () => this.confirmDeleteTemplate());
+
+        // Maintenance préventive
+        document.getElementById('formMaintenance')?.addEventListener('submit', (e) => this.handleSubmitMaintenance(e));
+        document.getElementById('btnRunMaintenance')?.addEventListener('click', () => this.runMaintenanceCheck());
+
+        // Monitoring
+        document.getElementById('btnRefreshMonitoring')?.addEventListener('click', () => this.loadMonitoring());
+
+        // Support
+        document.getElementById('btnNouvelleDemande')?.addEventListener('click', () => this.openModalDemandeSupport());
+        document.getElementById('formDemandeSupport')?.addEventListener('submit', (e) => this.handleSubmitDemandeSupport(e));
+        document.getElementById('formReponseSupport')?.addEventListener('submit', (e) => this.handleSubmitReponseSupport(e));
+
+        // Intégrations
+        document.getElementById('btnNouvelleIntegration')?.addEventListener('click', () => this.openModalIntegration());
+        document.getElementById('formIntegration')?.addEventListener('submit', (e) => this.handleSubmitIntegration(e));
+        document.getElementById('btnImportAnnuaire')?.addEventListener('click', () => this.importAnnuaire());
+        document.getElementById('btnExportCompta')?.addEventListener('click', () => this.exportCompta());
 
         // Boutons synchronisation
         document.getElementById('btnTestConnexion')?.addEventListener('click', () => this.testConnexion());
@@ -230,23 +280,40 @@ class ParametresController {
     updateSettingsTabsVisibility() {
         const canUpdateEntreprise = window.hasPermission ? window.hasPermission('update', 'entreprises') : false;
         const canViewUsers = window.hasPermission ? window.hasPermission('list', 'utilisateurs') : false;
+        const isAdmin = window.AppState?.roles?.includes('ADMIN') || window.AppState?.roleCode === 'ADMIN';
 
         const entrepriseTab = document.getElementById('tab-entreprise-tab');
         const utilisateursTab = document.getElementById('tab-utilisateurs-tab');
         const profilTab = document.getElementById('tab-profil-tab');
+        const habilitationsTab = document.getElementById('tab-habilitations-tab');
+        const customRolesTab = document.getElementById('tab-custom-roles-tab');
+        const templatesTab = document.getElementById('tab-templates-tab');
+        const maintenanceTab = document.getElementById('tab-maintenance-tab');
+        const monitoringTab = document.getElementById('tab-monitoring-tab');
+        const supportTab = document.getElementById('tab-support-tab');
+        const integrationsTab = document.getElementById('tab-integrations-tab');
+
 
         if (entrepriseTab) entrepriseTab.parentElement.style.display = canUpdateEntreprise ? '' : 'none';
         if (utilisateursTab) utilisateursTab.parentElement.style.display = canViewUsers ? '' : 'none';
+        if (habilitationsTab) habilitationsTab.parentElement.style.display = isAdmin ? '' : 'none';
+        if (customRolesTab) customRolesTab.parentElement.style.display = isAdmin ? '' : 'none';
+        if (templatesTab) templatesTab.parentElement.style.display = isAdmin ? '' : 'none';
+        if (maintenanceTab) maintenanceTab.parentElement.style.display = isAdmin ? '' : 'none';
+        if (monitoringTab) monitoringTab.parentElement.style.display = isAdmin ? '' : 'none';
+        if (integrationsTab) integrationsTab.parentElement.style.display = isAdmin ? '' : 'none';
+        if (supportTab) supportTab.parentElement.style.display = '';
 
         const currentActive = document.querySelector('#parametresTabs button.active');
         if (currentActive && currentActive.parentElement.style.display === 'none') {
-            const firstVisible = [profilTab, entrepriseTab, utilisateursTab].find(tab => tab && tab.parentElement.style.display !== 'none');
+            const firstVisible = [profilTab, entrepriseTab, utilisateursTab, habilitationsTab, customRolesTab, templatesTab, maintenanceTab, monitoringTab, supportTab, integrationsTab].find(tab => tab && tab.parentElement.style.display !== 'none');
             if (firstVisible) {
                 new bootstrap.Tab(firstVisible).show();
             }
         }
 
-        if (!canUpdateEntreprise && !canViewUsers && profilTab) {
+
+        if (!canUpdateEntreprise && !canViewUsers && !isAdmin && profilTab) {
             new bootstrap.Tab(profilTab).show();
         }
     }
@@ -1293,6 +1360,861 @@ class ParametresController {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // ==================== CSV UTILISATEURS ====================
+
+    async exportUsersCsv() {
+        try {
+            const result = await window.api.utilisateurs.invoke('exportCsv');
+            if (!result?.success) {
+                showToast(result?.error || 'Erreur export CSV', 'error');
+                return;
+            }
+
+            const csvContent = result.data;
+            const filename = result.filename || `utilisateurs_${new Date().toISOString().split('T')[0]}.csv`;
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(url);
+            showToast('Export CSV réussi', 'success');
+        } catch (error) {
+            console.error('Erreur export CSV:', error);
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    async importUsersCsv(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const text = await file.text();
+            const result = await window.api.utilisateurs.invoke('importCsv', text);
+            if (result?.success) {
+                const { imported, errors, details, errorDetails } = result.data;
+                let message = `Import terminé: ${imported} utilisateur(s) importé(s).`;
+                if (errors > 0) {
+                    message += ` ${errors} erreur(s).`;
+                    console.warn('CSV import errors:', errorDetails);
+                }
+                showToast(message, errors > 0 ? 'warning' : 'success');
+                await this.loadUtilisateurs();
+            } else {
+                showToast(result?.error || 'Erreur import CSV', 'error');
+            }
+        } catch (error) {
+            console.error('Erreur import CSV:', error);
+            showToast(`Erreur: ${error.message}`, 'error');
+        } finally {
+            event.target.value = '';
+        }
+    }
+
+    // ==================== TEST SMTP ====================
+
+    async testSmtp() {
+        const btn = document.getElementById('btnTestSmtp');
+        const resultDiv = document.getElementById('smtpTestResult');
+        const resultMsg = document.getElementById('smtpTestMessage');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Test en cours...';
+        btn.disabled = true;
+        resultDiv.style.display = 'none';
+
+        try {
+            const result = await window.api.entreprises.invoke('testSmtp');
+            resultDiv.style.display = 'block';
+            if (result?.success) {
+                resultDiv.querySelector('.alert').className = 'alert alert-success';
+                resultMsg.textContent = result.message || 'Email de test envoyé avec succès. Vérifiez votre boîte mail.';
+            } else {
+                resultDiv.querySelector('.alert').className = 'alert alert-danger';
+                resultMsg.textContent = result?.error || 'Échec du test SMTP. Vérifiez votre configuration.';
+            }
+        } catch (error) {
+            resultDiv.style.display = 'block';
+            resultDiv.querySelector('.alert').className = 'alert alert-danger';
+            resultMsg.textContent = `Erreur: ${error.message}`;
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    // ==================== HABILITATIONS CHANTIER ====================
+
+    async loadHabilitations() {
+        try {
+            const result = await window.api.habilitationChantier.invoke('list', {});
+            const items = result?.data || [];
+            this.renderHabilitationsTable(items);
+        } catch (error) {
+            console.error('Erreur chargement habilitations:', error);
+        }
+    }
+
+    renderHabilitationsTable(items) {
+        const tbody = document.getElementById('habilitationsTbody');
+        if (!tbody) return;
+
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-secondary">Aucune habilitation</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = items.map(h => {
+            const perms = h.permissions ? (typeof h.permissions === 'string' ? h.permissions : JSON.stringify(h.permissions)) : '—';
+            const periode = h.dateDebut && h.dateFin ? `${h.dateDebut} → ${h.dateFin}` : (h.dateDebut || '—');
+            return `
+                <tr data-id="${h.id}">
+                    <td>${this.escapeHtml(h.utilisateurNom || '')} ${this.escapeHtml(h.utilisateurPrenom || '')}</td>
+                    <td>${this.escapeHtml(h.chantierNom || h.chantierNumero || '')}</td>
+                    <td><span class="badge bg-info">${this.escapeHtml(h.module || '')}</span></td>
+                    <td><small class="text-secondary">${this.escapeHtml(perms)}</small></td>
+                    <td><small>${periode}</small></td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary btn-edit" data-id="${h.id}" title="Modifier">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-outline-danger btn-delete" data-id="${h.id}" title="Supprimer">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        tbody.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', (e) => this.openModalEditionHabilitation(e.currentTarget.dataset.id));
+        });
+        tbody.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => this.confirmDeleteHabilitation(e.currentTarget.dataset.id));
+        });
+    }
+
+    async openModalHabilitation(id) {
+        this.habilitationEnEdition = null;
+        document.getElementById('formHabilitation').reset();
+        document.getElementById('habilitationId').value = '';
+        document.getElementById('modalHabilitationLabel').textContent = 'Nouvelle habilitation';
+        document.getElementById('btnDeleteHabilitation').style.display = 'none';
+        await this.loadHabilitationDropdowns();
+        new bootstrap.Modal(document.getElementById('modalHabilitation')).show();
+    }
+
+    async openModalEditionHabilitation(id) {
+        try {
+            const response = await window.api.habilitationChantier.invoke('list', { utilisateurId: id });
+            const items = response?.data || [];
+            const item = items.find(i => i.id === parseInt(id));
+            if (!item) {
+                showToast('Habilitation introuvable', 'error');
+                return;
+            }
+            this.habilitationEnEdition = item;
+            this.fillFormHabilitation(item);
+            document.getElementById('modalHabilitationLabel').textContent = `Modifier habilitation #${id}`;
+            document.getElementById('btnDeleteHabilitation').style.display = 'inline-block';
+            document.getElementById('btnDeleteHabilitation').dataset.id = id;
+            await this.loadHabilitationDropdowns();
+            new bootstrap.Modal(document.getElementById('modalHabilitation')).show();
+        } catch (error) {
+            console.error('Erreur chargement habilitation:', error);
+        }
+    }
+
+    fillFormHabilitation(h) {
+        document.getElementById('habilitationId').value = h.id || '';
+        document.getElementById('habilitationUtilisateur').value = h.utilisateurId || '';
+        document.getElementById('habilitationChantier').value = h.chantierId || '';
+        document.getElementById('habilitationModule').value = h.module || 'general';
+        let perms = '[]';
+        if (h.permissions) {
+            perms = typeof h.permissions === 'string' ? h.permissions : JSON.stringify(h.permissions);
+        }
+        document.getElementById('habilitationPermissions').value = perms;
+        document.getElementById('habilitationDateDebut').value = h.dateDebut || '';
+        document.getElementById('habilitationDateFin').value = h.dateFin || '';
+    }
+
+    async loadHabilitationDropdowns() {
+        try {
+            const users = await window.api.utilisateurs.invoke('list', { entrepriseId: window.AppState?.entreprise?.id || 1, limit: 200 });
+            const userOptions = (users?.data?.items || users?.items || []).map(u => `<option value="${u.id}">${this.escapeHtml(u.prenom || '')} ${this.escapeHtml(u.nom || '')} (${this.escapeHtml(u.email || '')})</option>`).join('');
+            document.getElementById('habilitationUtilisateur').innerHTML = '<option value="" selected disabled>Choisir un utilisateur</option>' + userOptions;
+
+            const chantiers = await window.api.chantiers.invoke('list', { entrepriseId: window.AppState?.entreprise?.id || 1, limit: 200 });
+            const chantierOptions = (chantiers?.data?.items || chantiers?.items || []).map(c => `<option value="${c.id}">${this.escapeHtml(c.nom || '')} (${this.escapeHtml(c.numero || '')})</option>`).join('');
+            document.getElementById('habilitationChantier').innerHTML = '<option value="" selected disabled>Choisir un chantier</option>' + chantierOptions;
+        } catch (error) {
+            console.error('Erreur chargement dropdowns habilitation:', error);
+        }
+    }
+
+    async handleSubmitHabilitation(e) {
+        e.preventDefault();
+        const form = e.target;
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        data.utilisateurId = parseInt(data.utilisateurId, 10);
+        data.chantierId = parseInt(data.chantierId, 10);
+
+        try {
+            let perms = [];
+            if (data.permissions && typeof data.permissions === 'string') {
+                try {
+                    perms = JSON.parse(data.permissions);
+                } catch (parseErr) {
+                    showToast('Format JSON invalide pour les permissions', 'error');
+                    return;
+                }
+            }
+            data.permissions = perms;
+            if (!data.dateDebut) data.dateDebut = null;
+            if (!data.dateFin) data.dateFin = null;
+
+            const isEdit = !!data.id;
+            delete data.id;
+
+            if (isEdit && this.habilitationEnEdition?.id) {
+                await window.api.habilitationChantier.invoke('update', this.habilitationEnEdition.id, data);
+                showToast('Habilitation modifiée', 'success');
+            } else {
+                await window.api.habilitationChantier.invoke('create', data);
+                showToast('Habilitation créée', 'success');
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('modalHabilitation'))?.hide();
+            await this.loadHabilitations();
+        } catch (error) {
+            console.error('Erreur sauvegarde habilitation:', error);
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    confirmDeleteHabilitation(id) {
+        const hId = id || document.getElementById('btnDeleteHabilitation')?.dataset.id;
+        if (!hId) return;
+        this.habilitationEnEdition = { id: parseInt(hId) };
+        if (confirm('Supprimer cette habilitation ?')) {
+            this.executeDeleteHabilitation();
+        }
+    }
+
+    async executeDeleteHabilitation() {
+        if (!this.habilitationEnEdition?.id) return;
+        try {
+            await window.api.habilitationChantier.invoke('delete', this.habilitationEnEdition.id);
+            showToast('Habilitation supprimée', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('modalHabilitation'))?.hide();
+            await this.loadHabilitations();
+        } catch (error) {
+            console.error('Erreur suppression habilitation:', error);
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    // ==================== RÔLES PERSONNALISÉS ====================
+
+    async loadCustomRoles() {
+        try {
+            const result = await window.api.customRoles.invoke('list');
+            const items = result?.data || [];
+            this.renderCustomRolesTable(items);
+        } catch (error) {
+            console.error('Erreur chargement rôles personnalisés:', error);
+        }
+    }
+
+    renderCustomRolesTable(items) {
+        const tbody = document.getElementById('customRolesTbody');
+        if (!tbody) return;
+
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-secondary">Aucun rôle personnalisé</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = items.map(r => `
+            <tr data-id="${r.id}">
+                <td class="fw-semibold">${this.escapeHtml(r.nom)}</td>
+                <td><span class="badge bg-primary">${this.escapeHtml(r.code || '—')}</span></td>
+                <td><span class="badge bg-info">${r.permissionsCount || 0} permissions</span></td>
+                <td><small class="text-secondary">${this.escapeHtml(r.description || '')}</small></td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary btn-edit" data-id="${r.id}" title="Modifier">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-delete" data-id="${r.id}" title="Supprimer">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+
+        tbody.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', (e) => this.openModalEditionCustomRole(e.currentTarget.dataset.id));
+        });
+        tbody.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => this.confirmDeleteCustomRole(e.currentTarget.dataset.id));
+        });
+    }
+
+    async openModalCustomRole(id) {
+        this.customRoleEnEdition = null;
+        document.getElementById('formCustomRole').reset();
+        document.getElementById('customRoleId').value = '';
+        document.getElementById('modalCustomRoleLabel').textContent = 'Nouveau rôle personnalisé';
+        document.getElementById('btnDeleteCustomRole').style.display = 'none';
+        new bootstrap.Modal(document.getElementById('modalCustomRole')).show();
+    }
+
+    async openModalEditionCustomRole(id) {
+        try {
+            const response = await window.api.customRoles.invoke('get', parseInt(id));
+            const role = response?.data;
+            if (!role) {
+                showToast('Rôle introuvable', 'error');
+                return;
+            }
+            this.customRoleEnEdition = role;
+            document.getElementById('customRoleId').value = role.id || '';
+            document.getElementById('customRoleNom').value = role.nom || '';
+            document.getElementById('customRoleCode').value = role.code || '';
+            document.getElementById('customRoleDescription').value = role.description || '';
+            document.getElementById('modalCustomRoleLabel').textContent = `Modifier rôle: ${role.nom}`;
+            document.getElementById('btnDeleteCustomRole').style.display = 'inline-block';
+            document.getElementById('btnDeleteCustomRole').dataset.id = id;
+            new bootstrap.Modal(document.getElementById('modalCustomRole')).show();
+        } catch (error) {
+            console.error('Erreur chargement rôle personnalisé:', error);
+        }
+    }
+
+    async handleSubmitCustomRole(e) {
+        e.preventDefault();
+        const form = e.target;
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        const isEdit = !!data.id;
+        delete data.id;
+
+        try {
+            if (isEdit && this.customRoleEnEdition?.id) {
+                await window.api.customRoles.invoke('update', this.customRoleEnEdition.id, data);
+                showToast('Rôle modifié', 'success');
+            } else {
+                await window.api.customRoles.invoke('create', data);
+                showToast('Rôle créé', 'success');
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('modalCustomRole'))?.hide();
+            await this.loadCustomRoles();
+        } catch (error) {
+            console.error('Erreur sauvegarde rôle personnalisé:', error);
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    confirmDeleteCustomRole(id) {
+        const roleId = id || document.getElementById('btnDeleteCustomRole')?.dataset.id;
+        if (!roleId) return;
+        this.customRoleEnEdition = { id: parseInt(roleId) };
+        if (confirm('Supprimer ce rôle personnalisé ?')) {
+            this.executeDeleteCustomRole();
+        }
+    }
+
+    async executeDeleteCustomRole() {
+        if (!this.customRoleEnEdition?.id) return;
+        try {
+            await window.api.customRoles.invoke('delete', this.customRoleEnEdition.id);
+            showToast('Rôle supprimé', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('modalCustomRole'))?.hide();
+            await this.loadCustomRoles();
+        } catch (error) {
+            console.error('Erreur suppression rôle personnalisé:', error);
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    // ==================== TEMPLATES UTILISATEURS ====================
+
+    async loadTemplates() {
+        try {
+            const entrepriseId = window.AppState?.entreprise?.id || 1;
+            const result = await window.api.userTemplates.invoke('list', { entrepriseId });
+            const items = result?.data || [];
+            this.renderTemplatesTable(items);
+        } catch (error) {
+            console.error('Erreur chargement templates:', error);
+        }
+    }
+
+    renderTemplatesTable(items) {
+        const tbody = document.getElementById('templatesTbody');
+        if (!tbody) return;
+
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-secondary">Aucun template</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = items.map(t => `
+            <tr data-id="${t.id}">
+                <td class="fw-semibold">${this.escapeHtml(t.nom)}</td>
+                <td><span class="badge bg-primary">${this.escapeHtml(t.roleNom || t.roleCode || '—')}</span></td>
+                <td><small class="text-secondary">${this.escapeHtml(t.description || '')}</small></td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary btn-edit" data-id="${t.id}" title="Modifier">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-delete" data-id="${t.id}" title="Supprimer">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+
+        tbody.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', (e) => this.openModalEditionTemplate(e.currentTarget.dataset.id));
+        });
+        tbody.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => this.confirmDeleteTemplate(e.currentTarget.dataset.id));
+        });
+    }
+
+    async openModalTemplate(id) {
+        this.templateEnEdition = null;
+        document.getElementById('formTemplate').reset();
+        document.getElementById('templateId').value = '';
+        document.getElementById('modalTemplateLabel').textContent = 'Nouveau template utilisateur';
+        document.getElementById('btnDeleteTemplate').style.display = 'none';
+        new bootstrap.Modal(document.getElementById('modalTemplate')).show();
+    }
+
+    async openModalEditionTemplate(id) {
+        try {
+            const response = await window.api.userTemplates.invoke('get', parseInt(id));
+            const template = response?.data;
+            if (!template) {
+                showToast('Template introuvable', 'error');
+                return;
+            }
+            this.templateEnEdition = template;
+            document.getElementById('templateId').value = template.id || '';
+            document.getElementById('templateNom').value = template.nom || '';
+            document.getElementById('templateRole').value = template.roleId || '';
+            document.getElementById('templateDescription').value = template.description || '';
+            let donnees = '{}';
+            if (template.donnees) {
+                donnees = typeof template.donnees === 'string' ? template.donnees : JSON.stringify(template.donnees);
+            }
+            document.getElementById('templateDonnees').value = donnees;
+            document.getElementById('modalTemplateLabel').textContent = `Modifier template: ${template.nom}`;
+            document.getElementById('btnDeleteTemplate').style.display = 'inline-block';
+            document.getElementById('btnDeleteTemplate').dataset.id = id;
+            new bootstrap.Modal(document.getElementById('modalTemplate')).show();
+        } catch (error) {
+            console.error('Erreur chargement template:', error);
+        }
+    }
+
+    async handleSubmitTemplate(e) {
+        e.preventDefault();
+        const form = e.target;
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        const isEdit = !!data.id;
+        delete data.id;
+
+        if (data.donnees && typeof data.donnees === 'string') {
+            try {
+                JSON.parse(data.donnees);
+            } catch (parseErr) {
+                showToast('Format JSON invalide dans les données', 'error');
+                return;
+            }
+        }
+
+        try {
+            if (isEdit && this.templateEnEdition?.id) {
+                await window.api.userTemplates.invoke('update', this.templateEnEdition.id, data);
+                showToast('Template modifié', 'success');
+            } else {
+                await window.api.userTemplates.invoke('create', data);
+                showToast('Template créé', 'success');
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('modalTemplate'))?.hide();
+            await this.loadTemplates();
+        } catch (error) {
+            console.error('Erreur sauvegarde template:', error);
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    confirmDeleteTemplate(id) {
+        const tId = id || document.getElementById('btnDeleteTemplate')?.dataset.id;
+        if (!tId) return;
+        this.templateEnEdition = { id: parseInt(tId) };
+        if (confirm('Supprimer ce template ?')) {
+            this.executeDeleteTemplate();
+        }
+    }
+
+    async executeDeleteTemplate() {
+        if (!this.templateEnEdition?.id) return;
+        try {
+            await window.api.userTemplates.invoke('delete', this.templateEnEdition.id);
+            showToast('Template supprimé', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('modalTemplate'))?.hide();
+            await this.loadTemplates();
+        } catch (error) {
+            console.error('Erreur suppression template:', error);
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    // ============================================================
+    // MAINTENANCE PRÉVENTIVE
+    // ============================================================
+    async loadMaintenanceConfig() {
+        try {
+            const res = await window.api.systemMetrics.invoke('getMaintenanceConfig');
+            const cfg = res?.data || { dbSizeAlertMB: 500, errorRateAlertCount: 20, monitorIntervalMin: 5 };
+            document.getElementById('maintDbSize').value = cfg.dbSizeAlertMB ?? 500;
+            document.getElementById('maintErrCount').value = cfg.errorRateAlertCount ?? 20;
+            document.getElementById('maintInterval').value = cfg.monitorIntervalMin ?? 5;
+        } catch (error) {
+            console.error('Erreur chargement config maintenance:', error);
+        }
+    }
+
+    async handleSubmitMaintenance(e) {
+        e.preventDefault();
+        const form = e.target;
+        const data = Object.fromEntries(new FormData(form).entries());
+        try {
+            await window.api.systemMetrics.invoke('setMaintenanceConfig', data);
+            showToast('Seuils de maintenance enregistrés', 'success');
+        } catch (error) {
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    async runMaintenanceCheck() {
+        const btn = document.getElementById('btnRunMaintenance');
+        const resultEl = document.getElementById('maintenanceResult');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Vérification...';
+        try {
+            const res = await window.api.systemMetrics.invoke('runMaintenanceCheck');
+            const d = res?.data || {};
+            if (res?.success && d.alertes && d.alertes.length > 0) {
+                resultEl.innerHTML = `<div class="alert alert-warning">${d.alertes.map(a => `<div>• ${this.escapeHtml(a)}</div>`).join('')}</div>`;
+            } else {
+                resultEl.innerHTML = `<div class="alert alert-success"><i class="bi bi-check-circle me-1"></i>Aucun seuil dépassé. Base: ${d.dbSizeMB ?? '?'} MB, Erreurs 24h: ${d.recentErrors ?? 0}.</div>`;
+            }
+        } catch (error) {
+            resultEl.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(error.message)}</div>`;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-play-circle me-1"></i>Lancer la vérification';
+        }
+    }
+
+    // ============================================================
+    // MONITORING
+    // ============================================================
+    async loadMonitoring() {
+        try {
+            const res = await window.api.systemMetrics.invoke('getMonitoring', 7);
+            const data = res?.data || { errors: [], dbTrend: [], usersTrend: [], jours: 7 };
+            this.renderMonitorChart('monitorErrorsChart', data.errors.map(e => ({ label: e.jour, value: e.count })));
+            this.renderMonitorChart('monitorDbChart', data.dbTrend.map(e => ({ label: e.jour, value: e.valeur })));
+            this.renderMonitorChart('monitorUsersChart', data.usersTrend.map(e => ({ label: e.jour, value: e.valeur })));
+        } catch (error) {
+            console.error('Erreur monitoring:', error);
+        }
+    }
+
+    renderMonitorChart(canvasId, points) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        if (typeof Chart === 'undefined') { canvas.style.display = 'none'; return; }
+        const labels = points.map(p => p.label || '');
+        const values = points.map(p => p.value || 0);
+        if (this._monitorCharts && this._monitorCharts[canvasId]) this._monitorCharts[canvasId].destroy();
+        if (!this._monitorCharts) this._monitorCharts = {};
+        const ctx = canvas.getContext('2d');
+        this._monitorCharts[canvasId] = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets: [{ label: 'Valeur', data: values, borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,0.1)', fill: true, tension: 0.3 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    // ============================================================
+    // SUPPORT UTILISATEUR (TICKETING)
+    // ============================================================
+    async loadSupport() {
+        const tbody = document.getElementById('supportTbody');
+        if (!tbody) return;
+        const isAdmin = window.AppState?.roles?.includes('ADMIN') || window.AppState?.roleCode === 'ADMIN';
+        try {
+            const res = isAdmin
+                ? await window.api.support.invoke('list')
+                : await window.api.support.invoke('listMine');
+            const items = res?.data || [];
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-secondary">Aucune demande</td></tr>';
+                return;
+            }
+            const prioriteBadge = { basse: 'bg-secondary', normale: 'bg-info', haute: 'bg-warning text-dark', urgente: 'bg-danger' };
+            const statutBadge = { ouverte: 'bg-primary', en_cours: 'bg-warning text-dark', resolue: 'bg-success', fermee: 'bg-secondary' };
+            tbody.innerHTML = items.map(d => `
+                <tr data-id="${d.id}">
+                    <td class="fw-semibold">${this.escapeHtml(d.sujet)}</td>
+                    <td>${this.escapeHtml((d.prenom || '') + ' ' + (d.nom || ''))}</td>
+                    <td><span class="badge ${prioriteBadge[d.priorite] || 'bg-secondary'}">${this.escapeHtml(d.priorite || 'normale')}</span></td>
+                    <td><span class="badge ${statutBadge[d.statut] || 'bg-secondary'}">${this.escapeHtml(d.statut || 'ouverte')}</span></td>
+                    <td><small>${this.formatDateTime(d.created_at || d.dateCreation)}</small></td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary btn-view" data-id="${d.id}" title="Voir"><i class="bi bi-eye"></i></button>
+                            ${isAdmin ? `<button class="btn btn-outline-success btn-repondre" data-id="${d.id}" title="Répondre"><i class="bi bi-reply"></i></button><button class="btn btn-outline-danger btn-suppr" data-id="${d.id}" title="Supprimer"><i class="bi bi-trash"></i></button>` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+            tbody.querySelectorAll('.btn-view').forEach(b => b.addEventListener('click', () => this.viewDemande(b.dataset.id)));
+            if (isAdmin) {
+                tbody.querySelectorAll('.btn-repondre').forEach(b => b.addEventListener('click', () => this.openModalReponse(b.dataset.id)));
+                tbody.querySelectorAll('.btn-suppr').forEach(b => b.addEventListener('click', () => this.deleteDemande(b.dataset.id)));
+            }
+        } catch (error) {
+            console.error('Erreur chargement support:', error);
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Erreur</td></tr>';
+        }
+    }
+
+    openModalDemandeSupport() {
+        document.getElementById('formDemandeSupport').reset();
+        document.getElementById('demandeId').value = '';
+        new bootstrap.Modal(document.getElementById('modalDemandeSupport')).show();
+    }
+
+    async handleSubmitDemandeSupport(e) {
+        e.preventDefault();
+        const form = e.target;
+        if (!form.checkValidity()) { form.classList.add('was-validated'); return; }
+        const data = Object.fromEntries(new FormData(form).entries());
+        try {
+            const res = await window.api.support.invoke('create', data);
+            if (!res?.success) throw new Error(res?.error || 'Erreur');
+            showToast('Demande envoyée à l\'administrateur', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('modalDemandeSupport'))?.hide();
+            await this.loadSupport();
+        } catch (error) {
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    async viewDemande(id) {
+        try {
+            const res = await window.api.support.invoke('get', parseInt(id));
+            const d = res?.data;
+            if (!d) return;
+            showToast(`"${d.sujet}" — ${d.statut}${d.reponse ? ' — Réponse: ' + d.reponse : ''}`, 'info', 6000);
+        } catch (error) { console.error(error); }
+    }
+
+    async openModalReponse(id) {
+        try {
+            const res = await window.api.support.invoke('get', parseInt(id));
+            const d = res?.data;
+            if (!d) return;
+            document.getElementById('reponseDemandeId').value = d.id;
+            document.getElementById('reponseDemandeSujet').textContent = d.sujet;
+            document.getElementById('reponseTexte').value = d.reponse || '';
+            new bootstrap.Modal(document.getElementById('modalReponseSupport')).show();
+        } catch (error) { console.error(error); }
+    }
+
+    async handleSubmitReponseSupport(e) {
+        e.preventDefault();
+        const form = e.target;
+        const id = document.getElementById('reponseDemandeId').value;
+        const reponse = document.getElementById('reponseTexte').value.trim();
+        const statut = document.getElementById('reponseStatut').value;
+        if (!reponse) { showToast('Veuillez saisir une réponse', 'warning'); return; }
+        try {
+            const res = await window.api.support.invoke('respond', parseInt(id), reponse, statut);
+            if (!res?.success) throw new Error(res?.error || 'Erreur');
+            showToast('Réponse enregistrée', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('modalReponseSupport'))?.hide();
+            await this.loadSupport();
+        } catch (error) {
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    async deleteDemande(id) {
+        if (!confirm('Supprimer cette demande ?')) return;
+        try {
+            await window.api.support.invoke('delete', parseInt(id));
+            showToast('Demande supprimée', 'success');
+            await this.loadSupport();
+        } catch (error) {
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    // ============================================================
+    // INTÉGRATIONS
+    // ============================================================
+    async loadIntegrations() {
+        const tbody = document.getElementById('integrationsTbody');
+        if (!tbody) return;
+        try {
+            const res = await window.api.integrations.invoke('list');
+            const items = res?.data || [];
+            this.integrations = items;
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-secondary">Aucun connecteur configuré</td></tr>';
+                return;
+            }
+            tbody.innerHTML = items.map(i => `
+                <tr data-id="${i.id}">
+                    <td class="fw-semibold">${this.escapeHtml(i.nom)}</td>
+                    <td><span class="badge bg-info">${this.escapeHtml(i.type)}</span></td>
+                    <td><span class="badge ${i.actif ? 'bg-success' : 'bg-secondary'}">${i.actif ? 'Actif' : 'Inactif'}</span></td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary btn-edit-int" data-id="${i.id}" title="Modifier"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-outline-danger btn-del-int" data-id="${i.id}" title="Supprimer"><i class="bi bi-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+            tbody.querySelectorAll('.btn-edit-int').forEach(b => b.addEventListener('click', () => this.openModalIntegration(b.dataset.id)));
+            tbody.querySelectorAll('.btn-del-int').forEach(b => b.addEventListener('click', () => this.deleteIntegration(b.dataset.id)));
+        } catch (error) {
+            console.error('Erreur chargement intégrations:', error);
+        }
+    }
+
+    openModalIntegration(id) {
+        const form = document.getElementById('formIntegration');
+        form.reset();
+        document.getElementById('integrationId').value = '';
+        document.getElementById('integrationActif').checked = false;
+        if (id) {
+            const item = (this.integrations || []).find(x => x.id === parseInt(id));
+            if (item) {
+                document.getElementById('integrationId').value = item.id;
+                document.getElementById('integrationType').value = item.type;
+                document.getElementById('integrationNom').value = item.nom || '';
+                document.getElementById('integrationActif').checked = !!item.actif;
+            }
+        }
+        new bootstrap.Modal(document.getElementById('modalIntegration')).show();
+    }
+
+    async handleSubmitIntegration(e) {
+        e.preventDefault();
+        const form = e.target;
+        const id = document.getElementById('integrationId').value;
+        const data = Object.fromEntries(new FormData(form).entries());
+        data.actif = document.getElementById('integrationActif').checked;
+        try {
+            if (id) await window.api.integrations.invoke('update', parseInt(id), data);
+            else await window.api.integrations.invoke('create', data);
+            showToast('Connecteur enregistré', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('modalIntegration'))?.hide();
+            await this.loadIntegrations();
+        } catch (error) {
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    async deleteIntegration(id) {
+        if (!confirm('Supprimer ce connecteur ?')) return;
+        try {
+            await window.api.integrations.invoke('delete', parseInt(id));
+            showToast('Connecteur supprimé', 'success');
+            await this.loadIntegrations();
+        } catch (error) {
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    async importAnnuaire() {
+        const fileInput = document.getElementById('importAnnuaireFile');
+        const file = fileInput?.files[0];
+        if (!file) { showToast('Sélectionnez un fichier CSV', 'warning'); return; }
+        const roleDefaut = document.getElementById('importRoleDefaut').value;
+        const resultEl = document.getElementById('importAnnuaireResult');
+        try {
+            const text = await file.text();
+            const res = await window.api.integrations.invoke('importDirectory', text, roleDefaut);
+            const d = res?.data || {};
+            if (res?.success) {
+                resultEl.innerHTML = `<div class="alert alert-success">${d.creees?.length || 0} compte(s) créé(s), ${d.echecs || 0} échec(s).</div>`;
+                if (d.erreurs?.length) {
+                    resultEl.innerHTML += `<div class="alert alert-warning small">${d.erreurs.map(e => `Ligne ${e.ligne}: ${this.escapeHtml(e.erreur)}`).join('<br>')}</div>`;
+                }
+                await this.loadUtilisateurs();
+            } else {
+                resultEl.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(res?.error || 'Erreur')}</div>`;
+            }
+        } catch (error) {
+            resultEl.innerHTML = `<div class="alert alert-danger">${this.escapeHtml(error.message)}</div>`;
+        }
+    }
+
+    async exportCompta() {
+        try {
+            const res = await window.api.integrations.invoke('exportCompta');
+            if (!res?.success) throw new Error(res?.error || 'Erreur');
+            const blob = new Blob([res.data], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = res.filename || 'ecritures_comptables.csv';
+            link.click();
+            URL.revokeObjectURL(url);
+            showToast('Export comptable généré', 'success');
+        } catch (error) {
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
     }
 }
 

@@ -64,6 +64,12 @@ contextBridge.exposeInMainWorld('api', {
   dashboard: createIpcWrapper('dashboard'),
   sync: createIpcWrapper('sync'),
   utilisateurs: createIpcWrapper('utilisateurs'),
+  userTemplates: createIpcWrapper('userTemplates'),
+  customRoles: createIpcWrapper('customRoles'),
+  habilitationChantier: createIpcWrapper('habilitationChantier'),
+  systemMetrics: createIpcWrapper('systemMetrics'),
+  support: createIpcWrapper('support'),
+  integrations: createIpcWrapper('integrations'),
   utils: {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
     openPath: (path) => ipcRenderer.invoke('app:openPath', path),

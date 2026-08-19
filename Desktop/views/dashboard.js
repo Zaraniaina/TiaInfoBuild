@@ -63,44 +63,40 @@ class DashboardController {
         const currentRoles = window.AppState?.roles || [window.AppState?.roleCode || 'ADMIN'];
 
         try {
-            // Charger les KPIs de base pour tous les rôles
             await Promise.all([
                 this.loadKPIs(entrepriseId),
                 this.loadAlertes(entrepriseId)
             ]);
 
-            // Charger les données spécifiques selon le rôle
             const rolePromises = [];
 
-            // Direction/Comptable/Admin - CA, rapports financiers
             if (this.hasRoleAccess(currentRoles, ['ADMIN', 'DIRECTEUR', 'COMPTABLE'])) {
                 rolePromises.push(this.loadCAEvolution(entrepriseId));
                 rolePromises.push(this.loadFacturesRetard(entrepriseId));
             }
 
-            // Chantiers access - Admin, Direction, Chef Chantier, Chef Projet, Comptable
             if (this.hasRoleAccess(currentRoles, ['ADMIN', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'])) {
                 rolePromises.push(this.loadTopChantiers(entrepriseId));
             }
 
-            // RH
             if (this.hasRoleAccess(currentRoles, ['ADMIN', 'RH', 'DIRECTEUR'])) {
                 rolePromises.push(this.loadRHStats(entrepriseId));
             }
 
-            // Commercial
             if (this.hasRoleAccess(currentRoles, ['ADMIN', 'COMMERCIAL', 'DIRECTEUR'])) {
                 rolePromises.push(this.loadCommercialStats(entrepriseId));
                 rolePromises.push(this.loadTopClients(entrepriseId));
                 rolePromises.push(this.loadCAByMoisChart(entrepriseId));
             }
 
-            // Logistique
             if (this.hasRoleAccess(currentRoles, ['ADMIN', 'MAGASINIER', 'MATERIEL', 'CHEF_CHANTIER'])) {
                 rolePromises.push(this.loadLogistiqueStats(entrepriseId));
             }
 
-            // Tous les rôles - activité récente
+            if (this.hasRoleAccess(currentRoles, ['ADMIN'])) {
+                rolePromises.push(this.loadSystemHealth(entrepriseId));
+            }
+
             rolePromises.push(this.loadActiviteRecente(entrepriseId));
 
             await Promise.all(rolePromises);
@@ -156,6 +152,9 @@ class DashboardController {
         document.getElementById('cardCommercialChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'COMMERCIAL', 'DIRECTEUR']));
         document.getElementById('cardCAByMoisChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE']));
         document.getElementById('cardLogistiqueChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'MAGASINIER', 'MATERIEL', 'CHEF_CHANTIER']));
+
+        const isAdmin = this.hasRoleAccess(roles, ['ADMIN']);
+        document.getElementById('kpiCardsSystemHealth')?.classList.toggle('d-none', !isAdmin);
 
         document.querySelector('[data-route="chantiers/nouveau"]')?.classList.toggle('d-none', !canCreateChantier);
         document.querySelector('[data-route="devis/nouveau"]')?.classList.toggle('d-none', !canCreateDevis);
@@ -850,6 +849,20 @@ class DashboardController {
         });
     }
 
+    async loadSystemHealth(entrepriseId) {
+        try {
+            const result = await window.api.systemMetrics.invoke('getHealth');
+            if (result?.success && result?.data) {
+                const data = result.data;
+                document.getElementById('kpiCardsSystemHealth').classList.remove('d-none');
+                document.getElementById('kpiSystemDbSize').textContent = data.dbSizeFormatted || '—';
+                document.getElementById('kpiSystemConnectedUsers').textContent = data.connectedUsers || 0;
+                document.getElementById('kpiSystemRecentErrors').textContent = data.recentErrors || 0;
+            }
+        } catch (error) {
+            console.error('Erreur chargement santé système:', error);
+        }
+    }
 
     // Utilitaires - utiliser la fonction globale pour la devise dynamique
     formatCurrency(amount) {
