@@ -15,6 +15,7 @@ class DashboardController {
         this.bindEvents();
         await this.loadDashboardData();
         this.updateDashboardVisibility();
+        this.setupAdminKpiDrillDown();
     }
 
     /**
@@ -165,6 +166,60 @@ class DashboardController {
         // Top clients visible pour commercial
         const showTopClients = hasAccess('clients') || hasPermission('list', 'clients');
         document.getElementById('topClientsCard')?.classList.toggle('d-none', !showTopClients);
+    }
+
+    /**
+     * Rend cliquables certains KPI du tableau de bord UNIQUEMENT pour le rôle
+     * Administrateur d'Entreprise, en les orientant vers la tâche métier BTP
+     * correspondante (drill-down). Aucun effet pour les autres rôles.
+     */
+    setupAdminKpiDrillDown() {
+        const isAdmin = window.AppState?.roles?.includes('ADMIN') || window.AppState?.roleCode === 'ADMIN';
+        if (!isAdmin) return;
+
+        // Mapping KPI (id de l'élément valeur) -> route cible + libellé métier
+        const navMap = {
+            // RH / Personnel
+            kpiRHEmployesActifs:      { route: '#employes',            label: 'Gestion des employés' },
+            kpiRHEquipesActives:      { route: '#equipes',             label: 'Équipes de chantier' },
+            kpiRHHeuresSup:           { route: '#heures-sup',          label: 'Heures supplémentaires en attente' },
+            // Commercial
+            kpiComNouveauxClients:    { route: '#clients',             label: 'Fichier clients' },
+            kpiComDevisAttente:       { route: '#devis',               label: 'Devis en attente de validation' },
+            kpiComFacturesImpayees:   { route: '#factures',            label: 'Factures impayées' },
+            kpiComTauxConversion:     { route: '#pipeline',            label: 'Pipeline commercial' },
+            // Santé / Supervision (admin)
+            kpiSystemDbSize:          { route: '#parametres?tab=maintenance', label: 'Maintenance préventive' },
+            kpiSystemConnectedUsers:  { route: '#historique-logins',   label: 'Historique des connexions' },
+            kpiSystemRecentErrors:    { route: '#audit-log',           label: 'Journal d\'audit' }
+        };
+
+        Object.entries(navMap).forEach(([id, { route, label }]) => {
+            const valueEl = document.getElementById(id);
+            if (!valueEl) return;
+            const card = valueEl.closest('.card.kpi-card');
+            if (!card || card.dataset.adminNavBound) return;
+
+            card.dataset.adminNavBound = '1';
+            card.style.cursor = 'pointer';
+            card.setAttribute('role', 'button');
+            card.setAttribute('tabindex', '0');
+            card.setAttribute('title', `Ouvrir : ${label}`);
+            card.classList.add('kpi-card--admin-clickable');
+
+            if (!card.querySelector('.kpi-open-hint')) {
+                const hint = document.createElement('div');
+                hint.className = 'kpi-open-hint small text-primary mt-2 fw-semibold';
+                hint.innerHTML = '<i class="bi bi-box-arrow-up-right me-1"></i>Ouvrir le module';
+                card.querySelector('.card-body')?.appendChild(hint);
+            }
+
+            const go = () => { if (window.router) window.router.navigate(route); };
+            card.addEventListener('click', go);
+            card.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+            });
+        });
     }
 
     /**

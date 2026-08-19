@@ -1,4 +1,27 @@
 <!-- Vue Dashboard / Tableau de bord -->
+<style>
+  /* Indicateurs cliquables (ADMIN) : signal visuel de drill-down */
+  .kpi-card--admin-clickable {
+    transition: transform .15s ease-in-out, box-shadow .15s ease-in-out, border-color .15s ease-in-out;
+  }
+  .kpi-card--admin-clickable:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 .5rem 1rem rgba(13, 110, 253, .18);
+    border-color: var(--bs-primary);
+  }
+  .kpi-card--admin-clickable .kpi-open-hint {
+    opacity: 0;
+    transition: opacity .15s ease-in-out;
+  }
+  .kpi-card--admin-clickable:hover .kpi-open-hint,
+  .kpi-card--admin-clickable:focus-visible .kpi-open-hint {
+    opacity: 1;
+  }
+  .kpi-card--admin-clickable:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+  }
+</style>
 <div class="dashboard-view" data-view="dashboard">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
