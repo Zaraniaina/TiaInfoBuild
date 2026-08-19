@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mode Terrain — TIA INFO BUILD</title>
+  <link rel="stylesheet" href="../../public/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" href="../../public/bootstrap/bootstrap-icons/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="../../public/tia-design.css">
+  <style>
+    .terrain-card { border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-radius: 12px; margin-bottom: 1rem; }
+    .terrain-card .card-body { padding: 1.25rem; }
+    .terrain-btn { width: 100%; padding: 1rem; font-size: 1.1rem; border-radius: 10px; margin-bottom: 0.75rem; border: none; }
+    .terrain-btn i { font-size: 1.5rem; display: block; margin-bottom: 0.5rem; }
+    .terrain-stat { text-align: center; padding: 1rem; }
+    .terrain-stat-value { font-size: 2rem; font-weight: 700; }
+  </style>
+</head>
+<body>
+<div class="container-fluid p-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0"><i class="bi bi-tools me-2 text-primary"></i>Mode Terrain</h2>
+    <span class="badge bg-success" id="terrainStatus">En ligne</span>
+  </div>
+
+  <!-- Actions rapides -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <button class="btn btn-primary terrain-btn" id="btnTerrainPointage" data-permission="pointages:create">
+        <i class="bi bi-clock-history"></i>Pointer équipe
+      </button>
+    </div>
+    <div class="col-md-3">
+      <button class="btn btn-success terrain-btn" id="btnTerrainDepense" data-permission="depenses:create">
+        <i class="bi bi-cash-stack"></i>Nouvelle dépense
+      </button>
+    </div>
+    <div class="col-md-3">
+      <button class="btn btn-warning terrain-btn" id="btnTerrainIncident" data-permission="incidents:create">
+        <i class="bi bi-exclamation-triangle"></i>Signaler incident
+      </button>
+    </div>
+    <div class="col-md-3">
+      <button class="btn btn-info terrain-btn" id="btnTerrainStock" data-permission="mouvements:create">
+        <i class="bi bi-box-seam"></i>Mouvement stock
+      </button>
+    </div>
+  </div>
+
+  <!-- Chantier actif -->
+  <div class="card terrain-card mb-4">
+    <div class="card-body">
+      <h5 class="card-title mb-3"><i class="bi bi-building me-2"></i>Chantier actif</h5>
+      <select class="form-select form-select-lg" id="terrainChantierSelect">
+        <option value="">Sélectionner un chantier...</option>
+      </select>
+      <div class="row g-3 mt-2" id="terrainChantierStats" style="display:none;">
+        <div class="col-md-3">
+          <div class="terrain-stat bg-light rounded">
+            <div class="text-secondary small">Avancement</div>
+            <div class="terrain-stat-value text-primary" id="terrainAvancement">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="terrain-stat bg-light rounded">
+            <div class="text-secondary small">Budget</div>
+            <div class="terrain-stat-value text-success" id="terrainBudget">0 Ar</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="terrain-stat bg-light rounded">
+            <div class="text-secondary small">Équipe</div>
+            <div class="terrain-stat-value text-info" id="terrainEquipe">0</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="terrain-stat bg-light rounded">
+            <div class="text-secondary small">Incidents</div>
+            <div class="terrain-stat-value text-warning" id="terrainIncidents">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dernières activités -->
+  <div class="card terrain-card">
+    <div class="card-body">
+      <h5 class="card-title mb-3"><i class="bi bi-clock-history me-2"></i>Dernières activités</h5>
+      <div id="terrainActivites">
+        <div class="text-center text-secondary py-3">Sélectionnez un chantier pour voir les activités</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../../public/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="terrain.js"></script>
+</body>
+</html>

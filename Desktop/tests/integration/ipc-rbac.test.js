@@ -26,9 +26,9 @@ describe('IPC RBAC — Nouveaux canaux factures', () => {
   test('factures:dupliquer protège par ADMIN, COMMERCIAL', () => {
     const match = mainContent.match(/secureHandle\('factures:dupliquer',\s*[^,]+,\s*async/);
     expect(match).toBeDefined();
-    const contextMatch = mainContent.match(/secureHandle\('factures:dupliquer',\s*rolesCommercialWrite/);
+    const contextMatch = mainContent.match(/secureHandle\('factures:dupliquer',\s*rolesFacturesWrite/);
     expect(contextMatch).toBeDefined();
-    expect(mainContent).toContain("secureHandle('factures:dupliquer', rolesCommercialWrite");
+    expect(mainContent).toContain("secureHandle('factures:dupliquer', rolesFacturesWrite");
   });
 });
 

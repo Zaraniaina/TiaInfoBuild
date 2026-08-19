@@ -28,6 +28,31 @@ class DashboardController {
         document.getElementById('btnQuickSync')?.addEventListener('click', () => {
             if (window.performSync) window.performSync();
         });
+
+        // Voir tout - Activité récente
+        document.getElementById('btnVoirToutActivite')?.addEventListener('click', () => {
+            const target = document.getElementById('activiteRecenteList');
+            if (!target) return;
+            const card = target.closest('.card') || target;
+            const rect = card.getBoundingClientRect();
+            const contentArea = document.getElementById('contentArea');
+            if (contentArea) {
+                const contentRect = contentArea.getBoundingClientRect();
+                const offset = rect.top - contentRect.top + contentArea.scrollTop - 20;
+                contentArea.scrollTo({ top: offset, behavior: 'smooth' });
+            } else {
+                window.scrollTo({ top: rect.top + window.pageYOffset - 20, behavior: 'smooth' });
+            }
+            setTimeout(() => {
+                if (contentArea) {
+                    const contentRect = contentArea.getBoundingClientRect();
+                    const cardRect = card.getBoundingClientRect();
+                    if (Math.abs(cardRect.top - contentRect.top - 20) > 40) {
+                        contentArea.scrollTop += cardRect.top - contentRect.top - 20;
+                    }
+                }
+            }, 350);
+        });
     }
 
     /**
@@ -102,6 +127,12 @@ class DashboardController {
         const showAlertes = hasAccess('alertes') || hasPermission('list', 'alertes');
         const showQuickActions = showChantiers || showEmployes || showStocks || showFinances || showAlertes;
 
+        const canCreateChantier = hasPermission('create', 'chantiers');
+        const canCreateDevis = hasPermission('create', 'devis');
+        const canCreateEmploye = hasPermission('create', 'employes');
+        const canCreateArticle = hasPermission('create', 'articles');
+        const canSync = hasPermission('sync', 'sync');
+
         document.getElementById('kpiChantiersActifs')?.closest('.col-xl-3')?.classList.toggle('d-none', !showChantiers);
         document.getElementById('kpiEmployesPresents')?.closest('.col-xl-3')?.classList.toggle('d-none', !showEmployes);
         document.getElementById('kpiStocksAlerte')?.closest('.col-xl-3')?.classList.toggle('d-none', !showStocks);
@@ -126,10 +157,11 @@ class DashboardController {
         document.getElementById('cardCAByMoisChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE']));
         document.getElementById('cardLogistiqueChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'MAGASINIER', 'MATERIEL', 'CHEF_CHANTIER']));
 
-        document.querySelector('[data-route="chantiers/nouveau"]')?.classList.toggle('d-none', !showChantiers);
-        document.querySelector('[data-route="devis/nouveau"]')?.classList.toggle('d-none', !hasAccess('devis'));
-        document.querySelector('[data-route="employes/nouveau"]')?.classList.toggle('d-none', !showEmployes);
-        document.querySelector('[data-route="stocks/nouveau"]')?.classList.toggle('d-none', !showStocks);
+        document.querySelector('[data-route="chantiers/nouveau"]')?.classList.toggle('d-none', !canCreateChantier);
+        document.querySelector('[data-route="devis/nouveau"]')?.classList.toggle('d-none', !canCreateDevis);
+        document.querySelector('[data-route="employes/nouveau"]')?.classList.toggle('d-none', !canCreateEmploye);
+        document.querySelector('[data-route="stocks/nouveau"]')?.classList.toggle('d-none', !canCreateArticle);
+        document.getElementById('btnQuickSync')?.classList.toggle('d-none', !canSync);
 
         // Top clients visible pour commercial
         const showTopClients = hasAccess('clients') || hasPermission('list', 'clients');
