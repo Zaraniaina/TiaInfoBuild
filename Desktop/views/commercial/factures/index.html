@@ -12,13 +12,18 @@
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
         <div class="row g-3">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="input-group">
                     <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
                     <input type="text" id="searchFacture" class="form-control" placeholder="Rechercher par n°, client...">
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <select id="filterClientFacture" class="form-select">
+                    <option value="">Tous les clients</option>
+                </select>
+            </div>
+            <div class="col-md-2">
                 <select id="filterStatutFacture" class="form-select">
                     <option value="">Tous les statuts</option>
                     <option value="brouillon">Brouillon</option>
@@ -27,6 +32,17 @@
                     <option value="paye">Payée</option>
                     <option value="annulee">Annulée</option>
                 </select>
+            </div>
+            <div class="col-md-2">
+                <input type="date" id="filterDateDebutFacture" class="form-control" placeholder="Date début">
+            </div>
+            <div class="col-md-2">
+                <input type="date" id="filterDateFinFacture" class="form-control" placeholder="Date fin">
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-outline-secondary w-100" id="btnResetFactures" title="Réinitialiser">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
             </div>
         </div>
     </div>

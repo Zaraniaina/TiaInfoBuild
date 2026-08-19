@@ -126,6 +126,22 @@ class FactureRepository extends BaseRepository {
   delete(id) {
     return this.softDelete(id);
   }
+
+  /**
+   * Calculer le reste à payer d'une facture
+   * @param {number} factureId - ID facture
+   * @returns {number} - Montant restant dû
+   */
+  resteAPayer(factureId) {
+    const facture = this.getById(factureId);
+    if (!facture) return 0;
+    const paiements = db.prepare(`
+      SELECT COALESCE(SUM(montant), 0) as total FROM Paiement
+      WHERE factureId = ? AND is_deleted = 0
+    `).get(factureId);
+    const totalPaye = paiements?.total || 0;
+    return Math.max(0, (facture.montantTTC || facture.montant || 0) - totalPaye);
+  }
 }
 
 module.exports = FactureRepository;

@@ -35,6 +35,10 @@ const UtilisateurRepository = require('./models/repositories/UtilisateurReposito
 const AffectationRessourceRepository = require('./models/repositories/AffectationRessourceRepository')
 const HistoriquePosteRepository = require('./models/repositories/HistoriquePosteRepository')
 const AuditLogRepository = require('./models/repositories/AuditLogRepository')
+const BudgetPrevisionnelRepository = require('./models/repositories/BudgetPrevisionnelRepository')
+const SousTraitantRepository = require('./models/repositories/SousTraitantRepository')
+const CatalogueDevisRepository = require('./models/repositories/CatalogueDevisRepository')
+const NotificationRepository = require('./models/repositories/NotificationRepository')
 
 // Controllers
 const { handleLogin, handleRegister } = require('./controllers/authController')
@@ -49,6 +53,10 @@ const SyncController = require('./controllers/syncController')
 const UtilisateurController = require('./controllers/utilisateurController')
 const AlerteController = require('./controllers/alerteController')
 const AuditController = require('./controllers/auditController')
+const BudgetController = require('./controllers/budgetController')
+const SousTraitantController = require('./controllers/sousTraitantController')
+const CatalogueController = require('./controllers/catalogueController')
+const NotificationController = require('./controllers/notificationController')
 
 // Services
 const SyncService = require('./services/syncService')
@@ -83,7 +91,11 @@ const repos = {
   sync: new SyncRepository(),
   utilisateurs: new UtilisateurRepository(),
   historiquePostes: new HistoriquePosteRepository(),
-  auditLog: new AuditLogRepository()
+  auditLog: new AuditLogRepository(),
+  budgetPrevisionnels: new BudgetPrevisionnelRepository(),
+  sousTraitants: new SousTraitantRepository(),
+  catalogues: new CatalogueDevisRepository(),
+  notifications: new NotificationRepository()
 }
 
 // Instanciation des contrôleurs
@@ -98,16 +110,20 @@ const syncCtrl = new SyncController(repos)
 const utilisateurCtrl = new UtilisateurController(repos)
 const alerteCtrl = new AlerteController(repos)
 const auditCtrl = new AuditController(repos)
+const budgetCtrl = new BudgetController(repos)
+const sousTraitantCtrl = new SousTraitantController(repos)
+const catalogueCtrl = new CatalogueController(repos)
+const notificationCtrl = new NotificationController(repos)
 
 // Instanciation des services
 const syncService = new SyncService(repos.sync)
 
 const dbPath = path.join(__dirname, 'tia_info_build.sqlite')
-const backupsDir = path.join(app.getPath('userData'), 'backups')
-if (!fs.existsSync(backupsDir)) fs.mkdirSync(backupsDir, { recursive: true })
 
 function createWindow() {
   Menu.setApplicationMenu(null)
+  const backupsDir = path.join(app.getPath('userData'), 'backups')
+  if (!fs.existsSync(backupsDir)) fs.mkdirSync(backupsDir, { recursive: true })
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -214,7 +230,11 @@ function secureHandle(channel, allowedRoles, handler) {
       'factures:ajouterPaiement', 'factures:envoyer', 'factures:dupliquer',
       'entreprises:update',
       'photos:create', 'photos:delete',
-      'backup:import', 'backup:restore', 'backup:delete'
+      'backup:import', 'backup:restore', 'backup:delete',
+      'budgets:create', 'budgets:update', 'budgets:delete',
+      'sous-traitants:create', 'sous-traitants:update', 'sous-traitants:delete',
+      'catalogues:create', 'catalogues:update', 'catalogues:delete',
+      'notifications:create', 'notifications:update', 'notifications:delete'
     ];
 
     if (auditChannels.includes(channel)) {
@@ -323,55 +343,60 @@ secureHandle('entreprises:update', rolesAdminDg, (e, id, data) => {
 // ============================================================
 // CHANTIERS, PHASES, INCIDENTS, AFFECTATIONS
 // ============================================================
-const rolesChantiers = permissions.PERMISSIONS.chantiers;
+const rolesChantiers = permissions.PERMISSIONS.chantiers.read;
+const rolesChantiersWrite = permissions.PERMISSIONS.chantiers.write;
 
 secureHandle('chantiers:list', rolesChantiers, (e, params) => chantierCtrl.getList(e, params))
 secureHandle('chantiers:get', rolesChantiers, (e, id) => chantierCtrl.getById(e, id))
-secureHandle('chantiers:create', rolesChantiers, (e, data, entrepriseId) => chantierCtrl.create(e, data, entrepriseId))
-secureHandle('chantiers:update', rolesChantiers, (e, id, data) => chantierCtrl.update(e, id, data))
-secureHandle('chantiers:delete', rolesChantiers, (e, id) => chantierCtrl.delete(e, id))
+secureHandle('chantiers:create', rolesChantiersWrite, (e, data, entrepriseId) => chantierCtrl.create(e, data, entrepriseId))
+secureHandle('chantiers:update', rolesChantiersWrite, (e, id, data) => chantierCtrl.update(e, id, data))
+secureHandle('chantiers:delete', rolesChantiersWrite, (e, id) => chantierCtrl.delete(e, id))
 secureHandle('chantiers:stats', rolesChantiers, (e, entrepriseId) => chantierCtrl.getStats(e, entrepriseId))
-secureHandle('chantiers:addPhase', rolesChantiers, (e, chantierId, data) => chantierCtrl.addPhase(e, chantierId, data))
-secureHandle('chantiers:savePhases', rolesChantiers, (e, chantierId, phases) => chantierCtrl.savePhases(e, chantierId, phases))
-secureHandle('chantiers:addIncident', rolesChantiers, (e, chantierId, data, userId) => chantierCtrl.addIncident(e, chantierId, data, userId))
-secureHandle('chantiers:updateIncident', rolesChantiers, (e, id, data) => chantierCtrl.updateIncident(e, id, data))
-secureHandle('chantiers:deleteIncident', rolesChantiers, (e, id) => chantierCtrl.deleteIncident(e, id))
-secureHandle('chantiers:recalculerBudget', rolesChantiers, (e, chantierId) => chantierCtrl.recalculerBudget(e, chantierId))
-secureHandle('chantiers:addAffectation', rolesChantiers, (e, data) => chantierCtrl.createAffectation(e, data))
-secureHandle('chantiers:updateAffectation', rolesChantiers, (e, id, data) => chantierCtrl.updateAffectation(e, id, data))
-secureHandle('chantiers:deleteAffectation', rolesChantiers, (e, id) => chantierCtrl.deleteAffectation(e, id))
+secureHandle('chantiers:addPhase', rolesChantiersWrite, (e, chantierId, data) => chantierCtrl.addPhase(e, chantierId, data))
+secureHandle('chantiers:savePhases', rolesChantiersWrite, (e, chantierId, phases) => chantierCtrl.savePhases(e, chantierId, phases))
+secureHandle('chantiers:addIncident', rolesChantiersWrite, (e, chantierId, data, userId) => chantierCtrl.addIncident(e, chantierId, data, userId))
+secureHandle('chantiers:updateIncident', rolesChantiersWrite, (e, id, data) => chantierCtrl.updateIncident(e, id, data))
+secureHandle('chantiers:deleteIncident', rolesChantiersWrite, (e, id) => chantierCtrl.deleteIncident(e, id))
+secureHandle('chantiers:recalculerBudget', rolesChantiersWrite, (e, chantierId) => chantierCtrl.recalculerBudget(e, chantierId))
+secureHandle('chantiers:addAffectation', rolesChantiersWrite, (e, data) => chantierCtrl.createAffectation(e, data))
+secureHandle('chantiers:updateAffectation', rolesChantiersWrite, (e, id, data) => chantierCtrl.updateAffectation(e, id, data))
+secureHandle('chantiers:deleteAffectation', rolesChantiersWrite, (e, id) => chantierCtrl.deleteAffectation(e, id))
 
 secureHandle('phases:list', rolesChantiers, (e, chantierId) => chantierCtrl.getPhasesByChantier(e, chantierId))
-secureHandle('phases:create', rolesChantiers, (e, data) => chantierCtrl.createPhase(e, data))
-secureHandle('phases:update', rolesChantiers, (e, id, data) => chantierCtrl.updatePhase(e, id, data))
-secureHandle('phases:delete', rolesChantiers, (e, id) => chantierCtrl.deletePhase(e, id))
-secureHandle('phases:updateAvancement', rolesChantiers, (e, id, pct) => chantierCtrl.updatePhaseAvancement(e, id, pct))
-secureHandle('phases:reorder', rolesChantiers, (e, chantierId, ids) => chantierCtrl.reorderPhases(e, chantierId, ids))
+secureHandle('phases:create', rolesChantiersWrite, (e, data) => chantierCtrl.createPhase(e, data))
+secureHandle('phases:update', rolesChantiersWrite, (e, id, data) => chantierCtrl.updatePhase(e, id, data))
+secureHandle('phases:delete', rolesChantiersWrite, (e, id) => chantierCtrl.deletePhase(e, id))
+secureHandle('phases:updateAvancement', rolesChantiersWrite, (e, id, pct) => chantierCtrl.updatePhaseAvancement(e, id, pct))
+secureHandle('phases:reorder', rolesChantiersWrite, (e, chantierId, ids) => chantierCtrl.reorderPhases(e, chantierId, ids))
 secureHandle('phases:avancementGlobal', rolesChantiers, (e, chantierId) => chantierCtrl.getAvancementGlobalPhases(e, chantierId))
 
 secureHandle('incidents:list', rolesChantiers, (e, chantierId) => chantierCtrl.getIncidentsByChantier(e, chantierId))
-secureHandle('incidents:create', rolesChantiers, (e, data) => chantierCtrl.createIncident(e, data))
-secureHandle('incidents:update', rolesChantiers, (e, id, data) => chantierCtrl.updateIncident(e, id, data))
-secureHandle('incidents:delete', rolesChantiers, (e, id) => chantierCtrl.deleteIncident(e, id))
-secureHandle('incidents:changerStatut', rolesChantiers, (e, id, statut) => chantierCtrl.changerStatutIncident(e, id, statut))
+secureHandle('incidents:create', rolesChantiersWrite, (e, data) => chantierCtrl.createIncident(e, data))
+secureHandle('incidents:update', rolesChantiersWrite, (e, id, data) => chantierCtrl.updateIncident(e, id, data))
+secureHandle('incidents:delete', rolesChantiersWrite, (e, id) => chantierCtrl.deleteIncident(e, id))
+secureHandle('incidents:changerStatut', rolesChantiersWrite, (e, id, statut) => chantierCtrl.changerStatutIncident(e, id, statut))
 secureHandle('incidents:ouvertsByEntreprise', rolesChantiers, (e, entrepriseId) => chantierCtrl.getIncidentsOuvertsByEntreprise(e, entrepriseId))
 
 secureHandle('affectations:byChantier', rolesChantiers, (e, chantierId) => chantierCtrl.getAffectationsByChantier(e, chantierId))
-secureHandle('affectations:create', rolesChantiers, (e, data) => chantierCtrl.createAffectation(e, data))
-secureHandle('affectations:update', rolesChantiers, (e, id, data) => chantierCtrl.updateAffectation(e, id, data))
-secureHandle('affectations:delete', rolesChantiers, (e, id) => chantierCtrl.deleteAffectation(e, id))
+secureHandle('affectations:create', rolesChantiersWrite, (e, data) => chantierCtrl.createAffectation(e, data))
+secureHandle('affectations:update', rolesChantiersWrite, (e, id, data) => chantierCtrl.updateAffectation(e, id, data))
+secureHandle('affectations:delete', rolesChantiersWrite, (e, id) => chantierCtrl.deleteAffectation(e, id))
 
 secureHandle('photos:list', rolesChantiers, (e, chantierId) => chantierCtrl.getPhotos(e, chantierId))
-secureHandle('photos:create', rolesChantiers, (e, chantierId, data, entrepriseId) => chantierCtrl.createPhoto(e, chantierId, data, entrepriseId))
-secureHandle('photos:delete', rolesChantiers, (e, id) => chantierCtrl.deletePhoto(e, id))
+secureHandle('photos:create', rolesChantiersWrite, (e, chantierId, data, entrepriseId) => chantierCtrl.createPhoto(e, chantierId, data, entrepriseId))
+secureHandle('photos:delete', rolesChantiersWrite, (e, id) => chantierCtrl.deletePhoto(e, id))
 
 // ============================================================
 // RESSOURCES HUMAINES
 // ============================================================
-const rolesRH = permissions.PERMISSIONS.employes.read;
-
-const rolesEmployesRead = ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'];
-const rolesEmployesWrite = ['ADMIN', 'RH'];
+const rolesEmployesRead = permissions.PERMISSIONS.employes.read;
+const rolesEmployesWrite = permissions.PERMISSIONS.employes.write;
+const rolesPointagesRead = permissions.PERMISSIONS.pointages.read;
+const rolesPointagesWrite = permissions.PERMISSIONS.pointages.write;
+const rolesHeuresSupRead = permissions.PERMISSIONS.heuresSup.read;
+const rolesHeuresSupWrite = permissions.PERMISSIONS.heuresSup.write;
+const rolesEquipesRead = permissions.PERMISSIONS.equipes.read;
+const rolesEquipesWrite = permissions.PERMISSIONS.equipes.write;
 
 secureHandle('employes:list', rolesEmployesRead, (e, params) => rhCtrl.getListEmployes(e, params))
 secureHandle('employes:get', rolesEmployesRead, (e, id) => rhCtrl.getEmployeById(e, id))
@@ -384,96 +409,106 @@ secureHandle('employes:stats', rolesEmployesRead, (e, entrepriseId) => rhCtrl.ge
 secureHandle('employes:changerPoste', rolesEmployesWrite, (e, employeId, data) => safeRepo(() => repos.employes.changerPoste(employeId, data)))
 secureHandle('employes:historiquePoste', rolesEmployesRead, (e, employeId) => safeRepo(() => repos.historiquePostes.getByEmploye(employeId)))
 
-secureHandle('pointages:list', rolesRH, (e, params) => rhCtrl.getListPointages(e, params))
-secureHandle('pointages:create', rolesRH, (e, data) => rhCtrl.createPointage(e, data))
-secureHandle('pointages:update', rolesRH, (e, id, data) => safeRepo(() => repos.pointages.update(id, data)))
-secureHandle('pointages:delete', rolesRH, (e, id) => safeRepo(() => repos.pointages.delete(id)))
+secureHandle('pointages:list', rolesPointagesRead, (e, params) => rhCtrl.getListPointages(e, params))
+secureHandle('pointages:create', rolesPointagesWrite, (e, data) => rhCtrl.createPointage(e, data))
+secureHandle('pointages:update', rolesPointagesWrite, (e, id, data) => safeRepo(() => repos.pointages.update(id, data)))
+secureHandle('pointages:delete', rolesPointagesWrite, (e, id) => safeRepo(() => repos.pointages.delete(id)))
 
-secureHandle('heures-sup:list', rolesRH, (e, params) => rhCtrl.getListHeuresSup(e, params))
-secureHandle('heures-sup:create', rolesRH, (e, data) => rhCtrl.createHeureSup(e, data))
-secureHandle('heures-sup:update', rolesRH, (e, id, data) => safeRepo(() => repos.heuresSup.update(id, data)))
-secureHandle('heures-sup:delete', rolesRH, (e, id) => safeRepo(() => repos.heuresSup.delete(id)))
+secureHandle('heures-sup:list', rolesHeuresSupRead, (e, params) => rhCtrl.getListHeuresSup(e, params))
+secureHandle('heures-sup:create', rolesHeuresSupWrite, (e, data) => rhCtrl.createHeureSup(e, data))
+secureHandle('heures-sup:update', rolesHeuresSupWrite, (e, id, data) => safeRepo(() => repos.heuresSup.update(id, data)))
+secureHandle('heures-sup:delete', rolesHeuresSupWrite, (e, id) => safeRepo(() => repos.heuresSup.delete(id)))
 
-secureHandle('equipes:list', rolesRH, (e, entrepriseId) => rhCtrl.getListEquipes(e, entrepriseId))
-secureHandle('equipes:create', rolesRH, (e, data, entrepriseId) => rhCtrl.createEquipe(e, data, entrepriseId))
-secureHandle('equipes:update', rolesRH, (e, id, data) => safeRepo(() => repos.equipes.update(id, data)))
-secureHandle('equipes:delete', rolesRH, (e, id) => safeRepo(() => repos.equipes.delete(id)))
-secureHandle('equipes:ajouterMembre', rolesRH, (e, equipeId, employeId) => safeRepo(() => repos.equipes.ajouterMembre(equipeId, employeId)))
-secureHandle('equipes:retirerMembre', rolesRH, (e, membreId) => safeRepo(() => repos.equipes.retirerMembre(membreId)))
-secureHandle('equipes:assignerChantier', rolesRH, (e, data) => safeRepo(() => repos.equipes.assignerChantier(data)))
+secureHandle('equipes:list', rolesEquipesRead, (e, entrepriseId) => rhCtrl.getListEquipes(e, entrepriseId))
+secureHandle('equipes:create', rolesEquipesWrite, (e, data, entrepriseId) => rhCtrl.createEquipe(e, data, entrepriseId))
+secureHandle('equipes:update', rolesEquipesWrite, (e, id, data) => safeRepo(() => repos.equipes.update(id, data)))
+secureHandle('equipes:delete', rolesEquipesWrite, (e, id) => safeRepo(() => repos.equipes.delete(id)))
+secureHandle('equipes:ajouterMembre', rolesEquipesWrite, (e, equipeId, employeId) => safeRepo(() => repos.equipes.ajouterMembre(equipeId, employeId)))
+secureHandle('equipes:retirerMembre', rolesEquipesWrite, (e, membreId) => safeRepo(() => repos.equipes.retirerMembre(membreId)))
+secureHandle('equipes:assignerChantier', rolesEquipesWrite, (e, data) => safeRepo(() => repos.equipes.assignerChantier(data)))
 
 // ============================================================
 // STOCKS & FOURNISSEURS
 // ============================================================
-const rolesStocks = permissions.PERMISSIONS.articles;
-const rolesStocksWrite = Array.isArray(rolesStocks) ? rolesStocks : (rolesStocks.write || []);
-const rolesFournisseurs = permissions.PERMISSIONS.fournisseurs;
-const rolesFournisseursWrite = Array.isArray(rolesFournisseurs) ? rolesFournisseurs : (rolesFournisseurs.write || []);
+const rolesArticlesRead = permissions.PERMISSIONS.articles.read;
+const rolesArticlesWrite = permissions.PERMISSIONS.articles.write;
+const rolesFournisseursRead = permissions.PERMISSIONS.fournisseurs.read;
+const rolesFournisseursWrite = permissions.PERMISSIONS.fournisseurs.write;
 
-secureHandle('articles:list', rolesStocks, (e, params) => stockCtrl.getListArticles(e, params))
-secureHandle('articles:get', rolesStocks, (e, id) => stockCtrl.getArticleById(e, id))
-secureHandle('articles:create', rolesStocksWrite, (e, data, entrepriseId) => stockCtrl.createArticle(e, data, entrepriseId))
-secureHandle('articles:update', rolesStocksWrite, (e, id, data) => stockCtrl.updateArticle(e, id, data))
-secureHandle('articles:delete', rolesStocksWrite, (e, id) => stockCtrl.deleteArticle(e, id))
-secureHandle('articles:enAlerte', rolesStocks, (e, entrepriseId) => stockCtrl.getArticlesEnAlerte(e, entrepriseId))
-secureHandle('articles:updateStock', rolesStocksWrite, (e, articleId, qte, type, opt) => stockCtrl.updateStockArticle(e, articleId, qte, type, opt))
-secureHandle('articles:stats', rolesStocks, (e, entrepriseId) => stockCtrl.getStatsArticles(e, entrepriseId))
+secureHandle('articles:list', rolesArticlesRead, (e, params) => stockCtrl.getListArticles(e, params))
+secureHandle('articles:get', rolesArticlesRead, (e, id) => stockCtrl.getArticleById(e, id))
+secureHandle('articles:create', rolesArticlesWrite, (e, data, entrepriseId) => stockCtrl.createArticle(e, data, entrepriseId))
+secureHandle('articles:update', rolesArticlesWrite, (e, id, data) => stockCtrl.updateArticle(e, id, data))
+secureHandle('articles:delete', rolesArticlesWrite, (e, id) => stockCtrl.deleteArticle(e, id))
+secureHandle('articles:enAlerte', rolesArticlesRead, (e, entrepriseId) => stockCtrl.getArticlesEnAlerte(e, entrepriseId))
+secureHandle('articles:updateStock', rolesArticlesWrite, (e, articleId, qte, type, opt) => stockCtrl.updateStockArticle(e, articleId, qte, type, opt))
+secureHandle('articles:stats', rolesArticlesRead, (e, entrepriseId) => stockCtrl.getStatsArticles(e, entrepriseId))
 
-secureHandle('fournisseurs:list', rolesFournisseurs, (e, params) => stockCtrl.getListFournisseurs(e, params))
-secureHandle('fournisseurs:get', rolesFournisseurs, (e, id) => safeRepo(() => repos.fournisseurs.getById(id)))
+secureHandle('fournisseurs:list', rolesFournisseursRead, (e, params) => stockCtrl.getListFournisseurs(e, params))
+secureHandle('fournisseurs:get', rolesFournisseursRead, (e, id) => safeRepo(() => repos.fournisseurs.getById(id)))
 secureHandle('fournisseurs:create', rolesFournisseursWrite, (e, data, entrepriseId) => stockCtrl.createFournisseur(e, data, entrepriseId))
 secureHandle('fournisseurs:update', rolesFournisseursWrite, (e, id, data) => stockCtrl.updateFournisseur(e, id, data))
 secureHandle('fournisseurs:delete', rolesFournisseursWrite, (e, id) => stockCtrl.deleteFournisseur(e, id))
 
-secureHandle('mouvements:byArticle', rolesStocks, (e, id) => stockCtrl.getMouvementsByArticle(e, id))
-secureHandle('mouvements:byChantier', rolesStocks, (e, id) => stockCtrl.getMouvementsByChantier(e, id))
-secureHandle('mouvements:byPeriode', rolesStocks, (e, params) => stockCtrl.getMouvementsByPeriode(e, params.entrepriseId, params.dateDebut, params.dateFin))
-secureHandle('mouvements:stats', rolesStocks, (e, params) => stockCtrl.getMouvementsStats(e, params.entrepriseId, params.dateDebut, params.dateFin))
-secureHandle('mouvements:create', rolesStocksWrite, (e, data) => safeRepo(() => repos.mouvements.create(data)))
-secureHandle('mouvements:delete', rolesStocksWrite, (e, id) => safeRepo(() => repos.mouvements.delete(id)))
+secureHandle('mouvements:byArticle', rolesArticlesRead, (e, id) => stockCtrl.getMouvementsByArticle(e, id))
+secureHandle('mouvements:byChantier', rolesArticlesRead, (e, id) => stockCtrl.getMouvementsByChantier(e, id))
+secureHandle('mouvements:byPeriode', rolesArticlesRead, (e, params) => stockCtrl.getMouvementsByPeriode(e, params.entrepriseId, params.dateDebut, params.dateFin))
+secureHandle('mouvements:stats', rolesArticlesRead, (e, params) => stockCtrl.getMouvementsStats(e, params.entrepriseId, params.dateDebut, params.dateFin))
+secureHandle('mouvements:create', rolesArticlesWrite, (e, data) => safeRepo(() => repos.mouvements.create(data)))
+secureHandle('mouvements:delete', rolesArticlesWrite, (e, id) => safeRepo(() => repos.mouvements.delete(id)))
 
 // ============================================================
 // MATÉRIELS
 // ============================================================
-const rolesMateriel = permissions.PERMISSIONS.materiels;
-const rolesMaterielWrite = Array.isArray(rolesMateriel) ? rolesMateriel : (rolesMateriel.write || []);
+const rolesMaterielsRead = permissions.PERMISSIONS.materiels.read;
+const rolesMaterielsWrite = permissions.PERMISSIONS.materiels.write;
 
-secureHandle('materiels:list', rolesMateriel, (e, params) => materielCtrl.getListMateriels(e, params))
-secureHandle('materiels:get', rolesMateriel, (e, id) => materielCtrl.getMaterielById(e, id))
-secureHandle('materiels:create', rolesMaterielWrite, (e, data, entrepriseId) => materielCtrl.createMateriel(e, data, entrepriseId))
-secureHandle('materiels:update', rolesMaterielWrite, (e, id, data) => materielCtrl.updateMateriel(e, id, data))
-secureHandle('materiels:delete', rolesMaterielWrite, (e, id) => materielCtrl.deleteMateriel(e, id))
-secureHandle('materiels:stats', rolesMateriel, (e, entrepriseId) => materielCtrl.getStatsMateriels(e, entrepriseId))
-secureHandle('materiels:disponibles', rolesMateriel, (e, entrepriseId) => materielCtrl.getDisponibles(e, entrepriseId))
-secureHandle('materiels:maintenanceEnRetard', rolesMateriel, (e, entrepriseId) => materielCtrl.getMaintenanceEnRetard(e, entrepriseId))
-secureHandle('maintenances:list', rolesMateriel, (e, params) => materielCtrl.getListMaintenances(e, params))
-secureHandle('maintenances:create', rolesMaterielWrite, (e, data) => materielCtrl.createMaintenance(e, data))
-secureHandle('maintenances:update', rolesMaterielWrite, (e, id, data) => materielCtrl.updateMaintenance(e, id, data))
+secureHandle('materiels:list', rolesMaterielsRead, (e, params) => materielCtrl.getListMateriels(e, params))
+secureHandle('materiels:get', rolesMaterielsRead, (e, id) => materielCtrl.getMaterielById(e, id))
+secureHandle('materiels:create', rolesMaterielsWrite, (e, data, entrepriseId) => materielCtrl.createMateriel(e, data, entrepriseId))
+secureHandle('materiels:update', rolesMaterielsWrite, (e, id, data) => materielCtrl.updateMateriel(e, id, data))
+secureHandle('materiels:delete', rolesMaterielsWrite, (e, id) => materielCtrl.deleteMateriel(e, id))
+secureHandle('materiels:stats', rolesMaterielsRead, (e, entrepriseId) => materielCtrl.getStatsMateriels(e, entrepriseId))
+secureHandle('materiels:disponibles', rolesMaterielsRead, (e, entrepriseId) => materielCtrl.getDisponibles(e, entrepriseId))
+secureHandle('materiels:maintenanceEnRetard', rolesMaterielsRead, (e, entrepriseId) => materielCtrl.getMaintenanceEnRetard(e, entrepriseId))
+secureHandle('maintenances:list', rolesMaterielsRead, (e, params) => materielCtrl.getListMaintenances(e, params))
+secureHandle('maintenances:create', rolesMaterielsWrite, (e, data) => materielCtrl.createMaintenance(e, data))
+secureHandle('maintenances:update', rolesMaterielsWrite, (e, id, data) => materielCtrl.updateMaintenance(e, id, data))
 
 // ============================================================
 // COMMERCIAL (Clients, Devis, Contrats, Factures, Paiements)
 // ============================================================
-const rolesCommercial = permissions.PERMISSIONS.clients;
-const rolesCommercialWrite = Array.isArray(rolesCommercial) ? rolesCommercial : (rolesCommercial.write || []);
+const rolesClientsRead = permissions.PERMISSIONS.clients.read;
+const rolesClientsWrite = permissions.PERMISSIONS.clients.write;
+const rolesDevisRead = permissions.PERMISSIONS.devis.read;
+const rolesDevisWrite = permissions.PERMISSIONS.devis.write;
+const rolesContratsRead = permissions.PERMISSIONS.contrats.read;
+const rolesContratsWrite = permissions.PERMISSIONS.contrats.write;
+const rolesFacturesRead = permissions.PERMISSIONS.factures.read;
+const rolesFacturesWrite = permissions.PERMISSIONS.factures.write;
+const rolesPaiementsRead = permissions.PERMISSIONS.paiements.read;
+const rolesPaiementsCreate = permissions.PERMISSIONS.paiements.create;
+const rolesPaiementsUpdate = permissions.PERMISSIONS.paiements.update;
+const rolesPaiementsDelete = permissions.PERMISSIONS.paiements.delete;
 
-secureHandle('clients:list', rolesCommercial, (e, params) => commercialCtrl.getListClients(e, params))
-secureHandle('clients:get', rolesCommercial, (e, id) => commercialCtrl.getClientById(e, id))
-secureHandle('clients:create', rolesCommercialWrite, (e, data, entrepriseId) => commercialCtrl.createClient(e, data, entrepriseId))
-secureHandle('clients:update', rolesCommercialWrite, (e, id, data) => commercialCtrl.updateClient(e, id, data))
-secureHandle('clients:delete', rolesCommercialWrite, (e, id) => commercialCtrl.deleteClient(e, id))
+secureHandle('clients:list', rolesClientsRead, (e, params) => commercialCtrl.getListClients(e, params))
+secureHandle('clients:get', rolesClientsRead, (e, id) => commercialCtrl.getClientById(e, id))
+secureHandle('clients:create', rolesClientsWrite, (e, data, entrepriseId) => commercialCtrl.createClient(e, data, entrepriseId))
+secureHandle('clients:update', rolesClientsWrite, (e, id, data) => commercialCtrl.updateClient(e, id, data))
+secureHandle('clients:delete', rolesClientsWrite, (e, id) => commercialCtrl.deleteClient(e, id))
 
-secureHandle('clientAdresses:list', rolesCommercial, (e, clientId) => commercialCtrl.getClientAdresses(e, clientId))
-secureHandle('clientAdresses:create', rolesCommercialWrite, (e, clientId, data) => commercialCtrl.createClientAdresse(e, clientId, data))
-secureHandle('clientAdresses:update', rolesCommercialWrite, (e, id, data) => commercialCtrl.updateClientAdresse(e, id, data))
-secureHandle('clientAdresses:delete', rolesCommercialWrite, (e, id) => commercialCtrl.deleteClientAdresse(e, id))
+secureHandle('clientAdresses:list', rolesClientsRead, (e, clientId) => commercialCtrl.getClientAdresses(e, clientId))
+secureHandle('clientAdresses:create', rolesClientsWrite, (e, clientId, data) => commercialCtrl.createClientAdresse(e, clientId, data))
+secureHandle('clientAdresses:update', rolesClientsWrite, (e, id, data) => commercialCtrl.updateClientAdresse(e, id, data))
+secureHandle('clientAdresses:delete', rolesClientsWrite, (e, id) => commercialCtrl.deleteClientAdresse(e, id))
 
-secureHandle('devis:list', rolesCommercial, (e, params) => commercialCtrl.getListDevis(e, params))
-secureHandle('devis:get', rolesCommercial, (e, id) => commercialCtrl.getDevisById(e, id))
-secureHandle('devis:create', rolesCommercialWrite, (e, data, entrepriseId) => commercialCtrl.createDevis(e, data, entrepriseId))
-secureHandle('devis:update', rolesCommercialWrite, (e, id, data) => commercialCtrl.updateDevis(e, id, data))
-secureHandle('devis:delete', rolesCommercialWrite, (e, id) => safeRepo(() => repos.devis.delete(id)))
-secureHandle('devis:transformerEnContrat', rolesCommercialWrite, (e, devisId, data) => commercialCtrl.transformerDevisEnContrat(e, devisId, data))
-secureHandle('devis:saveLignes', rolesCommercialWrite, (e, devisId, lignes) => safeRepo(() => {
+secureHandle('devis:list', rolesDevisRead, (e, params) => commercialCtrl.getListDevis(e, params))
+secureHandle('devis:get', rolesDevisRead, (e, id) => commercialCtrl.getDevisById(e, id))
+secureHandle('devis:create', rolesDevisWrite, (e, data, entrepriseId) => commercialCtrl.createDevis(e, data, entrepriseId))
+secureHandle('devis:update', rolesDevisWrite, (e, id, data) => commercialCtrl.updateDevis(e, id, data))
+secureHandle('devis:delete', rolesDevisWrite, (e, id) => safeRepo(() => repos.devis.delete(id)))
+secureHandle('devis:transformerEnContrat', rolesDevisWrite, (e, devisId, data) => commercialCtrl.transformerDevisEnContrat(e, devisId, data))
+secureHandle('devis:saveLignes', rolesDevisWrite, (e, devisId, lignes) => safeRepo(() => {
   // Supprimer les anciennes lignes et recréer
   const existing = repos.lignesDevis.getByDevis(devisId)
   if (existing) existing.forEach(l => repos.lignesDevis.delete(l.id))
@@ -481,19 +516,19 @@ secureHandle('devis:saveLignes', rolesCommercialWrite, (e, devisId, lignes) => s
   return { saved: lignes.length }
 }))
 
-secureHandle('contrats:list', rolesCommercial, (e, params) => commercialCtrl.getListContrats(e, params))
-secureHandle('contrats:get', rolesCommercial, (e, id) => commercialCtrl.getContratById(e, id))
-secureHandle('contrats:create', rolesCommercialWrite, (e, data) => safeRepo(() => repos.contrats.create(data)))
-secureHandle('contrats:update', rolesCommercialWrite, (e, id, data) => safeRepo(() => repos.contrats.update(id, data)))
-secureHandle('contrats:delete', rolesCommercialWrite, (e, id) => safeRepo(() => repos.contrats.delete(id)))
+secureHandle('contrats:list', rolesContratsRead, (e, params) => commercialCtrl.getListContrats(e, params))
+secureHandle('contrats:get', rolesContratsRead, (e, id) => commercialCtrl.getContratById(e, id))
+secureHandle('contrats:create', rolesContratsWrite, (e, data) => safeRepo(() => repos.contrats.create(data)))
+secureHandle('contrats:update', rolesContratsWrite, (e, id, data) => safeRepo(() => repos.contrats.update(id, data)))
+secureHandle('contrats:delete', rolesContratsWrite, (e, id) => safeRepo(() => repos.contrats.delete(id)))
 
-secureHandle('factures:list', rolesCommercial, (e, params) => commercialCtrl.getListFactures(e, params))
-secureHandle('factures:get', rolesCommercial, (e, id) => commercialCtrl.getFactureById(e, id))
-secureHandle('factures:create', rolesCommercialWrite, (e, data, entrepriseId) => commercialCtrl.createFacture(e, data, entrepriseId))
-secureHandle('factures:update', rolesCommercialWrite, (e, id, data) => commercialCtrl.updateFacture(e, id, data))
-secureHandle('factures:delete', rolesCommercialWrite, (e, id) => commercialCtrl.deleteFacture(e, id))
-secureHandle('factures:enRetard', rolesCommercial, (e, entrepriseId) => commercialCtrl.getFacturesEnRetard(e, entrepriseId))
-secureHandle('factures:ajouterPaiement', rolesCommercialWrite, (e, factureId, data) => commercialCtrl.ajouterPaiementFacture(e, factureId, data))
+secureHandle('factures:list', rolesFacturesRead, (e, params) => commercialCtrl.getListFactures(e, params))
+secureHandle('factures:get', rolesFacturesRead, (e, id) => commercialCtrl.getFactureById(e, id))
+secureHandle('factures:create', rolesFacturesWrite, (e, data, entrepriseId) => commercialCtrl.createFacture(e, data, entrepriseId))
+secureHandle('factures:update', rolesFacturesWrite, (e, id, data) => commercialCtrl.updateFacture(e, id, data))
+secureHandle('factures:delete', rolesFacturesWrite, (e, id) => commercialCtrl.deleteFacture(e, id))
+secureHandle('factures:enRetard', rolesFacturesRead, (e, entrepriseId) => commercialCtrl.getFacturesEnRetard(e, entrepriseId))
+secureHandle('factures:ajouterPaiement', rolesFacturesWrite, (e, factureId, data) => commercialCtrl.ajouterPaiementFacture(e, factureId, data))
 secureHandle('factures:envoyer', ['ADMIN', 'COMMERCIAL', 'COMPTABLE'], async (e, factureId) => {
   try {
     const facture = repos.factures.getWithPaiements(factureId);
@@ -515,35 +550,91 @@ secureHandle('factures:envoyer', ['ADMIN', 'COMMERCIAL', 'COMPTABLE'], async (e,
 
     if (!smtpConfig.host) return { success: false, error: 'Configuration SMTP manquante. Veuillez configurer les paramètres SMTP dans les paramètres de l\'entreprise.' };
 
-    const html = `
-      <h2>Facture ${facture.numero}</h2>
-      <p>Bonjour,</p>
-      <p>Veuillez trouver ci-joint votre facture ${facture.numero} d'un montant de ${(facture.montantTTC || 0).toFixed(2)}.</p>
-      <p>Date d'émission: ${facture.dateEmission}</p>
-      <p>Date d'échéance: ${facture.dateEcheance}</p>
-      <p>Cordialement,<br>${entreprise?.nom || 'TIA INFO BUILD'}</p>
-    `;
+    const pdfWindow = new BrowserWindow({ show: false, webPreferences: { nodeIntegration: false, contextIsolation: true } });
+    try {
+      const templatePath = path.join(__dirname, 'views', 'commercial', 'factures', 'pdf-template.html');
+      let pdfHtml = fs.readFileSync(templatePath, 'utf8');
 
-    const pdfWindow = new BrowserWindow({ show: false });
-    const pdfData = await pdfWindow.webContents.printToPDF({});
-    pdfWindow.close();
+      const totalHT = facture.montantHT || facture.montant || 0;
+      const tva = facture.tva || entreprise?.tvaDefaut || 20;
+      const totalTVA = totalHT * (tva / 100);
+      const totalTTC = facture.montantTTC || facture.montant || 0;
+      const totalPaye = facture.totalPaye || 0;
+      const resteAPayer = Math.max(0, totalTTC - totalPaye);
 
-    await sendInvoiceEmail({
-      to: client.email,
-      subject: `Facture ${facture.numero} - ${entreprise?.nom || 'TIA INFO BUILD'}`,
-      html,
-      pdfBuffer: Buffer.from(pdfData),
-      pdfFilename: `facture_${facture.numero}.pdf`,
-      smtpConfig
-    });
+      pdfHtml = pdfHtml.replace('{{entrepriseNom}}', entreprise?.nom || 'TIA INFO BUILD');
+      pdfHtml = pdfHtml.replace('{{entrepriseAdresse}}', entreprise?.adresse || '');
+      pdfHtml = pdfHtml.replace('{{entrepriseCP}}', entreprise?.codePostal || '');
+      pdfHtml = pdfHtml.replace('{{entrepriseVille}}', entreprise?.ville || '');
+      pdfHtml = pdfHtml.replace('{{entrepriseSiret}}', entreprise?.siret || '');
+      pdfHtml = pdfHtml.replace('{{entrepriseTVA}}', entreprise?.numeroTVA || '');
+      pdfHtml = pdfHtml.replace('{{clientNom}}', client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'Client');
+      pdfHtml = pdfHtml.replace('{{clientAdresse}}', client?.adresse || '');
+      pdfHtml = pdfHtml.replace('{{clientCP}}', client?.codePostal || '');
+      pdfHtml = pdfHtml.replace('{{clientVille}}', client?.ville || '');
+      pdfHtml = pdfHtml.replace('{{clientSiret}}', client?.siret || '');
+      pdfHtml = pdfHtml.replace('{{clientTVA}}', client?.numeroTVA || '');
+      pdfHtml = pdfHtml.replace('{{numero}}', facture.numero || 'Brouillon');
+      pdfHtml = pdfHtml.replace('{{dateEmission}}', facture.dateEmission ? new Date(facture.dateEmission).toLocaleDateString('fr-FR') : '');
+      pdfHtml = pdfHtml.replace('{{dateEcheance}}', facture.dateEcheance ? new Date(facture.dateEcheance).toLocaleDateString('fr-FR') : '');
+      pdfHtml = pdfHtml.replace('{{lignesHtml}}', (facture.lignes || []).map(l => `
+        <tr>
+          <td>${l.description || l.reference || 'Prestation'}</td>
+          <td class="text-end">${l.quantite || 1}</td>
+          <td class="text-end">${window.formatCurrencyGlobal ? window.formatCurrencyGlobal(l.prixUnitaire || 0) : `${(l.prixUnitaire || 0).toFixed(2)} Ar`}</td>
+          <td class="text-end">${window.formatCurrencyGlobal ? window.formatCurrencyGlobal(l.ligneTotal || l.ligneTotalTTC || 0) : `${(l.ligneTotal || l.ligneTotalTTC || 0).toFixed(2)} Ar`}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="4" class="text-center text-muted">Aucune ligne</td></tr>');
+      pdfHtml = pdfHtml.replace('{{totalHT}}', window.formatCurrencyGlobal ? window.formatCurrencyGlobal(totalHT) : `${totalHT.toFixed(2)} Ar`);
+      pdfHtml = pdfHtml.replace('{{totalTVA}}', window.formatCurrencyGlobal ? window.formatCurrencyGlobal(totalTVA) : `${totalTVA.toFixed(2)} Ar`);
+      pdfHtml = pdfHtml.replace('{{totalTTC}}', window.formatCurrencyGlobal ? window.formatCurrencyGlobal(totalTTC) : `${totalTTC.toFixed(2)} Ar`);
+      pdfHtml = pdfHtml.replace('{{tva}}', tva);
+      pdfHtml = pdfHtml.replace('{{dateGeneration}}', new Date().toLocaleDateString('fr-FR'));
+      pdfHtml = pdfHtml.replace('{{mentionsLegales}}', entreprise?.mentionsLegales || '');
+      pdfHtml = pdfHtml.replace('{{conditionsPaiement}}', facture.conditionsPaiement || entreprise?.delaiPaiementDefaut || '30 jours');
+      pdfHtml = pdfHtml.replace('{{modePaiement}}', facture.modePaiement || 'virement');
 
-    return { success: true, message: 'Facture envoyée par email' };
+      let acompteHtml = '';
+      if (facture.acompteMontant > 0 || facture.acomptePourcent > 0) {
+        const acompte = facture.acompteMontant || (totalTTC * (facture.acomptePourcent / 100));
+        acompteHtml = `<tr><td>Acompte</td><td class="text-end">-${window.formatCurrencyGlobal ? window.formatCurrencyGlobal(acompte) : `${acompte.toFixed(2)} Ar`}</td></tr>`;
+      }
+      pdfHtml = pdfHtml.replace('{{acompteHtml}}', acompteHtml);
+      pdfHtml = pdfHtml.replace('{{resteAPayer}}', window.formatCurrencyGlobal ? window.formatCurrencyGlobal(resteAPayer) : `${resteAPayer.toFixed(2)} Ar`);
+
+      await pdfWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(pdfHtml)}`);
+      const pdfData = await pdfWindow.webContents.printToPDF({ printBackground: true, pageSize: 'A4' });
+      pdfWindow.close();
+
+      const emailHtml = `
+        <h2>Facture ${facture.numero}</h2>
+        <p>Bonjour,</p>
+        <p>Veuillez trouver ci-joint votre facture ${facture.numero} d'un montant de ${window.formatCurrencyGlobal ? window.formatCurrencyGlobal(totalTTC) : `${totalTTC.toFixed(2)} Ar`}.</p>
+        <p>Date d'émission: ${facture.dateEmission}</p>
+        <p>Date d'échéance: ${facture.dateEcheance}</p>
+        <p>Cordialement,<br>${entreprise?.nom || 'TIA INFO BUILD'}</p>
+      `;
+
+      await sendInvoiceEmail({
+        to: client.email,
+        subject: `Facture ${facture.numero} - ${entreprise?.nom || 'TIA INFO BUILD'}`,
+        html: emailHtml,
+        pdfBuffer: Buffer.from(pdfData),
+        pdfFilename: `facture_${facture.numero}.pdf`,
+        smtpConfig
+      });
+
+      return { success: true, message: 'Facture envoyée par email' };
+    } catch (innerError) {
+      pdfWindow.close();
+      throw innerError;
+    }
   } catch (error) {
     console.error('factures:envoyer error:', error);
     return { success: false, error: error.message };
   }
 })
-secureHandle('factures:dupliquer', rolesCommercialWrite, async (e, factureId) => {
+secureHandle('factures:dupliquer', rolesFacturesWrite, async (e, factureId) => {
   try {
     const facture = repos.factures.getById(factureId);
     if (!facture) return { success: false, error: 'Facture non trouvée' };
@@ -571,12 +662,15 @@ secureHandle('factures:dupliquer', rolesCommercialWrite, async (e, factureId) =>
     return { success: false, error: error.message };
   }
 })
+secureHandle('factures:transformerDepuisDevis', rolesFacturesWrite, (e, devisId, data) => commercialCtrl.transformerDepuisDevis(e, devisId, data))
+secureHandle('factures:getByStatut', rolesFacturesRead, (e, params) => commercialCtrl.getListFactures(e, { ...params, statut: params?.statut }))
 
-secureHandle('paiements:byFacture', rolesCommercial, (e, id) => commercialCtrl.getPaiementsByFacture(e, id))
-secureHandle('paiements:list', rolesCommercial, (e, params) => safeRepo(() => repos.paiements.list(params)))
-secureHandle('paiements:create', rolesCommercialWrite, (e, data) => safeRepo(() => repos.paiements.create(data)))
-secureHandle('paiements:update', rolesCommercialWrite, (e, id, data) => safeRepo(() => repos.paiements.update(id, data)))
-secureHandle('paiements:delete', rolesCommercialWrite, (e, id) => safeRepo(() => repos.paiements.delete(id)))
+secureHandle('paiements:byFacture', rolesPaiementsRead, (e, id) => commercialCtrl.getPaiementsByFacture(e, id))
+secureHandle('paiements:list', rolesPaiementsRead, (e, params) => safeRepo(() => repos.paiements.list(params)))
+secureHandle('paiements:create', rolesPaiementsCreate, (e, data) => safeRepo(() => repos.paiements.create(data)))
+secureHandle('paiements:update', rolesPaiementsUpdate, (e, id, data) => safeRepo(() => repos.paiements.update(id, data)))
+secureHandle('paiements:delete', rolesPaiementsDelete, (e, id) => safeRepo(() => repos.paiements.delete(id)))
+secureHandle('paiements:envoyerRappel', ['ADMIN', 'COMMERCIAL', 'COMPTABLE'], (e, factureId) => financeCtrl.envoyerRappel(e, factureId))
 
 // ============================================================
 // FINANCE & ALERTES
@@ -591,6 +685,8 @@ secureHandle('depenses:byChantier', rolesDepensesRead, (e, id) => financeCtrl.ge
 secureHandle('depenses:totalByChantier', rolesDepensesRead, (e, id) => financeCtrl.getTotalDepensesByChantier(e, id))
 secureHandle('depenses:byCategorie', rolesDepensesRead, (e, id) => financeCtrl.getDepensesByCategorie(e, id))
 secureHandle('depenses:enAttenteValidation', rolesDepensesValidate, (e, entrepriseId) => financeCtrl.getDepensesEnAttenteValidation(e, entrepriseId))
+secureHandle('depenses:enAttenteComptable', rolesDepensesValidate, (e, entrepriseId) => financeCtrl.getDepensesEnAttenteComptable(e, entrepriseId))
+secureHandle('depenses:valider', rolesDepensesValidate, (e, depenseId, data) => financeCtrl.validerDepense(e, depenseId, data))
 secureHandle('depenses:create', rolesDepensesWrite, (e, data) => safeRepo(() => repos.depenses.create(data)))
 secureHandle('depenses:update', rolesDepensesWrite, (e, id, data) => safeRepo(() => repos.depenses.update(id, data)))
 secureHandle('depenses:delete', rolesDepensesValidate, (e, id) => safeRepo(() => repos.depenses.delete(id)))
@@ -613,6 +709,8 @@ secureHandle('dashboard:getCommercialStats', ['ADMIN', 'COMMERCIAL', 'DIRECTEUR'
 secureHandle('dashboard:getLogistiqueStats', ['ADMIN', 'MAGASINIER', 'MATERIEL', 'CHEF_CHANTIER'], (e, entrepriseId) => dashboardCtrl.getLogistiqueStats(e, entrepriseId))
 secureHandle('dashboard:getTopClients', ['ADMIN', 'COMMERCIAL', 'DIRECTEUR'], (e, entrepriseId) => dashboardCtrl.getTopClients(e, entrepriseId))
 secureHandle('dashboard:getCAByMois', ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'], (e, entrepriseId) => dashboardCtrl.getCAByMois(e, entrepriseId))
+secureHandle('dashboard:getFinancesSante', ['ADMIN', 'DIRECTEUR', 'COMPTABLE'], (e, entrepriseId) => dashboardCtrl.getFinancesSante(e, entrepriseId))
+secureHandle('dashboard:getTrésorerie', ['ADMIN', 'DIRECTEUR', 'COMPTABLE'], (e, entrepriseId) => dashboardCtrl.getTrésorerie(e, entrepriseId))
 secureHandle('loginHistory:list', ['ADMIN', 'DIRECTEUR'], (e, params) => safeRepo(() => {
     const { entrepriseId, limit = 100, offset = 0, utilisateurId } = params || {};
     let sql = `
@@ -634,6 +732,60 @@ secureHandle('loginHistory:list', ['ADMIN', 'DIRECTEUR'], (e, params) => safeRep
     const totalResult = utilisateurId ? totalStmt.get(entrepriseId, utilisateurId) : totalStmt.get(entrepriseId);
     return { items, total: totalResult?.total || 0 };
 }))
+
+// ============================================================
+// BUDGETS PRÉVISIONNELS
+// ============================================================
+const rolesBudgets = permissions.PERMISSIONS.budgets || { read: ['ADMIN', 'DIRECTEUR', 'COMPTABLE', 'CHEF_PROJET'], write: ['ADMIN', 'COMPTABLE', 'CHEF_PROJET'] };
+
+secureHandle('budgets:list', rolesBudgets.read || rolesBudgets, (e, params) => budgetCtrl.list(e, params))
+secureHandle('budgets:get', rolesBudgets.read || rolesBudgets, (e, id) => budgetCtrl.get(e, id))
+secureHandle('budgets:create', rolesBudgets.write || rolesBudgets, (e, data, entId) => budgetCtrl.create(e, data, entId))
+secureHandle('budgets:update', rolesBudgets.write || rolesBudgets, (e, id, data) => budgetCtrl.update(e, id, data))
+secureHandle('budgets:delete', rolesBudgets.write || rolesBudgets, (e, id) => budgetCtrl.delete(e, id))
+secureHandle('budgets:byChantier', rolesBudgets.read || rolesBudgets, (e, chantierId) => budgetCtrl.byChantier(e, chantierId))
+secureHandle('budgets:comparer', rolesBudgets.read || rolesBudgets, (e, chantierId, periodeDebut, periodeFin) => budgetCtrl.comparer(e, chantierId, periodeDebut, periodeFin))
+
+// ============================================================
+// SOUS-TRAITANTS
+// ============================================================
+const rolesSousTraitants = permissions.PERMISSIONS.sousTraitants || { read: ['ADMIN', 'CHEF_CHANTIER', 'CHEF_PROJET'], write: ['ADMIN', 'CHEF_CHANTIER'] };
+
+secureHandle('sous-traitants:list', rolesSousTraitants.read || rolesSousTraitants, (e, params) => sousTraitantCtrl.list(e, params))
+secureHandle('sous-traitants:get', rolesSousTraitants.read || rolesSousTraitants, (e, id) => sousTraitantCtrl.get(e, id))
+secureHandle('sous-traitants:create', rolesSousTraitants.write || rolesSousTraitants, (e, data, entId) => sousTraitantCtrl.create(e, data, entId))
+secureHandle('sous-traitants:update', rolesSousTraitants.write || rolesSousTraitants, (e, id, data) => sousTraitantCtrl.update(e, id, data))
+secureHandle('sous-traitants:delete', rolesSousTraitants.write || rolesSousTraitants, (e, id) => sousTraitantCtrl.delete(e, id))
+secureHandle('sous-traitants:byChantier', rolesSousTraitants.read || rolesSousTraitants, (e, chantierId) => sousTraitantCtrl.byChantier(e, chantierId))
+
+// ============================================================
+// CATALOGUE DEVIS
+// ============================================================
+const rolesCatalogues = permissions.PERMISSIONS.catalogues || { read: ['ADMIN', 'COMMERCIAL'], write: ['ADMIN', 'COMMERCIAL'] };
+
+secureHandle('catalogues:list', rolesCatalogues.read || rolesCatalogues, (e, params) => catalogueCtrl.list(e, params))
+secureHandle('catalogues:get', rolesCatalogues.read || rolesCatalogues, (e, id) => catalogueCtrl.get(e, id))
+secureHandle('catalogues:create', rolesCatalogues.write || rolesCatalogues, (e, data, entId) => catalogueCtrl.create(e, data, entId))
+secureHandle('catalogues:update', rolesCatalogues.write || rolesCatalogues, (e, id, data) => catalogueCtrl.update(e, id, data))
+secureHandle('catalogues:delete', rolesCatalogues.write || rolesCatalogues, (e, id) => catalogueCtrl.delete(e, id))
+secureHandle('catalogues:getByCategorie', rolesCatalogues.read || rolesCatalogues, (e, categorie) => catalogueCtrl.getByCategorie(e, categorie))
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+const allRoles = ['ADMIN', 'DIRECTEUR', 'COMPTABLE', 'RH', 'CHEF_CHANTIER', 'CHEF_PROJET', 'MATERIEL', 'MAGASINIER', 'COMMERCIAL'];
+const rolesNotificationsWrite = permissions.PERMISSIONS.notifications?.write || ['ADMIN'];
+const rolesNotificationsDelete = permissions.PERMISSIONS.notifications?.delete || ['ADMIN'];
+
+secureHandle('notifications:list', allRoles, (e, params) => notificationCtrl.list(e, params))
+secureHandle('notifications:get', allRoles, (e, id) => notificationCtrl.get(e, id))
+secureHandle('notifications:create', rolesNotificationsWrite, (e, data, entId) => notificationCtrl.create(e, data, entId))
+secureHandle('notifications:update', rolesNotificationsWrite, (e, id, data) => notificationCtrl.update(e, id, data))
+secureHandle('notifications:markRead', allRoles, (e, id) => notificationCtrl.markRead(e, id))
+secureHandle('notifications:markAllRead', allRoles, (e, entId, userId) => notificationCtrl.markAllRead(e, entId, userId))
+secureHandle('notifications:delete', rolesNotificationsDelete, (e, id) => notificationCtrl.delete(e, id))
+secureHandle('notifications:nonLues', allRoles, (e, entId, userId) => notificationCtrl.nonLues(e, entId, userId))
+secureHandle('notifications:countNonLues', allRoles, (e, entId, userId) => notificationCtrl.countNonLues(e, entId, userId))
 
 
 // ============================================================
@@ -765,7 +917,6 @@ secureHandle('audit:byUtilisateur', ['ADMIN', 'DIRECTEUR'], (e, entrepriseId, ut
 // ============================================================
 // ALERTES
 // ============================================================
-const allRoles = ['ADMIN', 'DIRECTEUR', 'COMPTABLE', 'RH', 'CHEF_CHANTIER', 'CHEF_PROJET', 'MATERIEL', 'MAGASINIER', 'COMMERCIAL'];
 const rolesAlertesWrite = ['ADMIN', 'DIRECTEUR', 'COMPTABLE'];
 const rolesAlertesDelete = ['ADMIN', 'DIRECTEUR', 'COMPTABLE'];
 secureHandle('alertes:list',           allRoles, (e, p) => alerteCtrl.getList(e, p))
@@ -778,7 +929,44 @@ secureHandle('alertes:marquerToutesLues', allRoles, (e, entId) => alerteCtrl.mar
 secureHandle('alertes:creer',          rolesAlertesWrite, (e, data) => alerteCtrl.creer(e, data))
 secureHandle('alertes:delete',         rolesAlertesDelete, (e, id) => alerteCtrl.deleteAlerte(e, id))
 
+// ============================================================
+// BUDGET PRÉVISIONNEL
+// ============================================================
+const rolesBudgetRead = ['ADMIN', 'DIRECTEUR', 'COMPTABLE', 'CHEF_PROJET'];
+const rolesBudgetWrite = ['ADMIN', 'COMPTABLE', 'CHEF_PROJET'];
 
+secureHandle('budgetPrevisionnel:list', rolesBudgetRead, (e, params) => budgetCtrl.list(e, params))
+secureHandle('budgetPrevisionnel:get', rolesBudgetRead, (e, id) => budgetCtrl.get(e, id))
+secureHandle('budgetPrevisionnel:create', rolesBudgetWrite, (e, data, entId) => budgetCtrl.create(e, data, entId))
+secureHandle('budgetPrevisionnel:update', rolesBudgetWrite, (e, id, data) => budgetCtrl.update(e, id, data))
+secureHandle('budgetPrevisionnel:delete', rolesBudgetWrite, (e, id) => budgetCtrl.delete(e, id))
+secureHandle('budgetPrevisionnel:comparer', rolesBudgetRead, (e, chantierId) => budgetCtrl.comparer(e, chantierId))
+
+// ============================================================
+// SOUS-TRAITANTS
+// ============================================================
+const rolesSousTraitantRead = ['ADMIN', 'CHEF_CHANTIER', 'CHEF_PROJET', 'DIRECTEUR'];
+const rolesSousTraitantWrite = ['ADMIN', 'CHEF_CHANTIER'];
+
+secureHandle('sousTraitants:list', rolesSousTraitantRead, (e, params) => sousTraitantCtrl.list(e, params))
+secureHandle('sousTraitants:get', rolesSousTraitantRead, (e, id) => sousTraitantCtrl.get(e, id))
+secureHandle('sousTraitants:create', rolesSousTraitantWrite, (e, data, entId) => sousTraitantCtrl.create(e, data, entId))
+secureHandle('sousTraitants:update', rolesSousTraitantWrite, (e, id, data) => sousTraitantCtrl.update(e, id, data))
+secureHandle('sousTraitants:delete', rolesSousTraitantWrite, (e, id) => sousTraitantCtrl.delete(e, id))
+secureHandle('sousTraitants:affectations', rolesSousTraitantRead, (e, sousTraitantId) => sousTraitantCtrl.getAffectations(e, sousTraitantId))
+
+// ============================================================
+// CATALOGUE DEVIS
+// ============================================================
+const rolesCatalogueRead = ['ADMIN', 'COMMERCIAL'];
+const rolesCatalogueWrite = ['ADMIN', 'COMMERCIAL'];
+
+secureHandle('catalogueDevis:list', rolesCatalogueRead, (e, params) => catalogueCtrl.list(e, params))
+secureHandle('catalogueDevis:get', rolesCatalogueRead, (e, id) => catalogueCtrl.get(e, id))
+secureHandle('catalogueDevis:create', rolesCatalogueWrite, (e, data, entId) => catalogueCtrl.create(e, data, entId))
+secureHandle('catalogueDevis:update', rolesCatalogueWrite, (e, id, data) => catalogueCtrl.update(e, id, data))
+secureHandle('catalogueDevis:delete', rolesCatalogueWrite, (e, id) => catalogueCtrl.delete(e, id))
+secureHandle('catalogueDevis:categories', rolesCatalogueRead, (e, entId) => catalogueCtrl.getCategories(e, entId))
 
 // ============================================================
 // UTILITAIRES SYSTÈMES
@@ -984,6 +1172,12 @@ ipcMain.handle('utilisateurs:generateLoginPDF', async (event, userData) => {
 // ============================================================
 app.whenReady().then(() => {
   initDatabase()
+  try {
+    repos.notifications.purgeAnciennes(90)
+    console.log('[Main] Purge automatique des anciennes notifications effectuée')
+  } catch (e) {
+    console.warn('[Main] Purge notifications échouée:', e.message)
+  }
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

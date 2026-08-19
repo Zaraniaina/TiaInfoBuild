@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pipeline Commercial — TIA INFO BUILD</title>
+  <link rel="stylesheet" href="../../public/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" href="../../public/bootstrap/bootstrap-icons/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="../../public/tia-design.css">
+  <style>
+    .kanban-board { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
+    .kanban-column { min-width: 280px; flex: 1; background: #f8f9fa; border-radius: 8px; padding: 0.75rem; }
+    .kanban-column-header { font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 2px solid; }
+    .kanban-card { background: white; border-radius: 6px; padding: 0.75rem; margin-bottom: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.15s; }
+    .kanban-card:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.15); transform: translateY(-1px); }
+    .kanban-card-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem; }
+    .kanban-card-client { font-size: 0.8rem; color: #6c757d; }
+    .kanban-card-montant { font-weight: 700; font-size: 0.85rem; color: #198754; margin-top: 0.25rem; }
+    .kanban-count { background: rgba(255,255,255,0.3); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+<div class="container-fluid p-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0"><i class="bi bi-funnel me-2 text-primary"></i>Pipeline Commercial</h2>
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary" id="btnNouveauDevisPipeline" data-permission="devis:create">
+        <i class="bi bi-plus-lg me-1"></i>Nouveau devis
+      </button>
+    </div>
+  </div>
+
+  <div class="kanban-board" id="kanbanBoard">
+    <div class="kanban-column" data-stage="brouillon">
+      <div class="kanban-column-header text-secondary border-secondary">
+        <i class="bi bi-pencil-square me-1"></i>Brouillon <span class="kanban-count" id="count-brouillon">0</span>
+      </div>
+      <div class="kanban-cards" id="col-brouillon"></div>
+    </div>
+    <div class="kanban-column" data-stage="envoye">
+      <div class="kanban-column-header text-primary border-primary">
+        <i class="bi bi-send me-1"></i>Envoyé <span class="kanban-count" id="count-envoye">0</span>
+      </div>
+      <div class="kanban-cards" id="col-envoye"></div>
+    </div>
+    <div class="kanban-column" data-stage="accepte">
+      <div class="kanban-column-header text-success border-success">
+        <i class="bi bi-check-circle me-1"></i>Accepté <span class="kanban-count" id="count-accepte">0</span>
+      </div>
+      <div class="kanban-cards" id="col-accepte"></div>
+    </div>
+    <div class="kanban-column" data-stage="refuse">
+      <div class="kanban-column-header text-danger border-danger">
+        <i class="bi bi-x-circle me-1"></i>Refusé <span class="kanban-count" id="count-refuse">0</span>
+      </div>
+      <div class="kanban-cards" id="col-refuse"></div>
+    </div>
+    <div class="kanban-column" data-stage="expire">
+      <div class="kanban-column-header text-warning border-warning">
+        <i class="bi bi-clock-history me-1"></i>Expiré <span class="kanban-count" id="count-expire">0</span>
+      </div>
+      <div class="kanban-cards" id="col-expire"></div>
+    </div>
+  </div>
+</div>
+
+<script src="../../public/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="pipeline.js"></script>
+</body>
+</html>

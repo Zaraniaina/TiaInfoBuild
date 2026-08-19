@@ -1,246 +1,266 @@
-# TIA INFO BUILD — Application Desktop (Electron)
+# TIA INFO BUILD — Application Desktop de Gestion BTP
 
-> **TIA INFO BUILD** est une application de bureau **Electron** conçue pour la gestion complète du BTP (Bâtiment / Travaux Publics). Elle permet de gérer les chantiers, le personnel, les matériels, les stocks et la comptabilité depuis un espace local sécurisé, tout en restant synchronisée avec le serveur Django distant.
-
----
-
-## 📋 Prerequisites
-
-| Outil | Version minimale |
-|-------|-----------------|
-| **Node.js** | `>= 22.12.0` |
-| **npm** | `>= 10.0.0` |
-| **Electron** | `^43.2.0` (installé via npm) |
-
-> ⚠️ Electron 43+ exige **Node.js >= 22.12.0**. Vérifiez votre version avec :
-> ```bash
-> node --version
-> npm --version
-> ```
+> **TIA INFO BUILD Desktop** est une application de bureau **Electron** autonome, conçue pour la gestion complète des entreprises du BTP (Bâtiment / Travaux Publics). Elle combine une base de données locale SQLite, une interface moderne Bootstrap et un système RBAC avancé pour couvrir l'ensemble des métiers de la construction.
 
 ---
 
-## 📦 Modules / Packages npm à installer
-
-Le projet utilise les dépendances suivantes, définies dans [`package.json`](./package.json) :
-
-### Dépendances de production (runtime)
-
-| Package | Version | Rôle |
-|---------|---------|------|
-| `axios` | `^1.19.0` | Requêtes HTTP vers l'API Django distante |
-| `better-sqlite3` | `^13.0.2` | Base de données SQLite locale (synchronisation hors ligne) |
-
-### Dépendances de développement
-
-| Package | Version | Rôle |
-|---------|---------|------|
-| `electron` | `^43.2.0` | Framework de l'application desktop |
-
-### Installation complète
-
-```bash
-# 1. Installer toutes les dépendances (production + développement)
-npm install
-
-# 2. (Optionnel) Installer uniquement les dépendances de production
-npm install --omit=dev
-
-# 3. (Optionnel) Installer uniquement les dépendances de développement
-npm install --include=dev
-```
-
-> Le fichier `package-lock.json` est fourni et garantit une installation reproductible.
-
----
-
-## ⚙️ Configuration
-
-### Structure du projet
+## 🏗️ Architecture
 
 ```
 Desktop/
-├── main.js                          # Point d'entrée Electron — crée la fenêtre principale
-├── preload.js                       # Script de préchargement — expose l'API via contextBridge
-├── package.json                     # Configuration npm / Electron
-├── package-lock.json                # Verrouillage des versions (généré)
-├── tia_info_build.sqlite            # Base de données SQLite locale (créée à l'init)
+├── main.js                          # Point d'entrée Electron — IPC, sécurité, fenêtre
+├── preload.js                       # Pont sécurisé — expose window.api via contextBridge
+├── package.json                     # Dépendances et scripts npm
+├── jest.config.js                   # Configuration tests unitaires et intégration
+├── tia_info_build.sqlite            # Base de données SQLite locale
 │
 ├── models/
-│   ├── db.js                        # Connexion à la base SQLite locale
-│   └── init.js                      # Initialisation des tables (Utilisateur, Chantier, Employe)
+│   ├── db.js                        # Connexion SQLite via better-sqlite3
+│   ├── init.js                      # Initialisation/migration automatique des tables
+│   └── repositories/                # Couche d'accès aux données (Repository pattern)
+│       ├── BaseRepository.js
+│       ├── ChantierRepository.js
+│       ├── PhaseRepository.js
+│       ├── IncidentRepository.js
+│       ├── EmployeRepository.js
+│       ├── PointageRepository.js
+│       ├── EquipeRepository.js
+│       ├── ArticleRepository.js
+│       ├── FournisseurRepository.js
+│       ├── MouvementStockRepository.js
+│       ├── ClientRepository.js
+│       ├── DevisRepository.js
+│       ├── ContratRepository.js
+│       ├── FactureRepository.js
+│       ├── PaiementRepository.js
+│       ├── DepenseRepository.js
+│       ├── AlerteRepository.js
+│       ├── MaterielRepository.js
+│       ├── MaintenanceRepository.js
+│       ├── BudgetPrevisionnelRepository.js
+│       ├── SousTraitantRepository.js
+│       ├── CatalogueDevisRepository.js
+│       ├── NotificationRepository.js
+│       └── ...
 │
-├── controllers/
-│   └── authController.js            # Authentification (local + API Django)
+├── controllers/                     # Contrôleurs métier (couche service)
+│   ├── authController.js
+│   ├── chantierController.js
+│   ├── rhController.js
+│   ├── stockController.js
+│   ├── materielController.js
+│   ├── commercialController.js
+│   ├── financeController.js
+│   ├── dashboardController.js
+│   ├── alerteController.js
+│   ├── budgetController.js
+│   ├── sousTraitantController.js
+│   ├── catalogueController.js
+│   ├── notificationController.js
+│   └── ...
 │
-├── views/
+├── views/                           # Interface utilisateur (SPA Bootstrap)
+│   ├── layout.html                  # Shell principal — sidebar, topbar, routing
+│   ├── router.js                    # Routeur hash — chargement dynamique des vues
 │   ├── index.html                   # Page de connexion
-│   ├── login.js                     # Logique frontend connexion
-│   ├── register.html                # Page d'inscription entreprise
-│   └── register.js                  # Logique frontend inscription
+│   ├── login.js / register.js       # Authentification
+│   ├── dashboard.js                 # Tableau de bord synthétique
+│   ├── projets/index.js             # Dashboard multi-chantiers Chef de Projet
+│   ├── terrain/index.js             # Mode Terrain mobile-first Chef de Chantier
+│   ├── commercial/                  # Module commercial
+│   │   ├── pipeline.html/js         # Pipeline Kanban
+│   │   ├── catalogue-devis.html/js  # Catalogue modèles de devis BTP
+│   │   ├── devis/                   # CRUD devis avec lignes
+│   │   ├── contrats/                # Gestion contrats
+│   │   ├── factures/                # Facturation avec PDF standardisé
+│   │   └── paiements/               # Suivi encaissements
+│   ├── finance/                     # Module financier
+│   │   ├── depenses/                # Dépenses par chantier
+│   │   ├── rapports/                # Rapports financiers
+│   │   └── alertes/                 # Alertes classiques
+│   ├── finances/                    # Modules avancés Phase 1
+│   │   ├── tresorerie.html/js       # Vue J-30, J-60, J-90
+│   │   └── budget-previsionnel.html/js  # Comparaison prévu/réel
+│   ├── alertes/
+│   │   └── intelligentes.html/js    # Alertes intelligentes (retards, dépassements)
+│   ├── rh/                          # Ressources Humaines
+│   │   ├── employes/                # Dossier employé enrichi
+│   │   ├── pointages/               # Pointage quotidien
+│   │   ├── equipes/                 # Gestion équipes
+│   │   └── heures-sup/              # Heures supplémentaires
+│   ├── stocks/                      # Gestion des stocks
+│   │   ├── index.html/js            # Articles et mouvements
+│   │   ├── fournisseurs/            # CRUD fournisseurs
+│   │   └── mouvements/              # Entrées/sorties par chantier
+│   ├── materiels/index.html/js      # Parc matériel et maintenances
+│   ├── chantiers/index.html/js      # Gestion complète chantiers + phases + incidents
+│   ├── sous-traitants/index.html/js # CRUD sous-traitants + affectations
+│   ├── notifications/index.html/js  # Centre de notifications
+│   ├── historique-logins/           # Historique connexions
+│   ├── audit-log/                   # Journal d'audit
+│   └── settings.html/js             # Paramètres entreprise et préférences
+│
+├── services/
+│   ├── emailService.js              # Envoi emails (factures, relances)
+│   ├── syncService.js               # Synchronisation avec serveur
+│   └── apiClient.js                 # Client API
+│
+├── shared/
+│   └── permissions.js               # RBAC centralisé — 9 rôles métier BTP
+│
+├── scripts/
+│   └── verify-permissions.js        # Audit des permissions
+│
+├── tests/
+│   ├── unit/                        # Tests repositories, RBAC
+│   └── integration/                 # Tests IPC, cohérence frontend/backend
 │
 └── public/
-    ├── tia-design.css               # Styles personnalisés (charte TIA INFO BUILD)
-    └── bootstrap/                     # Framework CSS Bootstrap (CSS + JS + Icons)
-        ├── css/
-        ├── js/
-        └── bootstrap-icons/
+    ├── bootstrap/                   # Bootstrap 5 + Icons
+    └── tia-design.css               # Charte graphique TIA INFO BUILD
 ```
-
-### Base de données locale (SQLite)
-
-- **Fichier** : `tia_info_build.sqlite` (à la racine du dossier `Desktop/`)
-- **ORM/Driver** : [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3)
-- **Initialisation** : Automatique au lancement de l'application via `models/init.js`
-- **Tables créées** :
-  - `Utilisateur` — Gestion des comptes utilisateurs (avec `server_id` pour synchronisation)
-  - `Chantier` — Suivi des chantiers de construction
-  - `Employe` — Gestion des employés / salariés
-
-#### Schéma clé des tables
-
-```sql
--- Utilisateur
-CREATE TABLE Utilisateur (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    server_id INTEGER UNIQUE,       -- ID du serveur Django (synchronisation)
-    entrepriseId INTEGER,
-    roleId INTEGER,
-    nom TEXT NOT NULL,
-    prenom TEXT,
-    email TEXT UNIQUE NOT NULL,
-    motDePasseHash TEXT,
-    telephone TEXT,
-    statut TEXT,
-    dateCreation DATETIME DEFAULT CURRENT_TIMESTAMP,
-    derniereConnexion DATETIME,
-    is_synced INTEGER DEFAULT 0,    -- 0 = non synchronisé, 1 = synchronisé
-    is_deleted INTEGER DEFAULT 0    -- Suppression logique
-);
-
--- Chantier
-CREATE TABLE Chantier (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    server_id INTEGER UNIQUE,
-    entrepriseId INTEGER,
-    clientId INTEGER,
-    chefChantierId INTEGER,
-    nom TEXT NOT NULL,
-    adresse TEXT,
-    dateDebut DATE,
-    dateFinPrevue DATE,
-    dateFinReelle DATE,
-    budgetPrevu REAL,
-    budgetReel REAL,
-    statut TEXT,
-    description TEXT,
-    is_synced INTEGER DEFAULT 0,
-    is_deleted INTEGER DEFAULT 0
-);
-
--- Employe
-CREATE TABLE Employe (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    server_id INTEGER UNIQUE,
-    entrepriseId INTEGER,
-    matricule TEXT,
-    nom TEXT NOT NULL,
-    prenom TEXT,
-    poste TEXT,
-    dateEmbauche DATE,
-    salaireBase REAL,
-    telephone TEXT,
-    statut TEXT,
-    is_synced INTEGER DEFAULT 0,
-    is_deleted INTEGER DEFAULT 0
-);
-```
-
-### API Django distante
-
-- **URL de base** : `http://localhost:8000/api`
-- **Configurer dans** : [`controllers/authController.js`](./controllers/authController.js)
-  ```js
-  const API_BASE_URL = 'http://localhost:8000/api';
-  ```
-- **Utilisation** : Authentification à distance (première connexion) — l'application tente d'abord une vérification locale, puis appelle l'API Django si l'utilisateur n'existe pas localement.
-
-> 🔧 **À modifier** si le serveur Django tourne sur une autre adresse/port.
 
 ---
 
-## ▶️ Lancement de l'application
+## 🎯 Orientation et conception
+
+### Principe fondateur
+L'application est conçue **par et pour les métiers du BTP**. Chaque fonctionnalité répond à un besoin réel des utilisateurs terrain, chefs de chantier, comptables, commerciaux et dirigeants.
+
+### Philosophie technique
+- **Autonomie** : base de données locale SQLite, fonctionnement hors-ligne complet
+- **Sécurité** : Electron sécurisé (`contextIsolation`, pas de `nodeIntegration`), RBAC par rôle métier
+- **Performance** : Repository pattern, requêtes optimisées, triggers SQLite pour les calculs automatiques
+- **Évolutivité** : architecture modulaire par métier, migrations automatiques, système de vues dynamiques
+
+### Modules métier
+
+| Module | Rôles concernés | Description |
+|--------|-----------------|-------------|
+| **Chantiers** | Tous | Création, suivi, phases, incidents, photos, affectations |
+| **Ressources Humaines** | RH, CHEF_CHANTIER, DIRECTEUR | Employés, pointages, équipes, heures supplémentaires |
+| **Commercial** | COMMERCIAL, DIRECTEUR, COMPTABLE | Pipeline Kanban, devis, contrats, factures, catalogue BTP |
+| **Finance** | COMPTABLE, DIRECTEUR | Dépenses, trésorerie J-30/J-60/J-90, budget prévisionnel |
+| **Stocks** | MAGASINIER, CHEF_CHANTIER | Articles, fournisseurs, mouvements, alertes rupture |
+| **Matériels** | MATERIEL, CHEF_CHANTIER | Parc matériel, maintenances, affectations chantiers |
+| **Sous-traitants** | CHEF_CHANTIER, CHEF_PROJET | CRUD, affectations, suivi |
+| **Alertes intelligentes** | Tous | Retards paiement, dépassements budget, habilitations |
+| **Mode Terrain** | CHEF_CHANTIER | Interface mobile-first pour usage sur chantier |
+| **Notifications** | Tous | Centre de notifications temps réel |
+
+---
+
+## 👥 Rôles métier (RBAC)
+
+L'application dispose de **9 rôles métier** correspondant aux fonctions réelles dans une entreprise BTP :
+
+| Rôle | Code | Espace dédié |
+|------|------|--------------|
+| Administrateur d'Entreprise | `ADMIN` | Administration, utilisateurs, sauvegardes |
+| Comptable / Responsable Financier | `COMPTABLE` | Finances, dépenses, factures, trésorerie |
+| Direction Générale / DAF | `DIRECTEUR` | Pilotage stratégique, alertes, budgets |
+| Chef de Chantier / Conducteur de Travaux | `CHEF_CHANTIER` | Mode Terrain, chantiers, équipes, stocks |
+| Chef de Projet / Directeur Technique | `CHEF_PROJET` | Projets multi-chantiers, budgets, ressources |
+| Responsable RH | `RH` | Employés, pointages, équipes, heures sup |
+| Responsable Matériel / Logisticien | `MATERIEL` | Matériels, maintenances, disponibilités |
+| Magasinier / Responsable Stock | `MAGASINIER` | Stocks, fournisseurs, mouvements, inventaire |
+| Commercial / Responsable Commercial | `COMMERCIAL` | Pipeline, devis, contrats, factures, catalogue |
+
+---
+
+## 🚀 Fonctionnalités clés
+
+### Phase 1 — Quick Wins ✅
+- Nouvelles tables BDD : `BudgetPrevisionnel`, `SousTraitant`, `CatalogueDevis`, `Notification`
+- Vue Trésorerie consolidée (J-30, J-60, J-90)
+- Vue Budget Prévisionnel vs Réel
+- Vue Sous-Traitants
+- Vue Catalogue Devis BTP
+- Vue Notifications
+- Sidebar enrichie et Router étendu
+- Préload API modulaire
+
+### Phase 2 — Fonctionnalités cœur métier ✅
+- Workflow validation dépenses 2 niveaux (Chef de Chantier → Comptable)
+- Dashboard Chef de Projet multi-chantiers
+- Pipeline Commercial Kanban
+- Alertes Intelligentes (factures retard, dépassements, habilitations)
+- Mode Terrain mobile-first
+- Création de facture depuis devis accepté
+- Relances clients automatiques (J+15, J+30, J+60)
+- Export PDF factures standardisé
+
+### Phase 3 — En cours 🟡
+- Filtres avancés factures (client, période, chantier)
+- Calcul automatique `montantPaye` et `resteAPayer`
+- Triggers notifications automatiques sur événements métier
+- Purge automatique des anciennes notifications
+- RBAC complété : permissions `projets:list`, `pipeline:list`, `alertes-intelligentes:list`, `terrain:access`
+
+### Phase 4 — Roadmap
+- Pointage par PIN/NFC
+- Gantt visuel interactif
+- Module paie RH
+- Rapprochement bancaire
+- Signature électronique
+- Module Qualité/VAE
+- Module Sécurité
+- Géolocalisation matériel
+- Carnet de travaux numérique
+
+---
+
+## 📦 Stack technique
+
+| Couche | Technologie | Usage |
+|--------|-------------|-------|
+| **Desktop** | Electron ^38.8.6 | Application bureau multi-OS |
+| **Base de données** | better-sqlite3 ^13.0.3 | Stockage local, hors-ligne |
+| **Frontend** | Bootstrap 5 + Vanilla JS | Interface SPA responsive |
+| **Routing** | Router hash personnalisé | Navigation dynamique |
+| **Sécurité** | contextIsolation, RBAC | Isolation et droits par rôle |
+| **Tests** | Jest ^29.7.0 | Unitaires et intégration |
+| **Build** | electron-builder | Packaging Windows/Mac/Linux |
+
+---
+
+## ▶️ Installation et lancement
 
 ```bash
-# Démarrer l'application en mode développement
+# Installation des dépendances
+npm install
+
+# Lancement en mode développement
 npm start
+
+# Lancement des tests
+npm test
+
+# Build de production
+npm run build
+npm run build:win
 ```
 
-> Cela exécute `electron .` qui lance `main.js` — le point d'entrée de l'application.
+---
 
-### Comportement au lancement
+## 🔒 Sécurité
 
-1. Electron se lance et crée la fenêtre principale (`BrowserWindow`).
-2. Le menu par défaut est désactivé (`Menu.setApplicationMenu(null)`).
-3. La base de données SQLite est initialisée (`initDatabase()`).
-4. L'IPC `auth:login` est enregistré pour gérer les connexions.
-5. La fenêtre charge `views/index.html` (page de connexion).
-6. La fenêtre démarre maximisée.
+- **Authentification locale** : bcrypt pour les mots de passe
+- **RBAC** : 9 rôles métier avec permissions granulaire par module
+- **Audit** : journal d'audit automatique sur les actions sensibles
+- **Sauvegarde** : export SQLite/SQL, import, restore, configuration automatique
+- **Isolation** : `contextIsolation: true`, pas de `nodeIntegration`
 
 ---
 
-## 🔒 Sécurité & Architecture
+## 📊 État du projet
 
-### Contexte de sécurité Electron
-
-- **`nodeIntegration: false`** — Désactivé pour isoler le monde Node.js du monde navigateur.
-- **`contextIsolation: true`** — Activé pour exposer uniquement les APIs contrôlées via `contextBridge`.
-- **`preload.js`** — Le seul pont entre le processus principal et le rendu, expose `window.api.login()`.
-
-### Authentification
-
-Le flux d'authentification (`authController.js`) fonctionne en deux étapes :
-
-1. **Vérification locale** : Recherche de l'utilisateur dans la base SQLite locale.
-   - Si trouvé → comparaison du mot de passe (⚠️ à sécuriser avec `bcrypt` en production).
-   - Si mot de passe correct → connexion réussie, mise à jour de `derniereConnexion`.
-2. **Première connexion** : Si l'utilisateur n'existe pas localement :
-   - Appel à l'API Django (`POST /api/auth/login/`).
-   - Si succès → l'utilisateur est synchronisé localement (`INSERT INTO Utilisateur`).
-   - Si échec réseau → message d'erreur affiché.
-
-### Synchronisation
-
-Chaque table possède les champs :
-- `server_id` — Identifiant unique du serveur Django (pour la synchronisation bidirectionnelle).
-- `is_synced` — Indique si l'enregistrement a été synchronisé (0 = en attente, 1 = synchronisé).
-- `is_deleted` — Suppression logique (pour la synchronisation des suppressions).
-
----
-
-## 🗒️ Notes & TODOs
-
-- [ ] **Sécuriser les mots de passe** : utiliser `bcrypt` ou `argon2` au lieu de comparaison directe.
-- [ ] **Implémenter l'inscription** : `register.js` est actuellement une simulation (TODO).
-- [ ] **Synchronisation complète** : ajouter la synchronisation des Chantiers, Employés, Matériels, Stocks.
-- [ ] **Gestion des erreurs réseau** : améliorer la robustesse en cas de serveur Django inaccessible.
-- [ ] **Mode hors ligne** : le stockage local permet déjà le travail offline, mais la synchronisation bidirectionnelle n'est pas encore implémentée.
-
----
-
-## 📄 Fichiers clés
-
-| Fichier | Description |
-|---------|-------------|
-| `main.js` | Point d'entrée Electron — configuration de la fenêtre et de l'IPC |
-| `preload.js` | Pont de sécurité — expose `window.api` via `contextBridge` |
-| `models/db.js` | Connexion SQLite locale via `better-sqlite3` |
-| `models/init.js` | Création et initialisation des tables de la base locale |
-| `controllers/authController.js` | Logique d'authentification (local + API Django) |
-| `views/index.html` | Interface de connexion |
-| `views/register.html` | Interface d'inscription entreprise |
-| `views/login.js` | Logique frontend de la page de connexion |
-| `views/register.js` | Logique frontend de la page d'inscription (simulation) |
+| Phase | Statut | Couverture |
+|-------|--------|------------|
+| Phase 1 — Quick Wins | ✅ Appliquée | 100% |
+| Phase 2 — Cœur métier | ✅ Appliquée | 100% |
+| Phase 3 — Optimisation | 🟡 En cours | 40% |
+| Phase 4 — Intégrations | ❌ À venir | 0% |
 
 ---
 
@@ -248,7 +268,7 @@ Chaque table possède les champs :
 
 - **Développé par** : TIA INFO BUILD — Madagascar
 - **Année** : 2026
-- **Projet associé** : [TiaInfoBuild (Backend Django)](https://github.com/Zaraniaina/TiaInfoBuild)
+- **Contact** : [Contact TIA INFO BUILD](mailto:contact@tiainfobuild.mg)
 
 ---
 

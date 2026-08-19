@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tableau de Bord Projets — TIA INFO BUILD</title>
+  <link rel="stylesheet" href="../public/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" href="../public/bootstrap/bootstrap-icons/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="../public/tia-design.css">
+</head>
+<body>
+<div class="container-fluid p-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0"><i class="bi bi-kanban me-2 text-primary"></i>Tableau de Bord Projets</h2>
+    <span class="text-secondary small" id="projetsDate"></span>
+  </div>
+
+  <!-- KPIs Projet -->
+  <div class="row g-3 mb-4" id="projetsKpis">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-secondary small mb-1">Chantiers actifs</div>
+          <div class="h3 mb-0 text-primary" id="projetsActifs">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-secondary small mb-1">En retard</div>
+          <div class="h3 mb-0 text-danger" id="projetsRetard">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-secondary small mb-1">Budget total</div>
+          <div class="h3 mb-0 text-success" id="projetsBudgetTotal">0 Ar</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-secondary small mb-1">Budget consommé</div>
+          <div class="h3 mb-0 text-warning" id="projetsBudgetConsomme">0 Ar</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vue multi-chantiers -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 py-3">
+      <h5 class="mb-0"><i class="bi bi-building me-2"></i>Vue multi-chantiers</h5>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Chantier</th>
+              <th>Client</th>
+              <th>Dates</th>
+              <th>Budget</th>
+              <th>Avancement</th>
+              <th>Statut</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="projetsTableBody">
+            <tr><td colspan="8" class="text-center py-4 text-secondary">Chargement...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../public/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="projets.js"></script>
+</body>
+</html>

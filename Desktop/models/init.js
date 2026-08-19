@@ -842,6 +842,118 @@ function initDatabase() {
   `).run();
 
   // ============================================================
+  // 8B. BUDGETS PRÉVISIONNELS
+  // ============================================================
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS BudgetPrevisionnel (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      entrepriseId INTEGER NOT NULL,
+      chantierId INTEGER NOT NULL,
+      periode TEXT NOT NULL,
+      montantPrevu REAL DEFAULT 0,
+      montantRealise REAL DEFAULT 0,
+      dateCreation DATE DEFAULT (date('now')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id),
+      FOREIGN KEY (chantierId) REFERENCES Chantier(id) ON DELETE CASCADE
+    )
+  `).run();
+
+  // ============================================================
+  // 8C. SOUS-TRAITANTS
+  // ============================================================
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS SousTraitant (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      entrepriseId INTEGER NOT NULL,
+      nom TEXT NOT NULL,
+      contact TEXT,
+      email TEXT,
+      telephone TEXT,
+      adresse TEXT,
+      specialite TEXT,
+      statut TEXT DEFAULT 'actif',
+      notes TEXT,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id)
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS AffectationSousTraitant (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      sousTraitantId INTEGER NOT NULL,
+      chantierId INTEGER NOT NULL,
+      dateDebut DATE,
+      dateFin DATE,
+      montantContrat REAL DEFAULT 0,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (sousTraitantId) REFERENCES SousTraitant(id) ON DELETE CASCADE,
+      FOREIGN KEY (chantierId) REFERENCES Chantier(id) ON DELETE CASCADE
+    )
+  `).run();
+
+  // ============================================================
+  // 8D. CATALOGUE DEVIS
+  // ============================================================
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS CatalogueDevis (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      entrepriseId INTEGER NOT NULL,
+      nom TEXT NOT NULL,
+      categorie TEXT,
+      description TEXT,
+      lignes TEXT,
+      tauxMarge REAL DEFAULT 0,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id)
+    )
+  `).run();
+
+  // ============================================================
+  // 8E. NOTIFICATIONS
+  // ============================================================
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS Notification (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      entrepriseId INTEGER NOT NULL,
+      utilisateurId INTEGER,
+      titre TEXT NOT NULL,
+      message TEXT,
+      type TEXT DEFAULT 'info',
+      lu INTEGER DEFAULT 0,
+      dateCreation DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id),
+      FOREIGN KEY (utilisateurId) REFERENCES Utilisateur(id)
+    )
+  `).run();
+
+  // ============================================================
   // 9. TABLE DE SYNCHRONISATION
   // ============================================================
 
@@ -875,7 +987,8 @@ function initDatabase() {
     'Materiel', 'AffectationMateriel', 'Maintenance', 'AlerteMateriel',
     'Article', 'Fournisseur', 'MouvementStock',
     'Client', 'ClientAdresse', 'Devis', 'LigneDevis', 'Contrat', 'Facture', 'Paiement',
-    'Depense', 'RapportFinancier', 'Alerte', 'LoginHistory'
+    'Depense', 'RapportFinancier', 'Alerte', 'LoginHistory',
+    'BudgetPrevisionnel', 'SousTraitant', 'AffectationSousTraitant', 'CatalogueDevis', 'Notification'
   ];
 
   allTables.forEach(tableName => {
@@ -894,7 +1007,10 @@ function initDatabase() {
   ensureColumn('Chantier', 'tva', 'REAL DEFAULT 20');
   ensureColumn('Chantier', 'codePostal', 'TEXT');
   ensureColumn('Chantier', 'ville', 'TEXT');
+  ensureColumn('Chantier', 'latitude', 'REAL');
+  ensureColumn('Chantier', 'longitude', 'REAL');
   ensureColumn('Chantier', 'chefChantierId', 'INTEGER');
+  ensureColumn('Chantier', 'dateDebutReelle', 'DATE');
   ensureColumn('Chantier', 'dateFinReelle', 'DATE');
 
   // MIGRATIONS SPECIFIQUES - TABLE PHASE
@@ -930,6 +1046,8 @@ function initDatabase() {
   ensureColumn('Client', 'dernierContact', 'DATETIME');
   ensureColumn('Client', 'nbDevis', 'INTEGER DEFAULT 0');
   ensureColumn('Client', 'nbFactures', 'INTEGER DEFAULT 0');
+  ensureColumn('Client', 'scoreCredit', 'REAL DEFAULT 0');
+  ensureColumn('Client', 'dernierRappel', 'DATETIME');
 
   // MIGRATIONS ENTREPRISE
   ensureColumn('Entreprise', 'devise', "TEXT DEFAULT 'MGA'");
@@ -976,6 +1094,8 @@ function initDatabase() {
   ensureColumn('Devis', 'notes', 'TEXT');
   ensureColumn('Devis', 'conditionsGenerales', 'TEXT');
   ensureColumn('Devis', 'mentionsLegales', 'TEXT');
+  ensureColumn('Devis', 'modeleDevis', 'TEXT');
+  ensureColumn('Devis', 'tauxMarge', 'REAL DEFAULT 0');
 
   // MIGRATIONS SPECIFIQUES - TABLE LIGNEDEVIS
   ensureColumn('LigneDevis', 'reference', 'TEXT');
@@ -1016,12 +1136,133 @@ function initDatabase() {
   ensureColumn('Facture', 'montantHT', 'REAL DEFAULT 0');
   ensureColumn('Facture', 'tva', 'REAL DEFAULT 0');
   ensureColumn('Facture', 'notes', 'TEXT');
+  ensureColumn('Facture', 'typeFacture', "TEXT DEFAULT 'normale'");
+  ensureColumn('Facture', 'referenceExterne', 'TEXT');
+  ensureColumn('Facture', 'datePaiementEffectif', 'DATETIME');
+  ensureColumn('Facture', 'acomptePourcent', 'REAL DEFAULT 0');
+  ensureColumn('Facture', 'acompteMontant', 'REAL DEFAULT 0');
+  ensureColumn('Facture', 'retournePourcent', 'REAL DEFAULT 0');
 
   // MIGRATIONS SPECIFIQUES - TABLE PAIEMENT
   ensureColumn('Paiement', 'entrepriseId', 'INTEGER');
   ensureColumn('Paiement', 'reference', 'TEXT');
   ensureColumn('Paiement', 'banque', 'TEXT');
   ensureColumn('Paiement', 'notes', 'TEXT');
+
+  // MIGRATIONS SPECIFIQUES - TABLE DEPENSE
+  ensureColumn('Depense', 'codeBudgetaire', 'TEXT');
+  ensureColumn('Depense', 'imputationChantier', 'TEXT');
+  ensureColumn('Depense', 'statutValidation', "TEXT DEFAULT 'en_attente'");
+
+  // ============================================================
+  // 8B. MODULE BUDGETS PRÉVISIONNELS
+  // ============================================================
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS BudgetPrevisionnel (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      entrepriseId INTEGER NOT NULL,
+      chantierId INTEGER NOT NULL,
+      periode TEXT NOT NULL,
+      montantPrevu REAL DEFAULT 0,
+      montantRealise REAL DEFAULT 0,
+      dateCreation DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (chantierId) REFERENCES Chantier(id) ON DELETE CASCADE,
+      FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id)
+    )
+  `).run();
+
+  // ============================================================
+  // 8C. MODULE SOUS-TRAITANTS
+  // ============================================================
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS SousTraitant (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      entrepriseId INTEGER NOT NULL,
+      nom TEXT NOT NULL,
+      contact TEXT,
+      email TEXT,
+      telephone TEXT,
+      adresse TEXT,
+      specialite TEXT,
+      statut TEXT DEFAULT 'actif',
+      notes TEXT,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id)
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS AffectationSousTraitant (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      sousTraitantId INTEGER NOT NULL,
+      chantierId INTEGER NOT NULL,
+      dateDebut DATE,
+      dateFin DATE,
+      montant REAL DEFAULT 0,
+      statut TEXT DEFAULT 'en_cours',
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (sousTraitantId) REFERENCES SousTraitant(id) ON DELETE CASCADE,
+      FOREIGN KEY (chantierId) REFERENCES Chantier(id) ON DELETE CASCADE
+    )
+  `).run();
+
+  // ============================================================
+  // 8D. MODULE CATALOGUE DEVIS
+  // ============================================================
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS CatalogueDevis (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      entrepriseId INTEGER NOT NULL,
+      nom TEXT NOT NULL,
+      categorie TEXT,
+      description TEXT,
+      lignes TEXT,
+      tva REAL DEFAULT 20,
+      statut TEXT DEFAULT 'actif',
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id)
+    )
+  `).run();
+
+  // ============================================================
+  // 8E. MODULE NOTIFICATIONS
+  // ============================================================
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS Notification (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER UNIQUE,
+      entrepriseId INTEGER NOT NULL,
+      utilisateurId INTEGER NOT NULL,
+      titre TEXT NOT NULL,
+      message TEXT,
+      type TEXT DEFAULT 'info',
+      lu INTEGER DEFAULT 0,
+      dateCreation DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_synced INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (utilisateurId) REFERENCES Utilisateur(id) ON DELETE CASCADE,
+      FOREIGN KEY (entrepriseId) REFERENCES Entreprise(id)
+    )
+  `).run();
 
   // ============================================================
   // TRIGGERS SQLite
@@ -1038,6 +1279,123 @@ function initDatabase() {
       END;
     `).run();
   });
+
+  // ============================================================
+  // TRIGGERS MÉTIER — Notifications automatiques
+  // ============================================================
+
+  db.prepare(`
+    CREATE TRIGGER IF NOT EXISTS trigger_depense_validation_notification
+    AFTER INSERT ON Depense
+    FOR EACH ROW
+    WHEN NEW.statutValidation = 'en_attente_comptable'
+    BEGIN
+      INSERT INTO Notification (entrepriseId, titre, message, type, roleDestinataire, lu, dateCreation)
+      VALUES (
+        (SELECT entrepriseId FROM Chantier WHERE id = NEW.chantierId AND is_deleted = 0),
+        'Dépense en attente de validation',
+        'La dépense #' || NEW.id || ' d un montant de ' || COALESCE(NEW.montant, 0) || ' Ar nécessite une validation comptable.',
+        'info',
+        'COMPTABLE',
+        0,
+        CURRENT_TIMESTAMP
+      );
+    END
+  `).run();
+
+  db.prepare(`
+    CREATE TRIGGER IF NOT EXISTS trigger_facture_emission_notification
+    AFTER INSERT ON Facture
+    FOR EACH ROW
+    WHEN NEW.statut IN ('emise', 'envoyee', 'partiellement_payee')
+    BEGIN
+      INSERT INTO Notification (entrepriseId, titre, message, type, roleDestinataire, lu, dateCreation)
+      VALUES (
+        NEW.entrepriseId,
+        'Nouvelle facture émise',
+        'La facture ' || NEW.numero || ' d un montant de ' || COALESCE(NEW.montantTTC, NEW.montant, 0) || ' Ar a été émise.',
+        'info',
+        'COMMERCIAL',
+        0,
+        CURRENT_TIMESTAMP
+      );
+    END
+  `).run();
+
+  db.prepare(`
+    CREATE TRIGGER IF NOT EXISTS trigger_incident_ouverture_notification
+    AFTER INSERT ON Incident
+    FOR EACH ROW
+    BEGIN
+      INSERT INTO Notification (entrepriseId, titre, message, type, roleDestinataire, lu, dateCreation)
+      VALUES (
+        (SELECT entrepriseId FROM Chantier WHERE id = NEW.chantierId AND is_deleted = 0),
+        'Nouvel incident déclaré',
+        'Un incident "' || NEW.titre || '" a été déclaré sur le chantier #' || NEW.chantierId || '.',
+        'avertissement',
+        'CHEF_CHANTIER',
+        0,
+        CURRENT_TIMESTAMP
+      );
+    END
+  `).run();
+
+  // ============================================================
+  // TRIGGERS — Calcul automatique montantPaye dans Facture
+  // ============================================================
+
+  db.prepare(`
+    CREATE TRIGGER IF NOT EXISTS trigger_paiement_insert_montantpaye
+    AFTER INSERT ON Paiement
+    FOR EACH ROW
+    BEGIN
+      UPDATE Facture
+      SET montantPaye = (
+        SELECT COALESCE(SUM(montant), 0) FROM Paiement WHERE factureId = NEW.factureId AND is_deleted = 0
+      )
+      WHERE id = NEW.factureId;
+    END
+  `).run();
+
+  db.prepare(`
+    CREATE TRIGGER IF NOT EXISTS trigger_paiement_update_montantpaye
+    AFTER UPDATE ON Paiement
+    FOR EACH ROW
+    BEGIN
+      UPDATE Facture
+      SET montantPaye = (
+        SELECT COALESCE(SUM(montant), 0) FROM Paiement WHERE factureId = NEW.factureId AND is_deleted = 0
+      )
+      WHERE id = NEW.factureId;
+    END
+  `).run();
+
+  db.prepare(`
+    CREATE TRIGGER IF NOT EXISTS trigger_paiement_delete_montantpaye
+    AFTER DELETE ON Paiement
+    FOR EACH ROW
+    BEGIN
+      UPDATE Facture
+      SET montantPaye = (
+        SELECT COALESCE(SUM(montant), 0) FROM Paiement WHERE factureId = OLD.factureId AND is_deleted = 0
+      )
+      WHERE id = OLD.factureId;
+    END
+  `).run();
+
+  // ============================================================
+  // TRIGGER — Purge automatique des anciennes notifications supprimées
+  // ============================================================
+
+  db.prepare(`
+    CREATE TRIGGER IF NOT EXISTS trigger_notification_purge_anciennes
+    AFTER UPDATE ON Notification
+    FOR EACH ROW
+    WHEN NEW.is_deleted = 1
+    BEGIN
+      DELETE FROM Notification WHERE is_deleted = 1 AND updated_at < datetime('now', '-90 days');
+    END
+  `).run();
 
   db.prepare(`
     UPDATE Chantier

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trésorerie — TIA INFO BUILD</title>
+  <link rel="stylesheet" href="../public/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" href="../public/bootstrap/bootstrap-icons/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="../public/tia-design.css">
+</head>
+<body>
+<div class="container-fluid p-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0"><i class="bi bi-bank me-2 text-primary"></i>Trésorerie</h2>
+    <span class="text-secondary small" id="tresoDate"></span>
+  </div>
+
+  <div class="row g-3 mb-4" id="tresoCards">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-secondary small mb-1">Encaissements à 30 jours</div>
+          <div class="h4 mb-0 text-primary" id="encaissementsJ30">0 Ar</div>
+          <div class="small text-secondary mt-1" id="encaissementsJ30Count">0 factures</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-secondary small mb-1">Encaissements à 60 jours</div>
+          <div class="h4 mb-0 text-warning" id="encaissementsJ60">0 Ar</div>
+          <div class="small text-secondary mt-1" id="encaissementsJ60Count">0 factures</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-secondary small mb-1">Encaissements à 90 jours</div>
+          <div class="h4 mb-0 text-danger" id="encaissementsJ90">0 Ar</div>
+          <div class="small text-secondary mt-1" id="encaissementsJ90Count">0 factures</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4" id="tresoCardsDepenses">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-secondary small mb-1">Dépenses à 30 jours</div>
+          <div class="h4 mb-0 text-info" id="depensesJ30">0 Ar</div>
+          <div class="small text-secondary mt-1" id="depensesJ30Count">0 dépenses</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-secondary small mb-1">Dépenses à 60 jours</div>
+          <div class="h4 mb-0 text-warning" id="depensesJ60">0 Ar</div>
+          <div class="small text-secondary mt-1" id="depensesJ60Count">0 dépenses</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-secondary small mb-1">Dépenses à 90 jours</div>
+          <div class="h4 mb-0 text-danger" id="depensesJ90">0 Ar</div>
+          <div class="small text-secondary mt-1" id="depensesJ90Count">0 dépenses</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-secondary small mb-1">Solde prévisionnel net</div>
+          <div class="h3 mb-0" id="soldePrevisionnel">0 Ar</div>
+          <div class="small text-secondary mt-1">CA payé - Total dépenses</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-secondary small mb-1">Factures en retard</div>
+          <div class="h3 mb-0 text-danger" id="facturesEnRetard">0 Ar</div>
+          <div class="small text-secondary mt-1">Montant total des retards</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 py-3">
+      <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Prévisions J-30, J-60, J-90</h5>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Période</th>
+              <th>Encaissements</th>
+              <th>Dépenses</th>
+              <th>Solde net</th>
+            </tr>
+          </thead>
+          <tbody id="tresoTableBody">
+            <tr><td colspan="4" class="text-center py-4 text-secondary">Chargement...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../public/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="tresorerie.js"></script>
+</body>
+</html>

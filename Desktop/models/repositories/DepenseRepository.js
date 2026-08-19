@@ -54,20 +54,50 @@ class DepenseRepository extends BaseRepository {
   }
 
   /**
-   * Dépenses en attente de validation
+   * Dépenses en attente de validation par le comptable
    * @param {number} entrepriseId - ID entreprise
-   * @returns {Array} - Dépenses non validées
+   * @returns {Array} - Dépenses en attente de validation comptable
    */
-  getEnAttenteValidation(entrepriseId) {
+  getEnAttenteComptable(entrepriseId) {
     const stmt = db.prepare(`
-      SELECT d.*, c.nom as chantierNom
+      SELECT d.*, c.nom as chantierNom, u.nom as valideeParNom, u.prenom as valideeParPrenom
       FROM Depense d
       JOIN Chantier c ON d.chantierId = c.id
+      LEFT JOIN Utilisateur u ON d.valideePar = u.id AND u.is_deleted = 0
+      WHERE c.entrepriseId = ? AND d.is_deleted = 0 AND c.is_deleted = 0
+      AND d.statutValidation = 'en_attente_comptable'
+      ORDER BY d.dateDepense DESC
+    `);
+    return stmt.all(entrepriseId);
+  }
+
+  getEnAttenteValidation(entrepriseId) {
+    const stmt = db.prepare(`
+      SELECT d.*, c.nom as chantierNom, u.nom as valideeParNom, u.prenom as valideeParPrenom
+      FROM Depense d
+      JOIN Chantier c ON d.chantierId = c.id
+      LEFT JOIN Utilisateur u ON d.valideePar = u.id AND u.is_deleted = 0
       WHERE c.entrepriseId = ? AND d.is_deleted = 0 AND c.is_deleted = 0
       AND (d.valideePar IS NULL OR d.valideePar = 0)
       ORDER BY d.dateDepense DESC
     `);
     return stmt.all(entrepriseId);
+  }
+
+  /**
+   * Historique des validations d'une dépense
+   * @param {number} depenseId - ID dépense
+   * @returns {Array} - Historique
+   */
+  getHistoriqueValidations(depenseId) {
+    const stmt = db.prepare(`
+      SELECT d.statutValidation, d.valideePar, d.updated_at, u.nom, u.prenom
+      FROM Depense d
+      LEFT JOIN Utilisateur u ON d.valideePar = u.id AND u.is_deleted = 0
+      WHERE d.id = ? AND d.is_deleted = 0
+      ORDER BY d.updated_at DESC
+    `);
+    return stmt.all(depenseId);
   }
 }
 

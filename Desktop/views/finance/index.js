@@ -297,6 +297,14 @@ class FinancesController {
         document.getElementById('btnRefreshFactures')?.addEventListener('click', () => this.loadFactures());
         document.getElementById('btnExportFactures')?.addEventListener('click', () => this.exportFactures());
 
+        // Boutons header orphelins
+        document.getElementById('btnPaiements')?.addEventListener('click', () => {
+          if (window.router) window.router.navigate('#paiements');
+        });
+        document.getElementById('btnDepenses')?.addEventListener('click', () => {
+          if (window.router) window.router.navigate('#depenses');
+        });
+
         // Formulaire facture
         document.getElementById('formFacture')?.addEventListener('submit', (e) => this.handleSubmitFacture(e));
         document.getElementById('btnDeleteFacture')?.addEventListener('click', () => this.confirmDeleteFacture());
