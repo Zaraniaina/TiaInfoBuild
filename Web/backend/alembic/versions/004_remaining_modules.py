@@ -310,12 +310,12 @@ def upgrade() -> None:
     )
 
     # Index RH
-    op.create_index("idx_employes_nom", "employes", ["nom", "prenom"])
-    op.create_index("idx_pointages_employe", "pointages", ["employe_id"])
-    op.create_index("idx_pointages_date", "pointages", ["date_jour"])
-    op.create_index("idx_pointages_chantier", "pointages", ["chantier_id"])
-    op.create_index("idx_heures_sup_employe", "heures_supplementaires", ["employe_id"])
-    op.create_index("idx_historique_postes_employe", "historique_postes", ["employe_id"])
+    op.create_index("idx_employes_nom", "employes", ["nom", "prenom"], if_not_exists=True)
+    op.create_index("idx_pointages_employe", "pointages", ["employe_id"], if_not_exists=True)
+    op.create_index("idx_pointages_date", "pointages", ["date_jour"], if_not_exists=True)
+    op.create_index("idx_pointages_chantier", "pointages", ["chantier_id"], if_not_exists=True)
+    op.create_index("idx_heures_sup_employe", "heures_supplementaires", ["employe_id"], if_not_exists=True)
+    op.create_index("idx_historique_postes_employe", "historique_postes", ["employe_id"], if_not_exists=True)
 
     # Index Matériels
     op.create_index("idx_materiel_entreprise", "materiaux", ["entreprise_id"])
@@ -341,11 +341,9 @@ def upgrade() -> None:
     op.create_index("idx_factures_client", "factures", ["client_id"])
     op.create_index("idx_factures_date_echeance", "factures", ["date_echeance"])
     op.create_index("idx_factures_statut", "factures", ["statut"])
-    op.create_index("idx_paiements_facture", "paiements", ["facture_id"])
 
 
 def downgrade() -> None:
-    op.drop_index("idx_paiements_facture", table_name="paiements")
     op.drop_index("idx_factures_statut", table_name="factures")
     op.drop_index("idx_factures_date_echeance", table_name="factures")
     op.drop_index("idx_factures_client", table_name="factures")
@@ -371,11 +369,6 @@ def downgrade() -> None:
     op.drop_index("idx_pointages_employe", table_name="pointages")
     op.drop_index("idx_employes_nom", table_name="employes")
 
-    # Must drop paiements before factures
-    op.create_table("paiements",
-        sa.Column("id", sa.Integer, primary_key=True),
-    )  # placeholder - real paiements dropped below in correct order
-    op.drop_table("paiements")
     op.drop_table("factures")
     op.drop_table("contrats")
     op.drop_table("lignes_devis")

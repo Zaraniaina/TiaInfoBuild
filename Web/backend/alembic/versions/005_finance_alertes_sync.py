@@ -101,6 +101,7 @@ def upgrade() -> None:
     )
 
     # Finance indexes
+    op.create_index("idx_paiements_facture", "paiements", ["facture_id"])
     op.create_index("idx_depenses_entreprise", "depenses", ["entreprise_id"])
     op.create_index("idx_depenses_chantier", "depenses", ["chantier_id"])
     op.create_index("idx_depenses_categorie", "depenses", ["categorie"])
@@ -122,6 +123,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.drop_index("idx_paiements_facture", table_name="paiements")
     op.drop_index("idx_sync_queue_created", table_name="sync_queue")
     op.drop_index("idx_sync_queue_table_record", table_name="sync_queue")
     op.drop_index("idx_sync_queue_status", table_name="sync_queue")

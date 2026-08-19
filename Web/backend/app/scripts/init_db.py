@@ -1,40 +1,149 @@
-"""Script d'initialisation de la base de données: création du schéma et seed des rôles."""
+"""
+Script d'initialisation de la base de données TIA INFO BUILD.
+- Applique les migrations Alembic
+- Crée les rôles système
+- Crée un super admin et une entreprise de test
+
+Usage:
+    python -m app.scripts.init_db
+    ou
+    python app/scripts/init_db.py
+"""
 import asyncio
 import sys
-from pathlib import Path
+import os
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+# Ajouter le dossier parent dans sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from app.database import engine, Base
-from app.models.role import Role
-from app.core.permissions import Role, PERMISSION_MAP, ROLE_NAMES
+from sqlalchemy import text, select
+from app.database import engine, AsyncSessionLocal
 from app.security import hash_password
-from sqlalchemy import text
 
 
-async def init_db() -> None:
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print("✅ Schema created")
+ROLES_SYSTEME = [
+    {"id": 1, "nom": "Super Administrateur", "code": "super_admin", "description": "Propriétaire plateforme SaaS", "is_system": True},
+    {"id": 2, "nom": "Administrateur Entreprise", "code": "admin_entreprise", "description": "Gérant de l'entreprise BTP", "is_system": True},
+    {"id": 3, "nom": "Chef de Projet", "code": "chef_projet", "description": "Responsable des chantiers", "is_system": True},
+    {"id": 4, "nom": "Employé", "code": "employe", "description": "Employé standard", "is_system": True},
+    {"id": 5, "nom": "Comptable", "code": "comptable", "description": "Gestion financière", "is_system": True},
+    {"id": 6, "nom": "Commercial", "code": "commercial", "description": "Gestion clients et devis", "is_system": True},
+    {"id": 7, "nom": "Magasinier", "code": "magasinier", "description": "Gestion des stocks", "is_system": True},
+    {"id": 8, "nom": "RH", "code": "rh", "description": "Ressources Humaines", "is_system": True},
+    {"id": 9, "nom": "Lecture Seule", "code": "lecture_seule", "description": "Accès en lecture uniquement", "is_system": True},
+]
 
-    async with engine.begin() as conn:
-        for code, permissions in PERMISSION_MAP.items():
-            result = await conn.execute(text("SELECT id FROM roles WHERE code = :code"), {"code": code})
-            row = result.fetchone()
-            if not row:
-                await conn.execute(
-                    text(
-                        "INSERT INTO roles (nom, code, permissions, is_system) VALUES (:nom, :code, :permissions, :is_system)"
-                    ),
-                    {
-                        "nom": ROLE_NAMES.get(code, code),
-                        "code": code,
-                        "permissions": str(permissions).replace("'", '"'),
-                        "is_system": True,
-                    },
-                )
-    print("✅ Roles seeded")
+ENTREPRISE_TEST = {
+    "nom": "BTP PRO MADAGASCAR",
+    "nom_commercial": "BTP PRO",
+    "adresse": "Ivandry, Antananarivo",
+    "code_postal": "101",
+    "ville": "Antananarivo",
+    "telephone": "034 00 000 00",
+    "email": "contact@btppro.mg",
+    "abonnement": "premium",
+    "devise": "MGA",
+    "prefixe_devis": "DEV",
+    "prefixe_facture": "FAC",
+    "prefixe_contrat": "CTR",
+    "tva_defaut": 20.0,
+    "delai_paiement_defaut": 30,
+    "validite_devis": 30,
+    "actif": True,
+}
+
+SUPER_ADMIN = {
+    "email": "admin@tia.mg",
+    "nom": "ADMINISTRATEUR",
+    "prenom": "Super",
+    "statut": "actif",
+    "must_change_password": False,
+    "role_id": 1,
+}
+
+ADMIN_ENTREPRISE = {
+    "email": "demo@btppro.mg",
+    "nom": "RAMAROSON",
+    "prenom": "Hery",
+    "statut": "actif",
+    "must_change_password": False,
+    "role_id": 2,
+}
+
+MOT_DE_PASSE_DEMO = "Admin123!"
+
+
+async def seed():
+    print("🌱 Démarrage du seed de la base de données...")
+
+    async with AsyncSessionLocal() as db:
+        # 1. Insérer les rôles (ignorer si déjà présents)
+        print("📋 Création des rôles système...")
+        for role in ROLES_SYSTEME:
+            await db.execute(text("""
+                INSERT IGNORE INTO roles (id, nom, code, description, is_system)
+                VALUES (:id, :nom, :code, :description, :is_system)
+            """), role)
+
+        # 2. Créer l'entreprise de test
+        print("🏢 Création de l'entreprise de test...")
+        result = await db.execute(text(
+            "SELECT id FROM entreprises WHERE nom = :nom LIMIT 1"
+        ), {"nom": ENTREPRISE_TEST["nom"]})
+        ent = result.fetchone()
+        if not ent:
+            await db.execute(text("""
+                INSERT INTO entreprises (nom, nom_commercial, adresse, code_postal, ville, telephone, email,
+                    abonnement, devise, prefixe_devis, prefixe_facture, prefixe_contrat,
+                    tva_defaut, delai_paiement_defaut, validite_devis, actif)
+                VALUES (:nom, :nom_commercial, :adresse, :code_postal, :ville, :telephone, :email,
+                    :abonnement, :devise, :prefixe_devis, :prefixe_facture, :prefixe_contrat,
+                    :tva_defaut, :delai_paiement_defaut, :validite_devis, :actif)
+            """), ENTREPRISE_TEST)
+            result = await db.execute(text(
+                "SELECT id FROM entreprises WHERE nom = :nom LIMIT 1"
+            ), {"nom": ENTREPRISE_TEST["nom"]})
+            ent = result.fetchone()
+
+        entreprise_id = ent[0]
+        print(f"   ✅ Entreprise ID: {entreprise_id}")
+
+        # 3. Créer le super admin (entreprise_id = NULL)
+        print("👤 Création du super admin...")
+        result = await db.execute(text(
+            "SELECT id FROM utilisateurs WHERE email = :email LIMIT 1"
+        ), {"email": SUPER_ADMIN["email"]})
+        if not result.fetchone():
+            await db.execute(text("""
+                INSERT INTO utilisateurs (email, nom, prenom, mot_de_passe_hash, statut, must_change_password, role_id)
+                VALUES (:email, :nom, :prenom, :hash, :statut, :must_change_password, :role_id)
+            """), {**SUPER_ADMIN, "hash": hash_password(MOT_DE_PASSE_DEMO)})
+            print(f"   ✅ Super admin: {SUPER_ADMIN['email']} / {MOT_DE_PASSE_DEMO}")
+        else:
+            print(f"   ℹ️  Super admin déjà existant: {SUPER_ADMIN['email']}")
+
+        # 4. Créer l'admin entreprise
+        print("👤 Création de l'admin entreprise...")
+        result = await db.execute(text(
+            "SELECT id FROM utilisateurs WHERE email = :email LIMIT 1"
+        ), {"email": ADMIN_ENTREPRISE["email"]})
+        if not result.fetchone():
+            await db.execute(text("""
+                INSERT INTO utilisateurs (email, nom, prenom, mot_de_passe_hash, statut, must_change_password, role_id, entreprise_id)
+                VALUES (:email, :nom, :prenom, :hash, :statut, :must_change_password, :role_id, :entreprise_id)
+            """), {**ADMIN_ENTREPRISE, "hash": hash_password(MOT_DE_PASSE_DEMO), "entreprise_id": entreprise_id})
+            print(f"   ✅ Admin entreprise: {ADMIN_ENTREPRISE['email']} / {MOT_DE_PASSE_DEMO}")
+        else:
+            print(f"   ℹ️  Admin entreprise déjà existant: {ADMIN_ENTREPRISE['email']}")
+
+        await db.commit()
+
+    print("\n✅ Seed terminé avec succès !")
+    print("\n📋 Comptes de connexion créés:")
+    print(f"   Super Admin  : {SUPER_ADMIN['email']} / {MOT_DE_PASSE_DEMO}")
+    print(f"   Admin Entrep.: {ADMIN_ENTREPRISE['email']} / {MOT_DE_PASSE_DEMO}")
+    print("\n🚀 Vous pouvez maintenant démarrer le serveur: uvicorn app.main:app --reload")
 
 
 if __name__ == "__main__":
-    asyncio.run(init_db())
+    asyncio.run(seed())

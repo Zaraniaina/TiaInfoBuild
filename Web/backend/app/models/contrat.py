@@ -40,4 +40,3 @@ class Contrat(Base):
     factures: Mapped[list["Facture"]] = relationship("Facture", back_populates="contrat", lazy="selectin")
     chantier: Mapped["Chantier | None"] = relationship("Chantier", back_populates="contrats", lazy="selectin")
     devis: Mapped["Devis | None"] = relationship("Devis", back_populates="contrat", lazy="selectin")
-    valide_par: Mapped["Utilisateur | None"] = relationship("Utilisateur", back_populates="contrats_valides", lazy="selectin")

@@ -41,4 +41,3 @@ class Utilisateur(Base):
     clients: Mapped[list["Client"]] = relationship("Client", back_populates="commercial", lazy="selectin")
     incidents: Mapped[list["Incident"]] = relationship("Incident", back_populates="declare_par_user", lazy="selectin")
     depenses_validees: Mapped[list["Depense"]] = relationship("Depense", back_populates="valide_par", lazy="selectin")
-    contrats_valides: Mapped[list["Contrat"]] = relationship("Contrat", back_populates="valide_par", lazy="selectin")

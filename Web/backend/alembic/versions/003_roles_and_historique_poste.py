@@ -183,8 +183,9 @@ ROLES_SEED = [
 
 def upgrade() -> None:
     # Insert roles
+    conn = op.get_bind()
     for role in ROLES_SEED:
-        op.execute(
+        conn.execute(
             sa.text(
                 "INSERT INTO roles (nom, description, code, permissions, is_system, created_at, updated_at) "
                 "VALUES (:nom, :description, :code, :permissions, :is_system, NOW(), NOW())"
@@ -228,7 +229,7 @@ def upgrade() -> None:
         sa.Column("employe_id", sa.Integer, sa.ForeignKey("employes.id", ondelete="CASCADE")),
         sa.Column("poste", sa.String(100), nullable=False),
         sa.Column("type_contrat", sa.String(20)),
-        sa.Column("salaire_base", sa.Numeric(10, 2), server_default="0"),
+        sa.Column("salaire_base", sa.Numeric(10, 2), nullable=False),
         sa.Column("date_debut", sa.Date, nullable=False),
         sa.Column("date_fin", sa.Date),
         sa.Column("motif_changement", sa.Text),
@@ -243,8 +244,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    conn = op.get_bind()
     for role in ROLES_SEED:
-        op.execute(
+        conn.execute(
             sa.text("DELETE FROM roles WHERE code = :code"),
             {"code": role["code"]},
         )
