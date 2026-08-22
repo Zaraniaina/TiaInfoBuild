@@ -23,14 +23,16 @@ from app.security import hash_password
 
 ROLES_SYSTEME = [
     {"id": 1, "nom": "Super Administrateur", "code": "super_admin", "description": "Propriétaire plateforme SaaS", "is_system": True},
-    {"id": 2, "nom": "Administrateur Entreprise", "code": "admin_entreprise", "description": "Gérant de l'entreprise BTP", "is_system": True},
-    {"id": 3, "nom": "Chef de Projet", "code": "chef_projet", "description": "Responsable des chantiers", "is_system": True},
-    {"id": 4, "nom": "Employé", "code": "employe", "description": "Employé standard", "is_system": True},
-    {"id": 5, "nom": "Comptable", "code": "comptable", "description": "Gestion financière", "is_system": True},
-    {"id": 6, "nom": "Commercial", "code": "commercial", "description": "Gestion clients et devis", "is_system": True},
-    {"id": 7, "nom": "Magasinier", "code": "magasinier", "description": "Gestion des stocks", "is_system": True},
-    {"id": 8, "nom": "RH", "code": "rh", "description": "Ressources Humaines", "is_system": True},
-    {"id": 9, "nom": "Lecture Seule", "code": "lecture_seule", "description": "Accès en lecture uniquement", "is_system": True},
+    {"id": 2, "nom": "Administrateur Entreprise", "code": "admin_entreprise", "description": "Gestion technique et sécurité tenant", "is_system": True},
+    {"id": 3, "nom": "Direction Générale", "code": "directeur", "description": "Pilotage stratégique et validations DAF", "is_system": True},
+    {"id": 4, "nom": "Comptable / Financier", "code": "comptable", "description": "Gestion financière et trésorerie", "is_system": True},
+    {"id": 5, "nom": "Chef de Projet", "code": "chef_projet", "description": "Supervision multi-chantiers et arbitrage", "is_system": True},
+    {"id": 6, "nom": "Chef de Chantier", "code": "chef_chantier", "description": "Suivi terrain, pointage équipe et avancement", "is_system": True},
+    {"id": 7, "nom": "Responsable RH", "code": "rh", "description": "Gestion des ressources humaines et paie", "is_system": True},
+    {"id": 8, "nom": "Responsable Matériel", "code": "materiel", "description": "Gestion du parc engins et maintenance", "is_system": True},
+    {"id": 9, "nom": "Magasinier", "code": "magasinier", "description": "Gestion des stocks et entrepôts", "is_system": True},
+    {"id": 10, "nom": "Commercial", "code": "commercial", "description": "Gestion clients et rédaction des devis", "is_system": True},
+    {"id": 11, "nom": "Employé / Ouvrier", "code": "employe", "description": "Exécution terrain, tâches et pointage", "is_system": True},
 ]
 
 ENTREPRISE_TEST = {

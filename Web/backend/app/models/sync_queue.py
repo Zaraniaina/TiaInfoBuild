@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import String, Text, Boolean, DateTime, ForeignKey, Index, func, Integer
+from sqlalchemy import BigInteger, String, Text, Boolean, DateTime, ForeignKey, Index, func, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -9,7 +9,7 @@ from app.database import Base
 class SyncQueue(Base):
     __tablename__ = "sync_queue"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     table_name: Mapped[str] = mapped_column(String(100), nullable=False)
     record_id: Mapped[int] = mapped_column(Integer, nullable=False)
     server_id: Mapped[int | None] = mapped_column(Integer)

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List
 
-from sqlalchemy import String, Text, Boolean, Numeric, DateTime, Date, Time, ForeignKey, UniqueConstraint, Index, func
+from sqlalchemy import BigInteger, String, Text, Boolean, Numeric, DateTime, Date, Time, ForeignKey, UniqueConstraint, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -10,7 +10,7 @@ from app.database import Base
 class Entreprise(Base):
     __tablename__ = "entreprises"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     nom: Mapped[str] = mapped_column(String(255), nullable=False)
     nom_commercial: Mapped[str | None] = mapped_column(String(255))
     adresse: Mapped[str | None] = mapped_column(Text)
@@ -48,7 +48,7 @@ class Entreprise(Base):
     chantiers: Mapped[list["Chantier"]] = relationship("Chantier", back_populates="entreprise", lazy="selectin")
     articles: Mapped[list["Article"]] = relationship("Article", back_populates="entreprise", lazy="selectin")
     fournisseurs: Mapped[list["Fournisseur"]] = relationship("Fournisseur", back_populates="entreprise", lazy="selectin")
-    clients: Mapped[list["Client"]] = relationship("Client", back_populates="entreprise", lazy="selectin")
+    clients: Mapped[list["Client"]] = relationship("Client", back_populates="entreprise_rel", lazy="selectin")
     devis: Mapped[list["Devis"]] = relationship("Devis", back_populates="entreprise", lazy="selectin")
     contrats: Mapped[list["Contrat"]] = relationship("Contrat", back_populates="entreprise", lazy="selectin")
     factures: Mapped[list["Facture"]] = relationship("Facture", back_populates="entreprise", lazy="selectin")

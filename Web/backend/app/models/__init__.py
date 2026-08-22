@@ -1,1 +1,76 @@
-# TIA INFO BUILD - Models
+"""TIA INFO BUILD - Models package.
+Exporte tous les modèles SQLAlchemy pour garantir leur enregistrement dans Base.metadata.
+"""
+from app.models.affectation_chantier import AffectationChantier
+from app.models.affectation_materiel import AffectationMateriel
+from app.models.affectation_ressource import AffectationRessource
+from app.models.alerte import Alerte
+from app.models.alerte_materiel import AlerteMateriel
+from app.models.article import Article
+from app.models.chantier import Chantier
+from app.models.client import Client
+from app.models.client_adresse import ClientAdresse
+from app.models.contrat import Contrat
+from app.models.depense import Depense
+from app.models.devis import Devis
+from app.models.employe import Employe
+from app.models.entreprise import Entreprise
+from app.models.equipe import Equipe
+from app.models.facture import Facture
+from app.models.fournisseur import Fournisseur
+from app.models.heure_supplementaire import HeureSupplementaire
+from app.models.historique_connexion import HistoriqueConnexion
+from app.models.historique_poste import HistoriquePoste
+from app.models.incident import Incident
+from app.models.ligne_devis import LigneDevis
+from app.models.maintenance import Maintenance
+from app.models.materiel import Materiel
+from app.models.membre_equipe import MembreEquipe
+from app.models.mouvement_stock import MouvementStock
+from app.models.paiement import Paiement
+from app.models.phase import Phase
+from app.models.pointage import Pointage
+from app.models.preference import Preference
+from app.models.rapport_financier import RapportFinancier
+from app.models.refresh_token import RefreshToken
+from app.models.role import Role
+from app.models.sync_queue import SyncQueue
+from app.models.utilisateur import Utilisateur
+
+__all__ = [
+    "AffectationChantier",
+    "AffectationMateriel",
+    "AffectationRessource",
+    "Alerte",
+    "AlerteMateriel",
+    "Article",
+    "Chantier",
+    "Client",
+    "ClientAdresse",
+    "Contrat",
+    "Depense",
+    "Devis",
+    "Employe",
+    "Entreprise",
+    "Equipe",
+    "Facture",
+    "Fournisseur",
+    "HeureSupplementaire",
+    "HistoriqueConnexion",
+    "HistoriquePoste",
+    "Incident",
+    "LigneDevis",
+    "Maintenance",
+    "Materiel",
+    "MembreEquipe",
+    "MouvementStock",
+    "Paiement",
+    "Phase",
+    "Pointage",
+    "Preference",
+    "RapportFinancier",
+    "RefreshToken",
+    "Role",
+    "SyncQueue",
+    "Utilisateur",
+]

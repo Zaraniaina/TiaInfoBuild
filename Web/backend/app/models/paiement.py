@@ -1,6 +1,6 @@
 from datetime import datetime, date
 
-from sqlalchemy import String, Numeric, Boolean, DateTime, Date, ForeignKey, Index, func
+from sqlalchemy import BigInteger, String, Numeric, Boolean, DateTime, Date, ForeignKey, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -9,7 +9,7 @@ from app.database import Base
 class Paiement(Base):
     __tablename__ = "paiements"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     entreprise_id: Mapped[int] = mapped_column(ForeignKey("entreprises.id", ondelete="CASCADE"))
     facture_id: Mapped[int] = mapped_column(ForeignKey("factures.id", ondelete="CASCADE"))
     montant: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)

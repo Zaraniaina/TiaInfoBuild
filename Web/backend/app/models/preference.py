@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, UniqueConstraint, Index, func
+from sqlalchemy import BigInteger, String, Boolean, DateTime, ForeignKey, UniqueConstraint, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -9,7 +9,7 @@ from app.database import Base
 class Preference(Base):
     __tablename__ = "preferences"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("utilisateurs.id", ondelete="CASCADE"), unique=True)
     theme: Mapped[str] = mapped_column(String(20), server_default="auto")
     langue: Mapped[str] = mapped_column(String(10), server_default="fr")

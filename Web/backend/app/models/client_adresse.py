@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import String, Text, Boolean, DateTime, Date, ForeignKey, UniqueConstraint, Index, func
+from sqlalchemy import BigInteger, String, Text, Boolean, DateTime, Date, ForeignKey, UniqueConstraint, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -9,7 +9,7 @@ from app.database import Base
 class ClientAdresse(Base):
     __tablename__ = "client_adresses"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     client_id: Mapped[int] = mapped_column(ForeignKey("clients.id", ondelete="CASCADE"))
     type: Mapped[str] = mapped_column(String(20), nullable=False)
     defaut: Mapped[bool] = mapped_column(Boolean, server_default="0")

@@ -260,32 +260,63 @@ export function RhPage() {
           </div>
         </div>
       ) : activeTab === 'pointages' ? (
-        <div className="card border-0 shadow-sm">
-          <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h5 className="mb-0 fw-bold"><i className="bi bi-calendar-check me-2"></i>Journal des Pointages</h5>
-            <input type="date" className="form-control form-control-sm w-auto" defaultValue={new Date().toISOString().split('T')[0]} />
+        <div>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h5 className="mb-1 fw-bold"><i className="bi bi-calendar-check me-2"></i>Journal & Validation des Pointages</h5>
+              <p className="text-muted small mb-0">Pointages QR Code, Auto-déclarations GPS & Régularisations (Politique transverse v2.0)</p>
+            </div>
+            <div className="d-flex gap-2">
+              <button className="btn btn-outline-primary fw-bold" onClick={() => alert('Génération du QR Code Chantier du Jour:\n\nCode: CHT-QR-2026-0822\nValide pour: Chantier Anosy\nHeure: ' + new Date().toLocaleTimeString())}>
+                <i className="bi bi-qr-code me-2"></i>Générer QR Code Chantier
+              </button>
+              <button className="btn btn-success fw-bold" onClick={() => alert('Pointage Enregistré avec Succès !\n\nMode: Scan QR Code Site\nHeure: ' + new Date().toLocaleTimeString() + '\nStatut: En attente validation RH')}>
+                <i className="bi bi-qr-code-scan me-2"></i>Simuler Scan Ouvrier
+              </button>
+            </div>
           </div>
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
-              <thead className="table-light">
-                <tr>
-                  <th>Employé ID</th>
-                  <th>Date Jour</th>
-                  <th>Heures Totales</th>
-                  <th>Statut Pointage</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pointages.map(pt => (
-                  <tr key={pt.id}>
-                    <td className="fw-semibold">Employé #{pt.employe_id}</td>
-                    <td>{pt.date_jour}</td>
-                    <td><span className="badge bg-primary px-3 py-2">{pt.heures_total}h</span></td>
-                    <td><span className="badge bg-success px-3 py-2 text-capitalize">{pt.type}</span></td>
+          <div className="card border-0 shadow-sm">
+            <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+              <h6 className="mb-0 fw-bold">Pointages de la journée</h6>
+              <input type="date" className="form-control form-control-sm w-auto" defaultValue={new Date().toISOString().split('T')[0]} />
+            </div>
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead className="table-light">
+                  <tr>
+                    <th>Employé / Intervenant</th>
+                    <th>Mode Pointage</th>
+                    <th>Date & Heure</th>
+                    <th>Heures Totales</th>
+                    <th>Statut Validation</th>
+                    <th className="text-end">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {pointages.map(pt => (
+                    <tr key={pt.id}>
+                      <td className="fw-semibold">
+                        <div>Employé #{pt.employe_id}</div>
+                        <small className="text-muted">Chantier #1 — Anosy</small>
+                      </td>
+                      <td>
+                        <span className="badge bg-light text-dark border">
+                          <i className="bi bi-qr-code-scan me-1 text-primary"></i>QR Code Site
+                        </span>
+                      </td>
+                      <td>{pt.date_jour}</td>
+                      <td><span className="badge bg-primary px-3 py-2">{pt.heures_total}h</span></td>
+                      <td><span className="badge bg-success px-3 py-2 text-capitalize">{pt.type}</span></td>
+                      <td className="text-end">
+                        <button className="btn btn-sm btn-outline-success me-1" onClick={() => alert('Pointage validé par RH !')}>
+                          <i className="bi bi-check-lg"></i> Validé
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       ) : activeTab === 'equipes' ? (

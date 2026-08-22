@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import String, Text, Boolean, Numeric, DateTime, Date, ForeignKey, UniqueConstraint, Index, func
+from sqlalchemy import BigInteger, String, Text, Boolean, Numeric, DateTime, Date, ForeignKey, UniqueConstraint, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -9,7 +9,7 @@ from app.database import Base
 class Utilisateur(Base):
     __tablename__ = "utilisateurs"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     entreprise_id: Mapped[int | None] = mapped_column(ForeignKey("entreprises.id", ondelete="CASCADE"))
     role_id: Mapped[int | None] = mapped_column(ForeignKey("roles.id"))
     nom: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -36,7 +36,6 @@ class Utilisateur(Base):
     preference: Mapped["Preference | None"] = relationship("Preference", back_populates="utilisateur", lazy="selectin")
     historique_connexions: Mapped[list["HistoriqueConnexion"]] = relationship("HistoriqueConnexion", back_populates="utilisateur", lazy="selectin")
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship("RefreshToken", back_populates="utilisateur", lazy="selectin")
-    employe: Mapped["Employe | None"] = relationship("Employe", back_populates="utilisateur", lazy="selectin")
     chantiers: Mapped[list["Chantier"]] = relationship("Chantier", back_populates="chef_chantier", lazy="selectin")
     clients: Mapped[list["Client"]] = relationship("Client", back_populates="commercial", lazy="selectin")
     incidents: Mapped[list["Incident"]] = relationship("Incident", back_populates="declare_par_user", lazy="selectin")

@@ -1,6 +1,6 @@
--- Schema SQL complet pour TIA INFO BUILD Web
+﻿-- Schema SQL complet pour TIA INFO BUILD Web
 -- MySQL 8.0 compatible
--- 35 tables: 11 tables transversales + 24 tables métier
+-- 35 tables: 11 tables transversales + 24 tables mÃ©tier
 -- Convention: snake_case, soft delete (is_deleted), multi-tenant (entreprise_id)
 
 -- ============================================================================
@@ -9,7 +9,7 @@
 
 -- 1. Entreprise (multi-tenant)
 CREATE TABLE IF NOT EXISTS entreprises (
-    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
     nom                 VARCHAR(255) NOT NULL,
     nom_commercial      VARCHAR(255),
     adresse             TEXT,
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS entreprises (
 
 -- 2. Role (RBAC)
 CREATE TABLE IF NOT EXISTS roles (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     nom         VARCHAR(100) NOT NULL,
     description TEXT,
     code        VARCHAR(50) UNIQUE NOT NULL,
@@ -51,9 +51,9 @@ CREATE TABLE IF NOT EXISTS roles (
 
 -- 3. Utilisateur (entreprise_id=NULL pour super_admin)
 CREATE TABLE IF NOT EXISTS utilisateurs (
-    id                    INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id         INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
-    role_id               INTEGER REFERENCES roles(id),
+    id                    BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id         BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
+    role_id               BIGINT REFERENCES roles(id),
     nom                   VARCHAR(100) NOT NULL,
     prenom                VARCHAR(100),
     email                 VARCHAR(255) UNIQUE NOT NULL,
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS utilisateurs (
 
 -- 4. Preference utilisateur
 CREATE TABLE IF NOT EXISTS preferences (
-    id                     INT AUTO_INCREMENT PRIMARY KEY,
+    id                     BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id               INTEGER UNIQUE REFERENCES utilisateurs(id) ON DELETE CASCADE,
     theme                 VARCHAR(20) DEFAULT 'auto',
     langue                VARCHAR(10) DEFAULT 'fr',
@@ -85,8 +85,8 @@ CREATE TABLE IF NOT EXISTS preferences (
 
 -- 5. HistoriqueConnexion (logs)
 CREATE TABLE IF NOT EXISTS historique_connexions (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL,
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    utilisateur_id BIGINT REFERENCES utilisateurs(id) ON DELETE SET NULL,
     ip_address    VARCHAR(45),
     user_agent    TEXT,
     reussi        TINYINT(1) DEFAULT 1,
@@ -95,8 +95,8 @@ CREATE TABLE IF NOT EXISTS historique_connexions (
 
 -- 6. RefreshToken (JWT refresh rotation)
 CREATE TABLE IF NOT EXISTS refresh_tokens (
-    id             INT AUTO_INCREMENT PRIMARY KEY,
-    utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE CASCADE,
+    id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    utilisateur_id BIGINT REFERENCES utilisateurs(id) ON DELETE CASCADE,
     token_hash     VARCHAR(255) UNIQUE NOT NULL,
     expires_at     TIMESTAMP NOT NULL,
     revoked        TINYINT(1) DEFAULT 0,
@@ -109,10 +109,10 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 
 -- 7. Chantier
 CREATE TABLE IF NOT EXISTS chantiers (
-    id                 INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id      INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
-    client_id          INTEGER REFERENCES clients(id),
-    chef_chantier_id   INTEGER REFERENCES utilisateurs(id),
+    id                 BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id      BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
+    client_id          BIGINT REFERENCES clients(id),
+    chef_chantier_id   BIGINT REFERENCES utilisateurs(id),
     numero             VARCHAR(50),
     nom                VARCHAR(255) NOT NULL,
     adresse            TEXT,
@@ -135,8 +135,8 @@ CREATE TABLE IF NOT EXISTS chantiers (
 
 -- 8. Phase
 CREATE TABLE IF NOT EXISTS phases (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    chantier_id   INTEGER REFERENCES chantiers(id) ON DELETE CASCADE,
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    chantier_id   BIGINT REFERENCES chantiers(id) ON DELETE CASCADE,
     nom           VARCHAR(255) NOT NULL,
     description   TEXT,
     date_debut    DATE,
@@ -152,9 +152,9 @@ CREATE TABLE IF NOT EXISTS phases (
 
 -- 9. Incident
 CREATE TABLE IF NOT EXISTS incidents (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    chantier_id   INTEGER REFERENCES chantiers(id) ON DELETE CASCADE,
-    declare_par   INTEGER REFERENCES utilisateurs(id),
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    chantier_id   BIGINT REFERENCES chantiers(id) ON DELETE CASCADE,
+    declare_par   BIGINT REFERENCES utilisateurs(id),
     titre         VARCHAR(255) NOT NULL,
     description   TEXT,
     date_incident DATE DEFAULT CURRENT_DATE,
@@ -167,8 +167,8 @@ CREATE TABLE IF NOT EXISTS incidents (
 
 -- 10. AffectationRessource
 CREATE TABLE IF NOT EXISTS affectation_ressources (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    chantier_id   INTEGER REFERENCES chantiers(id) ON DELETE CASCADE,
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    chantier_id   BIGINT REFERENCES chantiers(id) ON DELETE CASCADE,
     type_ressource VARCHAR(20) NOT NULL,
     ressource_id   INTEGER NOT NULL,
     date_debut    DATE,
@@ -183,10 +183,10 @@ CREATE TABLE IF NOT EXISTS affectation_ressources (
 -- MODULE RH
 -- ============================================================================
 
--- 11. Employé
+-- 11. EmployÃ©
 CREATE TABLE IF NOT EXISTS employes (
-    id                 INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id      INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
+    id                 BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id      BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
     matricule          VARCHAR(50),
     nom                VARCHAR(100) NOT NULL,
     prenom             VARCHAR(100),
@@ -206,11 +206,11 @@ CREATE TABLE IF NOT EXISTS employes (
     updated_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 12. Équipe
+-- 12. Ã‰quipe
 CREATE TABLE IF NOT EXISTS equipes (
-    id             INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id  INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
-    chef_equipe_id INTEGER REFERENCES employes(id),
+    id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id  BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
+    chef_equipe_id BIGINT REFERENCES employes(id),
     nom            VARCHAR(255) NOT NULL,
     description    TEXT,
     specialite     VARCHAR(100),
@@ -223,9 +223,9 @@ CREATE TABLE IF NOT EXISTS equipes (
 
 -- 13. MembreEquipe
 CREATE TABLE IF NOT EXISTS membres_equipe (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    equipe_id     INTEGER REFERENCES equipes(id) ON DELETE CASCADE,
-    employe_id    INTEGER REFERENCES employes(id) ON DELETE CASCADE,
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    equipe_id     BIGINT REFERENCES equipes(id) ON DELETE CASCADE,
+    employe_id    BIGINT REFERENCES employes(id) ON DELETE CASCADE,
     date_debut    DATE DEFAULT CURRENT_DATE,
     date_fin      DATE,
     role          VARCHAR(100),
@@ -235,11 +235,11 @@ CREATE TABLE IF NOT EXISTS membres_equipe (
     UNIQUE(equipe_id, employe_id, date_debut)
 );
 
--- 14. AffectationChantier (employés → chantier)
+-- 14. AffectationChantier (employÃ©s â†’ chantier)
 CREATE TABLE IF NOT EXISTS affectation_chantiers (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    employe_id  INTEGER REFERENCES employes(id) ON DELETE CASCADE,
-    chantier_id INTEGER REFERENCES chantiers(id) ON DELETE CASCADE,
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    employe_id  BIGINT REFERENCES employes(id) ON DELETE CASCADE,
+    chantier_id BIGINT REFERENCES chantiers(id) ON DELETE CASCADE,
     date_debut  DATE,
     date_fin    DATE,
     role        VARCHAR(100),
@@ -250,10 +250,10 @@ CREATE TABLE IF NOT EXISTS affectation_chantiers (
 
 -- 15. Pointage
 CREATE TABLE IF NOT EXISTS pointages (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id   INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
-    employe_id      INTEGER REFERENCES employes(id) ON DELETE CASCADE,
-    chantier_id     INTEGER REFERENCES chantiers(id),
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id   BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
+    employe_id      BIGINT REFERENCES employes(id) ON DELETE CASCADE,
+    chantier_id     BIGINT REFERENCES chantiers(id),
     date_jour       DATE NOT NULL,
     heure_debut     TIME,
     heure_fin       TIME,
@@ -268,10 +268,10 @@ CREATE TABLE IF NOT EXISTS pointages (
 
 -- 16. HeureSupplementaire
 CREATE TABLE IF NOT EXISTS heures_supplementaires (
-    id               INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id    INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
-    employe_id       INTEGER REFERENCES employes(id) ON DELETE CASCADE,
-    chantier_id      INTEGER REFERENCES chantiers(id),
+    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id    BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
+    employe_id       BIGINT REFERENCES employes(id) ON DELETE CASCADE,
+    chantier_id      BIGINT REFERENCES chantiers(id),
     date_hs          DATE NOT NULL,
     nb_heures        NUMERIC(4,2) DEFAULT 0,
     taux_majoration  NUMERIC(4,2) DEFAULT 1.5,
@@ -285,9 +285,9 @@ CREATE TABLE IF NOT EXISTS heures_supplementaires (
 
 -- 17. HistoriquePoste
 CREATE TABLE IF NOT EXISTS historique_postes (
-    id               INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id    INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
-    employe_id       INTEGER REFERENCES employes(id) ON DELETE CASCADE,
+    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id    BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
+    employe_id       BIGINT REFERENCES employes(id) ON DELETE CASCADE,
     poste            VARCHAR(100) NOT NULL,
     type_contrat     VARCHAR(20),
     salaire_base     NUMERIC(10,2) DEFAULT 0,
@@ -300,13 +300,13 @@ CREATE TABLE IF NOT EXISTS historique_postes (
 );
 
 -- ============================================================================
--- MODULE MATÉRIELS
+-- MODULE MATÃ‰RIELS
 -- ============================================================================
 
 -- 18. Materiel
 CREATE TABLE IF NOT EXISTS materiaux (
-    id               INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id    INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
+    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id    BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
     nom              VARCHAR(255) NOT NULL,
     designation      VARCHAR(255),
     type             VARCHAR(100),
@@ -324,9 +324,9 @@ CREATE TABLE IF NOT EXISTS materiaux (
 
 -- 19. AffectationMateriel
 CREATE TABLE IF NOT EXISTS affectation_materiaux (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    materiel_id INTEGER REFERENCES materiaux(id) ON DELETE CASCADE,
-    chantier_id INTEGER REFERENCES chantiers(id) ON DELETE CASCADE,
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    materiel_id BIGINT REFERENCES materiaux(id) ON DELETE CASCADE,
+    chantier_id BIGINT REFERENCES chantiers(id) ON DELETE CASCADE,
     date_debut  DATE,
     date_fin    DATE,
     is_deleted  TINYINT(1) DEFAULT 0,
@@ -336,9 +336,9 @@ CREATE TABLE IF NOT EXISTS affectation_materiaux (
 
 -- 20. Maintenance
 CREATE TABLE IF NOT EXISTS maintenances (
-    id                    INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id         INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
-    materiel_id           INTEGER REFERENCES materiaux(id) ON DELETE CASCADE,
+    id                    BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id         BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
+    materiel_id           BIGINT REFERENCES materiaux(id) ON DELETE CASCADE,
     date_maintenance      DATE NOT NULL,
     type                  VARCHAR(50),
     cout                  NUMERIC(10,2) DEFAULT 0,
@@ -352,9 +352,9 @@ CREATE TABLE IF NOT EXISTS maintenances (
 
 -- 21. AlerteMateriel
 CREATE TABLE IF NOT EXISTS alertes_materiel (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
-    materiel_id INTEGER REFERENCES materiaux(id),
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
+    materiel_id BIGINT REFERENCES materiaux(id),
     type        VARCHAR(50),
     message     TEXT,
     date_alerte TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -370,8 +370,8 @@ CREATE TABLE IF NOT EXISTS alertes_materiel (
 
 -- 22. Article
 CREATE TABLE IF NOT EXISTS articles (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id   INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id   BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
     reference       VARCHAR(100) UNIQUE,
     nom             VARCHAR(255) NOT NULL,
     description     TEXT,
@@ -385,7 +385,7 @@ CREATE TABLE IF NOT EXISTS articles (
     marge           NUMERIC(5,2) DEFAULT 0,
     tva             NUMERIC(5,2) DEFAULT 20.00,
     poids           NUMERIC(10,2),
-    fournisseur_id  INTEGER REFERENCES fournisseurs(id),
+    fournisseur_id  BIGINT REFERENCES fournisseurs(id),
     code_barre      VARCHAR(100),
     emplacement     VARCHAR(100),
     is_deleted      TINYINT(1) DEFAULT 0,
@@ -395,8 +395,8 @@ CREATE TABLE IF NOT EXISTS articles (
 
 -- 23. Fournisseur
 CREATE TABLE IF NOT EXISTS fournisseurs (
-    id                INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id     INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
+    id                BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id     BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
     nom               VARCHAR(255) NOT NULL,
     contact           VARCHAR(255),
     email             VARCHAR(255),
@@ -415,15 +415,15 @@ CREATE TABLE IF NOT EXISTS fournisseurs (
 
 -- 24. MouvementStock
 CREATE TABLE IF NOT EXISTS mouvements_stock (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id   INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
-    article_id      INTEGER REFERENCES articles(id) ON DELETE CASCADE,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id   BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
+    article_id      BIGINT REFERENCES articles(id) ON DELETE CASCADE,
     type_mouvement  VARCHAR(20) NOT NULL,
     date_mouvement  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     quantite        NUMERIC(10,2) NOT NULL,
     prix_unitaire   NUMERIC(10,2) DEFAULT 0,
-    chantier_id     INTEGER REFERENCES chantiers(id),
-    fournisseur_id  INTEGER REFERENCES fournisseurs(id),
+    chantier_id     BIGINT REFERENCES chantiers(id),
+    fournisseur_id  BIGINT REFERENCES fournisseurs(id),
     reference       VARCHAR(100),
     notes           TEXT,
     is_deleted      TINYINT(1) DEFAULT 0,
@@ -437,8 +437,8 @@ CREATE TABLE IF NOT EXISTS mouvements_stock (
 
 -- 25. Client
 CREATE TABLE IF NOT EXISTS clients (
-    id               INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id    INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
+    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id    BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
     type             VARCHAR(20) DEFAULT 'particulier',
     civilite         VARCHAR(20),
     nom              VARCHAR(255) NOT NULL,
@@ -459,7 +459,7 @@ CREATE TABLE IF NOT EXISTS clients (
     mode_paiement    VARCHAR(50),
     encours_max      NUMERIC(12,2) DEFAULT 0,
     encours_actuel   NUMERIC(12,2) DEFAULT 0,
-    commercial_id    INTEGER REFERENCES utilisateurs(id),
+    commercial_id    BIGINT REFERENCES utilisateurs(id),
     origine          VARCHAR(100),
     rib              TEXT,
     notes            TEXT,
@@ -472,8 +472,8 @@ CREATE TABLE IF NOT EXISTS clients (
 
 -- 26. ClientAdresse
 CREATE TABLE IF NOT EXISTS client_adresses (
-    id        INT AUTO_INCREMENT PRIMARY KEY,
-    client_id INTEGER REFERENCES clients(id) ON DELETE CASCADE,
+    id        BIGINT AUTO_INCREMENT PRIMARY KEY,
+    client_id BIGINT REFERENCES clients(id) ON DELETE CASCADE,
     type      VARCHAR(20) NOT NULL,
     defaut    TINYINT(1) DEFAULT 0,
     ligne1    VARCHAR(255) NOT NULL,
@@ -488,9 +488,9 @@ CREATE TABLE IF NOT EXISTS client_adresses (
 
 -- 27. Devis
 CREATE TABLE IF NOT EXISTS devis (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id   INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
-    client_id       INTEGER REFERENCES clients(id) ON DELETE CASCADE,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id   BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
+    client_id       BIGINT REFERENCES clients(id) ON DELETE CASCADE,
     numero          VARCHAR(50) UNIQUE NOT NULL,
     objet           TEXT,
     montant_ht      NUMERIC(12,2) DEFAULT 0,
@@ -509,10 +509,10 @@ CREATE TABLE IF NOT EXISTS devis (
 
 -- 28. LigneDevis
 CREATE TABLE IF NOT EXISTS lignes_devis (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    devis_id      INTEGER REFERENCES devis(id) ON DELETE CASCADE,
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    devis_id      BIGINT REFERENCES devis(id) ON DELETE CASCADE,
     type          VARCHAR(20) DEFAULT 'article',
-    article_id    INTEGER REFERENCES articles(id),
+    article_id    BIGINT REFERENCES articles(id),
     description   TEXT NOT NULL,
     quantite      NUMERIC(10,2) DEFAULT 0,
     unite         VARCHAR(20),
@@ -529,17 +529,17 @@ CREATE TABLE IF NOT EXISTS lignes_devis (
 
 -- 29. Contrat
 CREATE TABLE IF NOT EXISTS contrats (
-    id                 INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id      INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
-    client_id          INTEGER REFERENCES clients(id) ON DELETE CASCADE,
+    id                 BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id      BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
+    client_id          BIGINT REFERENCES clients(id) ON DELETE CASCADE,
     reference          VARCHAR(50) UNIQUE NOT NULL,
     type_contrat       VARCHAR(50),
     montant            NUMERIC(12,2) DEFAULT 0,
     date_debut         DATE,
     date_fin           DATE,
     statut             VARCHAR(20) DEFAULT 'en_cours',
-    chantier_id        INTEGER REFERENCES chantiers(id),
-    devis_id           INTEGER REFERENCES devis(id),
+    chantier_id        BIGINT REFERENCES chantiers(id),
+    devis_id           BIGINT REFERENCES devis(id),
     objet              TEXT,
     conditions_paiement TEXT,
     date_signature     DATE,
@@ -552,10 +552,10 @@ CREATE TABLE IF NOT EXISTS contrats (
 
 -- 30. Facture
 CREATE TABLE IF NOT EXISTS factures (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id   INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
-    contrat_id      INTEGER REFERENCES contrats(id),
-    client_id       INTEGER REFERENCES clients(id) ON DELETE CASCADE,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id   BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
+    contrat_id      BIGINT REFERENCES contrats(id),
+    client_id       BIGINT REFERENCES clients(id) ON DELETE CASCADE,
     numero          VARCHAR(50) UNIQUE NOT NULL,
     type            VARCHAR(20) DEFAULT 'standard',
     montant_ht      NUMERIC(12,2) DEFAULT 0,
@@ -576,9 +576,9 @@ CREATE TABLE IF NOT EXISTS factures (
 
 -- 31. Paiement
 CREATE TABLE IF NOT EXISTS paiements (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id   INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
-    facture_id      INTEGER REFERENCES factures(id) ON DELETE CASCADE,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id   BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
+    facture_id      BIGINT REFERENCES factures(id) ON DELETE CASCADE,
     montant         NUMERIC(12,2) NOT NULL,
     date_paiement   DATE DEFAULT CURRENT_DATE,
     mode_paiement   VARCHAR(50),
@@ -596,9 +596,9 @@ CREATE TABLE IF NOT EXISTS paiements (
 
 -- 32. Depense
 CREATE TABLE IF NOT EXISTS depenses (
-    id               INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id    INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
-    chantier_id      INTEGER REFERENCES chantiers(id),
+    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id    BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
+    chantier_id      BIGINT REFERENCES chantiers(id),
     description      TEXT NOT NULL,
     montant          NUMERIC(12,2) NOT NULL,
     date_depense     DATE DEFAULT CURRENT_DATE,
@@ -608,7 +608,7 @@ CREATE TABLE IF NOT EXISTS depenses (
     taux_tva         NUMERIC(5,2) DEFAULT 20.00,
     numero_facture   VARCHAR(100),
     mode_paiement    VARCHAR(50),
-    validee_par      INTEGER REFERENCES utilisateurs(id),
+    validee_par      BIGINT REFERENCES utilisateurs(id),
     notes            TEXT,
     is_deleted       TINYINT(1) DEFAULT 0,
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -617,9 +617,9 @@ CREATE TABLE IF NOT EXISTS depenses (
 
 -- 33. RapportFinancier
 CREATE TABLE IF NOT EXISTS rapports_financiers (
-    id               INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id    INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
-    chantier_id      INTEGER REFERENCES chantiers(id),
+    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id    BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
+    chantier_id      BIGINT REFERENCES chantiers(id),
     periode          VARCHAR(20),
     chiffre_affaires NUMERIC(12,2) DEFAULT 0,
     depenses_total   NUMERIC(12,2) DEFAULT 0,
@@ -632,8 +632,8 @@ CREATE TABLE IF NOT EXISTS rapports_financiers (
 
 -- 34. Alerte
 CREATE TABLE IF NOT EXISTS alertes (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id   INTEGER REFERENCES entreprises(id) ON DELETE CASCADE,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id   BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
     titre           VARCHAR(255) NOT NULL,
     message         TEXT,
     type_entite     VARCHAR(50),
@@ -649,7 +649,7 @@ CREATE TABLE IF NOT EXISTS alertes (
 
 -- 35. SyncQueue
 CREATE TABLE IF NOT EXISTS sync_queue (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
     table_name    VARCHAR(100) NOT NULL,
     record_id     INTEGER NOT NULL,
     server_id     INTEGER,

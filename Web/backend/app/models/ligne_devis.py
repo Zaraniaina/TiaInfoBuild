@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import String, Text, Boolean, Numeric, DateTime, Date, ForeignKey, Index, func
+from sqlalchemy import BigInteger, String, Text, Boolean, Numeric, DateTime, Date, ForeignKey, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -9,7 +9,7 @@ from app.database import Base
 class LigneDevis(Base):
     __tablename__ = "lignes_devis"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     devis_id: Mapped[int] = mapped_column(ForeignKey("devis.id", ondelete="CASCADE"))
     type: Mapped[str] = mapped_column(String(20), server_default="article")
     article_id: Mapped[int | None] = mapped_column(ForeignKey("articles.id"))

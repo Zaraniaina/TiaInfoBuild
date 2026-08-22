@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import String, Text, Boolean, Numeric, DateTime, Date, ForeignKey, Index, func
+from sqlalchemy import BigInteger, String, Text, Boolean, Numeric, DateTime, Date, ForeignKey, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -9,7 +9,7 @@ from app.database import Base
 class Employe(Base):
     __tablename__ = "employes"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     entreprise_id: Mapped[int] = mapped_column(ForeignKey("entreprises.id", ondelete="CASCADE"))
     matricule: Mapped[str | None] = mapped_column(String(50))
     nom: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -35,7 +35,6 @@ class Employe(Base):
     )
 
     entreprise: Mapped["Entreprise"] = relationship("Entreprise", back_populates="employes", lazy="selectin")
-    utilisateur: Mapped["Utilisateur | None"] = relationship("Utilisateur", back_populates="employe", lazy="selectin")
     equipes_dirigees: Mapped[list["Equipe"]] = relationship("Equipe", back_populates="chef_equipe", lazy="selectin")
     membres_equipe: Mapped[list["MembreEquipe"]] = relationship("MembreEquipe", back_populates="employe", lazy="selectin")
     affectation_chantiers: Mapped[list["AffectationChantier"]] = relationship("AffectationChantier", back_populates="employe", lazy="selectin")

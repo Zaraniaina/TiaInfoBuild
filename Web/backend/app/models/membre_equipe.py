@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import String, Boolean, DateTime, Date, ForeignKey, UniqueConstraint, Index, func
+from sqlalchemy import BigInteger, String, Boolean, DateTime, Date, ForeignKey, UniqueConstraint, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -9,7 +9,7 @@ from app.database import Base
 class MembreEquipe(Base):
     __tablename__ = "membres_equipe"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     equipe_id: Mapped[int] = mapped_column(ForeignKey("equipes.id", ondelete="CASCADE"))
     employe_id: Mapped[int] = mapped_column(ForeignKey("employes.id", ondelete="CASCADE"))
     date_debut: Mapped[datetime] = mapped_column(Date, server_default=func.current_date())
