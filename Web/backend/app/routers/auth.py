@@ -1,5 +1,5 @@
 """Router pour l'authentification et la gestion des tokens."""
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing_extensions import Annotated
 
+from app.config import settings
 from app.database import get_db
 from app.security import (
     get_current_user,
@@ -67,7 +68,8 @@ async def login(
     )
     refresh_token = create_refresh_token(user.id)
     refresh_hash = hash_password(refresh_token)
-    db_refresh = RefreshToken(utilisateur_id=user.id, token_hash=refresh_hash, expires_at=datetime.now())
+    refresh_expires = datetime.now() + timedelta(days=settings.refresh_token_expire_days)
+    db_refresh = RefreshToken(utilisateur_id=user.id, token_hash=refresh_hash, expires_at=refresh_expires)
     db.add(db_refresh)
     user.derniere_connexion = datetime.now()
     await db.execute(
@@ -127,7 +129,8 @@ async def refresh_token(payload: RefreshRequest, db: DbSession):
     new_access = create_access_token(user.id, role_code, user.entreprise_id, permissions)
     new_refresh = create_refresh_token(user.id)
     new_hash = hash_password(new_refresh)
-    db.add(RefreshToken(utilisateur_id=user.id, token_hash=new_hash, expires_at=datetime.now()))
+    new_refresh_expires = datetime.now() + timedelta(days=settings.refresh_token_expire_days)
+    db.add(RefreshToken(utilisateur_id=user.id, token_hash=new_hash, expires_at=new_refresh_expires))
     await db.commit()
     return Token(access_token=new_access, refresh_token=new_refresh, token_type="Bearer")
 

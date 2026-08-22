@@ -1,5 +1,6 @@
 import { useAuthStore } from '@/stores/auth.store';
 import { api } from '@/services/api';
+import { useNavigate } from 'react-router-dom';
 import type { LoginRequest } from '@/types';
 
 interface AuthResponse {
@@ -18,12 +19,19 @@ interface AuthResponse {
 }
 
 export function useAuth() {
-  const { user, token, isAuthenticated, login, logout } = useAuthStore();
+  const { user, token, isAuthenticated, login, logout: storeLogout } = useAuthStore();
+  const navigate = useNavigate();
 
   const loginUser = async (credentials: LoginRequest) => {
     const { data } = await api.post<AuthResponse>('/auth/login', credentials);
     login(data.access_token, data.refresh_token, data.user);
+    navigate('/dashboard', { replace: true });
     return data;
+  };
+
+  const logout = () => {
+    storeLogout();
+    navigate('/login', { replace: true });
   };
 
   const fetchMe = async () => {
