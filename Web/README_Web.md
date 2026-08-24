@@ -1,6 +1,32 @@
-# 🚀 Guide de démarrage Web — TIA INFO BUILD (XAMPP MySQL)
+# 🚀 Guide de démarrage Web — TIA INFO BUILD (XAMPP MySQL & 11 Rôles RBAC)
 
-Guide pas à pas pour installer, initialiser la base de données MySQL via XAMPP, et démarrer l'application Web (Backend FastAPI + Frontend React) ainsi que la synchronisation avec l'application Desktop.
+Guide complet pour installer, initialiser la base de données MySQL via XAMPP, exécuter les 11 rôles de la spécification `roles_tia_builds/`, et démarrer l'application Web (Backend FastAPI + Frontend React).
+
+---
+
+## 🏗️ Architecture & Spécifications Clés
+
+1. **Clés Primaires & Étrangères Longues (`BIGINT`)** :
+   - L'ensemble des 35 tables de la base de données (`schema.sql` & modèles SQLAlchemy `app/models/*.py`) utilisent des identifiants `BIGINT` (BigInteger en Python/SQL) pour supporter la haute volumétrie multi-tenant.
+   - Migration Alembic : `007_convert_ids_to_bigint.py`.
+
+2. **Référentiel des 11 Rôles Utilisateurs (`roles_tia_builds/`)** :
+   - Application du contrôle d'accès basé sur les rôles (RBAC) avec **interfaces et tableaux de bord dédiés** pour chacun des 11 profils :
+     1. **Super Administrateur SaaS** (`super_admin`) : Back-office SaaS, gestion des abonnements tenants, Mobile Money billing.
+     2. **Administrateur d'Entreprise** (`admin_entreprise`) : Gestion technique, rôles, sécurité, audit des logs de connexion.
+     3. **Direction Générale / DAF** (`directeur`) : Pilotage P&L consolidé, marges réelles, validation des budgets & devis > 50M MGA.
+     4. **Comptable / Responsable Financier** (`comptable`) : Saisie dépenses, calcul des marges automatiques, facturation et impayés.
+     5. **Chef de Projet / Directeur Technique** (`chef_projet`) : Supervision multi-chantiers, arbitrage des ressources inter-chantiers.
+     6. **Chef de Chantier / Conducteur** (`chef_chantier`) : Avancement physique (%), **génération QR Code pointage chantier**, auto-déclaration GPS, incidents.
+     7. **Responsable RH** (`rh`) : Fiches salariés, grille de validation des pointages QR/GPS, validation des heures sup, habilitations.
+     8. **Responsable Matériel** (`materiel`) : Parc d'engins (*Disponible, En Utilisation, En Maintenance, Hors Service*), plannings de maintenance.
+     9. **Magasinier / Stocks** (`magasinier`) : Mouvements de stock, alertes stock minimum/rupture, fournisseurs.
+     10. **Responsable Commercial** (`commercial`) : Devis avec calcul de marge théorique, conversion devis ➔ contrat, suivi facturation.
+     11. **Ouvrier / Employé Terrain** (`employe`) : **Scan mobile du QR Code pointage site**, checklist des tâches du jour.
+
+3. **Politique de Pointage Anti-Fraude (`11_politique_pointage.md`)** :
+   - Endpoint API : `POST /api/rh/pointages/qr-checkin`
+   - Pointage QR Code dynamically generated on site by Chef de Chantier (Catégorie A), auto-déclaration GPS (Catégorie B), QR Code fixe dépôt (Catégorie D).
 
 ---
 
@@ -16,103 +42,61 @@ Guide pas à pas pour installer, initialiser la base de données MySQL via XAMPP
 
 1. Ouvrir **XAMPP Control Panel**.
 2. Cliquer sur **Start** en face du service **MySQL**.
-3. Ouvrir **phpMyAdmin** dans votre navigateur : [http://localhost/phpmyadmin](http://localhost/phpmyadmin)
-4. Cliquer sur **Nouvelle base de données** (New database).
-5. Nom de la base : `tia_build_db` (Interclassement: `utf8mb4_unicode_ci`).
-6. Cliquer sur **Créer**.
-
-> ℹ️ *Par défaut sur XAMPP, l'utilisateur MySQL est `root` sans mot de passe.*
+3. Ouvrir **phpMyAdmin** : [http://localhost/phpmyadmin](http://localhost/phpmyadmin)
+4. Créer la base : `tia_build_db` (`utf8mb4_unicode_ci`).
 
 ---
 
 ## ⚙️ Étape 2 : Backend FastAPI
 
-### 1. Ouvrir le terminal dans `Web/backend` :
 ```powershell
 cd Web/backend
-```
-
-### 2. Créer et activer l'environnement virtuel Python :
-```powershell
 python -m venv env
 .\env\Scripts\Activate.ps1
-```
-
-### 3. Installer les dépendances :
-```powershell
 pip install -r requirements.txt
-```
-
-### 4. Vérifier le fichier `.env` :
-Le fichier `.env` dans `Web/backend/.env` contient :
-```ini
-DATABASE_URL=mysql+aiomysql://root:@localhost:3306/tia_build_db
-SECRET_KEY=tia_info_build_secret_access_key_dev_2026_change_in_prod
-SECRET_KEY_REFRESH=tia_info_build_secret_refresh_key_dev_2026_change_in_prod
-```
-
-### 5. Appliquer les migrations de base de données :
-```powershell
 alembic upgrade head
-```
-
-### 6. Initialiser les données de test (Seed rôles + comptes démo) :
-```powershell
 python app/scripts/init_db.py
-```
-
-### 7. Démarrer le serveur Backend :
-```powershell
 uvicorn app.main:app --reload --port 8000
 ```
-- **API Swagger Docs** : [http://localhost:8000/docs](http://localhost:8000/docs)
+
+- **API Documentation Swagger** : [http://localhost:8000/docs](http://localhost:8000/docs)
 - **Health Check** : [http://localhost:8000/health](http://localhost:8000/health)
 
 ---
 
 ## 💻 Étape 3 : Frontend React (Vite)
 
-### 1. Ouvrir un second terminal dans `Web/frontend` :
 ```powershell
 cd Web/frontend
-```
-
-### 2. Installer les dépendances :
-```powershell
 npm install
-```
-
-### 3. Démarrer le serveur de développement Frontend :
-```powershell
 npm run dev
 ```
+
 - **Application Web** : [http://localhost:5173](http://localhost:5173)
 
 ---
 
-## 🔑 Comptes de Connexion Démo
+## 🔑 Comptes de Connexion Démo (11 Rôles)
 
-| Rôle | Email | Mot de passe | Accès / Portée |
+| Rôle | Email | Mot de passe | Espace & Interface Dédiée |
 |---|---|---|---|
-| **Super Admin** | `admin@tia.mg` | `Admin123!` | Dashboard SaaS, gestion entreprises |
-| **Admin Entreprise** | `demo@btppro.mg` | `Admin123!` | Entreprise BTP PRO (Chantiers, RH, Stocks, Commercial, Finance) |
+| **Super Admin SaaS** | `admin@tia.mg` | `Admin123!` | Dashboard Back-office SaaS & Tenants |
+| **Admin Entreprise** | `demo@btppro.mg` | `Admin123!` | Paramètres & Audit Comptes |
+| **Direction Générale** | `directeur@btppro.mg` | `Admin123!` | Pilotage P&L, Marges & Validations |
+| **Comptable** | `comptable@btppro.mg` | `Admin123!` | Dépenses, Bilan Financier & Impayés |
+| **Chef de Projet** | `chefprojet@btppro.mg` | `Admin123!` | Supervision Multi-Chantiers |
+| **Chef de Chantier** | `chefchantier@btppro.mg` | `Admin123!` | **Générateur QR Pointage**, Avancement % |
+| **Responsable RH** | `rh@btppro.mg` | `Admin123!` | Validation Pointages QR/GPS & Salariés |
+| **Responsable Matériel** | `materiel@btppro.mg` | `Admin123!` | Engins, Maintenances & Affectations |
+| **Magasinier** | `magasinier@btppro.mg` | `Admin123!` | Stock Mini, Entrées/Sorties Dépôt |
+| **Commercial** | `commercial@btppro.mg` | `Admin123!` | Devis, Contrats & Pipeline Clients |
+| **Ouvrier / Terrain** | `ouvrier@btppro.mg` | `Admin123!` | **Scan QR Pointage**, Tâches du Jour |
 
 ---
 
-## 🔄 Synchronisation Bidirectionnelle Desktop ↔ Web
+## 🔄 Synchronisation Desktop ↔ Web
 
-Le serveur Web FastAPI est le **cerveau principal** (Source de Vérité) :
+- **Push (Desktop ➔ Web)** : `POST /api/sync/import-sqlite`
+- **Pull (Web ➔ Desktop)** : `GET /api/sync/export`
+- **Statut** : `GET /api/sync/status`
 
-1. **Desktop → Web (Push)** : L'application Desktop Electron envoie ses données locales SQLite au Web via `POST /api/sync/import-sqlite`.
-2. **Web → Desktop (Pull)** : L'application Desktop récupère les données à jour depuis le Web via `GET /api/sync/export`.
-3. **Statut Sync** : Consultable sur `GET /api/sync/status`.
-
----
-
-## ⚡ Script de démarrage rapide 1-Click (PowerShell)
-
-Vous pouvez aussi démarrer Backend et Frontend simultanément avec le script `Web/start-dev.ps1` :
-```powershell
-cd Web
-.\start-dev.ps1
-```

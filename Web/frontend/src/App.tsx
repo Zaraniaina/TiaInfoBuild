@@ -15,6 +15,7 @@ import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { SuperAdminDashboardPage } from '@/pages/super-admin/SuperAdminDashboardPage'
 import { SuperAdminEntreprisesPage } from '@/pages/super-admin/SuperAdminEntreprisesPage'
 import { SuperAdminUtilisateursPage } from '@/pages/super-admin/SuperAdminUtilisateursPage'
+import { ClientPage } from '@/pages/client/ClientPage'
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
         <Route path="alertes" element={<AlertesPage />} />
         <Route path="historique-logins" element={<HistoriqueLoginsPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="client" element={<ClientPage />} />
         <Route path="super-admin">
           <Route index element={<SuperAdminDashboardPage />} />
           <Route path="entreprises" element={<SuperAdminEntreprisesPage />} />

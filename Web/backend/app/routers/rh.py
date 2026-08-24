@@ -1,15 +1,11 @@
 """Router pour la gestion des ressources humaines (employés, pointages, équipes, heures sup)."""
 from datetime import date, datetime
 from typing import Any
-from typing_extensions import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
-from app.dependencies.auth import get_current_active_user
 from app.crud.employe import EmployeCRUD
 from app.crud.pointage import PointageCRUD
 from app.crud.equipe import EquipeCRUD
@@ -40,10 +36,20 @@ from app.schemas.equipe import (
     EquipeList,
     MembreEquipeCreate,
 )
+from app.security import CurrentUserPayload, DbDep
 
 router = APIRouter()
-CurrentUser = Annotated[dict[str, Any], Depends(get_current_active_user)]
-DbSession = Annotated[AsyncSession, Depends(get_db)]
+
+
+def _require_permission(payload: CurrentUserPayload, permission: str) -> None:
+    from app.core.permissions import PERMISSION_MAP
+    role_code = payload.get("role_code")
+    permissions = PERMISSION_MAP.get(role_code, [])
+    if "*" not in permissions and permission not in permissions:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Permission '{permission}' requise",
+        )
 
 
 class HeureSupplementaireCreate(BaseModel):
@@ -102,14 +108,15 @@ class HeureSupplementaireList(BaseModel):
 
 @router.get("/employes", response_model=dict)
 async def list_employes(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     search: str | None = Query(default=None, description="Recherche par nom ou prénom"),
     poste: str | None = Query(default=None),
     statut: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     size: int = Query(default=25, ge=1, le=100),
 ):
+    _require_permission(payload, "rh:read")
     entreprise_id = payload.get("entreprise_id")
     crud = EmployeCRUD()
     skip = (page - 1) * size
@@ -142,10 +149,11 @@ async def list_employes(
 
 @router.post("/employes", response_model=EmployeResponse, status_code=status.HTTP_201_CREATED)
 async def create_employe(
-    payload: CurrentUser,
+    payload: CurrentUserPayload,
     obj_in: EmployeCreate,
-    db: DbSession,
+    db: DbDep,
 ):
+    _require_permission(payload, "rh:write")
     entreprise_id = payload.get("entreprise_id")
     data = obj_in.model_dump(exclude_unset=True)
     if entreprise_id is not None and not data.get("entreprise_id"):
@@ -158,10 +166,11 @@ async def create_employe(
 
 @router.get("/employes/{id}", response_model=EmployeResponse)
 async def get_employe(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     id: int,
 ):
+    _require_permission(payload, "rh:read")
     entreprise_id = payload.get("entreprise_id")
     crud = EmployeCRUD()
     employe = await crud.get(db, id)
@@ -178,11 +187,12 @@ async def get_employe(
 
 @router.put("/employes/{id}", response_model=EmployeResponse)
 async def update_employe(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     id: int,
     obj_in: EmployeUpdate,
 ):
+    _require_permission(payload, "rh:write")
     entreprise_id = payload.get("entreprise_id")
     crud = EmployeCRUD()
     employe = await crud.get(db, id)
@@ -199,10 +209,11 @@ async def update_employe(
 
 @router.delete("/employes/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_employe(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     id: int,
 ):
+    _require_permission(payload, "rh:delete")
     entreprise_id = payload.get("entreprise_id")
     crud = EmployeCRUD()
     employe = await crud.get(db, id)
@@ -218,11 +229,12 @@ async def delete_employe(
 
 @router.post("/employes/{id}/changer-poste", response_model=EmployeResponse)
 async def changer_poste(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     id: int,
     obj_in: ChangementPosteRequest,
 ):
+    _require_permission(payload, "rh:write")
     entreprise_id = payload.get("entreprise_id")
     user = payload.get("user")
     crud = EmployeCRUD()
@@ -261,8 +273,8 @@ async def changer_poste(
 
 @router.get("/pointages", response_model=dict)
 async def list_pointages(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     employe_id: int | None = Query(default=None),
     date_debut: date | None = Query(default=None),
     date_fin: date | None = Query(default=None),
@@ -270,6 +282,7 @@ async def list_pointages(
     page: int = Query(default=1, ge=1),
     size: int = Query(default=25, ge=1, le=100),
 ):
+    _require_permission(payload, "rh:read")
     entreprise_id = payload.get("entreprise_id")
     crud = PointageCRUD()
     skip = (page - 1) * size
@@ -311,10 +324,11 @@ class QRPointageCheckinRequest(BaseModel):
 
 @router.post("/pointages/qr-checkin", response_model=PointageResponse, status_code=status.HTTP_201_CREATED)
 async def qr_pointage_checkin(
-    payload: CurrentUser,
+    payload: CurrentUserPayload,
     obj_in: QRPointageCheckinRequest,
-    db: DbSession,
+    db: DbDep,
 ):
+    _require_permission(payload, "rh:write")
     entreprise_id = payload.get("entreprise_id")
     pointage_data = {
         "entreprise_id": entreprise_id,
@@ -334,10 +348,11 @@ async def qr_pointage_checkin(
 
 @router.post("/pointages", response_model=PointageResponse, status_code=status.HTTP_201_CREATED)
 async def create_pointage(
-    payload: CurrentUser,
+    payload: CurrentUserPayload,
     obj_in: PointageCreate,
-    db: DbSession,
+    db: DbDep,
 ):
+    _require_permission(payload, "rh:write")
     entreprise_id = payload.get("entreprise_id")
     data = obj_in.model_dump(exclude_unset=True)
     if entreprise_id is not None and not data.get("entreprise_id"):
@@ -352,13 +367,14 @@ async def create_pointage(
 
 @router.get("/equipes", response_model=dict)
 async def list_equipes(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     search: str | None = Query(default=None, description="Recherche par nom"),
     statut: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     size: int = Query(default=25, ge=1, le=100),
 ):
+    _require_permission(payload, "rh:read")
     entreprise_id = payload.get("entreprise_id")
     crud = EquipeCRUD()
     skip = (page - 1) * size
@@ -387,10 +403,11 @@ async def list_equipes(
 
 @router.post("/equipes", response_model=EquipeResponse, status_code=status.HTTP_201_CREATED)
 async def create_equipe(
-    payload: CurrentUser,
+    payload: CurrentUserPayload,
     obj_in: EquipeCreate,
-    db: DbSession,
+    db: DbDep,
 ):
+    _require_permission(payload, "rh:write")
     entreprise_id = payload.get("entreprise_id")
     data = obj_in.model_dump(exclude_unset=True)
     if entreprise_id is not None and not data.get("entreprise_id"):
@@ -403,10 +420,11 @@ async def create_equipe(
 
 @router.get("/equipes/{id}", response_model=EquipeResponse)
 async def get_equipe(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     id: int,
 ):
+    _require_permission(payload, "rh:read")
     entreprise_id = payload.get("entreprise_id")
     crud = EquipeCRUD()
     equipe = await crud.get(db, id)
@@ -423,11 +441,12 @@ async def get_equipe(
 
 @router.post("/equipes/{id}/membres", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def add_membre(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     id: int,
     obj_in: MembreEquipeCreate,
 ):
+    _require_permission(payload, "rh:write")
     entreprise_id = payload.get("entreprise_id")
     crud = EquipeCRUD()
     equipe = await crud.get(db, id)
@@ -448,11 +467,12 @@ async def add_membre(
 
 @router.delete("/equipes/{id}/membres/{membre_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_membre(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     id: int,
     membre_id: int,
 ):
+    _require_permission(payload, "rh:delete")
     entreprise_id = payload.get("entreprise_id")
     crud = EquipeCRUD()
     equipe = await crud.get(db, id)
@@ -474,8 +494,8 @@ async def remove_membre(
 
 @router.get("/heures-sup", response_model=dict)
 async def list_heures_sup(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     employe_id: int | None = Query(default=None),
     chantier_id: int | None = Query(default=None),
     date_debut: date | None = Query(default=None),
@@ -484,6 +504,7 @@ async def list_heures_sup(
     page: int = Query(default=1, ge=1),
     size: int = Query(default=25, ge=1, le=100),
 ):
+    _require_permission(payload, "rh:read")
     entreprise_id = payload.get("entreprise_id")
     crud = BaseCRUD(HeureSupplementaire)
     skip = (page - 1) * size
@@ -518,10 +539,11 @@ async def list_heures_sup(
 
 @router.post("/heures-sup", response_model=HeureSupplementaireResponse, status_code=status.HTTP_201_CREATED)
 async def create_heure_sup(
-    payload: CurrentUser,
+    payload: CurrentUserPayload,
     obj_in: HeureSupplementaireCreate,
-    db: DbSession,
+    db: DbDep,
 ):
+    _require_permission(payload, "rh:write")
     entreprise_id = payload.get("entreprise_id")
     data = obj_in.model_dump(exclude_unset=True)
     if entreprise_id is not None and not data.get("entreprise_id"):
@@ -534,11 +556,12 @@ async def create_heure_sup(
 
 @router.put("/heures-sup/{id}/statut", response_model=HeureSupplementaireResponse)
 async def update_heure_sup_statut(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     id: int,
     obj_in: HeureSupplementaireUpdate,
 ):
+    _require_permission(payload, "rh:write")
     entreprise_id = payload.get("entreprise_id")
     crud = BaseCRUD(HeureSupplementaire)
     hs = await crud.get(db, id)

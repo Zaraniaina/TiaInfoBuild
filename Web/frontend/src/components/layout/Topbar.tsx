@@ -7,8 +7,12 @@ import { api } from '@/services/api'
 export function Topbar() {
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
-  const { toggleSidebar, sidebarOpen } = useUIStore()
+  const { toggleSidebar, sidebarOpen, theme, setTheme } = useUIStore()
   const [notifications, setNotifications] = useState<Array<{ id: number; titre: string }>>([])
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
 
   useEffect(() => {
     api.get('/alertes?non_lues=1&size=5').then(res => {
@@ -25,16 +29,27 @@ export function Topbar() {
     navigate('/login')
   }
 
+  const cycleTheme = () => {
+    const next = theme === 'light' ? 'dark' : theme === 'dark' ? 'auto' : 'light'
+    setTheme(next)
+  }
+
+  const themeIcon = theme === 'light' ? 'bi-sun' : theme === 'dark' ? 'bi-moon' : 'bi-laptop'
+
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <button className="btn btn-link sidebar-toggle" onClick={toggleSidebar}>
+        <button className="btn btn-link sidebar-toggle" onClick={toggleSidebar} aria-label="Basculer le menu">
           <i className={`bi ${sidebarOpen ? 'bi-chevron-double-left' : 'bi-list'}`}></i>
         </button>
         <h4 className="topbar-title">TIA INFO BUILD</h4>
       </div>
 
       <div className="topbar-right">
+        <button className="btn btn-link theme-toggle" onClick={cycleTheme} aria-label="Changer le thème">
+          <i className={`bi ${themeIcon}`}></i>
+        </button>
+
         <div className="topbar-notifications dropdown">
           <button className="btn btn-link notification-btn" data-bs-toggle="dropdown">
             <i className="bi bi-bell"></i>

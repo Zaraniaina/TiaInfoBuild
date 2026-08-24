@@ -5,18 +5,28 @@ import { materielsService } from '@/services/materiels.service'
 export function MaterielsPage() {
   const [materiels, setMateriels] = useState<Materiel[]>([])
   const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [form, setForm] = useState({ nom: '', marque: '', valeur_achat: '', statut: 'disponible' as Materiel['statut'] })
+  const [saving, setSaving] = useState(false)
+
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const data = await materielsService.getAll()
+      setMateriels(data)
+    } catch {
+      setMateriels([
+        { id: 1, entreprise_id: 1, nom: 'Pelle Hydraulique Caterpillar 320', marque: 'Caterpillar', valeur_achat: 150000000, statut: 'disponible', is_deleted: false, created_at: '', updated_at: '' },
+        { id: 2, entreprise_id: 1, nom: 'Bétonnière 350L', marque: 'Imer', valeur_achat: 12000000, statut: 'en_utilisation', is_deleted: false, created_at: '', updated_at: '' },
+        { id: 3, entreprise_id: 1, nom: 'Camion Benne 12T', marque: 'Mercedes-Benz', valeur_achat: 95000000, statut: 'en_maintenance', is_deleted: false, created_at: '', updated_at: '' }
+      ])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    materielsService.getAll()
-      .then(setMateriels)
-      .catch(() => {
-        setMateriels([
-          { id: 1, entreprise_id: 1, nom: 'Pelle Hydraulique Caterpillar 320', marque: 'Caterpillar', valeur_achat: 150000000, statut: 'disponible', is_deleted: false, created_at: '', updated_at: '' },
-          { id: 2, entreprise_id: 1, nom: 'Bétonnière 350L', marque: 'Imer', valeur_achat: 12000000, statut: 'en_utilisation', is_deleted: false, created_at: '', updated_at: '' },
-          { id: 3, entreprise_id: 1, nom: 'Camion Benne 12T', marque: 'Mercedes-Benz', valeur_achat: 95000000, statut: 'en_maintenance', is_deleted: false, created_at: '', updated_at: '' }
-        ])
-      })
-      .finally(() => setLoading(false))
+    loadData()
   }, [])
 
   const getStatutBadge = (statut: string) => {
@@ -29,6 +39,26 @@ export function MaterielsPage() {
     }
   }
 
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await materielsService.create({
+        nom: form.nom,
+        marque: form.marque,
+        valeur_achat: parseFloat(form.valeur_achat),
+        statut: form.statut,
+      })
+      setShowModal(false)
+      setForm({ nom: '', marque: '', valeur_achat: '', statut: 'disponible' })
+      loadData()
+    } catch {
+      alert('Erreur lors de la création du matériel')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="container-fluid py-4">
       {/* Header */}
@@ -37,7 +67,7 @@ export function MaterielsPage() {
           <h2 className="mb-1"><i className="bi bi-tools me-2 text-info"></i>Gestion du Parc Matériel</h2>
           <p className="text-secondary mb-0">Engins, véhicules, équipements et suivis d'interventions de maintenance</p>
         </div>
-        <button className="btn btn-info text-white fw-bold">
+        <button className="btn btn-info text-white fw-bold" onClick={() => setShowModal(true)}>
           <i className="bi bi-plus-circle me-2"></i>Nouveau Matériel
         </button>
       </div>
@@ -65,6 +95,52 @@ export function MaterielsPage() {
           ))}
         </div>
       )}
+
+      {/* Modal Nouveau Matériel */}
+      {showModal && (
+        <div className="modal fade show" style={{ display: 'block' }} tabIndex={-1}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <form onSubmit={handleCreate}>
+                <div className="modal-header">
+                  <h5 className="modal-title">Nouveau Matériel</h5>
+                  <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
+                </div>
+                <div className="modal-body">
+                  <div className="mb-3">
+                    <label className="form-label">Nom</label>
+                    <input className="form-control" required value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Marque</label>
+                    <input className="form-control" value={form.marque} onChange={e => setForm({ ...form, marque: e.target.value })} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Valeur d'achat (MGA)</label>
+                    <input type="number" className="form-control" required min="0" step="0.01" value={form.valeur_achat} onChange={e => setForm({ ...form, valeur_achat: e.target.value })} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Statut</label>
+                    <select className="form-select" value={form.statut} onChange={e => setForm({ ...form, statut: e.target.value as Materiel['statut'] })}>
+                      <option value="disponible">Disponible</option>
+                      <option value="en_utilisation">En Utilisation</option>
+                      <option value="en_maintenance">En Maintenance</option>
+                      <option value="hors_service">Hors Service</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={saving}>Annuler</button>
+                  <button type="submit" className="btn btn-primary" disabled={saving}>
+                    {saving ? 'Enregistrement...' : 'Enregistrer'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {showModal && <div className="modal-backdrop fade show" onClick={() => setShowModal(false)}></div>}
     </div>
   )
 }

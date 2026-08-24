@@ -7,6 +7,9 @@ export function FinancePage() {
   const [depenses, setDepenses] = useState<Depense[]>([])
   const [rapports, setRapports] = useState<RapportFinancier[]>([])
   const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [form, setForm] = useState({ description: '', montant: '', categorie: 'divers', date_depense: '' })
+  const [saving, setSaving] = useState(false)
 
   const loadData = async () => {
     setLoading(true)
@@ -35,6 +38,28 @@ export function FinancePage() {
     loadData()
   }, [activeTab])
 
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await financeService.createDepense({
+        description: form.description,
+        montant: parseFloat(form.montant),
+        categorie: form.categorie,
+        date_depense: form.date_depense || new Date().toISOString().split('T')[0],
+        taux_tva: 20,
+        statut: 'en_attente',
+      })
+      setShowModal(false)
+      setForm({ description: '', montant: '', categorie: 'divers', date_depense: '' })
+      loadData()
+    } catch {
+      alert('Erreur lors de la création de la dépense')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="container-fluid py-4">
       {/* Header */}
@@ -43,6 +68,11 @@ export function FinancePage() {
           <h2 className="mb-1"><i className="bi bi-bank me-2 text-primary"></i>Gestion Financière</h2>
           <p className="text-secondary mb-0">Suivez la trésorerie, la rentabilité, les dépenses et les bilans financiers</p>
         </div>
+        {activeTab === 'depenses' && (
+          <button className="btn btn-primary fw-bold" onClick={() => setShowModal(true)}>
+            <i className="bi bi-plus-circle me-2"></i>Nouvelle Dépense
+          </button>
+        )}
       </div>
 
       {/* Main Tabs */}
@@ -150,6 +180,52 @@ export function FinancePage() {
           </div>
         </div>
       )}
+
+      {/* Modal Nouvelle Dépense */}
+      {showModal && (
+        <div className="modal fade show" style={{ display: 'block' }} tabIndex={-1}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <form onSubmit={handleCreate}>
+                <div className="modal-header">
+                  <h5 className="modal-title">Nouvelle Dépense</h5>
+                  <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
+                </div>
+                <div className="modal-body">
+                  <div className="mb-3">
+                    <label className="form-label">Description</label>
+                    <input className="form-control" required value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Montant (MGA)</label>
+                    <input type="number" className="form-control" required min="0" step="0.01" value={form.montant} onChange={e => setForm({ ...form, montant: e.target.value })} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Catégorie</label>
+                    <select className="form-select" value={form.categorie} onChange={e => setForm({ ...form, categorie: e.target.value })}>
+                      <option value="transport">Transport</option>
+                      <option value="materiaux">Matériaux</option>
+                      <option value="main_oeuvre">Main d'œuvre</option>
+                      <option value="divers">Divers</option>
+                    </select>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Date</label>
+                    <input type="date" className="form-control" value={form.date_depense} onChange={e => setForm({ ...form, date_depense: e.target.value })} />
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={saving}>Annuler</button>
+                  <button type="submit" className="btn btn-primary" disabled={saving}>
+                    {saving ? 'Enregistrement...' : 'Enregistrer'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {showModal && <div className="modal-backdrop fade show" onClick={() => setShowModal(false)}></div>}
     </div>
   )
 }

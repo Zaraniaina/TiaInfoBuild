@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { Devis, Facture, Client, Contrat, Paiement } from '@/types'
 import { commercialService } from '@/services/commercial.service'
+import { useAuthStore } from '@/stores/auth.store'
 
 export function CommercialPage() {
+  const { user } = useAuthStore()
+  const roleCode = user?.role_code || 'employe'
+  const canCreateDevis = ['commercial', 'directeur'].includes(roleCode)
+
   const [activeTab, setActiveTab] = useState<'devis' | 'factures' | 'clients' | 'contrats' | 'paiements'>('devis')
 
   const [devisList, setDevisList] = useState<Devis[]>([])
@@ -115,7 +120,7 @@ export function CommercialPage() {
           <h2 className="mb-1"><i className="bi bi-cart me-2 text-primary"></i>Commercial & Facturation</h2>
           <p className="text-secondary mb-0">Gestion de la relation client, des devis, des contrats et du suivi des encaissements</p>
         </div>
-        {activeTab === 'devis' && (
+        {activeTab === 'devis' && canCreateDevis && (
           <button className="btn btn-primary fw-bold" onClick={() => { setSelectedDevis(null); setDevisForm({ numero: `DEV-2026-00${devisList.length + 1}`, montant_ht: 0, tva: 20, statut: 'brouillon' }); setShowDevisModal(true); }}>
             <i className="bi bi-plus-lg me-2"></i>Nouveau Devis
           </button>

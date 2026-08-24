@@ -12,22 +12,33 @@ from app.dependencies.auth import get_current_active_user
 from app.crud.alerte import AlerteCRUD
 from app.models.alerte import Alerte
 from app.schemas.alerte import AlerteCreate, AlerteResponse, AlerteList, AlerteMarquerLue
+from app.security import CurrentUserPayload, DbDep
+from app.core.permissions import PERMISSION_MAP
 
 router = APIRouter(prefix="/alertes", tags=["alertes"])
-CurrentUser = Annotated[dict[str, Any], Depends(get_current_active_user)]
-DbSession = Annotated[AsyncSession, Depends(get_db)]
+
+
+def _require_permission(payload: dict[str, Any], permission: str) -> None:
+    role_code = payload.get("role_code")
+    permissions = PERMISSION_MAP.get(role_code, [])
+    if "*" not in permissions and permission not in permissions:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Permission '{permission}' required",
+        )
 
 
 @router.get("/", response_model=list[AlerteList])
 async def list_alertes(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     non_lues: bool | None = Query(default=None),
     gravite: str | None = Query(default=None),
     type_entite: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     size: int = Query(default=25, ge=1, le=100),
 ):
+    _require_permission(payload, "alertes:read")
     entreprise_id = payload.get("entreprise_id")
     crud = AlerteCRUD()
     query = select(Alerte).where(Alerte.is_deleted == False)
@@ -44,7 +55,8 @@ async def list_alertes(
 
 
 @router.post("/", response_model=AlerteResponse, status_code=status.HTTP_201_CREATED)
-async def create_alerte(payload: CurrentUser, db: DbSession, data: AlerteCreate):
+async def create_alerte(payload: CurrentUserPayload, db: DbDep, data: AlerteCreate):
+    _require_permission(payload, "alertes:write")
     entreprise_id = payload.get("entreprise_id")
     obj_in = data.model_dump()
     if entreprise_id is not None and not obj_in.get("entreprise_id"):
@@ -57,7 +69,8 @@ async def create_alerte(payload: CurrentUser, db: DbSession, data: AlerteCreate)
 
 
 @router.post("/{id}/lue")
-async def marquer_lue(payload: CurrentUser, db: DbSession, id: int):
+async def marquer_lue(payload: CurrentUserPayload, db: DbDep, id: int):
+    _require_permission(payload, "alertes:write")
     result = await db.execute(select(Alerte).where(Alerte.id == id, Alerte.is_deleted == False))
     alerte = result.scalar_one_or_none()
     if not alerte:
@@ -69,7 +82,8 @@ async def marquer_lue(payload: CurrentUser, db: DbSession, id: int):
 
 
 @router.post("/marquer-toutes-lues")
-async def marquer_toutes_lues(payload: CurrentUser, db: DbSession):
+async def marquer_toutes_lues(payload: CurrentUserPayload, db: DbDep):
+    _require_permission(payload, "alertes:write")
     entreprise_id = payload.get("entreprise_id")
     await db.execute(
         Alerte.__table__.update()

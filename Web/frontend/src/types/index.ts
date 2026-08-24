@@ -645,15 +645,22 @@ export interface HistoriqueConnexion {
 // ============================================================
 
 export interface DashboardStats {
+  ca_total: number;
   ca_mois: number;
   depenses_mois: number;
+  margin_net: number;
   factures_en_retard: number;
+  factures_retard: number;
+  devis_pending_dg: number;
   nb_chantiers_actifs: number;
   nb_employes: number;
   nb_articles: number;
   nb_clients: number;
   nb_devis: number;
   nb_materiels: number;
+  stocks_alerte: number;
+  attendance_rate: number;
+  maintenance_due: number;
   top_chantiers: TopChantier[];
   ca_evolution: CAEvolution[];
   alertes_recentes: Alerte[];

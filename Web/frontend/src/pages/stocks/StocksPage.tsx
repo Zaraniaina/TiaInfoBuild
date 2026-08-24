@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
 import type { Article, MouvementStock, Fournisseur } from '@/types'
 import { stocksService } from '@/services/stocks.service'
+import { useAuthStore } from '@/stores/auth.store'
 
 export function StocksPage() {
+  const { user } = useAuthStore()
+  const roleCode = user?.role_code || 'employe'
+  const canCreateArticle = ['magasinier'].includes(roleCode)
+  const canCreateMouvement = ['magasinier', 'chef_chantier', 'employe'].includes(roleCode)
+
   const [activeTab, setActiveTab] = useState<'articles' | 'mouvements' | 'fournisseurs'>('articles')
   const [articles, setArticles] = useState<Article[]>([])
   const [mouvements, setMouvements] = useState<MouvementStock[]>([])

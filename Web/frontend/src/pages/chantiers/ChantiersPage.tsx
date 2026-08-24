@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { Chantier } from '@/types'
 import { chantiersService } from '@/services/chantiers.service'
+import { useAuthStore } from '@/stores/auth.store'
 
 export function ChantiersPage() {
+  const { user } = useAuthStore()
+  const roleCode = user?.role_code || 'employe'
+  const canCreateChantier = ['super_admin', 'admin_entreprise', 'directeur', 'chef_projet'].includes(roleCode)
+
   const [chantiers, setChantiers] = useState<Chantier[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -143,9 +148,11 @@ export function ChantiersPage() {
           <p className="text-secondary mb-0">Gestion et suivi des chantiers</p>
         </div>
 
-        <button className="btn btn-primary fw-bold" onClick={() => { setSelectedChantier(null); setFormData({}); setShowModal(true); }}>
-          <i className="bi bi-plus-lg me-1"></i>Nouveau chantier
-        </button>
+        {canCreateChantier && (
+          <button className="btn btn-primary fw-bold" onClick={() => { setSelectedChantier(null); setFormData({}); setShowModal(true); }}>
+            <i className="bi bi-plus-lg me-1"></i>Nouveau chantier
+          </button>
+        )}
       </div>
 
       {/* Filtres et recherche */}

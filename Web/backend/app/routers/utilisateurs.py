@@ -9,6 +9,7 @@ from typing_extensions import Annotated
 from app.database import get_db
 from app.security import get_current_user
 from app.dependencies.auth import get_current_active_user
+from app.dependencies.permissions import require_permission
 from app.crud.utilisateur import UtilisateurCRUD
 from app.models.utilisateur import Utilisateur
 from app.models.role import Role
@@ -17,11 +18,12 @@ from app.schemas.utilisateur import UtilisateurCreate, UtilisateurUpdate, Utilis
 router = APIRouter(prefix="/utilisateurs", tags=["utilisateurs"])
 CurrentUser = Annotated[dict[str, Any], Depends(get_current_active_user)]
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+AdminCheck = Annotated[dict[str, Any], Depends(require_permission("parametres:write"))]
 
 
 @router.get("/", response_model=dict)
 async def list_utilisateurs(
-    payload: CurrentUser,
+    payload: AdminCheck,
     db: DbSession,
     search: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
@@ -47,7 +49,7 @@ async def list_utilisateurs(
 
 
 @router.post("/", response_model=UtilisateurResponse, status_code=status.HTTP_201_CREATED)
-async def create_utilisateur(payload: CurrentUser, db: DbSession, data: UtilisateurCreate):
+async def create_utilisateur(payload: AdminCheck, db: DbSession, data: UtilisateurCreate):
     entreprise_id = payload.get("entreprise_id")
     obj_in = data.model_dump(exclude={"password"})
     if entreprise_id is not None and not obj_in.get("entreprise_id"):
@@ -62,7 +64,7 @@ async def create_utilisateur(payload: CurrentUser, db: DbSession, data: Utilisat
 
 
 @router.get("/{id}", response_model=UtilisateurResponse)
-async def get_utilisateur(payload: CurrentUser, db: DbSession, id: int):
+async def get_utilisateur(payload: AdminCheck, db: DbSession, id: int):
     entreprise_id = payload.get("entreprise_id")
     result = await db.execute(select(Utilisateur).where(Utilisateur.id == id, Utilisateur.is_deleted == False))
     user = result.scalar_one_or_none()
@@ -74,7 +76,7 @@ async def get_utilisateur(payload: CurrentUser, db: DbSession, id: int):
 
 
 @router.put("/{id}", response_model=UtilisateurResponse)
-async def update_utilisateur(payload: CurrentUser, db: DbSession, id: int, data: UtilisateurUpdate):
+async def update_utilisateur(payload: AdminCheck, db: DbSession, id: int, data: UtilisateurUpdate):
     entreprise_id = payload.get("entreprise_id")
     result = await db.execute(select(Utilisateur).where(Utilisateur.id == id, Utilisateur.is_deleted == False))
     user = result.scalar_one_or_none()
@@ -91,7 +93,7 @@ async def update_utilisateur(payload: CurrentUser, db: DbSession, id: int, data:
 
 
 @router.put("/{id}/role", response_model=UtilisateurResponse)
-async def update_utilisateur_role(payload: CurrentUser, db: DbSession, id: int, data: UtilisateurRoleUpdate):
+async def update_utilisateur_role(payload: AdminCheck, db: DbSession, id: int, data: UtilisateurRoleUpdate):
     result = await db.execute(select(Utilisateur).where(Utilisateur.id == id, Utilisateur.is_deleted == False))
     user = result.scalar_one_or_none()
     if not user:
@@ -103,7 +105,7 @@ async def update_utilisateur_role(payload: CurrentUser, db: DbSession, id: int, 
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_utilisateur(payload: CurrentUser, db: DbSession, id: int):
+async def delete_utilisateur(payload: AdminCheck, db: DbSession, id: int):
     entreprise_id = payload.get("entreprise_id")
     result = await db.execute(select(Utilisateur).where(Utilisateur.id == id, Utilisateur.is_deleted == False))
     user = result.scalar_one_or_none()

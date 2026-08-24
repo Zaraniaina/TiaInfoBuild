@@ -543,3 +543,34 @@ async def duplicate_facture(
     await db.flush()
     await db.refresh(nouvelle_facture)
     return nouvelle_facture
+
+
+# ============================================================
+# VALIDATION DEVIS (Direction Générale)
+# ============================================================
+
+class DevisValidationRequest(BaseModel):
+    avis: str = Field(..., min_length=1, max_length=255)
+    approuve: bool = True
+
+
+@router.post("/devis/{id}/valider", response_model=DevisResponse)
+async def valider_devis(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+    data: DevisValidationRequest,
+):
+    _require_permission(payload, "commercial:write")
+    entreprise_id = _get_entreprise_id(payload)
+    devis = await devis_crud.get(db, id)
+    if not devis or devis.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Devis non trouvé")
+    if devis.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    devis.statut = "accepte" if data.approuve else "refuse"
+    devis.notes = f"{devis.notes or ''}\n[VALIDATION DG] {data.avis}".strip()
+    await db.flush()
+    await db.refresh(devis)
+    return devis

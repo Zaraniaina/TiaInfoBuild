@@ -1,14 +1,12 @@
 """Router pour la gestion des stocks, articles, fournisseurs et mouvements."""
 from datetime import date, datetime
 from typing import Any
-from typing_extensions import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.auth import get_current_active_user
+from app.security import CurrentUserPayload, DbDep
 from app.crud.article import ArticleCRUD
 from app.crud.fournisseur import FournisseurCRUD
 from app.crud.mouvement_stock import MouvementStockCRUD
@@ -35,23 +33,44 @@ from app.schemas.mouvement_stock import (
     MouvementStockList,
 )
 
+_permission_map = None
+
+
+def _get_permission_map():
+    global _permission_map
+    if _permission_map is None:
+        from app.core.permissions import PERMISSION_MAP
+        _permission_map = PERMISSION_MAP
+    return _permission_map
+
+
+def _require_permission(payload: CurrentUserPayload, permission: str) -> None:
+    role_code = payload.get("role_code")
+    perm_map = _get_permission_map()
+    permissions = perm_map.get(role_code, [])
+    if "*" not in permissions and permission not in permissions:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Permission '{permission}' requise",
+        )
+
+
 router = APIRouter()
-CurrentUser = Annotated[dict[str, Any], Depends(get_current_active_user)]
-DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 
 # --- Articles ---
 
 @router.get("/articles", response_model=dict)
 async def list_articles(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     search: str | None = Query(default=None, description="Recherche par nom ou référence"),
     categorie: str | None = Query(default=None),
     fournisseur_id: int | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     size: int = Query(default=25, ge=1, le=100),
 ):
+    _require_permission(payload, "stocks:read")
     entreprise_id = payload.get("entreprise_id")
     crud = ArticleCRUD()
     skip = (page - 1) * size
@@ -84,10 +103,11 @@ async def list_articles(
 
 @router.post("/articles", response_model=ArticleResponse, status_code=status.HTTP_201_CREATED)
 async def create_article(
-    payload: CurrentUser,
+    payload: CurrentUserPayload,
     obj_in: ArticleCreate,
-    db: DbSession,
+    db: DbDep,
 ):
+    _require_permission(payload, "stocks:write")
     entreprise_id = payload.get("entreprise_id")
     data = obj_in.model_dump(exclude_unset=True)
     if entreprise_id is not None and not data.get("entreprise_id"):
@@ -100,11 +120,12 @@ async def create_article(
 
 @router.put("/articles/{id}", response_model=ArticleResponse)
 async def update_article(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     id: int,
     obj_in: ArticleUpdate,
 ):
+    _require_permission(payload, "stocks:write")
     entreprise_id = payload.get("entreprise_id")
     crud = ArticleCRUD()
     article = await crud.get(db, id)
@@ -121,11 +142,12 @@ async def update_article(
 
 @router.put("/articles/{id}/stock", response_model=ArticleResponse)
 async def adjust_stock(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     id: int,
     obj_in: StockAdjustmentRequest,
 ):
+    _require_permission(payload, "stocks:write")
     entreprise_id = payload.get("entreprise_id")
     crud = ArticleCRUD()
     article = await crud.get(db, id)
@@ -165,9 +187,10 @@ async def adjust_stock(
 
 @router.get("/articles/en-alerte", response_model=list[ArticleResponse])
 async def articles_en_alerte(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
 ):
+    _require_permission(payload, "stocks:read")
     entreprise_id = payload.get("entreprise_id")
     if entreprise_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Entreprise requise")
@@ -181,12 +204,13 @@ async def articles_en_alerte(
 
 @router.get("/fournisseurs", response_model=dict)
 async def list_fournisseurs(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     search: str | None = Query(default=None, description="Recherche par nom"),
     page: int = Query(default=1, ge=1),
     size: int = Query(default=25, ge=1, le=100),
 ):
+    _require_permission(payload, "stocks:read")
     entreprise_id = payload.get("entreprise_id")
     crud = FournisseurCRUD()
     skip = (page - 1) * size
@@ -213,10 +237,11 @@ async def list_fournisseurs(
 
 @router.post("/fournisseurs", response_model=FournisseurResponse, status_code=status.HTTP_201_CREATED)
 async def create_fournisseur(
-    payload: CurrentUser,
+    payload: CurrentUserPayload,
     obj_in: FournisseurCreate,
-    db: DbSession,
+    db: DbDep,
 ):
+    _require_permission(payload, "stocks:write")
     entreprise_id = payload.get("entreprise_id")
     data = obj_in.model_dump(exclude_unset=True)
     if entreprise_id is not None and not data.get("entreprise_id"):
@@ -229,11 +254,12 @@ async def create_fournisseur(
 
 @router.put("/fournisseurs/{id}", response_model=FournisseurResponse)
 async def update_fournisseur(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     id: int,
     obj_in: FournisseurUpdate,
 ):
+    _require_permission(payload, "stocks:write")
     entreprise_id = payload.get("entreprise_id")
     crud = FournisseurCRUD()
     fournisseur = await crud.get(db, id)
@@ -252,8 +278,8 @@ async def update_fournisseur(
 
 @router.get("/mouvements", response_model=dict)
 async def list_mouvements(
-    payload: CurrentUser,
-    db: DbSession,
+    payload: CurrentUserPayload,
+    db: DbDep,
     article_id: int | None = Query(default=None),
     date_debut: date | None = Query(default=None),
     date_fin: date | None = Query(default=None),
@@ -261,6 +287,7 @@ async def list_mouvements(
     page: int = Query(default=1, ge=1),
     size: int = Query(default=25, ge=1, le=100),
 ):
+    _require_permission(payload, "stocks:read")
     entreprise_id = payload.get("entreprise_id")
     crud = MouvementStockCRUD()
     skip = (page - 1) * size
@@ -293,10 +320,11 @@ async def list_mouvements(
 
 @router.post("/mouvements", response_model=MouvementStockResponse, status_code=status.HTTP_201_CREATED)
 async def create_mouvement(
-    payload: CurrentUser,
+    payload: CurrentUserPayload,
     obj_in: MouvementStockCreate,
-    db: DbSession,
+    db: DbDep,
 ):
+    _require_permission(payload, "stocks:write")
     entreprise_id = payload.get("entreprise_id")
     data = obj_in.model_dump(exclude_unset=True)
     if entreprise_id is not None and not data.get("entreprise_id"):

@@ -105,20 +105,27 @@ class DashboardStatsResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    ca_total: float | None = Field(default=0.0)
     ca_mois: float | None = Field(default=0.0)
     depenses_mois: float | None = Field(default=0.0)
+    margin_net: float | None = Field(default=0.0)
     factures_en_retard: int | None = None
+    factures_retard: int | None = None
     nb_chantiers_actifs: int | None = None
     nb_employes: int | None = None
     nb_articles: int | None = None
     nb_clients: int | None = None
     nb_devis: int | None = None
+    devis_pending_dg: int | None = None
     nb_materiels: int | None = None
+    stocks_alerte: int | None = None
+    attendance_rate: float | None = None
+    maintenance_due: int | None = None
     top_chantiers: list[dict[str, Any]] | None = None
     ca_evolution: list[dict[str, Any]] | None = None
     alertes_recentes: list[dict[str, Any]] | None = None
 
-    @field_validator("ca_mois", "depenses_mois")
+    @field_validator("ca_total", "ca_mois", "depenses_mois", "margin_net")
     @classmethod
     def validate_non_negative(cls, v: float | None) -> float | None:
         if v is not None and v < 0:

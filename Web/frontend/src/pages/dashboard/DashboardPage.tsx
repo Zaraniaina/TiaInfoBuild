@@ -3,11 +3,12 @@ import { RoleBadge } from '@/components/layout/RoleBadge'
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
 import { CaEvolutionChart, TopChantiersChart, DepensesParCategorieChart } from '@/components/charts/DashboardCharts'
+import type { DashboardStats } from '@/types'
 
 export function DashboardPage() {
   const { user } = useAuthStore()
   const roleCode = user?.role_code || 'employe'
-  const [stats, setStats] = useState<any>(null)
+  const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -16,17 +17,25 @@ export function DashboardPage() {
       .catch(() => {
         setStats({
           ca_total: 145000000,
+          ca_mois: 145000000,
+          depenses_mois: 85000000,
+          margin_net: 60000000,
+          factures_en_retard: 3,
+          factures_retard: 3,
           nb_chantiers_actifs: 12,
           nb_employes: 48,
+          nb_articles: 142,
           nb_clients: 24,
           nb_devis: 8,
+          devis_pending_dg: 2,
           nb_materiels: 19,
-          factures_retard: 3,
           stocks_alerte: 5,
-          margin_net: 60000000,
           attendance_rate: 87.5,
           maintenance_due: 2,
-          devis_pending_dg: 2
+          top_chantiers: [],
+          ca_evolution: [],
+          alertes_recentes: [],
+          activite_recente: []
         })
       })
       .finally(() => setLoading(false))
@@ -244,10 +253,12 @@ export function DashboardPage() {
                   </div>
                 </div>
               </div>
-              <div className="card border-0 shadow-sm p-3 mb-4">
-                <h5 className="fw-bold mb-3"><i className="bi bi-building-gear me-2 text-primary"></i>Supervision Multi-Projets</h5>
-                <TopChantiersChart />
-              </div>
+               <div className="card border-0 shadow-sm p-3 mb-4">
+                 <h5 className="fw-bold mb-3"><i className="bi bi-building-gear me-2 text-primary"></i>Supervision Multi-Projets</h5>
+                 <div style={{ height: '320px' }}>
+                   <TopChantiersChart />
+                 </div>
+               </div>
             </div>
           )}
 
@@ -389,38 +400,44 @@ export function DashboardPage() {
             </div>
           )}
 
-          {/* Rôle 10: Commercial */}
-          {roleCode === 'commercial' && (
-            <div>
-              <div className="row g-3 mb-4">
-                <div className="col-md-3">
-                  <div className="card border-0 shadow-sm p-3 text-center">
-                    <small className="text-muted text-uppercase fw-bold">Portefeuille Clients</small>
-                    <h3 className="fw-bold text-dark mt-2 mb-0">24</h3>
-                  </div>
-                </div>
-                <div className="col-md-3">
-                  <div className="card border-0 shadow-sm p-3 text-center">
-                    <small className="text-muted text-uppercase fw-bold">Devis en Cours</small>
-                    <h3 className="fw-bold text-primary mt-2 mb-0">8</h3>
-                  </div>
-                </div>
-                <div className="col-md-3">
-                  <div className="card border-0 shadow-sm p-3 text-center">
-                    <small className="text-muted text-uppercase fw-bold">Taux de Conversion</small>
-                    <h3 className="fw-bold text-success mt-2 mb-0">62.5%</h3>
-                  </div>
-                </div>
-                <div className="col-md-3">
-                  <div className="card border-0 shadow-sm p-3 text-center">
-                    <small className="text-muted text-uppercase fw-bold">Pipeline CA Proposé</small>
-                    <h3 className="fw-bold text-info mt-2 mb-0">180M MGA</h3>
-                  </div>
-                </div>
-              </div>
-              <a href="/commercial" className="btn btn-primary fw-bold"><i className="bi bi-file-earmark-plus me-2"></i>Rédiger un Devis Client</a>
-            </div>
-          )}
+           {/* Rôle 10: Commercial */}
+           {roleCode === 'commercial' && (
+             <div>
+               <div className="row g-3 mb-4">
+                 <div className="col-md-3">
+                   <div className="card border-0 shadow-sm p-3 text-center">
+                     <small className="text-muted text-uppercase fw-bold">Portefeuille Clients</small>
+                     <h3 className="fw-bold text-dark mt-2 mb-0">24</h3>
+                   </div>
+                 </div>
+                 <div className="col-md-3">
+                   <div className="card border-0 shadow-sm p-3 text-center">
+                     <small className="text-muted text-uppercase fw-bold">Devis en Cours</small>
+                     <h3 className="fw-bold text-primary mt-2 mb-0">8</h3>
+                   </div>
+                 </div>
+                 <div className="col-md-3">
+                   <div className="card border-0 shadow-sm p-3 text-center">
+                     <small className="text-muted text-uppercase fw-bold">Taux de Conversion</small>
+                     <h3 className="fw-bold text-success mt-2 mb-0">62.5%</h3>
+                   </div>
+                 </div>
+                 <div className="col-md-3">
+                   <div className="card border-0 shadow-sm p-3 text-center">
+                     <small className="text-muted text-uppercase fw-bold">Pipeline CA Proposé</small>
+                     <h3 className="fw-bold text-info mt-2 mb-0">180M MGA</h3>
+                   </div>
+                 </div>
+               </div>
+               <div className="card border-0 shadow-sm p-3 mb-4">
+                 <h5 className="fw-bold mb-3"><i className="bi bi-graph-up-arrow me-2 text-success"></i>Performance Commerciale</h5>
+                 <div style={{ height: '280px' }}>
+                   <TopChantiersChart />
+                 </div>
+               </div>
+               <a href="/commercial" className="btn btn-primary fw-bold"><i className="bi bi-file-earmark-plus me-2"></i>Rédiger un Devis Client</a>
+             </div>
+           )}
 
           {/* Rôle 11: Ouvrier / Employé Terrain */}
           {roleCode === 'employe' && (
@@ -455,19 +472,56 @@ export function DashboardPage() {
             </div>
           )}
 
+          {/* Rôle 12: Client */}
+          {roleCode === 'client' && (
+            <div>
+              <div className="alert alert-info bg-info bg-opacity-10 text-info border-0 mb-4 d-flex align-items-center">
+                <i className="bi bi-person-badge fs-4 me-3"></i>
+                <div>
+                  <strong>Espace Client</strong>
+                  <div className="small">Suivi de vos projets, devis et factures.</div>
+                </div>
+              </div>
+              <div className="row g-3 mb-4">
+                <div className="col-md-4">
+                  <div className="card border-0 shadow-sm p-3 text-center">
+                    <small className="text-muted text-uppercase fw-bold">Mes Projets</small>
+                    <h3 className="fw-bold text-primary mt-2 mb-0">0</h3>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <div className="card border-0 shadow-sm p-3 text-center">
+                    <small className="text-muted text-uppercase fw-bold">Devis en Cours</small>
+                    <h3 className="fw-bold text-warning mt-2 mb-0">0</h3>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <div className="card border-0 shadow-sm p-3 text-center">
+                    <small className="text-muted text-uppercase fw-bold">Factures</small>
+                    <h3 className="fw-bold text-success mt-2 mb-0">0</h3>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Widgets communs d'analyse graphiques */}
-          {['super_admin', 'admin_entreprise', 'directeur', 'comptable', 'chef_projet'].includes(roleCode) && (
+          {['super_admin', 'admin_entreprise', 'directeur', 'comptable', 'chef_projet', 'commercial'].includes(roleCode) && (
             <div className="row g-4 mt-2">
               <div className="col-lg-8">
                 <div className="card border-0 shadow-sm p-3">
                   <h5 className="fw-bold mb-3"><i className="bi bi-graph-up me-2 text-primary"></i>Évolution Générale de l'Activité</h5>
-                  <CaEvolutionChart />
+                  <div style={{ height: '320px' }}>
+                    <CaEvolutionChart />
+                  </div>
                 </div>
               </div>
               <div className="col-lg-4">
                 <div className="card border-0 shadow-sm p-3">
                   <h5 className="fw-bold mb-3"><i className="bi bi-pie-chart me-2 text-warning"></i>Dépenses par Poste</h5>
-                  <DepensesParCategorieChart />
+                  <div style={{ height: '320px' }}>
+                    <DepensesParCategorieChart />
+                  </div>
                 </div>
               </div>
             </div>

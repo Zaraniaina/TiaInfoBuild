@@ -1,27 +1,42 @@
 """Router pour les paramètres et la configuration."""
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing_extensions import Annotated
+from fastapi import APIRouter, HTTPException, status
 
+from app.core.permissions import PERMISSION_MAP
 from app.database import get_db
-from app.dependencies.auth import get_current_active_user
 from app.models.entreprise import Entreprise
+from app.models.role import Role
 from app.models.utilisateur import Utilisateur
 from app.models.preference import Preference
+from app.models.historique_connexion import HistoriqueConnexion
 from app.schemas.entreprise import EntrepriseUpdate
 from app.schemas.utilisateur import UtilisateurUpdate
 from app.schemas.role import RoleResponse
+from app.security import CurrentUserPayload, DbDep
+from sqlalchemy import select, func
 
 router = APIRouter(prefix="/parametres", tags=["parametres"])
-CurrentUser = Annotated[dict[str, Any], Depends(get_current_active_user)]
-DbSession = Annotated[AsyncSession, Depends(get_db)]
+
+
+def _require_permission(payload: dict[str, Any], permission: str) -> None:
+    role_code = payload.get("role_code")
+    if not role_code:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission manquante",
+        )
+    permissions = PERMISSION_MAP.get(role_code, [])
+    if "*" not in permissions and permission not in permissions:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vous n'avez pas la permission pour cette action",
+        )
 
 
 @router.get("/entreprise")
-async def get_entreprise(payload: CurrentUser, db: DbSession):
+async def get_entreprise(payload: CurrentUserPayload, db: DbDep):
+    _require_permission(payload, "parametres:read")
     entreprise_id = payload.get("entreprise_id")
     if not entreprise_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Entreprise ID manquant")
@@ -33,7 +48,8 @@ async def get_entreprise(payload: CurrentUser, db: DbSession):
 
 
 @router.put("/entreprise")
-async def update_entreprise(payload: CurrentUser, db: DbSession, data: EntrepriseUpdate):
+async def update_entreprise(payload: CurrentUserPayload, db: DbDep, data: EntrepriseUpdate):
+    _require_permission(payload, "parametres:write")
     entreprise_id = payload.get("entreprise_id")
     if not entreprise_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Entreprise ID manquant")
@@ -50,7 +66,8 @@ async def update_entreprise(payload: CurrentUser, db: DbSession, data: Entrepris
 
 
 @router.put("/facturation")
-async def update_facturation(payload: CurrentUser, db: DbSession, data: EntrepriseUpdate):
+async def update_facturation(payload: CurrentUserPayload, db: DbDep, data: EntrepriseUpdate):
+    _require_permission(payload, "parametres:write")
     entreprise_id = payload.get("entreprise_id")
     if not entreprise_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Entreprise ID manquant")
@@ -69,7 +86,7 @@ async def update_facturation(payload: CurrentUser, db: DbSession, data: Entrepri
 
 
 @router.get("/profile")
-async def get_profile(payload: CurrentUser, db: DbSession):
+async def get_profile(payload: CurrentUserPayload, db: DbDep):
     user_id = payload.get("sub")
     result = await db.execute(select(Utilisateur).where(Utilisateur.id == int(user_id) if user_id else 0))
     user = result.scalar_one_or_none()
@@ -84,7 +101,7 @@ async def get_profile(payload: CurrentUser, db: DbSession):
 
 
 @router.put("/profile")
-async def update_profile(payload: CurrentUser, db: DbSession, data: UtilisateurUpdate):
+async def update_profile(payload: CurrentUserPayload, db: DbDep, data: UtilisateurUpdate):
     user_id = payload.get("sub")
     result = await db.execute(select(Utilisateur).where(Utilisateur.id == int(user_id) if user_id else 0))
     user = result.scalar_one_or_none()
@@ -99,12 +116,59 @@ async def update_profile(payload: CurrentUser, db: DbSession, data: UtilisateurU
 
 
 @router.get("/roles")
-async def list_roles(db: DbSession):
+async def list_roles(payload: CurrentUserPayload, db: DbDep):
+    _require_permission(payload, "parametres:read")
     result = await db.execute(select(Role).order_by(Role.id))
     roles = result.scalars().all()
     return [RoleResponse.model_validate(role) for role in roles]
 
 
 @router.post("/backup")
-async def create_backup(payload: CurrentUser):
+async def create_backup(payload: CurrentUserPayload):
+    _require_permission(payload, "parametres:write")
     return {"download_url": "/downloads/backup-placeholder.zip"}
+
+
+@router.get("/audit-logs")
+async def list_audit_logs(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    page: int = 1,
+    size: int = 50,
+    utilisateur_id: int | None = None,
+    reussi: bool | None = None,
+):
+    _require_permission(payload, "parametres:read")
+    entreprise_id = payload.get("entreprise_id")
+    skip = (page - 1) * size
+
+    query = select(HistoriqueConnexion).where(HistoriqueConnexion.is_deleted == False)
+    if entreprise_id is not None:
+        query = query.join(Utilisateur, HistoriqueConnexion.utilisateur_id == Utilisateur.id).where(Utilisateur.entreprise_id == entreprise_id)
+    if utilisateur_id:
+        query = query.where(HistoriqueConnexion.utilisateur_id == utilisateur_id)
+    if reussi is not None:
+        query = query.where(HistoriqueConnexion.reussi == reussi)
+
+    count_query = select(func.count()).select_from(query.subquery())
+    total = (await db.execute(count_query)).scalar_one() or 0
+
+    result = await db.execute(query.order_by(HistoriqueConnexion.date_connexion.desc()).offset(skip).limit(size))
+    logs = result.scalars().all()
+
+    return {
+        "items": [
+            {
+                "id": log.id,
+                "utilisateur_id": log.utilisateur_id,
+                "ip_address": log.ip_address,
+                "user_agent": log.user_agent,
+                "reussi": log.reussi,
+                "date_connexion": log.date_connexion.isoformat() if log.date_connexion else None,
+            }
+            for log in logs
+        ],
+        "total": total,
+        "page": page,
+        "size": size,
+    }
