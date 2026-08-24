@@ -15,6 +15,10 @@ import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { SuperAdminDashboardPage } from '@/pages/super-admin/SuperAdminDashboardPage'
 import { SuperAdminEntreprisesPage } from '@/pages/super-admin/SuperAdminEntreprisesPage'
 import { SuperAdminUtilisateursPage } from '@/pages/super-admin/SuperAdminUtilisateursPage'
+import { SuperAdminAbonnementsPage } from '@/pages/super-admin/SuperAdminAbonnementsPage'
+import { SuperAdminFacturationPage } from '@/pages/super-admin/SuperAdminFacturationPage'
+import { SuperAdminLogsPage } from '@/pages/super-admin/SuperAdminLogsPage'
+import { SuperAdminParametresPage } from '@/pages/super-admin/SuperAdminParametresPage'
 import { ClientPage } from '@/pages/client/ClientPage'
 
 function App() {
@@ -39,6 +43,10 @@ function App() {
           <Route index element={<SuperAdminDashboardPage />} />
           <Route path="entreprises" element={<SuperAdminEntreprisesPage />} />
           <Route path="utilisateurs" element={<SuperAdminUtilisateursPage />} />
+          <Route path="abonnements" element={<SuperAdminAbonnementsPage />} />
+          <Route path="facturation" element={<SuperAdminFacturationPage />} />
+          <Route path="logs" element={<SuperAdminLogsPage />} />
+          <Route path="parametres" element={<SuperAdminParametresPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

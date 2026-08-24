@@ -65,8 +65,8 @@ export function SuperAdminEntreprisesPage() {
 
   const getPlanBadge = (plan: string) => {
     switch (plan.toLowerCase()) {
-      case 'premium': return 'bg-purple text-white'
-      case 'pro': return 'bg-primary'
+      case 'premium': return 'bg-primary'
+      case 'pro': return 'bg-success'
       case 'enterprise': return 'bg-dark'
       default: return 'bg-secondary'
     }
@@ -77,95 +77,82 @@ export function SuperAdminEntreprisesPage() {
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
         <div>
           <h2 className="fw-bold mb-1"><i className="bi bi-buildings me-2 text-danger"></i>Entreprises Abonnées (Tenants)</h2>
-          <p className="text-muted mb-0">Gestion du parc des entreprises clientes et des souscriptions SaaS</p>
+          <p className="text-secondary mb-0">Gestion du parc des entreprises clientes et des souscriptions SaaS</p>
         </div>
-        <button className="btn btn-danger font-monospace fw-bold" onClick={() => setShowModal(true)}>
+        <button className="btn btn-danger fw-bold" onClick={() => setShowModal(true)}>
           <i className="bi bi-plus-circle me-2"></i>Nouvelle Entreprise
         </button>
       </div>
 
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-body">
-          <div className="row g-3">
-            <div className="col-md-6">
-              <div className="input-group">
-                <span className="input-group-text bg-light border-end-0"><i className="bi bi-search"></i></span>
-                <input
-                  type="text"
-                  className="form-control border-start-0 bg-light"
-                  placeholder="Rechercher par nom ou email..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
-              </div>
-            </div>
+      <div className="table-card mb-4">
+        <div className="table-header">
+          <div className="input-group" style={{ maxWidth: '400px' }}>
+            <span className="input-group-text bg-light border-end-0"><i className="bi bi-search"></i></span>
+            <input
+              type="text"
+              className="form-control border-start-0 bg-light"
+              placeholder="Rechercher par nom ou email..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
           </div>
+        </div>
+        <div className="table-responsive">
+          <table className="table mb-0">
+            <thead>
+              <tr>
+                <th>Entreprise</th>
+                <th>Contact</th>
+                <th>Plan</th>
+                <th>Devise</th>
+                <th>Statut</th>
+                <th className="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(e => (
+                <tr key={e.id}>
+                  <td>
+                    <div className="fw-semibold">{e.nom}</div>
+                    <small className="text-muted">ID: #{e.id} | Créé le {e.date_creation || '—'}</small>
+                  </td>
+                  <td>
+                    <div><i className="bi bi-envelope me-1 text-muted"></i>{e.email || '—'}</div>
+                    {e.telephone && <small className="text-muted"><i className="bi bi-telephone me-1"></i>{e.telephone}</small>}
+                  </td>
+                  <td>
+                    <span className={`badge ${getPlanBadge(e.abonnement)} text-uppercase px-2 py-1`}>
+                      {e.abonnement}
+                    </span>
+                  </td>
+                  <td><span className="badge bg-light text-dark border">{e.devise || 'MGA'}</span></td>
+                  <td>
+                    <span className={`badge ${e.actif ? 'bg-success' : 'bg-danger'}`}>
+                      <i className={`bi ${e.actif ? 'bi-check-circle' : 'bi-x-circle'} me-1`}></i>
+                      {e.actif ? 'Actif' : 'Suspendu'}
+                    </span>
+                  </td>
+                  <td className="text-end">
+                    <button
+                      className={`btn btn-sm ${e.actif ? 'btn-outline-danger' : 'btn-outline-success'} fw-semibold`}
+                      onClick={() => handleToggle(e.id)}
+                    >
+                      {e.actif ? 'Suspendre' : 'Réactiver'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-center py-4 text-muted">
+                    Aucune entreprise trouvée.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
-
-      {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border text-danger" role="status"></div>
-        </div>
-      ) : (
-        <div className="card border-0 shadow-sm overflow-hidden">
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
-              <thead className="table-light text-uppercase fs-7 text-muted">
-                <tr>
-                  <th>Entreprise</th>
-                  <th>Contact</th>
-                  <th>Plan Tarifaire</th>
-                  <th>Devise</th>
-                  <th>Statut Accès</th>
-                  <th className="text-end">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(e => (
-                  <tr key={e.id}>
-                    <td>
-                      <div className="fw-bold text-dark">{e.nom}</div>
-                      <small className="text-muted">ID: #{e.id} | Créé le {e.date_creation || '—'}</small>
-                    </td>
-                    <td>
-                      <div><i className="bi bi-envelope me-1 text-muted"></i>{e.email || '—'}</div>
-                      {e.telephone && <small className="text-muted"><i className="bi bi-telephone me-1"></i>{e.telephone}</small>}
-                    </td>
-                    <td>
-                      <span className={`badge ${getPlanBadge(e.abonnement)} text-uppercase px-2 py-1`}>
-                        {e.abonnement}
-                      </span>
-                    </td>
-                    <td><span className="badge bg-light text-dark border">{e.devise || 'MGA'}</span></td>
-                    <td>
-                      <span className={`badge ${e.actif ? 'bg-success' : 'bg-danger'}`}>
-                        <i className={`bi ${e.actif ? 'bi-check-circle' : 'bi-x-circle'} me-1`}></i>
-                        {e.actif ? 'Actif' : 'Suspendu'}
-                      </span>
-                    </td>
-                    <td className="text-end">
-                      <button
-                        className={`btn btn-sm ${e.actif ? 'btn-outline-danger' : 'btn-outline-success'} fw-semibold`}
-                        onClick={() => handleToggle(e.id)}
-                      >
-                        {e.actif ? 'Suspendre' : 'Réactiver'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="text-center py-4 text-muted">
-                      Aucune entreprise trouvée.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       {/* Modal Création Entreprise */}
       {showModal && (
@@ -253,4 +240,3 @@ export function SuperAdminEntreprisesPage() {
     </div>
   )
 }
-

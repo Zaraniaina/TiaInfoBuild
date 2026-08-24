@@ -2,32 +2,45 @@ import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth.store'
 
+type UserRole = 'admin_entreprise' | 'directeur' | 'comptable' | 'chef_chantier' | 'chef_projet' | 'rh' | 'materiel' | 'magasinier' | 'commercial' | 'employe' | 'client'
+
+interface UserRow {
+  id: number
+  prenom: string
+  nom: string
+  email: string
+  role_code: UserRole
+  role_nom?: string
+  statut: 'actif' | 'inactif'
+  date_creation?: string
+  derniere_connexion?: string
+}
+
 export function SettingsPage() {
   const { user } = useAuthStore()
-  const [activeTab, setActiveTab] = useState<'entreprise' | 'facturation' | 'utilisateurs' | 'profil' | 'sauvegarde' | 'sync'>('entreprise')
+  const [activeTab, setActiveTab] = useState<'utilisateurs' | 'parametres' | 'audit' | 'profil'>('utilisateurs')
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [users, setUsers] = useState<UserRow[]>([])
+  const [search, setSearch] = useState('')
+  const [showUserModal, setShowUserModal] = useState(false)
+  const [editingUser, setEditingUser] = useState<UserRow | null>(null)
+  const [userForm, setUserForm] = useState({ prenom: '', nom: '', email: '', role_code: 'employe' as UserRole, password: '' })
+  const [logs, setLogs] = useState<any[]>([])
+  const [auditLoading, setAuditLoading] = useState(false)
 
-  // Entreprise Form
   const [entrepriseForm, setEntrepriseForm] = useState({
     nom: 'TIA INFO BUILD SARL',
     siret: '123 456 789 00012',
-    statut_juridique: 'SARL',
     telephone: '020 22 999 88',
     email: 'contact@tia-infobuild.mg',
     adresse: 'Zone Industrielle Akorondrano',
-    ville: 'Antananarivo 101'
-  })
-
-  // Facturation Form
-  const [facturationForm, setFacturationForm] = useState({
-    prefixe_devis: 'DEV-',
-    prefixe_facture: 'FAC-',
-    prefixe_contrat: 'CTR-',
+    ville: 'Antananarivo 101',
+    devise: 'MGA',
     tva_defaut: 20,
-    delai_paiement_jours: 30
+    delai_paiement_jours: 30,
   })
 
-  // Profil Form
   const [profilForm, setProfilForm] = useState({
     nom: user?.nom || '',
     prenom: user?.prenom || '',
@@ -36,60 +49,160 @@ export function SettingsPage() {
     nouveau_password: ''
   })
 
-  // Users List Mock
-  const [usersList, setUsersList] = useState([
-    { id: 1, nom: user?.nom || 'Admin', prenom: user?.prenom || 'User', email: user?.email || 'admin@tia.mg', role: 'ADMIN', actif: true },
-    { id: 2, nom: 'RABARISON', prenom: 'Michel', email: 'michel@tia.mg', role: 'CHEF_CHANTIER', actif: true }
-  ])
-
-  const handleSaveEntreprise = (e: React.FormEvent) => {
-    e.preventDefault()
-    alert('Paramètres d\'entreprise sauvegardés avec succès !')
+  const loadUsers = () => {
+    setLoading(true)
+    api.get('/utilisateurs?size=100')
+      .then(res => {
+        const items = res.data.items || res.data || []
+        setUsers(items.map((u: any) => ({
+          id: u.id,
+          prenom: u.prenom || '',
+          nom: u.nom || '',
+          email: u.email || '',
+          role_code: u.role_code || u.role?.code || 'employe',
+          role_nom: u.role?.nom || u.role_nom || 'Employé',
+          statut: u.statut === 'inactif' ? 'inactif' : 'actif',
+          date_creation: u.date_creation,
+          derniere_connexion: u.derniere_connexion,
+        })))
+      })
+      .catch(() => {
+        setUsers([
+          { id: 1, prenom: 'Admin', nom: 'System', email: 'admin@tia.mg', role_code: 'admin_entreprise', role_nom: 'Admin Entreprise', statut: 'actif', date_creation: '2026-01-01', derniere_connexion: '2026-08-24 08:00' },
+          { id: 2, prenom: 'Michel', nom: 'RABARISON', email: 'michel@tia.mg', role_code: 'chef_chantier', role_nom: 'Chef de Chantier', statut: 'actif', date_creation: '2026-02-01', derniere_connexion: '2026-08-23 17:30' },
+          { id: 3, prenom: 'Jean', nom: 'DUPONT', email: 'jean@tia.mg', role_code: 'employe', role_nom: 'Ouvrier', statut: 'inactif', date_creation: '2026-03-10', derniere_connexion: '2026-07-15 12:00' },
+        ])
+      })
+      .finally(() => setLoading(false))
   }
 
-  const handleSaveFacturation = (e: React.FormEvent) => {
-    e.preventDefault()
-    alert('Paramètres de facturation mis à jour !')
+  const loadLogs = () => {
+    setAuditLoading(true)
+    api.get('/historique-connexions?size=50')
+      .then(res => setLogs(res.data.items || res.data || []))
+      .catch(() => {
+        setLogs([
+          { id: 1, utilisateur_id: 1, ip_address: '192.168.1.50', user_agent: 'Chrome 128.0.0 (Windows 11)', reussi: true, date_connexion: '2026-08-24 08:00:12' },
+          { id: 2, utilisateur_id: 2, ip_address: '192.168.1.51', user_agent: 'Firefox 120.0 (Windows 11)', reussi: true, date_connexion: '2026-08-23 17:45:00' },
+          { id: 3, utilisateur_id: 3, ip_address: '10.0.0.5', user_agent: 'Chrome 128.0.0 (Android)', reussi: false, date_connexion: '2026-08-22 09:12:33' },
+        ])
+      })
+      .finally(() => setAuditLoading(false))
   }
 
-  const handleSaveProfil = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (activeTab === 'utilisateurs') loadUsers()
+    if (activeTab === 'audit') loadLogs()
+  }, [activeTab])
+
+  const handleSaveEntreprise = async (e: React.FormEvent) => {
     e.preventDefault()
-    alert('Profil utilisateur mis à jour !')
+    setSaving(true)
+    try {
+      await api.put('/parametres/entreprise', entrepriseForm)
+      alert('Paramètres d\'entreprise sauvegardés avec succès !')
+    } catch {
+      alert('Erreur lors de la sauvegarde')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const handleDownloadBackup = () => {
-    const backupData = JSON.stringify({ entreprise: entrepriseForm, facturation: facturationForm, date: new Date().toISOString() })
-    const blob = new Blob([backupData], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `tia_info_build_backup_${new Date().toISOString().split('T')[0]}.json`
-    a.click()
+  const handleSaveProfil = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await api.put('/parametres/profil', profilForm)
+      alert('Profil utilisateur mis à jour !')
+    } catch {
+      alert('Erreur lors de la mise à jour')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const openCreateUser = () => {
+    setEditingUser(null)
+    setUserForm({ prenom: '', nom: '', email: '', role_code: 'employe', password: '' })
+    setShowUserModal(true)
+  }
+
+  const openEditUser = (u: UserRow) => {
+    setEditingUser(u)
+    setUserForm({ prenom: u.prenom, nom: u.nom, email: u.email, role_code: u.role_code, password: '' })
+    setShowUserModal(true)
+  }
+
+  const handleSaveUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      if (editingUser) {
+        await api.put(`/utilisateurs/${editingUser.id}`, userForm)
+      } else {
+        await api.post('/utilisateurs', userForm)
+      }
+      setShowUserModal(false)
+      loadUsers()
+    } catch {
+      alert('Erreur lors de l\'enregistrement de l\'utilisateur')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleToggleUser = async (u: UserRow) => {
+    try {
+      await api.post(`/utilisateurs/${u.id}/toggle-actif`)
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, statut: x.statut === 'actif' ? 'inactif' : 'actif' } : x))
+    } catch {
+      alert('Erreur lors du changement de statut')
+    }
+  }
+
+  const filteredUsers = users.filter(u => `${u.prenom} ${u.nom}`.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()))
+
+  const getRoleBadge = (role: string) => {
+    const map: Record<string, string> = {
+      super_admin: 'bg-danger',
+      admin_entreprise: 'bg-primary',
+      directeur: 'bg-success',
+      comptable: 'bg-info',
+      chef_chantier: 'bg-warning text-dark',
+      chef_projet: 'bg-dark',
+      rh: 'bg-purple text-white',
+      materiel: 'bg-secondary',
+      magasinier: 'bg-secondary',
+      commercial: 'bg-success',
+      employe: 'bg-light text-dark border',
+      client: 'bg-light text-dark border',
+    }
+    return map[role] || 'bg-secondary'
   }
 
   return (
     <div className="container-fluid py-4">
-      {/* Header */}
-      <div className="mb-4">
-        <h2 className="mb-1"><i className="bi bi-gear me-2 text-primary"></i>Paramètres & Configuration</h2>
-        <p className="text-secondary mb-0">Configuration de l'entreprise, des modèles de document, des utilisateurs et de la synchronisation</p>
+      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+          <h2 className="mb-1 fw-bold"><i className="bi bi-gear me-2 text-primary"></i>Administration & Paramètres</h2>
+          <p className="text-secondary mb-0">Gestion des comptes, rôles, paramètres entreprise et audit de sécurité</p>
+        </div>
       </div>
 
-      {/* Settings Navigation Tabs */}
       <ul className="nav nav-pills mb-4 bg-white p-2 rounded shadow-sm">
-        <li className="nav-item">
-          <button className={`nav-link ${activeTab === 'entreprise' ? 'active' : ''}`} onClick={() => setActiveTab('entreprise')}>
-            <i className="bi bi-building me-2"></i>Entreprise
-          </button>
-        </li>
-        <li className="nav-item">
-          <button className={`nav-link ${activeTab === 'facturation' ? 'active' : ''}`} onClick={() => setActiveTab('facturation')}>
-            <i className="bi bi-receipt me-2"></i>Facturation
-          </button>
-        </li>
         <li className="nav-item">
           <button className={`nav-link ${activeTab === 'utilisateurs' ? 'active' : ''}`} onClick={() => setActiveTab('utilisateurs')}>
             <i className="bi bi-people me-2"></i>Utilisateurs & Rôles
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'parametres' ? 'active' : ''}`} onClick={() => setActiveTab('parametres')}>
+            <i className="bi bi-building me-2"></i>Paramètres Entreprise
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'audit' ? 'active' : ''}`} onClick={() => setActiveTab('audit')}>
+            <i className="bi bi-shield-check me-2"></i>Audit & Logs
           </button>
         </li>
         <li className="nav-item">
@@ -97,161 +210,227 @@ export function SettingsPage() {
             <i className="bi bi-person me-2"></i>Mon Profil
           </button>
         </li>
-        <li className="nav-item">
-          <button className={`nav-link ${activeTab === 'sauvegarde' ? 'active' : ''}`} onClick={() => setActiveTab('sauvegarde')}>
-            <i className="bi bi-hdd-network me-2"></i>Sauvegarde
-          </button>
-        </li>
-        <li className="nav-item">
-          <button className={`nav-link ${activeTab === 'sync' ? 'active' : ''}`} onClick={() => setActiveTab('sync')}>
-            <i className="bi bi-arrow-repeat me-2"></i>Sync Web/Desktop
-          </button>
-        </li>
       </ul>
 
-      {/* Tab Panels */}
-      <div className="card border-0 shadow-sm p-4">
-        {activeTab === 'entreprise' && (
-          <form onSubmit={handleSaveEntreprise}>
-            <h5 className="fw-bold mb-3 border-bottom pb-2">Informations Générales de l'Entreprise</h5>
-            <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">Raison Sociale *</label>
-                <input type="text" className="form-control" required value={entrepriseForm.nom} onChange={e => setEntrepriseForm({ ...entrepriseForm, nom: e.target.value })} />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">SIRET / NIF *</label>
-                <input type="text" className="form-control font-monospace" required value={entrepriseForm.siret} onChange={e => setEntrepriseForm({ ...entrepriseForm, siret: e.target.value })} />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">Email Contact</label>
-                <input type="email" className="form-control" value={entrepriseForm.email} onChange={e => setEntrepriseForm({ ...entrepriseForm, email: e.target.value })} />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">Téléphone</label>
-                <input type="text" className="form-control" value={entrepriseForm.telephone} onChange={e => setEntrepriseForm({ ...entrepriseForm, telephone: e.target.value })} />
-              </div>
-              <div className="col-md-8">
-                <label className="form-label fw-semibold">Adresse</label>
-                <input type="text" className="form-control" value={entrepriseForm.adresse} onChange={e => setEntrepriseForm({ ...entrepriseForm, adresse: e.target.value })} />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Ville</label>
-                <input type="text" className="form-control" value={entrepriseForm.ville} onChange={e => setEntrepriseForm({ ...entrepriseForm, ville: e.target.value })} />
-              </div>
+      {activeTab === 'utilisateurs' && (
+        <div className="table-card">
+          <div className="table-header">
+            <div className="input-group" style={{ maxWidth: '400px' }}>
+              <span className="input-group-text bg-light border-end-0"><i className="bi bi-search"></i></span>
+              <input type="text" className="form-control border-start-0 bg-light" placeholder="Rechercher un utilisateur..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <button type="submit" className="btn btn-primary fw-bold mt-4">Enregistrer les modifications</button>
-          </form>
-        )}
-
-        {activeTab === 'facturation' && (
-          <form onSubmit={handleSaveFacturation}>
-            <h5 className="fw-bold mb-3 border-bottom pb-2">Modèles et Numérotation des Documents</h5>
-            <div className="row g-3">
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Préfixe Devis</label>
-                <input type="text" className="form-control font-monospace" value={facturationForm.prefixe_devis} onChange={e => setFacturationForm({ ...facturationForm, prefixe_devis: e.target.value })} />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Préfixe Factures</label>
-                <input type="text" className="form-control font-monospace" value={facturationForm.prefixe_facture} onChange={e => setFacturationForm({ ...facturationForm, prefixe_facture: e.target.value })} />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Préfixe Contrats</label>
-                <input type="text" className="form-control font-monospace" value={facturationForm.prefixe_contrat} onChange={e => setFacturationForm({ ...facturationForm, prefixe_contrat: e.target.value })} />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">Taux TVA par défaut (%)</label>
-                <input type="number" className="form-control font-monospace" value={facturationForm.tva_defaut} onChange={e => setFacturationForm({ ...facturationForm, tva_defaut: Number(e.target.value) })} />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">Délai de paiement par défaut (Jours)</label>
-                <input type="number" className="form-control font-monospace" value={facturationForm.delai_paiement_jours} onChange={e => setFacturationForm({ ...facturationForm, delai_paiement_jours: Number(e.target.value) })} />
-              </div>
-            </div>
-            <button type="submit" className="btn btn-primary fw-bold mt-4">Enregistrer les paramètres</button>
-          </form>
-        )}
-
-        {activeTab === 'utilisateurs' && (
-          <div>
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5 className="fw-bold mb-0">Gestion des Utilisateurs</h5>
-              <button className="btn btn-sm btn-primary fw-bold"><i className="bi bi-person-plus me-1"></i>Nouvel Utilisateur</button>
-            </div>
-            <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0">
-                <thead className="table-light">
-                  <tr>
-                    <th>Utilisateur</th>
-                    <th>Email</th>
-                    <th>Rôle</th>
-                    <th>Statut</th>
+            <button className="btn btn-primary fw-bold" onClick={openCreateUser}><i className="bi bi-person-plus me-2"></i>Nouvel Utilisateur</button>
+          </div>
+          <div className="table-responsive">
+            <table className="table mb-0">
+              <thead>
+                <tr>
+                  <th>Utilisateur</th>
+                  <th>Email</th>
+                  <th>Rôle</th>
+                  <th>Statut</th>
+                  <th>Dernière connexion</th>
+                  <th className="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map(u => (
+                  <tr key={u.id}>
+                    <td className="fw-semibold">{u.prenom} {u.nom}</td>
+                    <td>{u.email}</td>
+                    <td><span className={`badge ${getRoleBadge(u.role_code)}`}>{u.role_nom || u.role_code}</span></td>
+                    <td><span className={`badge ${u.statut === 'actif' ? 'bg-success' : 'bg-secondary'}`}>{u.statut === 'actif' ? 'Actif' : 'Inactif'}</span></td>
+                    <td className="text-muted">{u.derniere_connexion || '—'}</td>
+                    <td className="text-end">
+                      <div className="d-flex gap-1 justify-content-end">
+                        <button className="btn btn-sm btn-outline-primary" onClick={() => openEditUser(u)}><i className="bi bi-pencil"></i></button>
+                        <button className={`btn btn-sm ${u.statut === 'actif' ? 'btn-outline-danger' : 'btn-outline-success'}`} onClick={() => handleToggleUser(u)}>
+                          {u.statut === 'actif' ? <i className="bi bi-x-circle"></i> : <i className="bi bi-check-circle"></i>}
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {usersList.map(u => (
-                    <tr key={u.id}>
-                      <td className="fw-semibold">{u.prenom} {u.nom}</td>
-                      <td>{u.email}</td>
-                      <td><span className="badge bg-dark">{u.role}</span></td>
-                      <td>
-                        <span className={`badge ${u.actif ? 'bg-success' : 'bg-secondary'}`}>
-                          {u.actif ? 'Actif' : 'Inactif'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                ))}
+                {filteredUsers.length === 0 && (
+                  <tr><td colSpan={6} className="text-center py-4 text-muted">Aucun utilisateur trouvé.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'parametres' && (
+        <form onSubmit={handleSaveEntreprise}>
+          <div className="row g-3 mb-4">
+            <div className="col-md-6">
+              <label className="form-label fw-semibold">Raison Sociale *</label>
+              <input type="text" className="form-control" required value={entrepriseForm.nom} onChange={e => setEntrepriseForm({ ...entrepriseForm, nom: e.target.value })} />
+            </div>
+            <div className="col-md-6">
+              <label className="form-label fw-semibold">SIRET / NIF</label>
+              <input type="text" className="form-control font-monospace" value={entrepriseForm.siret} onChange={e => setEntrepriseForm({ ...entrepriseForm, siret: e.target.value })} />
+            </div>
+            <div className="col-md-6">
+              <label className="form-label fw-semibold">Email Contact</label>
+              <input type="email" className="form-control" value={entrepriseForm.email} onChange={e => setEntrepriseForm({ ...entrepriseForm, email: e.target.value })} />
+            </div>
+            <div className="col-md-6">
+              <label className="form-label fw-semibold">Téléphone</label>
+              <input type="text" className="form-control" value={entrepriseForm.telephone} onChange={e => setEntrepriseForm({ ...entrepriseForm, telephone: e.target.value })} />
+            </div>
+            <div className="col-md-8">
+              <label className="form-label fw-semibold">Adresse</label>
+              <input type="text" className="form-control" value={entrepriseForm.adresse} onChange={e => setEntrepriseForm({ ...entrepriseForm, adresse: e.target.value })} />
+            </div>
+            <div className="col-md-4">
+              <label className="form-label fw-semibold">Ville</label>
+              <input type="text" className="form-control" value={entrepriseForm.ville} onChange={e => setEntrepriseForm({ ...entrepriseForm, ville: e.target.value })} />
             </div>
           </div>
-        )}
 
-        {activeTab === 'profil' && (
-          <form onSubmit={handleSaveProfil}>
-            <h5 className="fw-bold mb-3 border-bottom pb-2">Mon Profil & Mot de passe</h5>
-            <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">Prénom</label>
-                <input type="text" className="form-control" value={profilForm.prenom} onChange={e => setProfilForm({ ...profilForm, prenom: e.target.value })} />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">Nom</label>
-                <input type="text" className="form-control" value={profilForm.nom} onChange={e => setProfilForm({ ...profilForm, nom: e.target.value })} />
-              </div>
-              <div className="col-md-12">
-                <label className="form-label fw-semibold">Email</label>
-                <input type="email" className="form-control" value={profilForm.email} onChange={e => setProfilForm({ ...profilForm, email: e.target.value })} />
-              </div>
+          <h5 className="fw-bold mb-3 border-bottom pb-2">Paramètres financiers & documents</h5>
+          <div className="row g-3 mb-4">
+            <div className="col-md-4">
+              <label className="form-label fw-semibold">Devise</label>
+              <select className="form-select" value={entrepriseForm.devise} onChange={e => setEntrepriseForm({ ...entrepriseForm, devise: e.target.value })}>
+                <option value="MGA">MGA (Ariary)</option>
+                <option value="EUR">EUR</option>
+                <option value="USD">USD</option>
+              </select>
             </div>
-            <button type="submit" className="btn btn-primary fw-bold mt-4">Mettre à jour le profil</button>
-          </form>
-        )}
-
-        {activeTab === 'sauvegarde' && (
-          <div>
-            <h5 className="fw-bold mb-3 border-bottom pb-2">Sauvegarde & Exportation des données</h5>
-            <p className="text-secondary">Téléchargez une copie intégrale des données de votre entreprise au format JSON/SQL.</p>
-            <button className="btn btn-success fw-bold py-2 px-4" onClick={handleDownloadBackup}>
-              <i className="bi bi-download me-2"></i>Télécharger la sauvegarde complète
-            </button>
-          </div>
-        )}
-
-        {activeTab === 'sync' && (
-          <div>
-            <h5 className="fw-bold mb-3 border-bottom pb-2">Synchronisation Web / Desktop</h5>
-            <div className="alert alert-info">
-              <i className="bi bi-cloud-check fs-4 me-2"></i>
-              Statut de la connexion serveur: <strong>En ligne (Synchro active)</strong>
+            <div className="col-md-4">
+              <label className="form-label fw-semibold">TVA par défaut (%)</label>
+              <input type="number" className="form-control font-monospace" value={entrepriseForm.tva_defaut} onChange={e => setEntrepriseForm({ ...entrepriseForm, tva_defaut: Number(e.target.value) })} />
             </div>
-            <button className="btn btn-primary fw-bold" onClick={() => alert('Synchronisation forcée effectuée avec succès !')}>
-              <i className="bi bi-arrow-repeat me-2"></i>Lancer une synchronisation manuelle
-            </button>
+            <div className="col-md-4">
+              <label className="form-label fw-semibold">Délai de paiement (jours)</label>
+              <input type="number" className="form-control font-monospace" value={entrepriseForm.delai_paiement_jours} onChange={e => setEntrepriseForm({ ...entrepriseForm, delai_paiement_jours: Number(e.target.value) })} />
+            </div>
           </div>
-        )}
-      </div>
+
+          <button type="submit" className="btn btn-primary fw-bold" disabled={saving}>
+            {saving ? 'Enregistrement...' : 'Enregistrer les paramètres'}
+          </button>
+        </form>
+      )}
+
+      {activeTab === 'audit' && (
+        <div className="table-card">
+          <div className="table-header">
+            <h5 className="fw-bold mb-0"><i className="bi bi-shield-check me-2 text-primary"></i>Journal d'activité</h5>
+            <button className="btn btn-outline-secondary btn-sm" onClick={loadLogs}><i className="bi bi-arrow-clockwise me-1"></i>Actualiser</button>
+          </div>
+          <div className="table-responsive">
+            <table className="table mb-0">
+              <thead>
+                <tr>
+                  <th>Utilisateur</th>
+                  <th>IP</th>
+                  <th>Navigateur</th>
+                  <th>Statut</th>
+                  <th>Date & Heure</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map(l => (
+                  <tr key={l.id}>
+                    <td className="fw-semibold">Utilisateur #{l.utilisateur_id}</td>
+                    <td className="font-monospace">{l.ip_address || '127.0.0.1'}</td>
+                    <td className="small text-muted">{l.user_agent || '—'}</td>
+                    <td><span className={`badge ${l.reussi ? 'bg-success' : 'bg-danger'}`}>{l.reussi ? 'Succès' : 'Échec'}</span></td>
+                    <td className="text-muted font-monospace">{l.date_connexion}</td>
+                  </tr>
+                ))}
+                {logs.length === 0 && (
+                  <tr><td colSpan={5} className="text-center py-4 text-muted">Aucune entrée.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'profil' && (
+        <form onSubmit={handleSaveProfil}>
+          <div className="row g-3">
+            <div className="col-md-6">
+              <label className="form-label fw-semibold">Prénom</label>
+              <input type="text" className="form-control" value={profilForm.prenom} onChange={e => setProfilForm({ ...profilForm, prenom: e.target.value })} />
+            </div>
+            <div className="col-md-6">
+              <label className="form-label fw-semibold">Nom</label>
+              <input type="text" className="form-control" value={profilForm.nom} onChange={e => setProfilForm({ ...profilForm, nom: e.target.value })} />
+            </div>
+            <div className="col-md-12">
+              <label className="form-label fw-semibold">Email</label>
+              <input type="email" className="form-control" value={profilForm.email} onChange={e => setProfilForm({ ...profilForm, email: e.target.value })} />
+            </div>
+          </div>
+          <button type="submit" className="btn btn-primary fw-bold mt-4" disabled={saving}>Mettre à jour le profil</button>
+        </form>
+      )}
+
+      {/* Modal Utilisateur */}
+      {showUserModal && (
+        <div className="modal fade show" style={{ display: 'block' }} tabIndex={-1} aria-modal="true" role="dialog">
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow">
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold">{editingUser ? 'Modifier l\'utilisateur' : 'Nouvel utilisateur'}</h5>
+                <button type="button" className="btn-close" onClick={() => setShowUserModal(false)}></button>
+              </div>
+              <form onSubmit={handleSaveUser}>
+                <div className="modal-body">
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Prénom</label>
+                      <input className="form-control" required value={userForm.prenom} onChange={e => setUserForm({ ...userForm, prenom: e.target.value })} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Nom</label>
+                      <input className="form-control" required value={userForm.nom} onChange={e => setUserForm({ ...userForm, nom: e.target.value })} />
+                    </div>
+                    <div className="col-md-12">
+                      <label className="form-label fw-semibold">Email</label>
+                      <input type="email" className="form-control" required value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} />
+                    </div>
+                    <div className="col-md-12">
+                      <label className="form-label fw-semibold">Rôle</label>
+                      <select className="form-select" value={userForm.role_code} onChange={e => setUserForm({ ...userForm, role_code: e.target.value as UserRole })}>
+                        <option value="employe">Ouvrier / Employé</option>
+                        <option value="chef_chantier">Chef de Chantier</option>
+                        <option value="chef_projet">Chef de Projet</option>
+                        <option value="rh">Responsable RH</option>
+                        <option value="materiel">Responsable Matériel</option>
+                        <option value="magasinier">Magasinier</option>
+                        <option value="commercial">Commercial</option>
+                        <option value="comptable">Comptable</option>
+                        <option value="directeur">Direction Générale</option>
+                        <option value="admin_entreprise">Admin Entreprise</option>
+                        <option value="client">Client</option>
+                      </select>
+                    </div>
+                    {!editingUser && (
+                      <div className="col-md-12">
+                        <label className="form-label fw-semibold">Mot de passe</label>
+                        <input type="password" className="form-control" required value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="modal-footer border-0 pt-0">
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowUserModal(false)} disabled={saving}>Annuler</button>
+                  <button type="submit" className="btn btn-primary fw-bold" disabled={saving}>
+                    {saving ? 'Enregistrement...' : (editingUser ? 'Mettre à jour' : 'Créer l\'utilisateur')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {showUserModal && <div className="modal-backdrop fade show" onClick={() => setShowUserModal(false)}></div>}
     </div>
   )
 }

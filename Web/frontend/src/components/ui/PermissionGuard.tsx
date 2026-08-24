@@ -1,19 +1,18 @@
-import type { ReactNode } from 'react'
-import { useAuthStore } from '@/stores/auth.store'
-import { PERMISSION_MAP } from '@/utils/permissions'
-import type { RoleCode } from '@/utils/permissions'
+import { usePermissions } from '@/hooks/usePermissions'
 
 interface PermissionGuardProps {
-  permission: string
-  children: ReactNode
-  fallback?: ReactNode
+  permission?: string
+  module?: string
+  anyOf?: string[]
+  children: React.ReactNode
 }
 
-export function PermissionGuard({ permission, children, fallback = null }: PermissionGuardProps) {
-  const { user } = useAuthStore()
-  const permissions = PERMISSION_MAP[user?.role_code as RoleCode] || []
-  const hasAccess = permissions['*'] === '*' || permissions[permission] === '*' || permissions[permission]?.includes('read')
+export function PermissionGuard({ permission, module, anyOf, children }: PermissionGuardProps) {
+  const { hasPermission, canAccess } = usePermissions()
 
-  if (!hasAccess) return <>{fallback}</>
+  if (permission && !hasPermission(permission)) return null
+  if (module && !canAccess(module)) return null
+  if (anyOf && !anyOf.some(p => hasPermission(p) || (p.startsWith('/') ? canAccess(p) : false))) return null
+
   return <>{children}</>
 }

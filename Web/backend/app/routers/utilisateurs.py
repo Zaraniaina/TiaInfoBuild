@@ -116,3 +116,18 @@ async def delete_utilisateur(payload: AdminCheck, db: DbSession, id: int):
     user.is_deleted = True
     await db.flush()
     return None
+
+
+@router.post("/{id}/toggle-actif", response_model=dict)
+async def toggle_utilisateur_actif(payload: AdminCheck, db: DbSession, id: int):
+    entreprise_id = payload.get("entreprise_id")
+    result = await db.execute(select(Utilisateur).where(Utilisateur.id == id, Utilisateur.is_deleted == False))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur non trouvé")
+    if entreprise_id is not None and user.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+    user.statut = "inactif" if user.statut == "actif" else "actif"
+    await db.flush()
+    await db.refresh(user)
+    return {"statut": user.statut}
