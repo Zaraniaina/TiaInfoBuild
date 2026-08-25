@@ -12,8 +12,15 @@ interface UserRow {
   role_code: UserRole
   role_nom?: string
   statut: 'actif' | 'inactif'
+  telephone?: string
   date_creation?: string
   derniere_connexion?: string
+}
+
+interface RoleOption {
+  id: number
+  code: string
+  nom: string
 }
 
 export function SettingsPage() {
@@ -22,24 +29,31 @@ export function SettingsPage() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [users, setUsers] = useState<UserRow[]>([])
+  const [roles, setRoles] = useState<RoleOption[]>([])
   const [search, setSearch] = useState('')
   const [showUserModal, setShowUserModal] = useState(false)
   const [editingUser, setEditingUser] = useState<UserRow | null>(null)
-  const [userForm, setUserForm] = useState({ prenom: '', nom: '', email: '', role_code: 'employe' as UserRole, password: '' })
+  const [userForm, setUserForm] = useState({ prenom: '', nom: '', email: '', role_code: 'employe' as UserRole, password: '', telephone: '' })
   const [logs, setLogs] = useState<any[]>([])
   const [auditLoading, setAuditLoading] = useState(false)
 
   const [entrepriseForm, setEntrepriseForm] = useState({
-    nom: 'TIA INFO BUILD SARL',
-    siret: '123 456 789 00012',
-    telephone: '020 22 999 88',
-    email: 'contact@tia-infobuild.mg',
-    adresse: 'Zone Industrielle Akorondrano',
-    ville: 'Antananarivo 101',
+    nom: '',
+    nom_commercial: '',
+    siret: '',
+    telephone: '',
+    email: '',
+    adresse: '',
+    ville: '',
+    code_postal: '',
     devise: 'MGA',
     tva_defaut: 20,
     delai_paiement_jours: 30,
+    prefixe_devis: 'DEV',
+    prefixe_facture: 'FAC',
+    prefixe_contrat: 'CTR',
   })
+  const [entrepriseLoaded, setEntrepriseLoaded] = useState(false)
 
   const [profilForm, setProfilForm] = useState({
     nom: user?.nom || '',
@@ -48,6 +62,54 @@ export function SettingsPage() {
     password_actuel: '',
     nouveau_password: ''
   })
+
+  const loadEntrepriseSettings = () => {
+    api.get('/parametres/entreprise')
+      .then(res => {
+        const e = (res.data as any).entreprise || res.data
+        setEntrepriseForm({
+          nom: e.nom || '',
+          nom_commercial: e.nom_commercial || '',
+          siret: e.siret || '',
+          telephone: e.telephone || '',
+          email: e.email || '',
+          adresse: e.adresse || '',
+          ville: e.ville || '',
+          code_postal: e.code_postal || '',
+          devise: e.devise || 'MGA',
+          tva_defaut: e.tva_defaut ?? 20,
+          delai_paiement_jours: e.delai_paiement_defaut ?? 30,
+          prefixe_devis: e.prefixe_devis || 'DEV',
+          prefixe_facture: e.prefixe_facture || 'FAC',
+          prefixe_contrat: e.prefixe_contrat || 'CTR',
+        })
+        setEntrepriseLoaded(true)
+      })
+      .catch(() => setEntrepriseLoaded(true))
+  }
+
+  const loadRoles = () => {
+    api.get('/parametres/roles')
+      .then(res => {
+        const items = res.data.items || res.data || []
+        setRoles(items.map((r: any) => ({ id: r.id, code: r.code, nom: r.nom })))
+      })
+      .catch(() => {
+        setRoles([
+          { id: 1, code: 'admin_entreprise', nom: 'Admin Entreprise' },
+          { id: 2, code: 'directeur', nom: 'Direction Générale' },
+          { id: 3, code: 'comptable', nom: 'Comptable' },
+          { id: 4, code: 'chef_chantier', nom: 'Chef de Chantier' },
+          { id: 5, code: 'chef_projet', nom: 'Chef de Projet' },
+          { id: 6, code: 'rh', nom: 'Responsable RH' },
+          { id: 7, code: 'materiel', nom: 'Responsable Matériel' },
+          { id: 8, code: 'magasinier', nom: 'Magasinier' },
+          { id: 9, code: 'commercial', nom: 'Commercial' },
+          { id: 10, code: 'employe', nom: 'Ouvrier / Employé' },
+          { id: 11, code: 'client', nom: 'Client' },
+        ])
+      })
+  }
 
   const loadUsers = () => {
     setLoading(true)
@@ -62,15 +124,16 @@ export function SettingsPage() {
           role_code: u.role_code || u.role?.code || 'employe',
           role_nom: u.role?.nom || u.role_nom || 'Employé',
           statut: u.statut === 'inactif' ? 'inactif' : 'actif',
+          telephone: u.telephone || '',
           date_creation: u.date_creation,
           derniere_connexion: u.derniere_connexion,
         })))
       })
       .catch(() => {
         setUsers([
-          { id: 1, prenom: 'Admin', nom: 'System', email: 'admin@tia.mg', role_code: 'admin_entreprise', role_nom: 'Admin Entreprise', statut: 'actif', date_creation: '2026-01-01', derniere_connexion: '2026-08-24 08:00' },
-          { id: 2, prenom: 'Michel', nom: 'RABARISON', email: 'michel@tia.mg', role_code: 'chef_chantier', role_nom: 'Chef de Chantier', statut: 'actif', date_creation: '2026-02-01', derniere_connexion: '2026-08-23 17:30' },
-          { id: 3, prenom: 'Jean', nom: 'DUPONT', email: 'jean@tia.mg', role_code: 'employe', role_nom: 'Ouvrier', statut: 'inactif', date_creation: '2026-03-10', derniere_connexion: '2026-07-15 12:00' },
+          { id: 1, prenom: 'Admin', nom: 'System', email: 'admin@tia.mg', role_code: 'admin_entreprise', role_nom: 'Admin Entreprise', statut: 'actif', telephone: '', date_creation: '2026-01-01', derniere_connexion: '2026-08-24 08:00' },
+          { id: 2, prenom: 'Michel', nom: 'RABARISON', email: 'michel@tia.mg', role_code: 'chef_chantier', role_nom: 'Chef de Chantier', statut: 'actif', telephone: '', date_creation: '2026-02-01', derniere_connexion: '2026-08-23 17:30' },
+          { id: 3, prenom: 'Jean', nom: 'DUPONT', email: 'jean@tia.mg', role_code: 'employe', role_nom: 'Ouvrier', statut: 'inactif', telephone: '', date_creation: '2026-03-10', derniere_connexion: '2026-07-15 12:00' },
         ])
       })
       .finally(() => setLoading(false))
@@ -91,6 +154,11 @@ export function SettingsPage() {
   }
 
   useEffect(() => {
+    loadEntrepriseSettings()
+    loadRoles()
+  }, [])
+
+  useEffect(() => {
     if (activeTab === 'utilisateurs') loadUsers()
     if (activeTab === 'audit') loadLogs()
   }, [activeTab])
@@ -99,7 +167,11 @@ export function SettingsPage() {
     e.preventDefault()
     setSaving(true)
     try {
-      await api.put('/parametres/entreprise', entrepriseForm)
+      const payload = {
+        ...entrepriseForm,
+        delai_paiement_defaut: entrepriseForm.delai_paiement_jours,
+      }
+      await api.put('/parametres/entreprise', payload)
       alert('Paramètres d\'entreprise sauvegardés avec succès !')
     } catch {
       alert('Erreur lors de la sauvegarde')
@@ -123,13 +195,13 @@ export function SettingsPage() {
 
   const openCreateUser = () => {
     setEditingUser(null)
-    setUserForm({ prenom: '', nom: '', email: '', role_code: 'employe', password: '' })
+    setUserForm({ prenom: '', nom: '', email: '', role_code: 'employe', password: '', telephone: '' })
     setShowUserModal(true)
   }
 
   const openEditUser = (u: UserRow) => {
     setEditingUser(u)
-    setUserForm({ prenom: u.prenom, nom: u.nom, email: u.email, role_code: u.role_code, password: '' })
+    setUserForm({ prenom: u.prenom, nom: u.nom, email: u.email, role_code: u.role_code, password: '', telephone: u.telephone || '' })
     setShowUserModal(true)
   }
 
@@ -137,10 +209,15 @@ export function SettingsPage() {
     e.preventDefault()
     setSaving(true)
     try {
+      const payload: any = { ...userForm }
       if (editingUser) {
-        await api.put(`/utilisateurs/${editingUser.id}`, userForm)
+        delete payload.password
+        if (!payload.telephone) delete payload.telephone
+      }
+      if (editingUser) {
+        await api.put(`/utilisateurs/${editingUser.id}`, payload)
       } else {
-        await api.post('/utilisateurs', userForm)
+        await api.post('/utilisateurs', payload)
       }
       setShowUserModal(false)
       loadUsers()
@@ -223,37 +300,39 @@ export function SettingsPage() {
           </div>
           <div className="table-responsive">
             <table className="table mb-0">
-              <thead>
-                <tr>
-                  <th>Utilisateur</th>
-                  <th>Email</th>
-                  <th>Rôle</th>
-                  <th>Statut</th>
-                  <th>Dernière connexion</th>
-                  <th className="text-end">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map(u => (
-                  <tr key={u.id}>
-                    <td className="fw-semibold">{u.prenom} {u.nom}</td>
-                    <td>{u.email}</td>
-                    <td><span className={`badge ${getRoleBadge(u.role_code)}`}>{u.role_nom || u.role_code}</span></td>
-                    <td><span className={`badge ${u.statut === 'actif' ? 'bg-success' : 'bg-secondary'}`}>{u.statut === 'actif' ? 'Actif' : 'Inactif'}</span></td>
-                    <td className="text-muted">{u.derniere_connexion || '—'}</td>
-                    <td className="text-end">
-                      <div className="d-flex gap-1 justify-content-end">
-                        <button className="btn btn-sm btn-outline-primary" onClick={() => openEditUser(u)}><i className="bi bi-pencil"></i></button>
-                        <button className={`btn btn-sm ${u.statut === 'actif' ? 'btn-outline-danger' : 'btn-outline-success'}`} onClick={() => handleToggleUser(u)}>
-                          {u.statut === 'actif' ? <i className="bi bi-x-circle"></i> : <i className="bi bi-check-circle"></i>}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {filteredUsers.length === 0 && (
-                  <tr><td colSpan={6} className="text-center py-4 text-muted">Aucun utilisateur trouvé.</td></tr>
-                )}
+                  <thead>
+                    <tr>
+                      <th>Utilisateur</th>
+                      <th>Email</th>
+                      <th>Rôle</th>
+                      <th>Statut</th>
+                      <th className="d-none d-md-table-cell">Téléphone</th>
+                      <th>Dernière connexion</th>
+                      <th className="text-end">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map(u => (
+                      <tr key={u.id}>
+                        <td className="fw-semibold">{u.prenom} {u.nom}</td>
+                        <td>{u.email}</td>
+                        <td><span className={`badge ${getRoleBadge(u.role_code)}`}>{u.role_nom || u.role_code}</span></td>
+                        <td><span className={`badge ${u.statut === 'actif' ? 'bg-success' : 'bg-secondary'}`}>{u.statut === 'actif' ? 'Actif' : 'Inactif'}</span></td>
+                        <td className="d-none d-md-table-cell text-muted">{u.telephone || '—'}</td>
+                        <td className="text-muted">{u.derniere_connexion || '—'}</td>
+                        <td className="text-end">
+                          <div className="d-flex gap-1 justify-content-end">
+                            <button className="btn btn-sm btn-outline-primary" onClick={() => openEditUser(u)}><i className="bi bi-pencil"></i></button>
+                            <button className={`btn btn-sm ${u.statut === 'actif' ? 'btn-outline-danger' : 'btn-outline-success'}`} onClick={() => handleToggleUser(u)}>
+                              {u.statut === 'actif' ? <i className="bi bi-x-circle"></i> : <i className="bi bi-check-circle"></i>}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredUsers.length === 0 && (
+                      <tr><td colSpan={7} className="text-center py-4 text-muted">Aucun utilisateur trouvé.</td></tr>
+                    )}
               </tbody>
             </table>
           </div>
@@ -261,58 +340,97 @@ export function SettingsPage() {
       )}
 
       {activeTab === 'parametres' && (
-        <form onSubmit={handleSaveEntreprise}>
-          <div className="row g-3 mb-4">
-            <div className="col-md-6">
-              <label className="form-label fw-semibold">Raison Sociale *</label>
-              <input type="text" className="form-control" required value={entrepriseForm.nom} onChange={e => setEntrepriseForm({ ...entrepriseForm, nom: e.target.value })} />
+        entrepriseLoaded ? (
+          <form onSubmit={handleSaveEntreprise}>
+            <div className="row g-3 mb-4">
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Raison Sociale *</label>
+                <input type="text" className="form-control" required value={entrepriseForm.nom} onChange={e => setEntrepriseForm({ ...entrepriseForm, nom: e.target.value })} />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Nom Commercial</label>
+                <input type="text" className="form-control" value={entrepriseForm.nom_commercial} onChange={e => setEntrepriseForm({ ...entrepriseForm, nom_commercial: e.target.value })} />
+              </div>
             </div>
-            <div className="col-md-6">
-              <label className="form-label fw-semibold">SIRET / NIF</label>
-              <input type="text" className="form-control font-monospace" value={entrepriseForm.siret} onChange={e => setEntrepriseForm({ ...entrepriseForm, siret: e.target.value })} />
-            </div>
-            <div className="col-md-6">
-              <label className="form-label fw-semibold">Email Contact</label>
-              <input type="email" className="form-control" value={entrepriseForm.email} onChange={e => setEntrepriseForm({ ...entrepriseForm, email: e.target.value })} />
-            </div>
-            <div className="col-md-6">
-              <label className="form-label fw-semibold">Téléphone</label>
-              <input type="text" className="form-control" value={entrepriseForm.telephone} onChange={e => setEntrepriseForm({ ...entrepriseForm, telephone: e.target.value })} />
-            </div>
-            <div className="col-md-8">
-              <label className="form-label fw-semibold">Adresse</label>
-              <input type="text" className="form-control" value={entrepriseForm.adresse} onChange={e => setEntrepriseForm({ ...entrepriseForm, adresse: e.target.value })} />
-            </div>
-            <div className="col-md-4">
-              <label className="form-label fw-semibold">Ville</label>
-              <input type="text" className="form-control" value={entrepriseForm.ville} onChange={e => setEntrepriseForm({ ...entrepriseForm, ville: e.target.value })} />
-            </div>
-          </div>
 
-          <h5 className="fw-bold mb-3 border-bottom pb-2">Paramètres financiers & documents</h5>
-          <div className="row g-3 mb-4">
-            <div className="col-md-4">
-              <label className="form-label fw-semibold">Devise</label>
-              <select className="form-select" value={entrepriseForm.devise} onChange={e => setEntrepriseForm({ ...entrepriseForm, devise: e.target.value })}>
-                <option value="MGA">MGA (Ariary)</option>
-                <option value="EUR">EUR</option>
-                <option value="USD">USD</option>
-              </select>
+            <div className="row g-3 mb-4">
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">SIRET / NIF</label>
+                <input type="text" className="form-control font-monospace" value={entrepriseForm.siret} onChange={e => setEntrepriseForm({ ...entrepriseForm, siret: e.target.value })} />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Email Contact</label>
+                <input type="email" className="form-control" value={entrepriseForm.email} onChange={e => setEntrepriseForm({ ...entrepriseForm, email: e.target.value })} />
+              </div>
             </div>
-            <div className="col-md-4">
-              <label className="form-label fw-semibold">TVA par défaut (%)</label>
-              <input type="number" className="form-control font-monospace" value={entrepriseForm.tva_defaut} onChange={e => setEntrepriseForm({ ...entrepriseForm, tva_defaut: Number(e.target.value) })} />
-            </div>
-            <div className="col-md-4">
-              <label className="form-label fw-semibold">Délai de paiement (jours)</label>
-              <input type="number" className="form-control font-monospace" value={entrepriseForm.delai_paiement_jours} onChange={e => setEntrepriseForm({ ...entrepriseForm, delai_paiement_jours: Number(e.target.value) })} />
-            </div>
-          </div>
 
-          <button type="submit" className="btn btn-primary fw-bold" disabled={saving}>
-            {saving ? 'Enregistrement...' : 'Enregistrer les paramètres'}
-          </button>
-        </form>
+            <div className="row g-3 mb-4">
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Téléphone</label>
+                <input type="text" className="form-control" value={entrepriseForm.telephone} onChange={e => setEntrepriseForm({ ...entrepriseForm, telephone: e.target.value })} />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Ville</label>
+                <input type="text" className="form-control" value={entrepriseForm.ville} onChange={e => setEntrepriseForm({ ...entrepriseForm, ville: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="row g-3 mb-4">
+              <div className="col-md-8">
+                <label className="form-label fw-semibold">Adresse</label>
+                <input type="text" className="form-control" value={entrepriseForm.adresse} onChange={e => setEntrepriseForm({ ...entrepriseForm, adresse: e.target.value })} />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Code Postal</label>
+                <input type="text" className="form-control" value={entrepriseForm.code_postal} onChange={e => setEntrepriseForm({ ...entrepriseForm, code_postal: e.target.value })} />
+              </div>
+            </div>
+
+            <h5 className="fw-bold mb-3 border-bottom pb-2">Paramètres financiers & documents</h5>
+            <div className="row g-3 mb-4">
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Devise</label>
+                <select className="form-select" value={entrepriseForm.devise} onChange={e => setEntrepriseForm({ ...entrepriseForm, devise: e.target.value })}>
+                  <option value="MGA">MGA (Ariary)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="USD">USD ($)</option>
+                </select>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">TVA par défaut (%)</label>
+                <input type="number" className="form-control font-monospace" value={entrepriseForm.tva_defaut} onChange={e => setEntrepriseForm({ ...entrepriseForm, tva_defaut: Number(e.target.value) })} />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Délai de paiement (jours)</label>
+                <input type="number" className="form-control font-monospace" value={entrepriseForm.delai_paiement_jours} onChange={e => setEntrepriseForm({ ...entrepriseForm, delai_paiement_jours: Number(e.target.value) })} />
+              </div>
+            </div>
+
+            <h5 className="fw-bold mb-3 border-bottom pb-2">Numérotation</h5>
+            <div className="row g-3 mb-4">
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Préfixe Devis</label>
+                <input type="text" className="form-control font-monospace" value={entrepriseForm.prefixe_devis} onChange={e => setEntrepriseForm({ ...entrepriseForm, prefixe_devis: e.target.value })} />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Préfixe Facture</label>
+                <input type="text" className="form-control font-monospace" value={entrepriseForm.prefixe_facture} onChange={e => setEntrepriseForm({ ...entrepriseForm, prefixe_facture: e.target.value })} />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Préfixe Contrat</label>
+                <input type="text" className="form-control font-monospace" value={entrepriseForm.prefixe_contrat} onChange={e => setEntrepriseForm({ ...entrepriseForm, prefixe_contrat: e.target.value })} />
+              </div>
+            </div>
+
+            <button type="submit" className="btn btn-primary fw-bold" disabled={saving}>
+              {saving ? 'Enregistrement...' : 'Enregistrer les paramètres'}
+            </button>
+          </form>
+        ) : (
+          <div className="text-center py-5">
+            <div className="spinner-border text-primary" role="status"></div>
+          </div>
+        )
       )}
 
       {activeTab === 'audit' && (
@@ -396,19 +514,15 @@ export function SettingsPage() {
                       <input type="email" className="form-control" required value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} />
                     </div>
                     <div className="col-md-12">
+                      <label className="form-label fw-semibold">Téléphone</label>
+                      <input className="form-control" value={userForm.telephone} onChange={e => setUserForm({ ...userForm, telephone: e.target.value })} />
+                    </div>
+                    <div className="col-md-12">
                       <label className="form-label fw-semibold">Rôle</label>
                       <select className="form-select" value={userForm.role_code} onChange={e => setUserForm({ ...userForm, role_code: e.target.value as UserRole })}>
-                        <option value="employe">Ouvrier / Employé</option>
-                        <option value="chef_chantier">Chef de Chantier</option>
-                        <option value="chef_projet">Chef de Projet</option>
-                        <option value="rh">Responsable RH</option>
-                        <option value="materiel">Responsable Matériel</option>
-                        <option value="magasinier">Magasinier</option>
-                        <option value="commercial">Commercial</option>
-                        <option value="comptable">Comptable</option>
-                        <option value="directeur">Direction Générale</option>
-                        <option value="admin_entreprise">Admin Entreprise</option>
-                        <option value="client">Client</option>
+                        {roles.map(r => (
+                          <option key={r.code} value={r.code}>{r.nom}</option>
+                        ))}
                       </select>
                     </div>
                     {!editingUser && (

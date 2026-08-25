@@ -143,44 +143,52 @@ export function DashboardPage() {
     </div>
   )
 
-  const renderAdminEntreprise = () => (
-    <div>
-      {renderAlert()}
-      <div className="row g-3 mb-4">
-        {renderKpi('Comptes Actifs', '48', 'Utilisateurs de l\'entreprise', 'text-primary')}
-        {renderKpi('Comptes Désactivés', '3', 'À réactiver ou supprimer', 'text-danger')}
-        {renderKpi('Anomalies 24h', '0', 'Accès suspects / échecs', 'text-warning')}
-        {renderKpi('Disponibilité', '99.9%', 'Plateforme opérationnelle', 'text-success')}
-      </div>
-      <div className="row g-4 mb-4">
-        <div className="col-lg-8">
-          <div className="chart-card">
-            <h5><i className="bi bi-people me-2 text-primary"></i>Activité des comptes</h5>
-            <div style={{ height: '320px' }}><CaEvolutionChart /></div>
-          </div>
+  const renderAdminEntreprise = () => {
+    const totalUsers = stats?.nb_utilisateurs ?? 48
+    const activeUsers = Math.max(0, totalUsers - (stats?.utilisateurs_inactifs ?? 3))
+    const inactiveUsers = stats?.utilisateurs_inactifs ?? 3
+    const anomalies = stats?.alertes_recentes?.length ?? 0
+    const disponibilite = stats?.uptime ?? 99.9
+
+    return (
+      <div>
+        {renderAlert()}
+        <div className="row g-3 mb-4">
+          {renderKpi('Comptes Actifs', String(activeUsers), `Sur ${totalUsers} utilisateurs`, 'text-primary')}
+          {renderKpi('Comptes Désactivés', String(inactiveUsers), 'À réactiver ou supprimer', 'text-danger')}
+          {renderKpi('Anomalies 24h', String(anomalies), 'Accès suspects / échecs', 'text-warning')}
+          {renderKpi('Disponibilité', `${disponibilite}%`, 'Plateforme opérationnelle', 'text-success')}
         </div>
-        <div className="col-lg-4">
-          <div className="chart-card">
-            <h5><i className="bi bi-sliders me-2 text-primary"></i>Cohérence configuration</h5>
-            <div className="d-flex flex-wrap gap-2">
-              <span className="badge bg-success">Seuils OK</span>
-              <span className="badge bg-success">Catégories OK</span>
-              <span className="badge bg-success">TVA OK</span>
-              <span className="badge bg-warning text-dark">1 alerte stock</span>
+        <div className="row g-4 mb-4">
+          <div className="col-lg-8">
+            <div className="chart-card">
+              <h5><i className="bi bi-people me-2 text-primary"></i>Activité des comptes</h5>
+              <div style={{ height: '320px' }}><CaEvolutionChart /></div>
+            </div>
+          </div>
+          <div className="col-lg-4">
+            <div className="chart-card">
+              <h5><i className="bi bi-sliders me-2 text-primary"></i>Cohérence configuration</h5>
+              <div className="d-flex flex-wrap gap-2">
+                <span className="badge bg-success">Seuils OK</span>
+                <span className="badge bg-success">Catégories OK</span>
+                <span className="badge bg-success">TVA OK</span>
+                <span className="badge bg-warning text-dark">1 alerte stock</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div className="card border-0 shadow-sm p-4 mb-4">
-        <h5 className="fw-bold mb-3"><i className="bi bi-gear-fill me-2 text-primary"></i>Actions rapides administration</h5>
-        <div className="d-flex gap-2 flex-wrap">
-          <a href="/settings" className="btn btn-primary fw-bold"><i className="bi bi-person-gear me-2"></i>Gérer les comptes & rôles</a>
-          <a href="/historique-logins" className="btn btn-outline-dark fw-bold"><i className="bi bi-shield-check me-2"></i>Audit & logs de connexion</a>
-          <a href="/settings" className="btn btn-outline-secondary"><i className="bi bi-sliders me-2"></i>Paramètres entreprise</a>
+        <div className="card border-0 shadow-sm p-4 mb-4">
+          <h5 className="fw-bold mb-3"><i className="bi bi-gear-fill me-2 text-primary"></i>Actions rapides administration</h5>
+          <div className="d-flex gap-2 flex-wrap">
+            <a href="/settings" className="btn btn-primary fw-bold"><i className="bi bi-person-gear me-2"></i>Gérer les comptes & rôles</a>
+            <a href="/historique-logins" className="btn btn-outline-dark fw-bold"><i className="bi bi-shield-check me-2"></i>Audit & logs de connexion</a>
+            <a href="/settings" className="btn btn-outline-secondary"><i className="bi bi-sliders me-2"></i>Paramètres entreprise</a>
+          </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const renderDirecteur = () => (
     <div>

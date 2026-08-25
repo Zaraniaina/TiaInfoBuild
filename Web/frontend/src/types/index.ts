@@ -665,6 +665,9 @@ export interface DashboardStats {
   ca_evolution: CAEvolution[];
   alertes_recentes: Alerte[];
   activite_recente: ActiviteRecent[];
+  nb_utilisateurs?: number;
+  utilisateurs_inactifs?: number;
+  uptime?: number;
 }
 
 export interface TopChantier {
