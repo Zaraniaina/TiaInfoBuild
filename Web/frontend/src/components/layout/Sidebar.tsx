@@ -86,7 +86,10 @@ export function Sidebar() {
                 </div>
               )}
               {Object.entries(items).map(([path, meta]) => {
-                const isActive = location.pathname.startsWith(path)
+                const bestMatch = allowedPaths
+    .filter(p => location.pathname === p || (p !== '/' && location.pathname.startsWith(p + '/')))
+    .sort((a, b) => b.length - a.length)[0]
+  const isActive = bestMatch === path
                 return (
                   <Link
                     key={path}

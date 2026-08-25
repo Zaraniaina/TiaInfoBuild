@@ -78,7 +78,7 @@ export function SettingsPage() {
 
   const loadLogs = () => {
     setAuditLoading(true)
-    api.get('/historique-connexions?size=50')
+    api.get('/parametres/audit-logs?size=50')
       .then(res => setLogs(res.data.items || res.data || []))
       .catch(() => {
         setLogs([

@@ -15,8 +15,8 @@ export function HistoriqueLoginsPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.get<LogEntry[]>('/parametres/audit-logs')
-      .then(res => setLogs(res.data.items || res.data || []))
+    api.get('/parametres/audit-logs')
+      .then(res => setLogs((res.data as any).items || (res.data as any) || []))
       .catch(() => {
         setLogs([
           { id: 1, utilisateur_id: 1, ip_address: '192.168.1.50', user_agent: 'Chrome 128.0.0 (Windows 11)', reussi: true, date_connexion: '2026-08-19 08:00:12' },

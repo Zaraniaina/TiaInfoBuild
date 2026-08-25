@@ -8,6 +8,11 @@ export const api = axios.create({ baseURL: API_URL });
 let isRefreshing = false;
 let pendingRequests: Array<(token: string) => void> = [];
 
+function rejectPendingRequests() {
+  pendingRequests.forEach((resolve) => resolve(''));
+  pendingRequests = [];
+}
+
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token || localStorage.getItem('access_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -26,8 +31,11 @@ api.interceptors.response.use(
           pendingRequests.push(resolve);
         });
         const token = useAuthStore.getState().token || localStorage.getItem('access_token');
-        if (token) original.headers.Authorization = `Bearer ${token}`;
-        return api(original);
+        if (token) {
+          original.headers.Authorization = `Bearer ${token}`;
+          return api(original);
+        }
+        return Promise.reject(error);
       }
 
       isRefreshing = true;
@@ -46,12 +54,14 @@ api.interceptors.response.use(
           original.headers.Authorization = `Bearer ${newAccess}`;
           return api(original);
         } catch {
+          rejectPendingRequests();
           useAuthStore.getState().logout();
           window.location.href = '/login';
         } finally {
           isRefreshing = false;
         }
       } else {
+        rejectPendingRequests();
         useAuthStore.getState().logout();
         window.location.href = '/login';
       }
@@ -59,3 +69,11 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'access_token' && event.newValue === null) {
+      useAuthStore.getState().logout();
+    }
+  });
+}

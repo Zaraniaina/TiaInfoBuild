@@ -25,6 +25,12 @@ export function useAuth() {
   const loginUser = async (credentials: LoginRequest) => {
     const { data } = await api.post<AuthResponse>('/auth/login', credentials);
     login(data.access_token, data.refresh_token, data.user);
+    try {
+      const me = await api.get('/auth/me');
+      useAuthStore.getState().setUser(me.data.user);
+    } catch {
+      useAuthStore.getState().setUser(data.user);
+    }
     navigate('/dashboard', { replace: true });
     return data;
   };

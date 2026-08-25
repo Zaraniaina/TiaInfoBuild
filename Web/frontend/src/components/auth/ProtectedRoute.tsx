@@ -2,6 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
 import { Layout } from '@/components/layout/Layout'
 import { ROLE_MODULES } from '@/config/roles.config'
+import { useEffect, useState } from 'react'
 
 interface ProtectedRouteProps {
   allowedRoles?: string[]
@@ -10,6 +11,15 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   const { isAuthenticated, user } = useAuthStore()
   const location = useLocation()
+  const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
+
+  if (!hydrated) {
+    return null
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
@@ -20,7 +30,6 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
 
   const allowed = allowedRoles || ROLE_MODULES[roleCode] || []
   if (allowed.length > 0 && !allowed.includes(pathKey)) {
-    alert(`Accès refusé : Le rôle "${roleCode.toUpperCase()}" n'est pas autorisé à accéder à ${location.pathname}.`)
     return <Navigate to="/dashboard" replace />
   }
 

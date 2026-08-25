@@ -1,7 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { api } from '@/services/api'
+
+interface PlatformSettings {
+  nom_plateforme: string
+  support_email: string
+  mobile_money_enabled: boolean
+  devise_defaut: string
+  langues: string
+  maintenance_mode: boolean
+}
 
 export function SuperAdminParametresPage() {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<PlatformSettings>({
     nom_plateforme: 'TIA INFO BUILD',
     support_email: 'support@tiainfo.mg',
     mobile_money_enabled: true,
@@ -10,14 +20,38 @@ export function SuperAdminParametresPage() {
     maintenance_mode: false,
   })
   const [saving, setSaving] = useState(false)
+  const [loaded, setLoaded] = useState(false)
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    api.get<PlatformSettings>('/super-admin/settings')
+      .then(res => {
+        setForm(res.data)
+        setLoaded(true)
+      })
+      .catch(() => setLoaded(true))
+  }, [])
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    setTimeout(() => {
+    try {
+      await api.put('/super-admin/settings', form)
       alert('Paramètres plateforme enregistrés.')
+    } catch {
+      alert('Erreur lors de l\'enregistrement')
+    } finally {
       setSaving(false)
-    }, 600)
+    }
+  }
+
+  if (!loaded) {
+    return (
+      <div className="container-fluid py-4">
+        <div className="d-flex justify-content-center py-5">
+          <div className="spinner-border text-danger" role="status"></div>
+        </div>
+      </div>
+    )
   }
 
   return (
