@@ -190,65 +190,276 @@ export function DashboardPage() {
     )
   }
 
-  const renderDirecteur = () => (
-    <div>
-      {renderAlert()}
-      <div className="row g-3 mb-4">
-        {renderKpi('Chiffre d\'Affaires Brut', `${(stats?.ca_total || 0).toLocaleString()} MGA`, 'Consolidé tous chantiers', 'text-primary')}
-        {renderKpi('Résultat Net', `+ ${(stats?.margin_net || 0).toLocaleString()} MGA`, 'Prévu vs réel', 'text-success')}
-        {renderKpi('Devis à Valider', stats?.devis_pending_dg || 2, 'En attente de validation DG', 'text-warning')}
-        {renderKpi('Alertes Critiques', '1', 'Budget / Délai / Stock', 'text-danger')}
-      </div>
-      <div className="row g-4 mb-4">
-        <div className="col-lg-8">
-          <div className="chart-card">
-            <h5><i className="bi bi-graph-up-arrow me-2 text-success"></i>Performance Financière Consolidée</h5>
-            <div style={{ height: '320px' }}><CaEvolutionChart /></div>
-          </div>
+  const renderDirecteur = () => {
+    const caTotal = stats?.ca_total || 0
+    const margeBrute = stats?.marge_brute ?? (caTotal - (stats?.depenses_mois || 0))
+    const margeNette = stats?.marge_nette ?? margeBrute * 0.9
+    const tauxMarge = caTotal > 0 ? ((margeNette / caTotal) * 100).toFixed(1) : '0.0'
+    const alertesCritiques = stats?.alertes_critiques || 0
+    const avancementPhysique = stats?.taux_avancement_physique || 0
+    const avancementFinancier = stats?.taux_avancement_financier || 0
+    const rentabilite = stats?.rentabilite_chantiers || []
+    const validationsCount = stats?.devis_pending_dg || 0
+
+    return (
+      <div>
+        {renderAlert()}
+        <div className="row g-3 mb-4">
+          {renderKpi('Chiffre d\'Affaires Brut', `${caTotal.toLocaleString()} MGA`, 'Consolidé tous chantiers', 'text-primary')}
+          {renderKpi('Marge Nette', `${margeNette.toLocaleString()} MGA`, `Taux: ${tauxMarge}%`, 'text-success')}
+          {renderKpi('Devis à Valider', String(validationsCount), 'En attente de validation DG', 'text-warning')}
+          {renderKpi('Alertes Critiques', String(alertesCritiques), 'Budget / Délai / Stock', 'text-danger')}
         </div>
-        <div className="col-lg-4">
-          <div className="chart-card">
-            <h5><i className="bi bi-check-circle-fill me-2 text-warning"></i>Validations requises</h5>
-            <div className="list-group list-group-flush">
-              <div className="list-group-item px-0 py-2">
-                <div className="fw-bold">Devis #DEV-2026-004</div>
-                <small className="text-muted">Client SODIAT — 85 000 000 MGA</small>
-                <div className="mt-1">
-                  <button className="btn btn-sm btn-success py-0 me-1" onClick={() => alert('Devis Approuvé par DG !')}>Approuver</button>
-                </div>
+
+        <div className="row g-3 mb-4">
+          <div className="col-md-6">
+            <div className="kpi-card">
+              <div className="kpi-label">Avancement Physique</div>
+              <div className="kpi-value text-primary">{avancementPhysique}%</div>
+              <div className="kpi-context">Tous chantiers confondus</div>
+              <div className="progress mt-2" style={{ height: '6px' }}>
+                <div className="progress-bar bg-primary" role="progressbar" style={{ width: `${Math.min(avancementPhysique, 100)}%` }}></div>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-6">
+            <div className="kpi-card">
+              <div className="kpi-label">Avancement Financier</div>
+              <div className="kpi-value text-success">{avancementFinancier}%</div>
+              <div className="kpi-context">Budget consommé vs prévu</div>
+              <div className="progress mt-2" style={{ height: '6px' }}>
+                <div className="progress-bar bg-success" role="progressbar" style={{ width: `${Math.min(avancementFinancier, 100)}%` }}></div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  )
 
-  const renderComptable = () => (
-    <div>
-      {renderAlert()}
-      <div className="row g-3 mb-4">
-        {renderKpi('Encaissements du mois', '45 000 000 MGA', 'Sur 30 jours', 'text-success')}
-        {renderKpi('Factures en retard', stats?.factures_retard || 3, 'À relancer', 'text-danger')}
-        {renderKpi('Dépenses à valider', '4', 'En attente de validation', 'text-warning')}
-        {renderKpi('Marge Moyenne', '19.4%', 'Réelle vs prévue', 'text-primary')}
-      </div>
-      <div className="row g-4 mb-4">
-        <div className="col-lg-8">
-          <div className="chart-card">
-            <h5><i className="bi bi-graph-up me-2 text-success"></i>Évolution des encaissements</h5>
-            <div style={{ height: '320px' }}><CaEvolutionChart /></div>
+        <div className="row g-4 mb-4">
+          <div className="col-lg-8">
+            <div className="chart-card">
+              <h5><i className="bi bi-graph-up-arrow me-2 text-success"></i>Performance Financière Consolidée</h5>
+              <div style={{ height: '320px' }}><CaEvolutionChart /></div>
+            </div>
+          </div>
+          <div className="col-lg-4">
+            <div className="chart-card">
+              <h5><i className="bi bi-check-circle-fill me-2 text-warning"></i>Validations requises</h5>
+              <div className="list-group list-group-flush">
+                <div className="list-group-item px-0 py-2">
+                  <div className="fw-bold">Devis #DEV-2026-004</div>
+                  <small className="text-muted">Client SODIAT — 85 000 000 MGA</small>
+                  <div className="mt-1">
+                    <button className="btn btn-sm btn-success py-0 me-1" onClick={() => alert('Devis Approuvé par DG !')}>Approuver</button>
+                    <button className="btn btn-sm btn-outline-danger py-0" onClick={() => alert('Devis Refusé par DG !')}>Refuser</button>
+                  </div>
+                </div>
+                {validationsCount > 1 && (
+                  <div className="list-group-item px-0 py-2">
+                    <div className="fw-bold">Budget Projet Alpha</div>
+                    <small className="text-muted">Chantier Route RN2 — 120 000 000 MGA</small>
+                    <div className="mt-1">
+                      <button className="btn btn-sm btn-success py-0 me-1" onClick={() => alert('Budget Approuvé par DG !')}>Approuver</button>
+                      <button className="btn btn-sm btn-outline-danger py-0" onClick={() => alert('Budget Refusé par DG !')}>Refuser</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-        <div className="col-lg-4">
-          <div className="chart-card">
-            <h5><i className="bi bi-pie-chart me-2 text-warning"></i>Dépenses par poste</h5>
-            <div style={{ height: '320px' }}><DepensesParCategorieChart /></div>
+
+        {rentabilite.length > 0 && (
+          <div className="card border-0 shadow-sm mb-4">
+            <div className="card-header bg-transparent border-bottom py-3">
+              <h5 className="fw-bold mb-0"><i className="bi bi-bar-chart-fill me-2 text-primary"></i>Rentabilité par Chantier</h5>
+            </div>
+            <div className="table-responsive">
+              <table className="table mb-0">
+                <thead>
+                  <tr>
+                    <th>Chantier</th>
+                    <th>CA</th>
+                    <th>Dépenses</th>
+                    <th>Marge</th>
+                    <th>Taux de marge</th>
+                    <th>Budget prévu</th>
+                    <th>Avancement</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rentabilite.map(r => (
+                    <tr key={r.id}>
+                      <td className="fw-semibold">{r.nom}</td>
+                      <td className="font-monospace">{r.ca.toLocaleString()} MGA</td>
+                      <td className="font-monospace text-danger">{r.depenses.toLocaleString()} MGA</td>
+                      <td className="font-monospace text-success">{r.marge.toLocaleString()} MGA</td>
+                      <td>
+                        <span className={`badge ${parseFloat(String(r.taux_marge)) >= 15 ? 'bg-success' : 'bg-warning text-dark'}`}>
+                          {r.taux_marge}%
+                        </span>
+                      </td>
+                      <td className="font-monospace">{r.budget_prevu.toLocaleString()} MGA</td>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="progress flex-grow-1" style={{ height: '6px' }}>
+                            <div className="progress-bar bg-primary" role="progressbar" style={{ width: `${Math.min(r.taux_avancement ?? 0, 100)}%` }}></div>
+                          </div>
+                          <small className="text-muted">{(r.taux_avancement ?? 0).toFixed(1)}%</small>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const renderComptable = () => {
+    const caTotal = stats?.ca_total || 0
+    const depensesMois = stats?.depenses_mois || 0
+    const margeBrute = stats?.marge_brute ?? (caTotal - depensesMois)
+    const margeNette = stats?.marge_nette ?? margeBrute * 0.9
+    const tauxMarge = caTotal > 0 ? ((margeNette / caTotal) * 100).toFixed(1) : '0.0'
+    const depassements = stats?.depassements_budgetaires || 0
+    const delaiMoyen = stats?.delai_moyen_paiement || 0
+    const rapportsDispos = stats?.rapports_disponibles || 0
+    const tresorerie = stats?.tresorerie_par_client || []
+    const rentabilite = stats?.rentabilite_chantiers || []
+    const facturesRetard = stats?.factures_en_retard || 0
+
+    return (
+      <div>
+        {renderAlert()}
+        <div className="row g-3 mb-4">
+          {renderKpi('Chiffre d\'Affaires', `${caTotal.toLocaleString()} MGA`, 'Consolidé tous chantiers', 'text-primary')}
+          {renderKpi('Marge Nette', `${margeNette.toLocaleString()} MGA`, `Taux: ${tauxMarge}%`, 'text-success')}
+          {renderKpi('Factures en Retard', String(facturesRetard), 'À relancer', 'text-danger')}
+          {renderKpi('Dépassements Budgétaires', String(depassements), 'Chantiers hors budget', 'text-warning')}
+        </div>
+
+        <div className="row g-3 mb-4">
+          <div className="col-md-6">
+            <div className="kpi-card">
+              <div className="kpi-label">Délai Moyen de Paiement Client</div>
+              <div className="kpi-value text-primary">{delaiMoyen.toFixed(1)} jours</div>
+              <div className="kpi-context">Entre échéance et encaissement</div>
+            </div>
+          </div>
+          <div className="col-md-6">
+            <div className="kpi-card">
+              <div className="kpi-label">Rapports Financiers Disponibles</div>
+              <div className="kpi-value text-success">{rapportsDispos}</div>
+              <div className="kpi-context">Périodes clôturées</div>
+            </div>
           </div>
         </div>
+
+        {tresorerie.length > 0 && (
+          <div className="card border-0 shadow-sm mb-4">
+            <div className="card-header bg-transparent border-bottom py-3">
+              <h5 className="fw-bold mb-0"><i className="bi bi-cash-stack me-2 text-primary"></i>Trésorerie / Encours par Client</h5>
+            </div>
+            <div className="table-responsive">
+              <table className="table mb-0">
+                <thead>
+                  <tr>
+                    <th>Client</th>
+                    <th>Entreprise</th>
+                    <th>Encours Actuel</th>
+                    <th>Limite</th>
+                    <th>Dépassement</th>
+                    <th>Nb Factures Impayées</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tresorerie.slice(0, 10).map((t, idx) => (
+                    <tr key={idx}>
+                      <td className="fw-semibold">{t.nom}</td>
+                      <td className="text-muted">{t.entreprise || '—'}</td>
+                      <td className="font-monospace text-danger fw-bold">{t.encours.toLocaleString()} MGA</td>
+                      <td className="font-monospace text-muted">—</td>
+                      <td>
+                        <span className={`badge ${t.encours > 0 ? 'bg-danger' : 'bg-success'}`}>
+                          {t.encours > 0 ? 'À recouvrer' : 'OK'}
+                        </span>
+                      </td>
+                      <td className="text-muted">—</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {rentabilite.length > 0 && (
+          <div className="card border-0 shadow-sm mb-4">
+            <div className="card-header bg-transparent border-bottom py-3">
+              <h5 className="fw-bold mb-0"><i className="bi bi-bar-chart-fill me-2 text-primary"></i>Rentabilité par Chantier</h5>
+            </div>
+            <div className="table-responsive">
+              <table className="table mb-0">
+                <thead>
+                  <tr>
+                    <th>Chantier</th>
+                    <th>CA</th>
+                    <th>Dépenses</th>
+                    <th>Marge</th>
+                    <th>Taux de marge</th>
+                    <th>Budget prévu</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rentabilite.map(r => (
+                    <tr key={r.id}>
+                      <td className="fw-semibold">{r.nom}</td>
+                      <td className="font-monospace">{r.ca.toLocaleString()} MGA</td>
+                      <td className="font-monospace text-danger">{r.depenses.toLocaleString()} MGA</td>
+                      <td className="font-monospace text-success">{r.marge.toLocaleString()} MGA</td>
+                      <td>
+                        <span className={`badge ${parseFloat(String(r.taux_marge)) >= 15 ? 'bg-success' : 'bg-warning text-dark'}`}>
+                          {r.taux_marge}%
+                        </span>
+                      </td>
+                      <td className="font-monospace">{r.budget_prevu.toLocaleString()} MGA</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        <div className="row g-4 mb-4">
+          <div className="col-lg-8">
+            <div className="chart-card">
+              <h5><i className="bi bi-graph-up me-2 text-success"></i>Évolution des encaissements</h5>
+              <div style={{ height: '320px' }}><CaEvolutionChart /></div>
+            </div>
+          </div>
+          <div className="col-lg-4">
+            <div className="chart-card">
+              <h5><i className="bi bi-pie-chart me-2 text-warning"></i>Dépenses par poste</h5>
+              <div style={{ height: '320px' }}><DepensesParCategorieChart /></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="d-flex gap-2 flex-wrap">
+          <button className="btn btn-primary fw-bold" onClick={() => alert('Génération du rapport financier mensuel...')}>
+            <i className="bi bi-file-earmark-bar-graph me-2"></i>Générer Rapport Mensuel
+          </button>
+          <button className="btn btn-outline-secondary" onClick={() => window.print()}>
+            <i className="bi bi-printer me-2"></i>Imprimer Bilan
+          </button>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const renderChefChantier = () => (
     <div>

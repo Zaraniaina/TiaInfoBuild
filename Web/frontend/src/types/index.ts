@@ -668,6 +668,30 @@ export interface DashboardStats {
   nb_utilisateurs?: number;
   utilisateurs_inactifs?: number;
   uptime?: number;
+  alertes_critiques?: number;
+  marge_brute?: number;
+  marge_nette?: number;
+  taux_avancement_physique?: number;
+  taux_avancement_financier?: number;
+  rentabilite_chantiers?: Array<{
+    id: number;
+    nom: string;
+    ca: number;
+    depenses: number;
+    budget_prevu: number;
+    marge: number;
+    taux_marge: number;
+    taux_avancement?: number;
+  }>;
+  depassements_budgetaires?: number;
+  delai_moyen_paiement?: number;
+  tresorerie_par_client?: Array<{
+    client_id: number;
+    nom: string;
+    entreprise: string;
+    encours: number;
+  }>;
+  rapports_disponibles?: number;
 }
 
 export interface TopChantier {

@@ -2,14 +2,40 @@ import { useEffect, useState } from 'react'
 import type { Depense, RapportFinancier } from '@/types'
 import { financeService } from '@/services/finance.service'
 
+interface BudgetOverrun {
+  id: number
+  nom: string
+  numero: string
+  budget_prevu: number
+  budget_reel: number
+  depassement: number
+  taux_depassement: number
+  statut: string
+}
+
+interface ClientOutstanding {
+  client_id: number
+  nom: string
+  entreprise: string
+  encours_max: number
+  encours_actuel: number
+  depassement: number
+  nb_factures_impayees: number
+  depasse_limite: boolean
+}
+
 export function FinancePage() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'depenses' | 'rapports'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'depenses' | 'rapports' | 'budget' | 'paiements' | 'encours'>('overview')
   const [depenses, setDepenses] = useState<Depense[]>([])
   const [rapports, setRapports] = useState<RapportFinancier[]>([])
+  const [overruns, setOverruns] = useState<BudgetOverrun[]>([])
+  const [paymentDelays, setPaymentDelays] = useState<any[]>([])
+  const [clientOutstanding, setClientOutstanding] = useState<ClientOutstanding[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ description: '', montant: '', categorie: 'divers', date_depense: '' })
   const [saving, setSaving] = useState(false)
+  const [generating, setGenerating] = useState(false)
 
   const loadData = async () => {
     setLoading(true)
@@ -20,6 +46,15 @@ export function FinancePage() {
       } else if (activeTab === 'rapports') {
         const data = await financeService.getRapports()
         setRapports(data)
+      } else if (activeTab === 'budget') {
+        const data = await financeService.getBudgetOverruns()
+        setOverruns(data.overruns || [])
+      } else if (activeTab === 'paiements') {
+        const data = await financeService.getPaymentDelays()
+        setPaymentDelays(data.delais || [])
+      } else if (activeTab === 'encours') {
+        const data = await financeService.getClientOutstanding()
+        setClientOutstanding(data.clients || [])
       }
     } catch {
       setDepenses([
@@ -28,6 +63,15 @@ export function FinancePage() {
       ])
       setRapports([
         { id: 1, entreprise_id: 1, periode: '2026-08', chiffre_affaires: 145000000, depenses_total: 85000000, marge: 60000000, date_generation: '2026-08-18', is_deleted: false, created_at: '', updated_at: '' }
+      ])
+      setOverruns([
+        { id: 1, nom: 'Construction Immeuble Anosy', numero: 'CH-001', budget_prevu: 150000000, budget_reel: 162000000, depassement: 12000000, taux_depassement: 8.0, statut: 'en_cours' }
+      ])
+      setPaymentDelays([
+        { facture_id: 1, numero: 'FAC-2026-001', client_id: 1, montant: 30000000, date_echeance: '2026-09-05', date_paiement: '2026-08-28', delai_jours: -8, en_retard: false }
+      ])
+      setClientOutstanding([
+        { client_id: 1, nom: 'RAMAROSON', entreprise: 'BTP PRO MADAGASCAR', encours_max: 50000000, encours_actuel: 45000000, depassement: 0, nb_factures_impayees: 2, depasse_limite: false }
       ])
     } finally {
       setLoading(false)
@@ -60,6 +104,21 @@ export function FinancePage() {
     }
   }
 
+  const handleGenerateRapport = async () => {
+    const now = new Date()
+    const periode = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    setGenerating(true)
+    try {
+      await financeService.generateRapport(periode)
+      alert(`Rapport ${periode} généré avec succès`)
+      loadData()
+    } catch {
+      alert('Erreur lors de la génération du rapport')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   return (
     <div className="container-fluid py-4">
       {/* Header */}
@@ -71,6 +130,11 @@ export function FinancePage() {
         {activeTab === 'depenses' && (
           <button className="btn btn-primary fw-bold" onClick={() => setShowModal(true)}>
             <i className="bi bi-plus-circle me-2"></i>Nouvelle Dépense
+          </button>
+        )}
+        {activeTab === 'rapports' && (
+          <button className="btn btn-primary fw-bold" onClick={handleGenerateRapport} disabled={generating}>
+            <i className="bi bi-file-earmark-bar-graph me-2"></i>{generating ? 'Génération...' : 'Générer Rapport'}
           </button>
         )}
       </div>
@@ -85,6 +149,21 @@ export function FinancePage() {
         <li className="nav-item">
           <button className={`nav-link ${activeTab === 'depenses' ? 'active' : ''}`} onClick={() => setActiveTab('depenses')}>
             <i className="bi bi-wallet2 me-2"></i>Dépenses & Achats
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'budget' ? 'active' : ''}`} onClick={() => setActiveTab('budget')}>
+            <i className="bi bi-graph-up-arrow me-2"></i>Budget & Dépassements
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'paiements' ? 'active' : ''}`} onClick={() => setActiveTab('paiements')}>
+            <i className="bi bi-cash-coin me-2"></i>Paiements & Délais
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'encours' ? 'active' : ''}`} onClick={() => setActiveTab('encours')}>
+            <i className="bi bi-person-badge me-2"></i>Encours Clients
           </button>
         </li>
         <li className="nav-item">
@@ -148,6 +227,116 @@ export function FinancePage() {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : activeTab === 'budget' ? (
+        <div className="card border-0 shadow-sm">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th>Chantier</th>
+                  <th>Budget Prévu</th>
+                  <th>Budget Réel</th>
+                  <th>Dépassement</th>
+                  <th>Taux</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {overruns.map(o => (
+                  <tr key={o.id}>
+                    <td className="fw-semibold">{o.nom}</td>
+                    <td className="font-monospace">{o.budget_prevu.toLocaleString()} MGA</td>
+                    <td className="font-monospace text-danger">{o.budget_reel.toLocaleString()} MGA</td>
+                    <td className="font-monospace fw-bold text-danger">+{o.depassement.toLocaleString()} MGA</td>
+                    <td>
+                      <span className={`badge ${o.taux_depassement > 10 ? 'bg-danger' : 'bg-warning text-dark'}`}>
+                        +{o.taux_depassement}%
+                      </span>
+                    </td>
+                    <td><span className="badge bg-secondary">{o.statut}</span></td>
+                  </tr>
+                ))}
+                {overruns.length === 0 && (
+                  <tr><td colSpan={6} className="text-center py-4 text-muted">Aucun dépassement budgétaire.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : activeTab === 'paiements' ? (
+        <div className="card border-0 shadow-sm">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th>Facture</th>
+                  <th>Montant</th>
+                  <th>Échéance</th>
+                  <th>Paiement</th>
+                  <th>Délai (jours)</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentDelays.map((p, idx) => (
+                  <tr key={idx}>
+                    <td className="fw-semibold">{p.numero}</td>
+                    <td className="font-monospace">{p.montant.toLocaleString()} MGA</td>
+                    <td>{p.date_echeance}</td>
+                    <td>{p.date_paiement}</td>
+                    <td>
+                      <span className={`badge ${p.en_retard ? 'bg-danger' : 'bg-success'}`}>
+                        {p.delai_jours > 0 ? `+${p.delai_jours}` : p.delai_jours}
+                      </span>
+                    </td>
+                    <td><span className="badge bg-info">Payée</span></td>
+                  </tr>
+                ))}
+                {paymentDelays.length === 0 && (
+                  <tr><td colSpan={6} className="text-center py-4 text-muted">Aucune donnée de paiement.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : activeTab === 'encours' ? (
+        <div className="card border-0 shadow-sm">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th>Client</th>
+                  <th>Entreprise</th>
+                  <th>Encours Actuel</th>
+                  <th>Limite</th>
+                  <th>Dépassement</th>
+                  <th>Nb Factures Impayées</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {clientOutstanding.map((c, idx) => (
+                  <tr key={idx}>
+                    <td className="fw-semibold">{c.nom}</td>
+                    <td className="text-muted">{c.entreprise || '—'}</td>
+                    <td className="font-monospace text-danger fw-bold">{c.encours_actuel.toLocaleString()} MGA</td>
+                    <td className="font-monospace text-muted">{c.encours_max.toLocaleString()} MGA</td>
+                    <td className="font-monospace fw-bold text-danger">{c.depassement.toLocaleString()} MGA</td>
+                    <td className="text-muted">{c.nb_factures_impayees}</td>
+                    <td>
+                      <span className={`badge ${c.depasse_limite ? 'bg-danger' : 'bg-success'}`}>
+                        {c.depasse_limite ? 'Dépassé' : 'OK'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {clientOutstanding.length === 0 && (
+                  <tr><td colSpan={7} className="text-center py-4 text-muted">Aucun encours client.</td></tr>
+                )}
               </tbody>
             </table>
           </div>

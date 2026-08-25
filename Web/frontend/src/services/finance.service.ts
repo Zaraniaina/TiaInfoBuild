@@ -25,5 +25,25 @@ export const financeService = {
   async getRapports() {
     const res = await api.get<RapportFinancier[]>('/finance/rapports')
     return res.data
-  }
+  },
+
+  async getBudgetOverruns() {
+    const res = await api.get('/finance/budget-overruns')
+    return res.data
+  },
+
+  async getPaymentDelays(clientId?: number) {
+    const res = await api.get('/finance/payment-delays', { params: clientId ? { client_id: clientId } : {} })
+    return res.data
+  },
+
+  async getClientOutstanding() {
+    const res = await api.get('/finance/client-outstanding')
+    return res.data
+  },
+
+  async generateRapport(periode: string) {
+    const res = await api.post('/finance/rapports/generate', null, { params: { periode } })
+    return res.data
+  },
 }
