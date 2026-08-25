@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth.store'
 export function ChantiersPage() {
   const { user } = useAuthStore()
   const roleCode = user?.role_code || 'employe'
-  const canCreateChantier = ['super_admin', 'admin_entreprise', 'directeur', 'chef_projet'].includes(roleCode)
+  const canCreateChantier = ['super_admin', 'admin_entreprise', 'directeur', 'chef_projet', 'chef_chantier'].includes(roleCode)
 
   const [chantiers, setChantiers] = useState<Chantier[]>([])
   const [loading, setLoading] = useState(true)
@@ -17,6 +17,8 @@ export function ChantiersPage() {
   const [selectedChantier, setSelectedChantier] = useState<Chantier | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const [showQRModal, setShowQRModal] = useState(false)
+  const [qrData, setQrData] = useState<{ qr_token: string; chantier_nom: string; date_validite: string } | null>(null)
   const [activeTabModal, setActiveTabModal] = useState<'infos' | 'budget' | 'phases' | 'incidents' | 'ressources'>('infos')
   const [activeDetailTab, setActiveDetailTab] = useState<'general' | 'phases' | 'incidents' | 'budget'>('general')
 
@@ -93,6 +95,12 @@ export function ChantiersPage() {
     loadChantiers()
   }, [searchTerm, statutFilter])
 
+  useEffect(() => {
+    if (showDetailModal && selectedChantier) {
+      chantiersService.getById(selectedChantier.id).then(data => setSelectedChantier(data)).catch(() => {})
+    }
+  }, [showDetailModal])
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
@@ -119,6 +127,48 @@ export function ChantiersPage() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+  }
+
+  const handleGenerateQR = async (chantierId: number) => {
+    try {
+      const data = await chantiersService.generateQR(chantierId)
+      setQrData({ qr_token: data.qr_token, chantier_nom: data.chantier_nom, date_validite: data.date_validite })
+      setShowQRModal(true)
+    } catch {
+      alert('Erreur lors de la génération du QR code')
+    }
+  }
+
+  const handleAddPhase = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedChantier) return
+    const form = e.target as HTMLFormElement
+    const nom = (form.elements.namedItem('phase_nom') as HTMLInputElement).value
+    const ordre = parseInt((form.elements.namedItem('phase_ordre') as HTMLInputElement).value || '0')
+    try {
+      await chantiersService.addPhase(selectedChantier.id, { nom, ordre, avancement_pct: 0, statut: 'non_commencee', budget: 0 })
+      alert('Phase ajoutée')
+      setShowDetailModal(false)
+      setShowDetailModal(true)
+    } catch {
+      alert('Erreur lors de l\'ajout de la phase')
+    }
+  }
+
+  const handleAddIncident = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedChantier) return
+    const form = e.target as HTMLFormElement
+    const titre = (form.elements.namedItem('incident_titre') as HTMLInputElement).value
+    const gravite = (form.elements.namedItem('incident_gravite') as HTMLSelectElement).value
+    try {
+      await chantiersService.addIncident(selectedChantier.id, { titre, gravite, statut: 'signale' })
+      alert('Incident signalé')
+      setShowDetailModal(false)
+      setShowDetailModal(true)
+    } catch {
+      alert('Erreur lors du signalement de l\'incident')
+    }
   }
 
   const getStatutBadge = (statut: string) => {
@@ -278,9 +328,14 @@ export function ChantiersPage() {
                   <button className="btn btn-sm btn-link text-primary p-0 fw-semibold" onClick={() => { setSelectedChantier(c); setShowDetailModal(true); }}>
                     <i className="bi bi-eye me-1"></i> Voir détails
                   </button>
-                  <button className="btn btn-sm btn-outline-secondary py-0" onClick={() => { setSelectedChantier(c); setFormData(c); setShowModal(true); }}>
-                    <i className="bi bi-pencil"></i>
-                  </button>
+                  <div className="d-flex gap-1">
+                    <button className="btn btn-sm btn-outline-warning" onClick={() => handleGenerateQR(c.id)} title="QR Pointage">
+                      <i className="bi bi-qr-code-scan"></i>
+                    </button>
+                    <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setFormData(c); setShowModal(true); }}>
+                      <i className="bi bi-pencil"></i>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -313,6 +368,9 @@ export function ChantiersPage() {
                     <td className="d-none d-lg-table-cell text-danger fw-semibold">{c.budget_reel?.toLocaleString()} MGA</td>
                     <td>{getStatutBadge(c.statut)}</td>
                     <td>
+                      <button className="btn btn-sm btn-outline-warning me-1" onClick={() => handleGenerateQR(c.id)} title="QR Pointage">
+                        <i className="bi bi-qr-code-scan"></i>
+                      </button>
                       <button className="btn btn-sm btn-outline-primary me-1" onClick={() => { setSelectedChantier(c); setShowDetailModal(true); }}>
                         <i className="bi bi-eye"></i>
                       </button>
@@ -489,14 +547,82 @@ export function ChantiersPage() {
                   {activeTabModal === 'phases' && (
                     <div>
                       <h6 className="fw-bold mb-3">Phases du chantier</h6>
-                      <p className="text-muted small">Définissez les étapes d'exécution de ce chantier.</p>
+                      {selectedChantier && selectedChantier.phases && selectedChantier.phases.length > 0 ? (
+                        <div className="list-group mb-3">
+                          {selectedChantier.phases.map(p => (
+                            <div key={p.id} className="list-group-item d-flex justify-content-between align-items-center">
+                              <div>
+                                <h6 className="mb-0 fw-semibold">{p.nom}</h6>
+                                <small className="text-muted">Ordre: {p.ordre}</small>
+                              </div>
+                              <div className="d-flex align-items-center gap-3">
+                                <div className="progress" style={{ width: '120px', height: '8px' }}>
+                                  <div className="progress-bar bg-success" style={{ width: `${p.avancement_pct}%` }}></div>
+                                </div>
+                                <span className="fw-bold">{p.avancement_pct}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-muted small mb-3">Aucune phase configurée pour ce chantier.</p>
+                      )}
+                      <form onSubmit={handleAddPhase} className="border-top pt-3">
+                        <h6 className="fw-bold mb-2">Ajouter une phase</h6>
+                        <div className="row g-2">
+                          <div className="col-md-6">
+                            <input type="text" className="form-control" name="phase_nom" placeholder="Nom de la phase" required />
+                          </div>
+                          <div className="col-md-3">
+                            <input type="number" className="form-control" name="phase_ordre" placeholder="Ordre" defaultValue={0} min={0} />
+                          </div>
+                          <div className="col-md-3">
+                            <button type="submit" className="btn btn-primary w-100">Ajouter</button>
+                          </div>
+                        </div>
+                      </form>
                     </div>
                   )}
 
                   {activeTabModal === 'incidents' && (
                     <div>
                       <h6 className="fw-bold mb-3">Incidents signalés</h6>
-                      <p className="text-muted small">Journal des événements et imprévus.</p>
+                      {selectedChantier && selectedChantier.incidents && selectedChantier.incidents.length > 0 ? (
+                        <div className="list-group mb-3">
+                          {selectedChantier.incidents.map(inc => (
+                            <div key={inc.id} className="list-group-item d-flex justify-content-between align-items-center">
+                              <div>
+                                <h6 className="mb-0 fw-semibold text-danger">{inc.titre}</h6>
+                                <small className="text-muted">Date: {inc.date_incident}</small>
+                              </div>
+                              <span className={`badge ${inc.statut === 'resolu' ? 'bg-success' : 'bg-warning text-dark'}`}>
+                                {inc.statut === 'resolu' ? 'Résolu' : 'En cours'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-muted small mb-3">Aucun incident signalé.</p>
+                      )}
+                      <form onSubmit={handleAddIncident} className="border-top pt-3">
+                        <h6 className="fw-bold mb-2">Signaler un incident</h6>
+                        <div className="row g-2">
+                          <div className="col-md-6">
+                            <input type="text" className="form-control" name="incident_titre" placeholder="Titre de l'incident" required />
+                          </div>
+                          <div className="col-md-3">
+                            <select className="form-select" name="incident_gravite">
+                              <option value="faible">Faible</option>
+                              <option value="moyenne">Moyenne</option>
+                              <option value="elevee">Élevée</option>
+                              <option value="critique">Critique</option>
+                            </select>
+                          </div>
+                          <div className="col-md-3">
+                            <button type="submit" className="btn btn-danger w-100">Signaler</button>
+                          </div>
+                        </div>
+                      </form>
                     </div>
                   )}
 
@@ -659,6 +785,33 @@ export function ChantiersPage() {
               </div>
               <div className="modal-footer bg-light">
                 <button className="btn btn-secondary" onClick={() => setShowDetailModal(false)}>Fermer</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal QR Pointage */}
+      {showQRModal && qrData && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content text-center">
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold">QR Code Pointage</h5>
+                <button type="button" className="btn-close" onClick={() => setShowQRModal(false)}></button>
+              </div>
+              <div className="modal-body py-4">
+                <div className="bg-white p-4 rounded d-inline-block mb-3">
+                  <div style={{ width: '200px', height: '200px', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.8rem' }}>
+                    QR TOKEN:<br/>{qrData.qr_token.slice(0, 20)}...
+                  </div>
+                </div>
+                <p className="mb-1 fw-bold">{qrData.chantier_nom}</p>
+                <p className="text-muted small">Valide pour la journée du {qrData.date_validite}</p>
+                <p className="text-muted small font-monospace">Token: {qrData.qr_token}</p>
+              </div>
+              <div className="modal-footer justify-content-center">
+                <button className="btn btn-secondary" onClick={() => setShowQRModal(false)}>Fermer</button>
               </div>
             </div>
           </div>

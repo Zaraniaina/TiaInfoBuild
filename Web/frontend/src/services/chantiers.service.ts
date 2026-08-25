@@ -3,8 +3,8 @@ import type { Chantier, Phase, Incident } from '@/types'
 
 export const chantiersService = {
   async getAll(params?: { search?: string; statut?: string }) {
-    const res = await api.get<Chantier[]>('/chantiers', { params })
-    return res.data
+    const res = await api.get('/chantiers', { params })
+    return (res.data as any).items || res.data
   },
 
   async getById(id: number) {
@@ -32,13 +32,38 @@ export const chantiersService = {
     return res.data
   },
 
-  async updatePhase(chantierId: number, phaseId: number, data: Partial<Phase>) {
-    const res = await api.put<Phase>(`/chantiers/${chantierId}/phases/${phaseId}`, data)
+  async addIncident(chantierId: number, data: Partial<Incident>) {
+    const res = await api.post<Incident>(`/chantiers/${chantierId}/incidents`, data)
     return res.data
   },
 
-  async addIncident(chantierId: number, data: Partial<Incident>) {
-    const res = await api.post<Incident>(`/chantiers/${chantierId}/incidents`, data)
+  async updateStatut(id: number, statut: string) {
+    const res = await api.put<Chantier>(`/chantiers/${id}/statut`, { statut })
+    return res.data
+  },
+
+  async generateQR(id: number) {
+    const res = await api.post(`/chantiers/${id}/qr-pointage`)
+    return res.data
+  },
+
+  async getQR(id: number) {
+    const res = await api.get(`/chantiers/${id}/qr-pointage`)
+    return res.data
+  },
+
+  async getAffectations(id: number) {
+    const res = await api.get(`/chantiers/${id}/affectations`)
+    return res.data
+  },
+
+  async createAffectation(id: number, data: { employe_id: number; date_debut?: string; date_fin?: string; role?: string }) {
+    const res = await api.post(`/chantiers/${id}/affectations`, data)
+    return res.data
+  },
+
+  async deleteAffectation(id: number, affId: number) {
+    const res = await api.delete(`/chantiers/${id}/affectations/${affId}`)
     return res.data
   }
 }

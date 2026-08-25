@@ -692,6 +692,12 @@ export interface DashboardStats {
     encours: number;
   }>;
   rapports_disponibles?: number;
+  nb_incidents?: number;
+  incidents_non_resolus?: number;
+  retard_jours?: number;
+  consommation_stock?: number;
+  ecart_stock?: number;
+  nb_alertes_chantier?: number;
 }
 
 export interface TopChantier {

@@ -461,46 +461,119 @@ export function DashboardPage() {
     )
   }
 
-  const renderChefChantier = () => (
-    <div>
-      {renderAlert()}
-      <div className="alert-bar mb-4 bg-primary bg-opacity-10 text-primary border-0">
-        <div className="alert-icon"><i className="bi bi-building"></i></div>
-        <div>
-          <strong>Chantier : Construction Immeuble Anosy</strong>
-          <div className="small mb-0">Avancement physique: 65% — Budget consommé: 62%</div>
-        </div>
-        <div className="ms-auto d-flex gap-2">
-          <button className="btn btn-warning fw-bold text-dark" onClick={() => alert('QR Code généré pour la journée !')}>
-            <i className="bi bi-qr-code-scan me-2"></i>QR Pointage
-          </button>
-          <button className="btn btn-light fw-bold text-primary" onClick={() => alert('Auto-déclaration GPS enregistrée.')}>
-            <i className="bi bi-geo-alt-fill me-2"></i>Pointer
-          </button>
-        </div>
-      </div>
-      <div className="row g-3 mb-4">
-        {renderKpi("Équipe Présente", "14 / 15", "Aujourd'hui", 'text-success')}
-        {renderKpi('Incidents du jour', '0', 'Aucun incident déclaré', 'text-danger')}
-        {renderKpi('Retard Planning', '0 jour', 'Dans les délais', 'text-success')}
-        {renderKpi('Demandes Matériel', '1', 'En attente', 'text-warning')}
-      </div>
-      <div className="row g-4 mb-4">
-        <div className="col-lg-8">
-          <div className="chart-card">
-            <h5><i className="bi bi-bar-chart me-2 text-primary"></i>Avancement vs Budget</h5>
-            <div style={{ height: '320px' }}><TopChantiersChart /></div>
+  const renderChefChantier = () => {
+    const avancementPhysique = stats?.taux_avancement_physique || 0
+    const avancementFinancier = stats?.taux_avancement_financier || 0
+    const nbIncidents = stats?.nb_incidents || 0
+    const incidentsNonResolus = stats?.incidents_non_resolus || 0
+    const retardJours = stats?.retard_jours || 0
+    const consommationStock = stats?.consommation_stock || 0
+    const ecartStock = stats?.ecart_stock || 0
+    const nbAlertes = stats?.nb_alertes_chantier || 0
+    const rentabilite = stats?.rentabilite_chantiers || []
+    const topChantiers = stats?.top_chantiers || []
+
+    return (
+      <div>
+        {renderAlert()}
+        <div className="alert-bar mb-4 bg-primary bg-opacity-10 text-primary border-0">
+          <div className="alert-icon"><i className="bi bi-building"></i></div>
+          <div>
+            <strong>Chantier : {topChantiers[0]?.nom || 'Construction Immeuble Anosy'}</strong>
+            <div className="small mb-0">Avancement physique: {avancementPhysique.toFixed(0)}% — Budget consommé: {avancementFinancier.toFixed(0)}%</div>
+          </div>
+          <div className="ms-auto d-flex gap-2">
+            <button className="btn btn-warning fw-bold text-dark" onClick={() => alert('QR Code généré pour la journée !')}>
+              <i className="bi bi-qr-code-scan me-2"></i>QR Pointage
+            </button>
+            <button className="btn btn-light fw-bold text-primary" onClick={() => alert('Auto-déclaration GPS enregistrée.')}>
+              <i className="bi bi-geo-alt-fill me-2"></i>Pointer
+            </button>
           </div>
         </div>
-        <div className="col-lg-4">
-          <div className="chart-card">
-            <h5><i className="bi bi-people me-2 text-primary"></i>Présence équipe</h5>
-            <div style={{ height: '320px' }}><DepensesParCategorieChart /></div>
+
+        <div className="row g-3 mb-4">
+          {renderKpi('Avancement Physique', `${avancementPhysique.toFixed(0)}%`, 'Phases terminées / prévues', 'text-primary')}
+          {renderKpi('Avancement Financier', `${avancementFinancier.toFixed(0)}%`, 'Budget consommé / prévu', 'text-success')}
+          {renderKpi('Incidents Actifs', String(incidentsNonResolus), `Sur ${nbIncidents} déclarés`, 'text-warning')}
+          {renderKpi('Retard Planning', `${retardJours > 0 ? '+' : ''}${retardJours.toFixed(0)} jours`, retardJours > 0 ? 'En retard' : 'Dans les délais', retardJours > 0 ? 'text-danger' : 'text-success')}
+        </div>
+
+        <div className="row g-3 mb-4">
+          <div className="col-md-6">
+            <div className="kpi-card">
+              <div className="kpi-label">Présence Équipe</div>
+              <div className="kpi-value text-success">{(stats?.attendance_rate || 0).toFixed(0)}%</div>
+              <div className="kpi-context">Taux de présence quotidien</div>
+            </div>
+          </div>
+          <div className="col-md-6">
+            <div className="kpi-card">
+              <div className="kpi-label">Consommation Stock</div>
+              <div className="kpi-value text-primary">{consommationStock.toLocaleString()} unités</div>
+              <div className="kpi-context">Écart prévu: {ecartStock >= 0 ? '+' : ''}{ecartStock.toLocaleString()}</div>
+            </div>
           </div>
         </div>
+
+        {rentabilite.length > 0 && (
+          <div className="card border-0 shadow-sm mb-4">
+            <div className="card-header bg-transparent border-bottom py-3">
+              <h5 className="fw-bold mb-0"><i className="bi bi-bar-chart-fill me-2 text-primary"></i>Détail de mon Chantier</h5>
+            </div>
+            <div className="table-responsive">
+              <table className="table mb-0">
+                <thead>
+                  <tr>
+                    <th>Chantier</th>
+                    <th>CA</th>
+                    <th>Dépenses</th>
+                    <th>Marge</th>
+                    <th>Taux de marge</th>
+                    <th>Budget prévu</th>
+                    <th>Avancement</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rentabilite.map(r => (
+                    <tr key={r.id}>
+                      <td className="fw-semibold">{r.nom}</td>
+                      <td className="font-monospace">{r.ca.toLocaleString()} MGA</td>
+                      <td className="font-monospace text-danger">{r.depenses.toLocaleString()} MGA</td>
+                      <td className="font-monospace text-success">{r.marge.toLocaleString()} MGA</td>
+                      <td>
+                        <span className={`badge ${parseFloat(String(r.taux_marge)) >= 15 ? 'bg-success' : 'bg-warning text-dark'}`}>
+                          {r.taux_marge}%
+                        </span>
+                      </td>
+                      <td className="font-monospace">{r.budget_prevu.toLocaleString()} MGA</td>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="progress flex-grow-1" style={{ height: '6px' }}>
+                            <div className="progress-bar bg-primary" role="progressbar" style={{ width: `${Math.min((r as any).taux_avancement ?? avancementFinancier, 100)}%` }}></div>
+                          </div>
+                          <small className="text-muted">{((r as any).taux_avancement ?? avancementFinancier).toFixed(0)}%</small>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        <div className="d-flex gap-2 flex-wrap">
+          <button className="btn btn-primary fw-bold" onClick={() => alert('Génération du rapport d\'avancement...')}>
+            <i className="bi bi-file-earmark-text me-2"></i>Générer Rapport d'Avancement
+          </button>
+          <button className="btn btn-outline-secondary" onClick={() => window.print()}>
+            <i className="bi bi-printer me-2"></i>Imprimer Journal de Chantier
+          </button>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const renderChefProjet = () => (
     <div>
