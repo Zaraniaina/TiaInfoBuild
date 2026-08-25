@@ -20,6 +20,7 @@ class UtilisateurCreate(BaseModel):
     telephone: str | None = Field(default=None, max_length=50)
     entreprise_id: int | None = None
     role_id: int | None = None
+    role_code: str | None = None
 
     @field_validator("password")
     @classmethod
@@ -46,6 +47,7 @@ class UtilisateurUpdate(BaseModel):
     prenom: str | None = Field(default=None, max_length=100)
     telephone: str | None = Field(default=None, max_length=50)
     role_id: int | None = None
+    role_code: str | None = None
     entreprise_id: int | None = None
     statut: str | None = Field(default=None, max_length=20)
 

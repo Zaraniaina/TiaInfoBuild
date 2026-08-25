@@ -1,0 +1,162 @@
+# Walkthrough — Validation de la Logique des 11 Rôles (Du Login au Logout)
+
+Cette fiche de validation détaille le déroulement pas-à-pas de la logique applicative pour chacun des **11 rôles** de la plateforme TIA INFO BUILD, depuis la tentative de connexion (`/login`), en passant par le routage et les actions métiers, jusqu'à la déconnexion sécurisée (`/logout`).
+
+---
+
+## 🔄 1. Séquence Générale du Flux Utilisateur
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Utilisateur (1 des 11 rôles)
+    participant F as Frontend React Vite
+    participant B as Backend FastAPI
+    participant DB as Base de Données
+
+    U->>F: Accède à /login et saisit ses identifiants
+    F->>B: POST /api/v1/auth/login (email + password)
+    B->>DB: Vérification de l'utilisateur (Argon2id)
+    DB-->>B: Utilisateur + Rôle applicatif valide
+    B-->>F: Retourne JWT (access_token + refresh_token + role_code)
+    F->>F: Enregistre le token dans Zustand Store & localStorage
+    F->>F: Redirection vers /dashboard via ProtectedRoute
+    F->>F: Filtrage dynamique des menus du Sidebar par role_code
+    U->>F: Exécute les actions métiers spécifiques à son rôle
+    F->>B: Requêtes API avec header Authorization: Bearer <token>
+    B->>B: Contrôle RBAC (_require_permission)
+    B-->>F: Réponse HTTP 200 OK (ou 403 Forbidden si non autorisé)
+    U->>F: Clique sur "Déconnexion" dans le Sidebar
+    F->>F: Modal de confirmation de déconnexion
+    F->>F: Purge des tokens et réinitialisation de l'état
+    F-->>U: Redirection automatique vers /login
+```
+
+---
+
+## 🧪 2. Déroulement du Test par Rôle (Les 11 Rôles)
+
+### 🔴 1. Super Admin SaaS (`super_admin`)
+- **Login** : Connexion avec `admin@tia.mg`.
+- **Routage & Navigation** : Redirection vers `/super-admin`. Menus du Sidebar débloqués : `Dashboard SaaS`, `Entreprises`, `Utilisateurs Globaux`, `Abonnements`, `Facturation SaaS`, `Logs & Supervision`.
+- **Actions Métiers** :
+  - Consultation des statistiques multi-tenants.
+  - Création/Suspension d'entreprises clientes.
+  - Suivi des paiements Mobile Money (MVola/Orange/Airtel).
+- **Protection** : Tentative d'accès aux données financières internes d'une entreprise -> Bloqué/Masqué.
+- **Logout** : Clic sur Déconnexion -> Purge des accès -> Redirection `/login`.
+
+---
+
+### 🔵 2. Admin Entreprise (`admin_entreprise`)
+- **Login** : Connexion avec `demo@btppro.mg`.
+- **Routage & Navigation** : Redirection vers `/dashboard`. Menus actifs : `Dashboard`, `Chantiers`, `RH`, `Stocks`, `Commercial`, `Finance`, `Matériels`, `Alertes`, `Audit Connexions`, `Utilisateurs & Paramètres`.
+- **Actions Métiers** :
+  - Création et gestion des comptes utilisateurs et attribution des rôles.
+  - Paramétrage de la devise (MGA), des préfixes de pièces et des seuils d'alertes.
+  - Consultation des journaux d'audit de sécurité (`/historique-logins`).
+- **Logout** : Déconnexion confirmée -> Retour à `/login`.
+
+---
+
+### 🟢 3. Direction Générale / DAF (`directeur`)
+- **Login** : Connexion avec `directeur@btppro.mg`.
+- **Routage & Navigation** : Redirection vers `/dashboard`. Menus actifs : `Dashboard`, `Chantiers`, `Finance`, `Commercial`, `RH`, `Matériels`, `Stocks`, `Alertes`.
+- **Actions Métiers** :
+  - Consultation du tableau de bord stratégique (CA global, Marge nette consolidée).
+  - Validation ou refus des devis et budgets de chantier supérieurs au seuil.
+- **Protection** : Pas d'accès aux paramètres système techniques ni aux journaux d'audit d'utilisateurs.
+- **Logout** : Fermeture propre de la session.
+
+---
+
+### 🟡 4. Comptable / Responsable Financier (`comptable`)
+- **Login** : Connexion avec `comptable@btppro.mg`.
+- **Routage & Navigation** : Redirection vers `/dashboard`. Menus actifs : `Dashboard`, `Finance`, `Commercial`, `Chantiers`, `RH`, `Alertes`.
+- **Actions Métiers** :
+  - Saisie des dépenses réelles par chantier (matériaux, main d'œuvre, engins).
+  - Suivi du rapprochement bancaire, des factures en retard et du délai moyen de paiement (DSO).
+- **Protection** : Pas d'accès aux modifications du parc matériel ni aux paramètres système.
+- **Logout** : Session détruite.
+
+---
+
+### 🟣 5. Chef de Projet / Directeur Technique (`chef_projet`)
+- **Login** : Connexion avec `chefprojet@btppro.mg`.
+- **Routage & Navigation** : Redirection vers `/dashboard`. Menus actifs : `Dashboard`, `Chantiers`, `RH`, `Matériels`, `Stocks`, `Finance`, `Alertes`.
+- **Actions Métiers** :
+  - Création des chantiers et découpage en phases/jalons.
+  - Arbitrage des ressources entre chantiers en cas de conflit d'affectation.
+  - Validation des pointages hors-périmètre (GPS) des Chefs de Chantier.
+- **Logout** : Retour sécurisé à l'écran d'accueil.
+
+---
+
+### 🟧 6. Chef de Chantier (`chef_chantier`)
+- **Login** : Connexion avec `chefchantier@btppro.mg`.
+- **Routage & Navigation** : Redirection vers `/dashboard`. Menus actifs : `Dashboard`, `Chantiers`, `RH`, `Matériels`, `Stocks`, `Finance`, `Alertes`.
+- **Actions Métiers** :
+  - **Lancement du Terminal Scanner Badges Ouvriers** (`QRScannerModal`) pour enregistrer les entrées/sorties de son équipe.
+  - Auto-pointage par géolocalisation GPS (Catégorie B).
+  - Déclaration d'avancement physique (%) et des incidents de chantier avec photos.
+- **Protection** : Périmètre restreint uniquement à son chantier attribué.
+- **Logout** : Session fermée.
+
+---
+
+### 🟤 7. Responsable RH (`rh`)
+- **Login** : Connexion avec `rh@btppro.mg`.
+- **Routage & Navigation** : Redirection vers `/dashboard`. Menus actifs : `Dashboard`, `RH`, `Chantiers`, `Alertes`.
+- **Actions Métiers** :
+  - Gestion des fiches employés et suivi des habilitations BTP.
+  - **Génération & Impression des Badges QR Code Officiels** (`WorkerBadgeCard`).
+  - Validation des pointages terrain et des heures supplémentaires pour la paie.
+- **Logout** : Déconnexion effectuée.
+
+---
+
+### ⚙️ 8. Responsable Matériel (`materiel`)
+- **Login** : Connexion avec `materiel@btppro.mg`.
+- **Routage & Navigation** : Redirection vers `/dashboard`. Menus actifs : `Dashboard`, `Matériels`, `Chantiers`, `Alertes`.
+- **Actions Métiers** :
+  - Gestion du parc d'engins, affectation aux chantiers et enregistrement des pannes.
+  - Planification des maintenances préventives et curatives.
+- **Logout** : Fermeture de session.
+
+---
+
+### 📦 9. Magasinier / Responsable Stocks (`magasinier`)
+- **Login** : Connexion avec `magasinier@btppro.mg`.
+- **Routage & Navigation** : Redirection vers `/dashboard`. Menus actifs : `Dashboard`, `Stocks`, `Chantiers`, `Alertes`.
+- **Actions Métiers** :
+  - Enregistrement des réceptions fournisseurs et des bons de sortie vers les chantiers.
+  - Suivi du stock minimum et génération du QR code de pointage du dépôt.
+- **Logout** : Déconnexion.
+
+---
+
+### 💼 10. Responsable Commercial (`commercial`)
+- **Login** : Connexion avec `commercial@btppro.mg`.
+- **Routage & Navigation** : Redirection vers `/dashboard`. Menus actifs : `Dashboard`, `Commercial`, `Chantiers`, `Finance`, `Alertes`.
+- **Actions Métiers** :
+  - Suivi du pipeline de prospection, édition des devis et conversion en contrats.
+  - Émission des factures jalons et relance des paiements.
+- **Logout** : Session détruite.
+
+---
+
+### 👷 11. Ouvrier / Employé Terrain (`employe`)
+- **Login** : Connexion avec `ouvrier@btppro.mg`.
+- **Routage & Navigation** : Redirection vers `/dashboard`. Menus actifs : `Dashboard`, `Chantiers`, `RH`, `Matériels`, `Stocks`, `Alertes`.
+- **Actions Métiers** :
+  - **Affichage de son Badge QR Code Officiel** (`WorkerBadgeCard`) pour scan par le Chef de Chantier.
+  - Consultation de ses tâches quotidiennes et mise à jour du statut (À faire / En cours / Terminé).
+- **Protection** : Aucun accès aux données financières, commerciales ou RH des collègues.
+- **Logout** : Déconnexion simple et sécurisée.
+
+---
+
+## 3. Sécurité de la Déconnexion & Tentatives d'Accès Direct
+1. Clic sur le bouton **Déconnexion** -> Affichage d'un modal de confirmation.
+2. Une fois la déconnexion validée, `useAuthStore.logout()` efface les tokens du `localStorage`.
+3. Toute tentative de retour en arrière ou d'accès direct par URL à une page protégée (ex. `/rh` ou `/finance`) est interceptée par `ProtectedRoute.tsx` qui redirige immédiatement vers `/login`.

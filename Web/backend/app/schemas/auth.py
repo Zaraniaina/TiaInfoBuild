@@ -133,3 +133,49 @@ class UserResponse(BaseModel):
     must_change_password: bool | None = None
     date_creation: datetime | None = None
     derniere_connexion: datetime | None = None
+
+
+class RegisterEntrepriseRequest(BaseModel):
+    """Corps de la requête pour créer une entreprise + admin."""
+
+    nom_entreprise: str = Field(..., min_length=1, max_length=255)
+    entreprise_email: EmailStr | None = None
+    adresse: str | None = None
+    telephone: str | None = None
+    admin_prenom: str = Field(..., min_length=1, max_length=100)
+    admin_nom: str = Field(..., min_length=1, max_length=100)
+    admin_email: EmailStr
+    password: str = Field(..., min_length=8)
+    password_confirm: str = Field(..., min_length=8)
+
+    @model_validator(mode="after")
+    def check_passwords_match(self) -> "RegisterEntrepriseRequest":
+        if self.password != self.password_confirm:
+            raise ValueError("Les mots de passe ne correspondent pas")
+        return self
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_policy(cls, v: str) -> str:
+        import re
+        if len(v) < 8:
+            raise ValueError("Le mot de passe doit contenir au moins 8 caractères")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Le mot de passe doit contenir au moins une majuscule")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Le mot de passe doit contenir au moins une minuscule")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("Le mot de passe doit contenir au moins un chiffre")
+        if not re.search(r"[^A-Za-z0-9]", v):
+            raise ValueError("Le mot de passe doit contenir au moins un caractère spécial")
+        return v
+
+
+class RegisterEntrepriseResponse(BaseModel):
+    """Réponse après création d'une entreprise + admin."""
+
+    entreprise_id: int
+    utilisateur_id: int
+    email: str
+    role_code: str
+    message: str

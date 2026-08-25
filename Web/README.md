@@ -20,3 +20,4 @@ Consultez le guide complet de démarrage et la documentation des rôles dans :
 - **Magasinier / Stocks** : `magasinier@btppro.mg` / `Admin123!`
 - **Commercial** : `commercial@btppro.mg` / `Admin123!`
 - **Ouvrier / Terrain** : `ouvrier@btppro.mg` / `Admin123!`
+ 

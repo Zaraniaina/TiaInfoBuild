@@ -15,6 +15,9 @@ from app.database import get_db
 from app.models.depense import Depense
 from app.models.alerte import Alerte
 from app.models.facture import Facture
+from app.models.chantier import Chantier
+from app.models.client import Client
+from app.models.rapport_financier import RapportFinancier
 from app.schemas.alerte import AlerteCreate, AlerteResponse, AlerteList
 from app.schemas.depense import (
     DepenseCreate,
@@ -301,3 +304,260 @@ async def create_alerte(
     obj_in = data.model_dump()
     obj_in["entreprise_id"] = entreprise_id
     return await alerte_crud.create(db, obj_in)
+
+
+# ==================== BUDGET OVERRUNS ====================
+
+
+@router.get("/budget-overruns")
+async def list_budget_overruns(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    limit: int = Query(default=50, le=100),
+):
+    _require_permission(payload, "finance:read")
+    entreprise_id = _get_entreprise_id(payload)
+
+    result = await db.execute(
+        select(
+            Chantier.id,
+            Chantier.nom,
+            Chantier.numero,
+            Chantier.budget_prevu,
+            Chantier.budget_reel,
+            Chantier.statut,
+        )
+        .where(
+            Chantier.entreprise_id == entreprise_id,
+            Chantier.is_deleted == False,
+            Chantier.budget_reel > Chantier.budget_prevu,
+        )
+        .order_by((Chantier.budget_reel - Chantier.budget_prevu).desc())
+        .limit(limit)
+    )
+
+    overruns = []
+    for row in result.all():
+        budget_prevu = float(row.budget_prevu or 0.0)
+        budget_reel = float(row.budget_reel or 0.0)
+        depassement = budget_reel - budget_prevu
+        taux_depassement = (depassement / budget_prevu * 100) if budget_prevu > 0 else 0.0
+        overruns.append({
+            "id": row.id,
+            "nom": row.nom,
+            "numero": row.numero,
+            "budget_prevu": budget_prevu,
+            "budget_reel": budget_reel,
+            "depassement": depassement,
+            "taux_depassement": round(taux_depassement, 1),
+            "statut": row.statut,
+        })
+
+    return {"overruns": overruns}
+
+
+# ==================== PAYMENT DELAYS ====================
+
+
+@router.get("/payment-delays")
+async def get_payment_delays(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    client_id: int | None = None,
+):
+    _require_permission(payload, "finance:read")
+    entreprise_id = _get_entreprise_id(payload)
+
+    query = select(Facture).where(
+        Facture.entreprise_id == entreprise_id,
+        Facture.is_deleted == False,
+        Facture.statut == "payee",
+        Facture.date_paiement.is_not(None),
+        Facture.date_echeance.is_not(None),
+    )
+
+    if client_id:
+        query = query.where(Facture.client_id == client_id)
+
+    result = await db.execute(query)
+    factures = result.scalars().all()
+
+    delais = []
+    for f in factures:
+        if f.date_paiement and f.date_echeance:
+            from datetime import date as date_type
+            if isinstance(f.date_paiement, datetime):
+                date_paiement = f.date_paiement.date()
+            else:
+                date_paiement = f.date_paiement
+            if isinstance(f.date_echeance, datetime):
+                date_echeance = f.date_echeance.date()
+            else:
+                date_echeance = f.date_echeance
+            delai = (date_paiement - date_echeance).days
+            delais.append({
+                "facture_id": f.id,
+                "numero": f.numero,
+                "client_id": f.client_id,
+                "montant": float(f.montant_ttc or 0),
+                "date_echeance": date_echeance.isoformat(),
+                "date_paiement": date_paiement.isoformat(),
+                "delai_jours": delai,
+                "en_retard": delai > 0,
+            })
+
+    delais.sort(key=lambda x: x["delai_jours"], reverse=True)
+
+    moyenne = sum(d["delai_jours"] for d in delais) / len(delais) if delais else 0.0
+
+    return {
+        "delais": delais,
+        "moyenne_jours": round(moyenne, 1),
+        "nb_en_retard": sum(1 for d in delais if d["en_retard"]),
+    }
+
+
+# ==================== CLIENT OUTSTANDING ====================
+
+
+@router.get("/client-outstanding")
+async def get_client_outstanding(
+    payload: CurrentUserPayload,
+    db: DbDep,
+):
+    _require_permission(payload, "finance:read")
+    entreprise_id = _get_entreprise_id(payload)
+
+    result = await db.execute(
+        select(
+            Client.id,
+            Client.nom,
+            Client.entreprise,
+            Client.encours_max,
+            func.coalesce(func.sum(Facture.montant_ttc - Facture.montant_paye), 0).label("encours_actuel"),
+            func.count(Facture.id).label("nb_factures_impayees"),
+        )
+        .outerjoin(Facture, Facture.client_id == Client.id)
+        .where(
+            Client.entreprise_id == entreprise_id,
+            Client.is_deleted == False,
+            Facture.is_deleted == False,
+            Facture.statut.in_(["emis", "envoye", "partiellement_payee", "en_retard"]),
+        )
+        .group_by(Client.id, Client.nom, Client.entreprise, Client.encours_max)
+    )
+
+    clients = []
+    for row in result.all():
+        encours_max = float(row.encours_max or 0.0)
+        encours_actuel = float(row.encours_actuel or 0.0)
+        depassement = encours_actuel - encours_max if encours_max > 0 else 0.0
+        clients.append({
+            "client_id": row.id,
+            "nom": row.nom,
+            "entreprise": row.entreprise,
+            "encours_max": encours_max,
+            "encours_actuel": encours_actuel,
+            "depassement": depassement,
+            "nb_factures_impayees": row.nb_factures_impayees,
+            "depasse_limite": depassement > 0,
+        })
+
+    clients.sort(key=lambda x: x["encours_actuel"], reverse=True)
+
+    return {"clients": clients}
+
+
+# ==================== RAPPORTS ====================
+
+
+@router.get("/rapports")
+async def list_rapports(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    skip: int = 0,
+    limit: int = 100,
+):
+    _require_permission(payload, "finance:read")
+    entreprise_id = _get_entreprise_id(payload)
+    result = await db.execute(
+        select(RapportFinancier)
+        .where(RapportFinancier.entreprise_id == entreprise_id, RapportFinancier.is_deleted == False)
+        .order_by(RapportFinancier.date_generation.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    rapports = result.scalars().all()
+    return [
+        {
+            "id": r.id,
+            "periode": r.periode,
+            "chiffre_affaires": float(r.chiffre_affaires or 0),
+            "depenses_total": float(r.depenses_total or 0),
+            "marge": float(r.marge or 0),
+            "date_generation": r.date_generation.isoformat() if r.date_generation else None,
+        }
+        for r in rapports
+    ]
+
+
+@router.post("/rapports/generate", status_code=status.HTTP_201_CREATED)
+async def generate_rapport(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    periode: str = Query(..., description="Format YYYY-MM"),
+):
+    _require_permission(payload, "finance:write")
+    entreprise_id = _get_entreprise_id(payload)
+
+    try:
+        annee, mois = map(int, periode.split("-"))
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Format de période invalide. Utilisez YYYY-MM")
+
+    from datetime import date as date_type
+
+    total_recettes = float((
+        await db.execute(
+            select(func.coalesce(func.sum(Facture.montant_paye), 0)).where(
+                Facture.entreprise_id == entreprise_id,
+                Facture.is_deleted == False,
+                extract("year", Facture.date_emission) == annee,
+                extract("month", Facture.date_emission) == mois,
+            )
+        )
+    ).scalar_one_or_none() or 0.0)
+
+    total_depenses = float((
+        await db.execute(
+            select(func.coalesce(func.sum(Depense.montant), 0)).where(
+                Depense.entreprise_id == entreprise_id,
+                Depense.is_deleted == False,
+                extract("year", Depense.date_depense) == annee,
+                extract("month", Depense.date_depense) == mois,
+            )
+        )
+    ).scalar_one_or_none() or 0.0)
+
+    marge = total_recettes - total_depenses
+
+    rapport = RapportFinancier(
+        entreprise_id=entreprise_id,
+        periode=periode,
+        chiffre_affaires=total_recettes,
+        depenses_total=total_depenses,
+        marge=marge,
+        date_generation=date_type.today(),
+    )
+    db.add(rapport)
+    await db.flush()
+    await db.refresh(rapport)
+
+    return {
+        "id": rapport.id,
+        "periode": rapport.periode,
+        "chiffre_affaires": total_recettes,
+        "depenses_total": total_depenses,
+        "marge": marge,
+        "date_generation": rapport.date_generation.isoformat(),
+    }

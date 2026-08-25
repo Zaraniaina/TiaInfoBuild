@@ -29,6 +29,8 @@ from app.schemas.auth import (
     Token,
     ChangePasswordRequest,
     PermissionResponse,
+    RegisterEntrepriseRequest,
+    RegisterEntrepriseResponse,
 )
 from app.core.permissions import PERMISSION_MAP, Role
 
@@ -164,6 +166,88 @@ async def register(data: RegisterRequest, db: DbSession):
     user = await crud.create(db, obj_in)
     await db.refresh(user)
     return {"id": user.id, "email": user.email, "message": "Inscription réussie"}
+
+
+@router.post("/register-entreprise", response_model=RegisterEntrepriseResponse, status_code=status.HTTP_201_CREATED)
+async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, request: Request):
+    from app.crud.role import RoleCRUD
+    from app.models.entreprise import Entreprise
+
+    existing_email = await db.execute(select(Utilisateur).where(Utilisateur.email == data.admin_email))
+    if existing_email.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email déjà utilisé")
+
+    entreprise = Entreprise(
+        nom=data.nom_entreprise,
+        email=data.entreprise_email or data.admin_email,
+        adresse=data.adresse,
+        telephone=data.telephone,
+    )
+    db.add(entreprise)
+    await db.flush()
+    await db.refresh(entreprise)
+
+    role_crud = RoleCRUD()
+    admin_role = await role_crud.get_by_code(db, Role.ADMIN_ENTREPRISE)
+    if not admin_role:
+        admin_role = Role(
+            code=Role.ADMIN_ENTREPRISE,
+            nom="Admin Entreprise",
+            description="Administrateur de l'entreprise",
+            permissions={"*": True},
+            is_system=True,
+        )
+        db.add(admin_role)
+        await db.flush()
+        await db.refresh(admin_role)
+
+    role_code = admin_role.code
+    permissions = PERMISSION_MAP.get(role_code, [])
+    hashed_password = hash_password(data.password)
+    admin_user = Utilisateur(
+        entreprise_id=entreprise.id,
+        role_id=admin_role.id,
+        nom=data.admin_nom,
+        prenom=data.admin_prenom,
+        email=data.admin_email,
+        mot_de_passe_hash=hashed_password,
+        statut="actif",
+    )
+    db.add(admin_user)
+    await db.flush()
+    await db.refresh(admin_user)
+
+    access_token = create_access_token(
+        subject=admin_user.id,
+        role_code=role_code,
+        entreprise_id=entreprise.id,
+        permissions=permissions,
+    )
+    refresh_token = create_refresh_token(admin_user.id)
+    refresh_hash = hash_password(refresh_token)
+    refresh_expires = datetime.now() + timedelta(days=settings.refresh_token_expire_days)
+    db_refresh = RefreshToken(utilisateur_id=admin_user.id, token_hash=refresh_hash, expires_at=refresh_expires)
+    db.add(db_refresh)
+    admin_user.derniere_connexion = datetime.now()
+    await db.execute(
+        HistoriqueConnexion.__table__.insert().values(
+            utilisateur_id=admin_user.id,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            reussi=True,
+            date_connexion=datetime.now(),
+        )
+    )
+    await db.commit()
+    await db.refresh(admin_user)
+
+    return RegisterEntrepriseResponse(
+        entreprise_id=entreprise.id,
+        utilisateur_id=admin_user.id,
+        email=admin_user.email,
+        role_code=role_code,
+        message="Entreprise créée avec succès",
+    )
 
 
 @router.post("/change-password")

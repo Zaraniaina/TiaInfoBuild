@@ -110,6 +110,7 @@ class EmployeResponse(BaseModel):
     email: EmailStr | None = None
     adresse: str | None = None
     statut: str | None = None
+    code_qr_badge: str | None = None
     is_deleted: bool | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None

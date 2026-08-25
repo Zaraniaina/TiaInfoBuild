@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { Employe, Pointage, Equipe, HeureSupplementaire } from '@/types'
 import { rhService } from '@/services/rh.service'
+import { WorkerBadgeCard } from '@/components/pointage/WorkerBadgeCard'
+import { QRScannerModal } from '@/components/pointage/QRScannerModal'
 
 export function RhPage() {
   const [activeTab, setActiveTab] = useState<'employes' | 'pointages' | 'equipes' | 'heures-sup'>('employes')
@@ -20,6 +22,9 @@ export function RhPage() {
   // Modals
   const [showEmployeModal, setShowEmployeModal] = useState(false)
   const [showChangementPosteModal, setShowChangementPosteModal] = useState(false)
+  const [showBadgeModal, setShowBadgeModal] = useState(false)
+  const [showScannerModal, setShowScannerModal] = useState(false)
+  const [selectedBadgeEmploye, setSelectedBadgeEmploye] = useState<Employe | null>(null)
   const [selectedEmploye, setSelectedEmploye] = useState<Employe | null>(null)
   const [employeForm, setEmployeForm] = useState<Partial<Employe>>({})
   const [posteForm, setPosteForm] = useState({
@@ -124,9 +129,14 @@ export function RhPage() {
           <p className="text-secondary mb-0">Gestion du personnel, des pointages, des équipes et des heures supplémentaires</p>
         </div>
         {activeTab === 'employes' && (
-          <button className="btn btn-primary fw-bold" onClick={() => { setSelectedEmploye(null); setEmployeForm({ type_contrat: 'CDI', statut: 'actif', salaire_base: 0 }); setShowEmployeModal(true); }}>
-            <i className="bi bi-person-plus me-2"></i>Nouvel employé
-          </button>
+          <div className="d-flex gap-2">
+            <button className="btn btn-outline-info fw-bold" onClick={() => setShowScannerModal(true)}>
+              <i className="bi bi-qr-code-scan me-2"></i>Scanner Pointage
+            </button>
+            <button className="btn btn-primary fw-bold" onClick={() => { setSelectedEmploye(null); setEmployeForm({ type_contrat: 'CDI', statut: 'actif', salaire_base: 0 }); setShowEmployeModal(true); }}>
+              <i className="bi bi-person-plus me-2"></i>Nouvel employé
+            </button>
+          </div>
         )}
       </div>
 
@@ -237,6 +247,13 @@ export function RhPage() {
                         </span>
                       </td>
                       <td>
+                        <button
+                          className="btn btn-sm btn-outline-info me-1"
+                          title="Voir le Badge QR Code"
+                          onClick={() => { setSelectedBadgeEmploye(emp); setShowBadgeModal(true); }}
+                        >
+                          <i className="bi bi-qr-code"></i>
+                        </button>
                         <button
                           className="btn btn-sm btn-outline-primary me-1"
                           title="Changer de poste / Carrière"
@@ -476,6 +493,27 @@ export function RhPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Badge QR Code */}
+      {showBadgeModal && selectedBadgeEmploye && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} tabIndex={-1}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 bg-transparent shadow-none">
+              <div className="d-flex justify-content-end mb-2">
+                <button type="button" className="btn-close btn-close-white fs-4" onClick={() => setShowBadgeModal(false)}></button>
+              </div>
+              <WorkerBadgeCard employe={selectedBadgeEmploye} onPrint={() => window.print()} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Scanner QR Code */}
+      <QRScannerModal
+        isOpen={showScannerModal}
+        onClose={() => setShowScannerModal(false)}
+        onPointageSuccess={() => loadData()}
+      />
     </div>
   )
 }

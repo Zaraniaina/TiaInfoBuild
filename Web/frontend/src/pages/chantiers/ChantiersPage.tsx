@@ -160,7 +160,7 @@ export function ChantiersPage() {
     if (!selectedChantier) return
     const form = e.target as HTMLFormElement
     const titre = (form.elements.namedItem('incident_titre') as HTMLInputElement).value
-    const gravite = (form.elements.namedItem('incident_gravite') as HTMLSelectElement).value
+    const gravite = (form.elements.namedItem('incident_gravite') as HTMLSelectElement).value as any
     try {
       await chantiersService.addIncident(selectedChantier.id, { titre, gravite, statut: 'signale' })
       alert('Incident signalé')

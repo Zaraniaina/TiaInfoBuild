@@ -25,6 +25,7 @@ class Employe(Base):
     email: Mapped[str | None] = mapped_column(String(255))
     adresse: Mapped[str | None] = mapped_column(Text)
     statut: Mapped[str] = mapped_column(String(20), server_default="actif")
+    code_qr_badge: Mapped[str | None] = mapped_column(String(100), unique=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())

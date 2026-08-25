@@ -56,6 +56,12 @@ async def create_utilisateur(payload: AdminCheck, db: DbSession, data: Utilisate
         obj_in["entreprise_id"] = entreprise_id
     from app.security import hash_password
     obj_in["mot_de_passe_hash"] = hash_password(data.password)
+    if obj_in.get("role_code"):
+        role_result = await db.execute(select(Role).where(Role.code == obj_in["role_code"]))
+        role = role_result.scalar_one_or_none()
+        if role:
+            obj_in["role_id"] = role.id
+        del obj_in["role_code"]
     user = Utilisateur(**obj_in)
     db.add(user)
     await db.flush()
@@ -85,6 +91,12 @@ async def update_utilisateur(payload: AdminCheck, db: DbSession, id: int, data: 
     if entreprise_id is not None and user.entreprise_id != entreprise_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
     obj_in = data.model_dump(exclude_unset=True)
+    if obj_in.get("role_code"):
+        role_result = await db.execute(select(Role).where(Role.code == obj_in["role_code"]))
+        role = role_result.scalar_one_or_none()
+        if role:
+            obj_in["role_id"] = role.id
+        del obj_in["role_code"]
     for field, value in obj_in.items():
         setattr(user, field, value)
     await db.flush()

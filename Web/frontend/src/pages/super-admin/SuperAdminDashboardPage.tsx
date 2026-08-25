@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
-import { CaEvolutionChart, TopChantiersChart, DepensesParCategorieChart } from '@/components/charts/DashboardCharts'
+import { SaasTenantsGrowthChart } from '@/components/charts/DashboardCharts'
 
 export function SuperAdminDashboardPage() {
   const [stats, setStats] = useState<any>(null)
@@ -142,16 +142,9 @@ export function SuperAdminDashboardPage() {
 
       {/* Graphiques */}
       <div className="row g-4 mb-4">
-        <div className="col-lg-8">
+        <div className="col-lg-12">
           <div className="chart-card">
-            <h5><i className="bi bi-graph-up me-2 text-primary"></i>Évolution des inscriptions tenants</h5>
-            <div style={{ height: '320px' }}><CaEvolutionChart /></div>
-          </div>
-        </div>
-        <div className="col-lg-4">
-          <div className="chart-card">
-            <h5><i className="bi bi-pie-chart me-2 text-warning"></i>Répartition par plan</h5>
-            <div style={{ height: '320px' }}><DepensesParCategorieChart /></div>
+            <SaasTenantsGrowthChart />
           </div>
         </div>
       </div>

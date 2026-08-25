@@ -313,6 +313,142 @@ async def list_pointages(
     }
 
 
+@router.get("/employes/{id}/badge-qr", response_model=dict)
+async def get_employe_badge_qr(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+):
+    _require_permission(payload, "rh:read")
+    entreprise_id = payload.get("entreprise_id")
+    employe = await db.get(Employe, id)
+    if not employe or employe.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employé non trouvé")
+    if entreprise_id is not None and employe.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    if not employe.code_qr_badge:
+        import uuid
+        employe.code_qr_badge = f"TIA-EMP-{employe.entreprise_id or 1}-{employe.id}-{uuid.uuid4().hex[:8].upper()}"
+        await db.flush()
+
+    return {
+        "id": employe.id,
+        "matricule": employe.matricule or f"EMP-{employe.id:04d}",
+        "nom": employe.nom,
+        "prenom": employe.prenom,
+        "poste": employe.poste,
+        "photo": employe.photo,
+        "code_qr_badge": employe.code_qr_badge,
+        "date_generation": datetime.now().isoformat(),
+    }
+
+
+class ScanBadgeRequest(BaseModel):
+    code_qr_badge: str
+    chantier_id: int | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    notes: str | None = None
+
+
+@router.post("/pointages/scan-badge", response_model=dict, status_code=status.HTTP_200_OK)
+async def scan_badge_pointage(
+    payload: CurrentUserPayload,
+    obj_in: ScanBadgeRequest,
+    db: DbDep,
+):
+    _require_permission(payload, "rh:write")
+    entreprise_id = payload.get("entreprise_id")
+    user_id = payload.get("sub") or payload.get("id")
+
+    stmt = select(Employe).where(
+        Employe.code_qr_badge == obj_in.code_qr_badge,
+        Employe.is_deleted == False
+    )
+    if entreprise_id is not None:
+        stmt = stmt.where(Employe.entreprise_id == entreprise_id)
+    
+    result = await db.execute(stmt)
+    employe = result.scalar_one_or_none()
+
+    if not employe:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Badge QR invalide ou employé inconnu"
+        )
+
+    today = date.today()
+    now_time = datetime.now().time()
+
+    pointage_stmt = select(Pointage).where(
+        Pointage.employe_id == employe.id,
+        Pointage.date_jour == today,
+        Pointage.is_deleted == False
+    )
+    pt_result = await db.execute(pointage_stmt)
+    existing_pt = pt_result.scalar_one_or_none()
+
+    if not existing_pt:
+        new_pt = Pointage(
+            entreprise_id=employe.entreprise_id,
+            employe_id=employe.id,
+            chantier_id=obj_in.chantier_id,
+            date_jour=today,
+            heure_debut=now_time,
+            heures_total=0.0,
+            type="present",
+            methode_pointage="scan_badge_par_chef",
+            scanne_par_id=int(user_id) if user_id and str(user_id).isdigit() else None,
+            latitude=obj_in.latitude,
+            longitude=obj_in.longitude,
+            statut_validation="valide",
+            notes=obj_in.notes or "Entrée enregistrée par scan de badge QR"
+        )
+        db.add(new_pt)
+        await db.flush()
+        await db.refresh(new_pt)
+        return {
+            "status": "entree_enregistree",
+            "message": f"Entrée validée à {now_time.strftime('%H:%M')} pour {employe.prenom or ''} {employe.nom}",
+            "employe": {
+                "id": employe.id,
+                "nom": employe.nom,
+                "prenom": employe.prenom,
+                "poste": employe.poste,
+                "matricule": employe.matricule,
+            },
+            "pointage_id": new_pt.id,
+            "heure_debut": now_time.strftime("%H:%M:%S"),
+            "heure_fin": None,
+        }
+    else:
+        existing_pt.heure_fin = now_time
+        if existing_pt.heure_debut:
+            h_start = existing_pt.heure_debut.hour + existing_pt.heure_debut.minute / 60.0
+            h_end = now_time.hour + now_time.minute / 60.0
+            existing_pt.heures_total = max(0.0, round(h_end - h_start, 2))
+        else:
+            existing_pt.heures_total = 8.0
+        existing_pt.notes = (existing_pt.notes or "") + f" | Sortie enregistrée par scan badge à {now_time.strftime('%H:%M')}"
+        await db.flush()
+        return {
+            "status": "sortie_enregistree",
+            "message": f"Sortie validée à {now_time.strftime('%H:%M')} pour {employe.prenom or ''} {employe.nom} ({existing_pt.heures_total}h)",
+            "employe": {
+                "id": employe.id,
+                "nom": employe.nom,
+                "prenom": employe.prenom,
+                "poste": employe.poste,
+                "matricule": employe.matricule,
+            },
+            "pointage_id": existing_pt.id,
+            "heure_debut": existing_pt.heure_debut.strftime("%H:%M:%S") if existing_pt.heure_debut else None,
+            "heure_fin": now_time.strftime("%H:%M:%S"),
+            "heures_total": existing_pt.heures_total,
+        }
+
+
 class QRPointageCheckinRequest(BaseModel):
     employe_id: int
     chantier_id: int | None = None
@@ -338,6 +474,9 @@ async def qr_pointage_checkin(
         "heure_debut": datetime.now().time(),
         "heures_total": 8.0,
         "type": "present",
+        "methode_pointage": obj_in.mode,
+        "latitude": obj_in.latitude,
+        "longitude": obj_in.longitude,
         "notes": f"Pointage {obj_in.mode} (Token: {obj_in.qr_code_token[:10]}... Lat: {obj_in.latitude or 'N/A'}, Lon: {obj_in.longitude or 'N/A'})",
     }
     crud = PointageCRUD()

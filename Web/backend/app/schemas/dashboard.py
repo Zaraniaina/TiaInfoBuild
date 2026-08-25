@@ -109,6 +109,8 @@ class DashboardStatsResponse(BaseModel):
     ca_mois: float | None = Field(default=0.0)
     depenses_mois: float | None = Field(default=0.0)
     margin_net: float | None = Field(default=0.0)
+    marge_brute: float | None = Field(default=0.0)
+    marge_nette: float | None = Field(default=0.0)
     factures_en_retard: int | None = None
     factures_retard: int | None = None
     nb_chantiers_actifs: int | None = None
@@ -124,8 +126,25 @@ class DashboardStatsResponse(BaseModel):
     top_chantiers: list[dict[str, Any]] | None = None
     ca_evolution: list[dict[str, Any]] | None = None
     alertes_recentes: list[dict[str, Any]] | None = None
+    alertes_critiques: int | None = None
+    nb_utilisateurs: int | None = None
+    utilisateurs_inactifs: int | None = None
+    uptime: float | None = None
+    taux_avancement_physique: float | None = None
+    taux_avancement_financier: float | None = None
+    rentabilite_chantiers: list[dict[str, Any]] | None = None
+    depassements_budgetaires: int | None = None
+    delai_moyen_paiement: float | None = None
+    tresorerie_par_client: list[dict[str, Any]] | None = None
+    rapports_disponibles: int | None = None
+    nb_incidents: int | None = None
+    incidents_non_resolus: int | None = None
+    retard_jours: float | None = None
+    consommation_stock: float | None = None
+    ecart_stock: float | None = None
+    nb_alertes_chantier: int | None = None
 
-    @field_validator("ca_total", "ca_mois", "depenses_mois", "margin_net")
+    @field_validator("ca_total", "ca_mois", "depenses_mois", "margin_net", "marge_brute", "marge_nette")
     @classmethod
     def validate_non_negative(cls, v: float | None) -> float | None:
         if v is not None and v < 0:
@@ -143,4 +162,21 @@ class SuperAdminStatsResponse(BaseModel):
     total_chantiers: int
     ca_total: float | None = None
     entreprises_actives: int | None = None
+    entreprises_inactives: int | None = None
     abonnements: dict[str, int] | None = None
+    nouveaux_utilisateurs_mois: int | None = None
+    uptime: float | None = None
+    revenu_mensuel: float | None = None
+    incidents_critiques: int | None = None
+    demandes_support: int | None = None
+
+
+class PlatformSettingsResponse(BaseModel):
+    """Réponse des paramètres globaux de la plateforme."""
+
+    nom_plateforme: str
+    support_email: str
+    mobile_money_enabled: bool
+    devise_defaut: str
+    langues: str
+    maintenance_mode: bool

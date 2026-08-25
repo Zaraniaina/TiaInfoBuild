@@ -80,6 +80,11 @@ class PointageResponse(BaseModel):
     heure_fin: time | None = None
     heures_total: float | None = None
     type: str | None = None
+    methode_pointage: str | None = None
+    scanne_par_id: int | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    statut_validation: str | None = None
     notes: str | None = None
     is_deleted: bool | None = None
     created_at: datetime | None = None

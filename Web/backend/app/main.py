@@ -20,9 +20,9 @@ async def lifespan(app: FastAPI):
         from sqlalchemy import text
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        print("✅ Database connection OK")
+        print(" Database connection OK")
     except Exception as exc:
-        print(f"❌ Database connection failed: {exc}")
+        print(f" Database connection failed: {exc}")
     yield
     # Shutdown: fermer le pool
     await engine.dispose()
