@@ -184,7 +184,7 @@ export function SettingsPage() {
     e.preventDefault()
     setSaving(true)
     try {
-      await api.put('/parametres/profil', profilForm)
+      await api.put('/parametres/profile', profilForm)
       alert('Profil utilisateur mis à jour !')
     } catch {
       alert('Erreur lors de la mise à jour')

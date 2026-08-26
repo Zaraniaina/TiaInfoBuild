@@ -130,18 +130,30 @@ class DashboardCRUD:
             result = await db.execute(select(func.count(Alerte.id)).where(Alerte.entreprise_id == entreprise_id, Alerte.niveau_gravite.in_(["elevee", "critique"]), Alerte.statut != "traite", Alerte.is_deleted == False))
             alertes_critiques = result.scalar_one_or_none() or 0
 
+            ca_subq = (
+                select(Facture.chantier_id, func.coalesce(func.sum(Facture.montant_ttc), 0).label("ca"))
+                .where(Facture.is_deleted == False)
+                .group_by(Facture.chantier_id)
+                .subquery()
+            )
+            depense_subq = (
+                select(Depense.chantier_id, func.coalesce(func.sum(Depense.montant), 0).label("depenses"))
+                .where(Depense.is_deleted == False)
+                .group_by(Depense.chantier_id)
+                .subquery()
+            )
+
             chantiers_result = await db.execute(
                 select(
                     Chantier.id,
                     Chantier.nom,
-                    func.coalesce(func.sum(Facture.montant_ttc), 0).label("ca"),
-                    func.coalesce(func.sum(Depense.montant), 0).label("depenses"),
+                    func.coalesce(ca_subq.c.ca, 0).label("ca"),
+                    func.coalesce(depense_subq.c.depenses, 0).label("depenses"),
                     Chantier.budget_prevu,
                 )
-                .outerjoin(Facture, Facture.chantier_id == Chantier.id)
-                .outerjoin(Depense, Depense.chantier_id == Chantier.id)
+                .outerjoin(ca_subq, ca_subq.c.chantier_id == Chantier.id)
+                .outerjoin(depense_subq, depense_subq.c.chantier_id == Chantier.id)
                 .where(Chantier.entreprise_id == entreprise_id, Chantier.is_deleted == False)
-                .group_by(Chantier.id, Chantier.nom, Chantier.budget_prevu)
             )
             for row in chantiers_result.all():
                 ca_chantier = float(row.ca or 0.0)
@@ -175,7 +187,7 @@ class DashboardCRUD:
             depassements_budgetaires = depassement_result.scalar_one_or_none() or 0
 
             paiement_delay_result = await db.execute(
-                select(func.avg(func.julianday(Facture.date_paiement) - func.julianday(Facture.date_echeance))).where(
+                select(func.avg(func.datediff(Facture.date_paiement, Facture.date_echeance))).where(
                     Facture.entreprise_id == entreprise_id,
                     Facture.is_deleted == False,
                     Facture.statut == "payee",
@@ -269,7 +281,7 @@ class DashboardCRUD:
                     incidents_non_resolus = incidents_non_resolus_result.scalar_one_or_none() or 0
 
                     retard_jours_result = await db.execute(
-                        select(func.avg(func.julianday(func.current_date()) - func.julianday(Chantier.date_fin_prevue))).where(
+                        select(func.avg(func.datediff(func.current_date(), Chantier.date_fin_prevue))).where(
                             Chantier.entreprise_id == entreprise_id,
                             Chantier.chef_chantier_id == chef_chantier_id,
                             Chantier.is_deleted == False,
@@ -324,6 +336,19 @@ class DashboardCRUD:
                     )
                     nb_alertes_chantier = nb_alertes_chantier_result.scalar_one_or_none() or 0
 
+                    chef_ca_subq = (
+                        select(Facture.chantier_id, func.coalesce(func.sum(Facture.montant_ttc), 0).label("ca"))
+                        .where(Facture.is_deleted == False)
+                        .group_by(Facture.chantier_id)
+                        .subquery()
+                    )
+                    chef_depense_subq = (
+                        select(Depense.chantier_id, func.coalesce(func.sum(Depense.montant), 0).label("depenses"))
+                        .where(Depense.is_deleted == False)
+                        .group_by(Depense.chantier_id)
+                        .subquery()
+                    )
+
                     chantiers_result = await db.execute(
                         select(
                             Chantier.id,
@@ -334,13 +359,12 @@ class DashboardCRUD:
                             Chantier.budget_reel,
                             Chantier.date_debut,
                             Chantier.date_fin_prevue,
-                            func.coalesce(func.sum(Facture.montant_ttc), 0).label("ca"),
-                            func.coalesce(func.sum(Depense.montant), 0).label("depenses"),
+                            func.coalesce(chef_ca_subq.c.ca, 0).label("ca"),
+                            func.coalesce(chef_depense_subq.c.depenses, 0).label("depenses"),
                         )
-                        .outerjoin(Facture, Facture.chantier_id == Chantier.id)
-                        .outerjoin(Depense, Depense.chantier_id == Chantier.id)
+                        .outerjoin(chef_ca_subq, chef_ca_subq.c.chantier_id == Chantier.id)
+                        .outerjoin(chef_depense_subq, chef_depense_subq.c.chantier_id == Chantier.id)
                         .where(Chantier.entreprise_id == entreprise_id, Chantier.chef_chantier_id == chef_chantier_id, Chantier.is_deleted == False)
-                        .group_by(Chantier.id, Chantier.nom, Chantier.numero, Chantier.statut, Chantier.budget_prevu, Chantier.budget_reel, Chantier.date_debut, Chantier.date_fin_prevue)
                     )
                     for row in chantiers_result.all():
                         ca_chantier = float(row.ca or 0.0)

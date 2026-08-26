@@ -42,9 +42,10 @@ def _require_permission(payload: CurrentUserPayload, permission: str) -> None:
         )
 
 
-def _get_entreprise_id(payload: CurrentUserPayload) -> int:
+def _get_entreprise_id(payload: CurrentUserPayload) -> int | None:
+    role_code = payload.get("role_code")
     entreprise_id = payload.get("entreprise_id")
-    if not entreprise_id:
+    if not entreprise_id and role_code != "super_admin":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Entreprise ID manquant dans le token",
@@ -561,3 +562,176 @@ async def generate_rapport(
         "marge": marge,
         "date_generation": rapport.date_generation.isoformat(),
     }
+
+
+class StatutValidationBody(BaseModel):
+    statut: str
+
+
+@router.put("/depenses/{id}/validation", response_model=DepenseResponse)
+async def validate_depense_alt(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+    data: StatutValidationBody,
+):
+    _require_permission(payload, "finance:write")
+    depense = await depense_crud.get(db, id)
+    if not depense or depense.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dépense non trouvée")
+    depense.statut = data.statut
+    await db.flush()
+    await db.refresh(depense)
+    return depense
+
+
+@router.get("/stats")
+async def get_finance_stats(payload: CurrentUserPayload, db: DbDep):
+    _require_permission(payload, "finance:read")
+    entreprise_id = _get_entreprise_id(payload)
+    
+    q_recettes = select(func.coalesce(func.sum(Facture.montant_paye), 0)).where(Facture.is_deleted == False)
+    q_depenses = select(func.coalesce(func.sum(Depense.montant), 0)).where(Depense.is_deleted == False)
+    if entreprise_id:
+        q_recettes = q_recettes.where(Facture.entreprise_id == entreprise_id)
+        q_depenses = q_depenses.where(Depense.entreprise_id == entreprise_id)
+        
+    ca_total = float((await db.execute(q_recettes)).scalar_one() or 0.0)
+    depenses_total = float((await db.execute(q_depenses)).scalar_one() or 0.0)
+    
+    return {
+        "ca_total": ca_total,
+        "depenses_total": depenses_total,
+        "solde": ca_total - depenses_total,
+    }
+
+
+@router.get("/rapports", response_model=list[dict])
+async def list_rapports(payload: CurrentUserPayload, db: DbDep):
+    _require_permission(payload, "finance:read")
+    entreprise_id = _get_entreprise_id(payload)
+    q = select(RapportFinancier).where(RapportFinancier.is_deleted == False)
+    if entreprise_id:
+        q = q.where(RapportFinancier.entreprise_id == entreprise_id)
+    result = await db.execute(q.order_by(RapportFinancier.created_at.desc()))
+    rapports = result.scalars().all()
+    return [
+        {
+            "id": r.id,
+            "entreprise_id": r.entreprise_id,
+            "periode": r.periode,
+            "chiffre_affaires": float(r.chiffre_affaires or 0),
+            "depenses_total": float(r.depenses_total or 0),
+            "marge": float(r.marge or 0),
+            "date_generation": r.date_generation.isoformat() if r.date_generation else "",
+            "is_deleted": r.is_deleted,
+            "created_at": r.created_at.isoformat() if r.created_at else "",
+            "updated_at": r.updated_at.isoformat() if r.updated_at else "",
+        }
+        for r in rapports
+    ]
+
+
+@router.get("/budget-overruns")
+async def get_budget_overruns(payload: CurrentUserPayload, db: DbDep):
+    _require_permission(payload, "finance:read")
+    entreprise_id = _get_entreprise_id(payload)
+    q = select(Chantier).where(
+        Chantier.is_deleted == False,
+        Chantier.budget_reel > Chantier.budget_prevu,
+    )
+    if entreprise_id:
+        q = q.where(Chantier.entreprise_id == entreprise_id)
+    result = await db.execute(q)
+    chantiers = result.scalars().all()
+    
+    overruns = []
+    for c in chantiers:
+        bp = float(c.budget_prevu or 0)
+        br = float(c.budget_reel or 0)
+        depassement = br - bp
+        taux = round((depassement / bp * 100), 1) if bp > 0 else 0.0
+        overruns.append({
+            "id": c.id,
+            "nom": c.nom,
+            "numero": c.numero,
+            "budget_prevu": bp,
+            "budget_reel": br,
+            "depassement": depassement,
+            "taux_depassement": taux,
+            "statut": c.statut,
+        })
+    return {"overruns": overruns}
+
+
+@router.get("/payment-delays")
+async def get_payment_delays(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    client_id: int | None = Query(default=None),
+):
+    _require_permission(payload, "finance:read")
+    entreprise_id = _get_entreprise_id(payload)
+    q = select(Facture).where(
+        Facture.is_deleted == False,
+        Facture.date_echeance.is_not(None),
+    )
+    if entreprise_id:
+        q = q.where(Facture.entreprise_id == entreprise_id)
+    if client_id:
+        q = q.where(Facture.client_id == client_id)
+    result = await db.execute(q)
+    factures = result.scalars().all()
+    
+    delais = []
+    today = date.today()
+    for f in factures:
+        date_ref = f.date_paiement or today
+        delai = (date_ref - f.date_echeance).days if f.date_echeance else 0
+        delais.append({
+            "facture_id": f.id,
+            "numero": f.numero,
+            "client_id": f.client_id,
+            "montant": float(f.montant_ttc or 0),
+            "date_echeance": f.date_echeance.isoformat() if f.date_echeance else None,
+            "date_paiement": f.date_paiement.isoformat() if f.date_paiement else None,
+            "delai_jours": delai,
+            "en_retard": delai > 0 and f.statut != "payee",
+        })
+    return {"delais": delais}
+
+
+@router.get("/client-outstanding")
+async def get_client_outstanding(payload: CurrentUserPayload, db: DbDep):
+    _require_permission(payload, "finance:read")
+    entreprise_id = _get_entreprise_id(payload)
+    
+    q = select(
+        Client.id.label("client_id"),
+        Client.nom,
+        Client.entreprise,
+        Client.encours_max,
+        func.coalesce(func.sum(Facture.montant_ttc - Facture.montant_paye), 0).label("encours_actuel"),
+        func.count(Facture.id).label("nb_factures_impayees"),
+    ).outerjoin(Facture, (Facture.client_id == Client.id) & (Facture.is_deleted == False) & (Facture.statut.in_(["emis", "envoye", "partiellement_payee", "en_retard"])))
+    if entreprise_id:
+        q = q.where(Client.entreprise_id == entreprise_id)
+    q = q.where(Client.is_deleted == False).group_by(Client.id, Client.nom, Client.entreprise, Client.encours_max)
+    
+    result = await db.execute(q)
+    clients = []
+    for row in result.all():
+        encours_actuel = float(row.encours_actuel or 0.0)
+        encours_max = float(row.encours_max or 0.0)
+        depassement = max(0.0, encours_actuel - encours_max) if encours_max > 0 else 0.0
+        clients.append({
+            "client_id": row.client_id,
+            "nom": row.nom,
+            "entreprise": row.entreprise,
+            "encours_max": encours_max,
+            "encours_actuel": encours_actuel,
+            "depassement": depassement,
+            "nb_factures_impayees": row.nb_factures_impayees or 0,
+            "depasse_limite": depassement > 0,
+        })
+    return {"clients": clients}

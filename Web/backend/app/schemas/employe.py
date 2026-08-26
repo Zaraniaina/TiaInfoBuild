@@ -85,7 +85,8 @@ class ChangementPosteRequest(BaseModel):
     nouveau_poste: str = Field(..., min_length=1, max_length=100)
     type_contrat: str | None = Field(default=None, max_length=20)
     nouveau_salaire: float | None = Field(default=None, ge=0)
-    date_debut: date
+    date_debut: date | None = None
+    date_effet: date | None = None
     motif: str | None = None
 
 

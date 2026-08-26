@@ -36,9 +36,10 @@ def _require_permission(payload: CurrentUserPayload, permission: str) -> None:
         )
 
 
-def _get_entreprise_id(payload: CurrentUserPayload) -> int:
+def _get_entreprise_id(payload: CurrentUserPayload) -> int | None:
+    role_code = payload.get("role_code")
     entreprise_id = payload.get("entreprise_id")
-    if not entreprise_id:
+    if not entreprise_id and role_code != "super_admin":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Entreprise ID manquant dans le token",
@@ -64,7 +65,9 @@ async def list_materiaux(
 ):
     _require_permission(payload, "materiels:read")
     entreprise_id = _get_entreprise_id(payload)
-    query = select(Materiel).where(Materiel.entreprise_id == entreprise_id, Materiel.is_deleted == False)
+    query = select(Materiel).where(Materiel.is_deleted == False)
+    if entreprise_id:
+        query = query.where(Materiel.entreprise_id == entreprise_id)
     if type:
         query = query.where(Materiel.type == type)
     if statut:
@@ -160,6 +163,23 @@ async def add_maintenance(
     await db.refresh(materiel)
 
     return maintenance
+
+
+@router.get("/maintenances", response_model=list[MaintenanceResponse])
+async def list_maintenances(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    materiel_id: int | None = Query(default=None),
+):
+    _require_permission(payload, "materiels:read")
+    entreprise_id = _get_entreprise_id(payload)
+    q = select(Maintenance).where(Maintenance.is_deleted == False)
+    if entreprise_id:
+        q = q.where(Maintenance.entreprise_id == entreprise_id)
+    if materiel_id:
+        q = q.where(Maintenance.materiel_id == materiel_id)
+    result = await db.execute(q.order_by(Maintenance.created_at.desc()))
+    return list(result.scalars().all())
 
 
 # ==================== EXPORT CSV ====================

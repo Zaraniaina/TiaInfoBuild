@@ -181,6 +181,19 @@ async def get_rentabilite(payload: CurrentUserPayload, db: DbDep):
     if not entreprise_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Entreprise ID manquant")
 
+    ca_subq = (
+        select(Facture.chantier_id, func.coalesce(func.sum(Facture.montant_ttc), 0).label("ca"))
+        .where(Facture.is_deleted == False)
+        .group_by(Facture.chantier_id)
+        .subquery()
+    )
+    depense_subq = (
+        select(Depense.chantier_id, func.coalesce(func.sum(Depense.montant), 0).label("depenses"))
+        .where(Depense.is_deleted == False)
+        .group_by(Depense.chantier_id)
+        .subquery()
+    )
+
     result = await db.execute(
         select(
             Chantier.id,
@@ -189,13 +202,12 @@ async def get_rentabilite(payload: CurrentUserPayload, db: DbDep):
             Chantier.statut,
             Chantier.budget_prevu,
             Chantier.budget_reel,
-            func.coalesce(func.sum(Facture.montant_ttc), 0).label("ca"),
-            func.coalesce(func.sum(Depense.montant), 0).label("depenses"),
+            func.coalesce(ca_subq.c.ca, 0).label("ca"),
+            func.coalesce(depense_subq.c.depenses, 0).label("depenses"),
         )
-        .outerjoin(Facture, Facture.chantier_id == Chantier.id)
-        .outerjoin(Depense, Depense.chantier_id == Chantier.id)
+        .outerjoin(ca_subq, ca_subq.c.chantier_id == Chantier.id)
+        .outerjoin(depense_subq, depense_subq.c.chantier_id == Chantier.id)
         .where(Chantier.entreprise_id == entreprise_id, Chantier.is_deleted == False)
-        .group_by(Chantier.id, Chantier.nom, Chantier.numero, Chantier.statut, Chantier.budget_prevu, Chantier.budget_reel)
     )
 
     chantiers = []

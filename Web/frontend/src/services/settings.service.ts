@@ -3,18 +3,18 @@ import type { Entreprise, Utilisateur } from '@/types'
 
 export const settingsService = {
   async getEntreprise() {
-    const res = await api.get<Entreprise>('/parametres/entreprise')
-    return res.data
+    const res = await api.get('/parametres/entreprise')
+    return (res.data as any).entreprise || res.data
   },
 
   async updateEntreprise(data: Partial<Entreprise>) {
-    const res = await api.put<Entreprise>('/parametres/entreprise', data)
-    return res.data
+    const res = await api.put('/parametres/entreprise', data)
+    return (res.data as any).entreprise || res.data
   },
 
   async getUtilisateurs() {
-    const res = await api.get<Utilisateur[]>('/utilisateurs')
-    return res.data
+    const res = await api.get('/utilisateurs')
+    return (res.data as any).items || res.data
   },
 
   async createUtilisateur(data: Partial<Utilisateur>) {

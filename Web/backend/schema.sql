@@ -1,4 +1,4 @@
-﻿-- Schema SQL complet pour TIA INFO BUILD Web
+-- Schema SQL complet pour TIA INFO BUILD Web
 -- MySQL 8.0 compatible
 -- 35 tables: 11 tables transversales + 24 tables mÃ©tier
 -- Convention: snake_case, soft delete (is_deleted), multi-tenant (entreprise_id)
@@ -201,6 +201,7 @@ CREATE TABLE IF NOT EXISTS employes (
     email              VARCHAR(255),
     adresse            TEXT,
     statut             VARCHAR(20) DEFAULT 'actif',
+    code_qr_badge      VARCHAR(100) UNIQUE,
     is_deleted         TINYINT(1) DEFAULT 0,
     created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP

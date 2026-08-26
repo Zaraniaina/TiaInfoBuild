@@ -260,7 +260,7 @@ async def changer_poste(
         poste=obj_in.nouveau_poste,
         type_contrat=obj_in.type_contrat or old_contrat,
         salaire_base=obj_in.nouveau_salaire if obj_in.nouveau_salaire is not None else old_salaire,
-        date_debut=obj_in.date_debut,
+        date_debut=obj_in.date_debut or obj_in.date_effet or date.today(),
         motif_changement=obj_in.motif,
     )
     db.add(historique)
