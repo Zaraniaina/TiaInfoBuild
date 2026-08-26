@@ -16,7 +16,7 @@ from app.schemas.role import RoleResponse
 from app.security import CurrentUserPayload, DbDep
 from sqlalchemy import select, func
 
-router = APIRouter(prefix="/parametres", tags=["parametres"])
+router = APIRouter(tags=["parametres"])
 
 
 def _require_permission(payload: dict[str, Any], permission: str) -> None:

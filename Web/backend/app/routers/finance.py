@@ -28,7 +28,7 @@ from app.schemas.depense import (
 )
 from app.security import CurrentUserPayload, DbDep
 
-router = APIRouter(prefix="/finance", tags=["finance"])
+router = APIRouter(tags=["finance"])
 
 
 def _require_permission(payload: CurrentUserPayload, permission: str) -> None:

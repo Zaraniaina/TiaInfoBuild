@@ -17,7 +17,7 @@ from app.schemas.entreprise import EntrepriseCreate, EntrepriseUpdate, Entrepris
 from app.schemas.utilisateur import UtilisateurResponse, UtilisateurList
 from app.schemas.dashboard import SuperAdminStatsResponse, PlatformSettingsResponse
 
-router = APIRouter(prefix="/super-admin", tags=["super-admin"])
+router = APIRouter(tags=["super-admin"])
 CurrentUser = Annotated[dict[str, Any], Depends(require_super_admin)]
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 

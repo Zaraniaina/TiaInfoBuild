@@ -1,75 +1,86 @@
-# React + TypeScript + Vite
+# 💻 Frontend — TIA INFO BUILD (React + TypeScript + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interface web de l'application de gestion BTP **TIA INFO BUILD**.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 📋 Prérequis
 
-## React Compiler
+- Node.js 18+
+- npm
+- Backend FastAPI démarré sur http://localhost:8000
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 🚀 Démarrage
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+```powershell
+cd Web/frontend
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# Installer les dépendances (une seule fois)
+npm install
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+# Lancer le serveur de développement
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- **Application** : [http://localhost:5173](http://localhost:5173)
+- **Proxy API** : les requêtes `/api/*` sont redirigées vers `http://localhost:8000` (voir `vite.config.ts`)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## 🧪 Tests
+
+```powershell
+# Vérification TypeScript
+npx tsc -b
+
+# Lint
+npm run lint
+
+# Build de production
+npm run build
+```
+
+---
+
+## 📁 Structure
 
 ```
+src/
+├── components/       # Composants réutilisables (layout, charts, UI)
+├── pages/            # Pages de l'application (settings, dashboard, commercial, etc.)
+├── services/         # Appels API (axios)
+├── stores/           # State management (Zustand)
+├── types/            # Types TypeScript
+├── utils/            # Helpers (permissions, formatters)
+├── styles/           # CSS, Bootstrap, thème TIA
+├── config/           # Configuration (rôles, permissions)
+└── App.tsx           # Routage principal
+```
+
+---
+
+## 🔑 Comptes de démo
+
+Se connecter avec un des comptes définis dans [`Web/README_Web.md`](../README_Web.md).
+
+---
+
+## ⚙️ Variables d'environnement
+
+Le fichier `.env` à la racine de `Web/frontend/` contient :
+
+```env
+VITE_API_URL=/api
+```
+
+Le proxy Vite redirige automatiquement `/api` vers le backend FastAPI.
+
+---
+
+## 🛠️ Dépannage
+
+- Port 5173 occupé : changer le port dans `vite.config.ts`
+- Erreur CORS : vérifier que le backend est démarré et que `CORS_ORIGINS` dans `Web/backend/.env` inclut `http://localhost:5173`
+- 404 sur les routes : vérifier que le backend a bien redémarré après les correctifs de préfixes

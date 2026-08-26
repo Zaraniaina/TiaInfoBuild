@@ -15,7 +15,7 @@ from app.schemas.alerte import AlerteCreate, AlerteResponse, AlerteList, AlerteM
 from app.security import CurrentUserPayload, DbDep
 from app.core.permissions import PERMISSION_MAP
 
-router = APIRouter(prefix="/alertes", tags=["alertes"])
+router = APIRouter(tags=["alertes"])
 
 
 def _require_permission(payload: dict[str, Any], permission: str) -> None:

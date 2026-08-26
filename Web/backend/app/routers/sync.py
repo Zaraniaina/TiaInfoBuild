@@ -21,7 +21,7 @@ from typing_extensions import Annotated
 from app.database import get_db
 from app.dependencies.auth import get_current_active_user
 
-router = APIRouter(prefix="/sync", tags=["sync"])
+router = APIRouter(tags=["sync"])
 CurrentUser = Annotated[dict[str, Any], Depends(get_current_active_user)]
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 

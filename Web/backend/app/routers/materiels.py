@@ -22,7 +22,7 @@ from app.schemas.materiel import (
 )
 from app.security import CurrentUserPayload, DbDep
 
-router = APIRouter(prefix="/materiels", tags=["materiels"])
+router = APIRouter(tags=["materiels"])
 
 
 def _require_permission(payload: CurrentUserPayload, permission: str) -> None:

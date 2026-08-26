@@ -11,7 +11,7 @@ from app.security import CurrentUserPayload, DbDep
 from app.crud.dashboard import DashboardCRUD
 from app.schemas.dashboard import DashboardStatsResponse
 
-router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+router = APIRouter(tags=["dashboard"])
 
 
 def _require_permission(payload: CurrentUserPayload, permission: str) -> None:

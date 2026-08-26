@@ -37,7 +37,7 @@ from app.schemas.facture import (
 from app.schemas.contrat import ContratCreate, ContratUpdate, ContratResponse, ContratList
 from app.security import CurrentUserPayload, DbDep
 
-router = APIRouter(prefix="/commercial", tags=["commercial"])
+router = APIRouter(tags=["commercial"])
 
 _permission_map = None
 

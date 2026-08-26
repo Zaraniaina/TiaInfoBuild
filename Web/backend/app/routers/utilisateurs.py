@@ -15,7 +15,7 @@ from app.models.utilisateur import Utilisateur
 from app.models.role import Role
 from app.schemas.utilisateur import UtilisateurCreate, UtilisateurUpdate, UtilisateurResponse, UtilisateurList, UtilisateurRoleUpdate
 
-router = APIRouter(prefix="/utilisateurs", tags=["utilisateurs"])
+router = APIRouter(tags=["utilisateurs"])
 CurrentUser = Annotated[dict[str, Any], Depends(get_current_active_user)]
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 AdminCheck = Annotated[dict[str, Any], Depends(require_permission("parametres:write"))]
