@@ -40,3 +40,7 @@ class Utilisateur(Base):
     clients: Mapped[list["Client"]] = relationship("Client", back_populates="commercial", lazy="selectin")
     incidents: Mapped[list["Incident"]] = relationship("Incident", back_populates="declare_par_user", lazy="selectin")
     depenses_validees: Mapped[list["Depense"]] = relationship("Depense", back_populates="valide_par", lazy="selectin")
+
+    @property
+    def role_code(self) -> str | None:
+        return self.role.code if self.role else None

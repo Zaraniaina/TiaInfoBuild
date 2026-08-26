@@ -221,8 +221,19 @@ export function SettingsPage() {
       }
       setShowUserModal(false)
       loadUsers()
-    } catch {
-      alert('Erreur lors de l\'enregistrement de l\'utilisateur')
+    } catch (error: any) {
+      let message = 'Erreur lors de l\'enregistrement de l\'utilisateur'
+      const detail = error?.response?.data?.detail
+      if (detail) {
+        if (Array.isArray(detail)) {
+          message = detail.map((err: any) => err.msg || err).join(', ')
+        } else {
+          message = detail
+        }
+      } else if (error.message) {
+        message = error.message
+      }
+      alert(message)
     } finally {
       setSaving(false)
     }
@@ -529,6 +540,9 @@ export function SettingsPage() {
                       <div className="col-md-12">
                         <label className="form-label fw-semibold">Mot de passe</label>
                         <input type="password" className="form-control" required value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} />
+                        <div className="form-text">
+                          8 caractères minimum, 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial.
+                        </div>
                       </div>
                     )}
                   </div>

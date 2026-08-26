@@ -51,6 +51,17 @@ async def list_utilisateurs(
 @router.post("/", response_model=UtilisateurResponse, status_code=status.HTTP_201_CREATED)
 async def create_utilisateur(payload: AdminCheck, db: DbSession, data: UtilisateurCreate):
     entreprise_id = payload.get("entreprise_id")
+    existing = await db.execute(
+        select(Utilisateur).where(
+            Utilisateur.email == data.email,
+            Utilisateur.is_deleted == False,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Un utilisateur avec cet email existe déjà",
+        )
     obj_in = data.model_dump(exclude={"password"})
     if entreprise_id is not None and not obj_in.get("entreprise_id"):
         obj_in["entreprise_id"] = entreprise_id
@@ -59,8 +70,12 @@ async def create_utilisateur(payload: AdminCheck, db: DbSession, data: Utilisate
     if obj_in.get("role_code"):
         role_result = await db.execute(select(Role).where(Role.code == obj_in["role_code"]))
         role = role_result.scalar_one_or_none()
-        if role:
-            obj_in["role_id"] = role.id
+        if not role:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Rôle invalide: {obj_in['role_code']}",
+            )
+        obj_in["role_id"] = role.id
         del obj_in["role_code"]
     user = Utilisateur(**obj_in)
     db.add(user)
@@ -91,11 +106,28 @@ async def update_utilisateur(payload: AdminCheck, db: DbSession, id: int, data: 
     if entreprise_id is not None and user.entreprise_id != entreprise_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
     obj_in = data.model_dump(exclude_unset=True)
+    if "email" in obj_in and obj_in["email"] != user.email:
+        existing = await db.execute(
+            select(Utilisateur).where(
+                Utilisateur.email == obj_in["email"],
+                Utilisateur.id != id,
+                Utilisateur.is_deleted == False,
+            )
+        )
+        if existing.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Un utilisateur avec cet email existe déjà",
+            )
     if obj_in.get("role_code"):
         role_result = await db.execute(select(Role).where(Role.code == obj_in["role_code"]))
         role = role_result.scalar_one_or_none()
-        if role:
-            obj_in["role_id"] = role.id
+        if not role:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Rôle invalide: {obj_in['role_code']}",
+            )
+        obj_in["role_id"] = role.id
         del obj_in["role_code"]
     for field, value in obj_in.items():
         setattr(user, field, value)

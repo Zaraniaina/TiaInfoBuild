@@ -74,6 +74,7 @@ class UtilisateurResponse(BaseModel):
     id: int
     entreprise_id: int | None = None
     role_id: int | None = None
+    role_code: str | None = None
     nom: str
     prenom: str | None = None
     email: EmailStr
@@ -97,6 +98,7 @@ class UtilisateurList(BaseModel):
     email: EmailStr
     telephone: str | None = None
     role_id: int | None = None
+    role_code: str | None = None
     statut: str | None = None
     entreprise_id: int | None = None
     date_creation: datetime | None = None
