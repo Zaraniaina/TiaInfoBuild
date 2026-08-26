@@ -57,22 +57,11 @@ export function FinancePage() {
         setClientOutstanding(data.clients || [])
       }
     } catch {
-      setDepenses([
-        { id: 1, entreprise_id: 1, description: 'Achat Carburant Engins', categorie: 'transport', montant: 4500000, date_depense: '2026-08-14', taux_tva: 20, statut: 'validee', is_deleted: false, created_at: '', updated_at: '' },
-        { id: 2, entreprise_id: 1, description: 'Fournitures de bureau', categorie: 'divers', montant: 850000, date_depense: '2026-08-16', taux_tva: 20, statut: 'en_attente', is_deleted: false, created_at: '', updated_at: '' }
-      ])
-      setRapports([
-        { id: 1, entreprise_id: 1, periode: '2026-08', chiffre_affaires: 145000000, depenses_total: 85000000, marge: 60000000, date_generation: '2026-08-18', is_deleted: false, created_at: '', updated_at: '' }
-      ])
-      setOverruns([
-        { id: 1, nom: 'Construction Immeuble Anosy', numero: 'CH-001', budget_prevu: 150000000, budget_reel: 162000000, depassement: 12000000, taux_depassement: 8.0, statut: 'en_cours' }
-      ])
-      setPaymentDelays([
-        { facture_id: 1, numero: 'FAC-2026-001', client_id: 1, montant: 30000000, date_echeance: '2026-09-05', date_paiement: '2026-08-28', delai_jours: -8, en_retard: false }
-      ])
-      setClientOutstanding([
-        { client_id: 1, nom: 'RAMAROSON', entreprise: 'BTP PRO MADAGASCAR', encours_max: 50000000, encours_actuel: 45000000, depassement: 0, nb_factures_impayees: 2, depasse_limite: false }
-      ])
+      setDepenses([])
+      setRapports([])
+      setOverruns([])
+      setPaymentDelays([])
+      setClientOutstanding([])
     } finally {
       setLoading(false)
     }

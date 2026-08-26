@@ -39,53 +39,7 @@ export function ChantiersPage() {
       const data = await chantiersService.getAll({ search: searchTerm, statut: statutFilter })
       setChantiers(data)
     } catch {
-      // Fallback mock data
-      setChantiers([
-        {
-          id: 1,
-          entreprise_id: 1,
-          numero: 'CHT-2026-001',
-          nom: 'Construction Immeuble Anosy',
-          statut: 'en_cours',
-          budget_prevu: 150000000,
-          budget_previsionnel: 145000000,
-          budget_reel: 92000000,
-          marge_cible: 18,
-          tva: 20,
-          date_debut: '2026-01-15',
-          date_fin_prevue: '2026-12-20',
-          description: 'Construction d\'un immeuble R+5 à Anosy Antananarivo',
-          is_deleted: false,
-          created_at: '2026-01-10',
-          updated_at: '2026-08-10',
-          phases: [
-            { id: 1, chantier_id: 1, nom: 'Terrassement', ordre: 1, avancement_pct: 100, budget: 20000000, statut: 'terminee', is_deleted: false, created_at: '', updated_at: '' },
-            { id: 2, chantier_id: 1, nom: 'Fondations & Gros œuvre', ordre: 2, avancement_pct: 65, budget: 80000000, statut: 'en_cours', is_deleted: false, created_at: '', updated_at: '' },
-            { id: 3, chantier_id: 1, nom: 'Second œuvre & Finitions', ordre: 3, avancement_pct: 0, budget: 50000000, statut: 'non_commencee', is_deleted: false, created_at: '', updated_at: '' }
-          ],
-          incidents: [
-            { id: 1, chantier_id: 1, titre: 'Retard livraison ciment', gravite: 'moyenne', statut: 'resolu', date_incident: '2026-03-12', is_deleted: false, created_at: '', updated_at: '' }
-          ]
-        },
-        {
-          id: 2,
-          entreprise_id: 1,
-          numero: 'CHT-2026-002',
-          nom: 'Rénovation Résidence Ivandry',
-          statut: 'planification',
-          budget_prevu: 45000000,
-          budget_previsionnel: 42000000,
-          budget_reel: 5000000,
-          marge_cible: 20,
-          tva: 20,
-          date_debut: '2026-09-01',
-          date_fin_prevue: '2026-11-30',
-          description: 'Travaux de rénovation intérieure et extérieure',
-          is_deleted: false,
-          created_at: '2026-02-01',
-          updated_at: '2026-08-01'
-        }
-      ])
+      setChantiers([])
     } finally {
       setLoading(false)
     }

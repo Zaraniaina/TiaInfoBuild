@@ -50,17 +50,9 @@ export function StocksPage() {
         setFournisseurs(data)
       }
     } catch {
-      // Mock fallback data
-      setArticles([
-        { id: 1, entreprise_id: 1, reference: 'MAT-CIM-50', nom: 'Ciment CPJ 45 (Sac 50kg)', description: 'Ciment de haute résistance BTP', unite: 'Sac', stock_actuel: 450, seuil_alerte: 100, stock_mini: 50, prix_achat: 28000, prix_vente: 32000, marge: 14.3, tva: 20, is_deleted: false, created_at: '', updated_at: '' },
-        { id: 2, entreprise_id: 1, reference: 'FER-TOR-12', nom: 'Fer à Béton Tor Ø12mm (Barre 12m)', description: 'Acier de haute adhérence FeE500', unite: 'Barre', stock_actuel: 12, seuil_alerte: 50, stock_mini: 30, prix_achat: 40000, prix_vente: 45000, marge: 12.5, tva: 20, is_deleted: false, created_at: '', updated_at: '' }
-      ])
-      setMouvements([
-        { id: 1, entreprise_id: 1, article_id: 1, quantite: 100, type_mouvement: 'entree', date_mouvement: '2026-08-15', prix_unitaire: 28000, notes: 'Livraison Fournisseur BTP', is_deleted: false, created_at: '', updated_at: '' }
-      ])
-      setFournisseurs([
-        { id: 1, entreprise_id: 1, nom: 'QUINCAGILLOT S.A.', email: 'contact@quincagillot.mg', telephone: '020 22 123 45', adresse: 'Ankorondrano, Antananarivo', is_deleted: false, created_at: '', updated_at: '' }
-      ])
+      setArticles([])
+      setMouvements([])
+      setFournisseurs([])
     } finally {
       setLoading(false)
     }

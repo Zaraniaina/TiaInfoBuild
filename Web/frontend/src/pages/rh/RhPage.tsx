@@ -51,20 +51,10 @@ export function RhPage() {
         setHeuresSup(data)
       }
     } catch {
-      // Mock fallback data for RH
-      setEmployes([
-        { id: 1, entreprise_id: 1, matricule: 'EMP-001', nom: 'RABEMANANJARA', prenom: 'Jean', poste: 'Chef de Chantier', telephone: '034 12 345 67', email: 'jean@tia.mg', statut: 'actif', type_contrat: 'CDI', salaire_base: 1200000, date_embauche: '2025-03-01', is_deleted: false, created_at: '', updated_at: '' },
-        { id: 2, entreprise_id: 1, matricule: 'EMP-002', nom: 'RAKOTO', prenom: 'Paul', poste: 'Maçon Qualifié', telephone: '032 98 765 43', statut: 'actif', type_contrat: 'CDD', salaire_base: 800000, date_embauche: '2025-06-15', is_deleted: false, created_at: '', updated_at: '' }
-      ])
-      setPointages([
-        { id: 1, entreprise_id: 1, employe_id: 1, date_jour: '2026-08-18', heures_total: 8, type: 'present', is_deleted: false, created_at: '', updated_at: '' }
-      ])
-      setEquipes([
-        { id: 1, entreprise_id: 1, nom: 'Équipe Maçonnerie A', chef_equipe_id: 1, date_creation: '2026-01-01', statut: 'actif', is_deleted: false, created_at: '', updated_at: '' }
-      ])
-      setHeuresSup([
-        { id: 1, entreprise_id: 1, employe_id: 2, date_hs: '2026-08-17', nb_heures: 3, taux_majoration: 25, motif: 'Finition coulage béton', statut: 'en_attente', type_compensation: 'paiement', is_deleted: false, created_at: '', updated_at: '' }
-      ])
+      setEmployes([])
+      setPointages([])
+      setEquipes([])
+      setHeuresSup([])
     } finally {
       setLoading(false)
     }
@@ -233,44 +223,58 @@ export function RhPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredEmployes.map(emp => (
-                    <tr key={emp.id}>
-                      <td className="font-monospace small fw-bold text-secondary">{emp.matricule || `EMP-00${emp.id}`}</td>
-                      <td className="fw-semibold text-dark">{emp.nom} {emp.prenom}</td>
-                      <td>{emp.poste}</td>
-                      <td className="d-none d-md-table-cell"><span className="badge bg-light text-dark border">{emp.type_contrat}</span></td>
-                      <td className="d-none d-lg-table-cell fw-bold">{emp.salaire_base?.toLocaleString()} MGA</td>
-                      <td className="d-none d-lg-table-cell small">{emp.date_embauche || '—'}</td>
-                      <td>
-                        <span className={`badge ${emp.statut === 'actif' ? 'badge-actif' : 'badge-inactif'}`}>
-                          {emp.statut}
-                        </span>
-                      </td>
-                      <td>
-                        <button
-                          className="btn btn-sm btn-outline-info me-1"
-                          title="Voir le Badge QR Code"
-                          onClick={() => { setSelectedBadgeEmploye(emp); setShowBadgeModal(true); }}
-                        >
-                          <i className="bi bi-qr-code"></i>
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-primary me-1"
-                          title="Changer de poste / Carrière"
-                          onClick={() => { setSelectedEmploye(emp); setPosteForm({ nouveau_poste: emp.poste || '', nouveau_salaire: emp.salaire_base || 0, date_effet: new Date().toISOString().split('T')[0], motif: '' }); setShowChangementPosteModal(true); }}
-                        >
-                          <i className="bi bi-briefcase"></i>
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-secondary"
-                          title="Éditer"
-                          onClick={() => { setSelectedEmploye(emp); setEmployeForm(emp); setShowEmployeModal(true); }}
-                        >
-                          <i className="bi bi-pencil"></i>
-                        </button>
+                  {filteredEmployes.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="text-center py-5 text-muted">
+                        <i className="bi bi-person-x display-6 d-block mb-3"></i>
+                        Aucun employé trouvé
+                        <div className="mt-3">
+                          <button className="btn btn-primary btn-sm" onClick={() => { setSelectedEmploye(null); setEmployeForm({ type_contrat: 'CDI', statut: 'actif', salaire_base: 0 }); setShowEmployeModal(true); }}>
+                            <i className="bi bi-person-plus me-1"></i>Nouvel employé
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredEmployes.map(emp => (
+                      <tr key={emp.id}>
+                        <td className="font-monospace small fw-bold text-secondary">{emp.matricule || `EMP-00${emp.id}`}</td>
+                        <td className="fw-semibold text-dark">{emp.nom} {emp.prenom}</td>
+                        <td>{emp.poste}</td>
+                        <td className="d-none d-md-table-cell"><span className="badge bg-light text-dark border">{emp.type_contrat}</span></td>
+                        <td className="d-none d-lg-table-cell fw-bold">{emp.salaire_base?.toLocaleString()} MGA</td>
+                        <td className="d-none d-lg-table-cell small">{emp.date_embauche || '—'}</td>
+                        <td>
+                          <span className={`badge ${emp.statut === 'actif' ? 'badge-actif' : 'badge-inactif'}`}>
+                            {emp.statut}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            className="btn btn-sm btn-outline-info me-1"
+                            title="Voir le Badge QR Code"
+                            onClick={() => { setSelectedBadgeEmploye(emp); setShowBadgeModal(true); }}
+                          >
+                            <i className="bi bi-qr-code"></i>
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-primary me-1"
+                            title="Changer de poste / Carrière"
+                            onClick={() => { setSelectedEmploye(emp); setPosteForm({ nouveau_poste: emp.poste || '', nouveau_salaire: emp.salaire_base || 0, date_effet: new Date().toISOString().split('T')[0], motif: '' }); setShowChangementPosteModal(true); }}
+                          >
+                            <i className="bi bi-briefcase"></i>
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-secondary"
+                            title="Éditer"
+                            onClick={() => { setSelectedEmploye(emp); setEmployeForm(emp); setShowEmployeModal(true); }}
+                          >
+                            <i className="bi bi-pencil"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

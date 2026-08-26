@@ -54,22 +54,11 @@ export function CommercialPage() {
         setPaiements(data)
       }
     } catch {
-      // Mock fallback data
-      setDevisList([
-        { id: 1, entreprise_id: 1, client_id: 1, numero: 'DEV-2026-001', objet: 'Travaux de terrassement et fondations', montant_ht: 25000000, tva: 20, montant_ttc: 30000000, statut: 'envoye', date_creation: '2026-08-01', is_deleted: false, created_at: '', updated_at: '' }
-      ])
-      setFactures([
-        { id: 1, entreprise_id: 1, client_id: 1, numero: 'FAC-2026-001', type: 'standard', montant_ht: 25000000, tva: 20, montant_ttc: 30000000, montant_paye: 15000000, statut: 'partiellement_payee', date_creation: '2026-08-05', date_echeance: '2026-09-05', is_deleted: false, created_at: '', updated_at: '' }
-      ])
-      setClients([
-        { id: 1, entreprise_id: 1, type: 'entreprise', nom: 'RAMAROSON', prenom: 'Hery', entreprise: 'BTP PRO MADAGASCAR', email: 'hery@btppro.mg', telephone: '034 00 111 22', adresse: 'Ivandry, Antananarivo', encours_max: 0, encours_actuel: 0, ca_total: 0, is_deleted: false, created_at: '', updated_at: '' }
-      ])
-      setContrats([
-        { id: 1, entreprise_id: 1, client_id: 1, reference: 'CTR-2026-001', objet: 'Contrat de construction R+2', montant: 120000000, statut: 'en_cours', date_debut: '2026-02-01', date_fin: '2026-11-30', garantie_mois: 12, is_deleted: false, created_at: '', updated_at: '' }
-      ])
-      setPaiements([
-        { id: 1, entreprise_id: 1, facture_id: 1, montant: 15000000, date_paiement: '2026-08-10', mode_paiement: 'VIREMENT', reference: 'VIR-998822', is_deleted: false, created_at: '', updated_at: '' }
-      ])
+      setDevisList([])
+      setFactures([])
+      setClients([])
+      setContrats([])
+      setPaiements([])
     } finally {
       setLoading(false)
     }

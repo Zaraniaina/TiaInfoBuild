@@ -74,30 +74,7 @@ export function DashboardPage() {
   useEffect(() => {
     api.get('/dashboard/stats')
       .then(res => setStats(res.data))
-      .catch(() => {
-        setStats({
-          ca_total: 145000000,
-          ca_mois: 145000000,
-          depenses_mois: 85000000,
-          margin_net: 60000000,
-          factures_en_retard: 3,
-          factures_retard: 3,
-          nb_chantiers_actifs: 12,
-          nb_employes: 48,
-          nb_articles: 142,
-          nb_clients: 24,
-          nb_devis: 8,
-          devis_pending_dg: 2,
-          nb_materiels: 19,
-          stocks_alerte: 5,
-          attendance_rate: 87.5,
-          maintenance_due: 2,
-          top_chantiers: [],
-          ca_evolution: [],
-          alertes_recentes: [],
-          activite_recente: []
-        })
-      })
+      .catch(() => setStats(null))
       .finally(() => setLoading(false))
   }, [])
 

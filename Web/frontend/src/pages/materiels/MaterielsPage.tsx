@@ -15,11 +15,7 @@ export function MaterielsPage() {
       const data = await materielsService.getAll()
       setMateriels(data)
     } catch {
-      setMateriels([
-        { id: 1, entreprise_id: 1, nom: 'Pelle Hydraulique Caterpillar 320', marque: 'Caterpillar', valeur_achat: 150000000, statut: 'disponible', is_deleted: false, created_at: '', updated_at: '' },
-        { id: 2, entreprise_id: 1, nom: 'Bétonnière 350L', marque: 'Imer', valeur_achat: 12000000, statut: 'en_utilisation', is_deleted: false, created_at: '', updated_at: '' },
-        { id: 3, entreprise_id: 1, nom: 'Camion Benne 12T', marque: 'Mercedes-Benz', valeur_achat: 95000000, statut: 'en_maintenance', is_deleted: false, created_at: '', updated_at: '' }
-      ])
+      setMateriels([])
     } finally {
       setLoading(false)
     }
