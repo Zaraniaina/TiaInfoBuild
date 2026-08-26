@@ -251,19 +251,24 @@ CREATE TABLE IF NOT EXISTS affectation_chantiers (
 
 -- 15. Pointage
 CREATE TABLE IF NOT EXISTS pointages (
-    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    entreprise_id   BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
-    employe_id      BIGINT REFERENCES employes(id) ON DELETE CASCADE,
-    chantier_id     BIGINT REFERENCES chantiers(id),
-    date_jour       DATE NOT NULL,
-    heure_debut     TIME,
-    heure_fin       TIME,
-    heures_total    NUMERIC(4,2) DEFAULT 0,
-    type            VARCHAR(20) DEFAULT 'present',
-    notes           TEXT,
-    is_deleted      TINYINT(1) DEFAULT 0,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id       BIGINT REFERENCES entreprises(id) ON DELETE CASCADE,
+    employe_id          BIGINT REFERENCES employes(id) ON DELETE CASCADE,
+    chantier_id         BIGINT REFERENCES chantiers(id),
+    date_jour           DATE NOT NULL,
+    heure_debut         TIME,
+    heure_fin           TIME,
+    heures_total        NUMERIC(4,2) DEFAULT 0,
+    type                VARCHAR(20) DEFAULT 'present',
+    methode_pointage    VARCHAR(50) DEFAULT 'manuel',
+    scanne_par_id       BIGINT REFERENCES utilisateurs(id) ON DELETE SET NULL,
+    latitude            NUMERIC(10,8),
+    longitude           NUMERIC(11,8),
+    statut_validation   VARCHAR(20) DEFAULT 'valide',
+    notes               TEXT,
+    is_deleted          TINYINT(1) DEFAULT 0,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(employe_id, date_jour)
 );
 
