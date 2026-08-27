@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import axios from 'axios'
+import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth.store'
 
 interface QRScannerModalProps {
@@ -19,7 +19,6 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
   const [loading, setLoading] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'danger' | 'info'; text: string } | null>(null)
   const [lastScanned, setLastScanned] = useState<any | null>(null)
-  const { token } = useAuthStore()
 
   if (!isOpen) return null
 
@@ -46,17 +45,14 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
         }
       }
 
-      const response = await axios.post(
-        '/api/v1/rh/pointages/scan-badge',
+      const response = await api.post(
+        '/rh/pointages/scan-badge',
         {
           code_qr_badge: qrCodeInput.trim(),
           chantier_id: chantierId || null,
           latitude: lat,
           longitude: lon,
           notes: 'Scan direct via Terminal Chef de Chantier',
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
         }
       )
 

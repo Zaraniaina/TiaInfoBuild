@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -158,9 +159,9 @@ export function LoginPage() {
 
           <div className="text-center mt-4 small">
             Pas encore d'entreprise ?{' '}
-            <a href="/register" className="text-decoration-none fw-semibold" style={{ color: 'var(--tia-amber)' }}>
+            <Link to="/register" className="text-decoration-none fw-semibold" style={{ color: 'var(--tia-amber)' }}>
               Créer mon entreprise
-            </a>
+            </Link>
           </div>
         </div>
       </div>

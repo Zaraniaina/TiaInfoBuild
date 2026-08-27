@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/stores/auth.store'
+import { useNavigate } from 'react-router-dom'
 import { RoleBadge } from '@/components/layout/RoleBadge'
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
@@ -65,6 +66,7 @@ const ROLE_META: Record<string, { greeting: string; alert?: { type: string; icon
 
 export function DashboardPage() {
   const { user } = useAuthStore()
+  const navigate = useNavigate()
   const roleCode = user?.role_code || 'employe'
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -179,9 +181,9 @@ export function DashboardPage() {
         <div className="card border-0 shadow-sm p-4 mb-4">
           <h5 className="fw-bold mb-3"><i className="bi bi-gear-fill me-2 text-primary"></i>Actions rapides administration</h5>
           <div className="d-flex gap-2 flex-wrap">
-            <a href="/settings" className="btn btn-primary fw-bold"><i className="bi bi-person-gear me-2"></i>Gérer Comptes & Permissions</a>
-            <a href="/historique-logins" className="btn btn-outline-dark fw-bold"><i className="bi bi-shield-check me-2"></i>Audit Logs Connexions</a>
-            <a href="/settings" className="btn btn-outline-secondary"><i className="bi bi-sliders me-2"></i>Paramètres Entreprise</a>
+            <button className="btn btn-primary fw-bold" onClick={() => navigate('/settings')}><i className="bi bi-person-gear me-2"></i>Gérer Comptes & Permissions</button>
+            <button className="btn btn-outline-dark fw-bold" onClick={() => navigate('/historique-logins')}><i className="bi bi-shield-check me-2"></i>Audit Logs Connexions</button>
+            <button className="btn btn-outline-secondary" onClick={() => navigate('/settings')}><i className="bi bi-sliders me-2"></i>Paramètres Entreprise</button>
           </div>
         </div>
       </div>

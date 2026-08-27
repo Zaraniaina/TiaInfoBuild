@@ -56,14 +56,12 @@ api.interceptors.response.use(
         } catch {
           rejectPendingRequests();
           useAuthStore.getState().logout();
-          window.location.href = '/login';
         } finally {
           isRefreshing = false;
         }
       } else {
         rejectPendingRequests();
         useAuthStore.getState().logout();
-        window.location.href = '/login';
       }
     }
     return Promise.reject(error);

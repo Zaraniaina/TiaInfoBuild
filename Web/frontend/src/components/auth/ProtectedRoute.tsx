@@ -1,7 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
 import { api } from '@/services/api'
-import type { AxiosError } from 'axios'
 import { Layout } from '@/components/layout/Layout'
 import { ROLE_MODULES } from '@/config/roles.config'
 import { useEffect, useState } from 'react'
@@ -24,9 +23,8 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
           if (isMounted && res.data?.user) {
             setUser(res.data.user)
           }
-        } catch (err) {
-          const axiosError = err as AxiosError
-          if (axiosError.response?.status === 401) {
+        } catch {
+          if (isMounted) {
             logout()
           }
         }
@@ -39,7 +37,7 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     }
   }, [token, setUser, logout])
 
-  if (loading && !user) {
+  if (loading) {
     return (
       <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
         <div className="spinner-border text-primary" role="status">
@@ -49,7 +47,7 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     )
   }
 
-  if (!isAuthenticated && !token) {
+  if (!isAuthenticated || !token) {
     return <Navigate to="/login" replace />
   }
 
