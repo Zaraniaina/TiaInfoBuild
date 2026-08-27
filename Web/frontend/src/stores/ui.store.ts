@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { settingsService } from '@/services/settings.service';
 
 interface UIState {
   sidebarOpen: boolean;
@@ -6,6 +7,7 @@ interface UIState {
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   setTheme: (theme: 'light' | 'dark' | 'auto') => void;
+  hydrateThemeFromBackend: () => Promise<void>;
 }
 
 const getInitialTheme = (): 'light' | 'dark' | 'auto' => {
@@ -24,5 +26,16 @@ export const useUIStore = create<UIState>((set) => ({
   setTheme: (theme) => {
     localStorage.setItem('tia-theme', theme);
     set({ theme });
+  },
+  hydrateThemeFromBackend: async () => {
+    try {
+      const data = await settingsService.getPreferences();
+      if (data?.theme && ['light', 'dark', 'auto'].includes(data.theme)) {
+        localStorage.setItem('tia-theme', data.theme);
+        set({ theme: data.theme as 'light' | 'dark' | 'auto' });
+      }
+    } catch {
+      // keep local value
+    }
   },
 }));

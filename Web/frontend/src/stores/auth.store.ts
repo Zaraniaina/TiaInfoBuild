@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { scheduleTokenRefresh, cancelTokenRefresh } from '@/services/api';
 
 interface User {
   id: number;
@@ -41,8 +42,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem('refresh_token', refreshToken);
     localStorage.setItem('user_info', JSON.stringify(user));
     set({ token, refreshToken, user, isAuthenticated: true });
+    scheduleTokenRefresh();
   },
   logout: () => {
+    cancelTokenRefresh();
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_info');
@@ -56,5 +59,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem('access_token', token);
     localStorage.setItem('refresh_token', refreshToken);
     set({ token, refreshToken });
+    scheduleTokenRefresh();
   },
 }));

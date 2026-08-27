@@ -30,5 +30,15 @@ export const settingsService = {
   async exportBackup() {
     const res = await api.post('/parametres/backup', {}, { responseType: 'blob' })
     return res.data
-  }
+  },
+
+  async getPreferences() {
+    const res = await api.get('/preferences/me')
+    return res.data
+  },
+
+  async updatePreferences(data: Partial<{ theme: string; langue: string; date_format: string; devise: string; notif_email: boolean; notif_push: boolean; notif_factures_retard: boolean; notif_stock_bas: boolean }>) {
+    const res = await api.patch('/preferences/me', data)
+    return res.data
+  },
 }

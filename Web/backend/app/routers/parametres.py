@@ -3,7 +3,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.core.permissions import PERMISSION_MAP
+from app.core.permissions import PERMISSION_MAP, Role
 from app.database import get_db
 from app.models.entreprise import Entreprise
 from app.models.role import Role
@@ -118,7 +118,11 @@ async def update_profile(payload: CurrentUserPayload, db: DbDep, data: Utilisate
 @router.get("/roles")
 async def list_roles(payload: CurrentUserPayload, db: DbDep):
     _require_permission(payload, "parametres:read")
-    result = await db.execute(select(Role).order_by(Role.id))
+    role_code = payload.get("role_code")
+    query = select(Role).order_by(Role.id)
+    if role_code != Role.SUPER_ADMIN:
+        query = query.where(Role.code != "super_admin")
+    result = await db.execute(query)
     roles = result.scalars().all()
     return [RoleResponse.model_validate(role) for role in roles]
 

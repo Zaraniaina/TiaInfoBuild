@@ -2,19 +2,25 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUIStore } from '@/stores/ui.store'
+import { settingsService } from '@/services/settings.service'
 import { api } from '@/services/api'
 
 export function Topbar() {
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
-  const { toggleSidebar, sidebarOpen, theme, setTheme } = useUIStore()
+  const { toggleSidebar, sidebarOpen, theme, setTheme, hydrateThemeFromBackend } = useUIStore()
   const [notifications, setNotifications] = useState<Array<{ id: number; titre: string }>>([])
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    hydrateThemeFromBackend().then(() => setHydrated(true))
+  }, [hydrateThemeFromBackend])
 
   useEffect(() => {
     api.get('/alertes?non_lues=1&size=5').then(res => {
@@ -32,13 +38,18 @@ export function Topbar() {
     navigate('/login')
   }
 
-  const cycleTheme = () => {
+  const cycleTheme = async () => {
     const next = theme === 'light' ? 'dark' : theme === 'dark' ? 'auto' : 'light'
     setTheme(next)
+    try {
+      await settingsService.updatePreferences({ theme: next })
+    } catch {
+      // silent fail
+    }
   }
 
   const themeIcon = theme === 'light' ? 'bi-sun' : theme === 'dark' ? 'bi-moon' : 'bi-laptop'
-  const themeLabel = theme === 'light' ? 'Thème clair' : theme === 'dark' ? 'Thème sombre' : 'Thème auto'
+  const themeLabel = theme === 'light' ? 'Thème clair' : theme === 'dark' ? 'Thème sombre' : 'Thème auto (système)'
 
   return (
     <header className="topbar">
@@ -62,6 +73,7 @@ export function Topbar() {
           title={themeLabel}
         >
           <i className={`bi ${themeIcon}`}></i>
+          <span className="theme-indicator" aria-hidden="true"></span>
         </button>
 
         <div className="topbar-notifications dropdown">

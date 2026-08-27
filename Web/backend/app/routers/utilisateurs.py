@@ -15,6 +15,9 @@ from app.models.utilisateur import Utilisateur
 from app.models.role import Role
 from app.schemas.utilisateur import UtilisateurCreate, UtilisateurUpdate, UtilisateurResponse, UtilisateurList, UtilisateurRoleUpdate
 
+ADMIN_ENTREPRISE_ROLE_ID = 2
+MAX_ADMIN_ENTREPRISE = 2
+
 router = APIRouter(tags=["utilisateurs"])
 CurrentUser = Annotated[dict[str, Any], Depends(get_current_active_user)]
 DbSession = Annotated[AsyncSession, Depends(get_db)]
@@ -51,6 +54,7 @@ async def list_utilisateurs(
 @router.post("/", response_model=UtilisateurResponse, status_code=status.HTTP_201_CREATED)
 async def create_utilisateur(payload: AdminCheck, db: DbSession, data: UtilisateurCreate):
     entreprise_id = payload.get("entreprise_id")
+    creator_role = payload.get("role_code")
     existing = await db.execute(
         select(Utilisateur).where(
             Utilisateur.email == data.email,
@@ -68,6 +72,11 @@ async def create_utilisateur(payload: AdminCheck, db: DbSession, data: Utilisate
     from app.security import hash_password
     obj_in["mot_de_passe_hash"] = hash_password(data.password)
     if obj_in.get("role_code"):
+        if obj_in["role_code"] == "super_admin" and creator_role != "super_admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Vous ne pouvez pas créer un utilisateur avec le rôle Super Administrateur.",
+            )
         role_result = await db.execute(select(Role).where(Role.code == obj_in["role_code"]))
         role = role_result.scalar_one_or_none()
         if not role:
@@ -77,6 +86,18 @@ async def create_utilisateur(payload: AdminCheck, db: DbSession, data: Utilisate
             )
         obj_in["role_id"] = role.id
         del obj_in["role_code"]
+    if obj_in.get("role_id") == ADMIN_ENTREPRISE_ROLE_ID and entreprise_id is not None:
+        count_query = select(func.count()).select_from(Utilisateur).where(
+            Utilisateur.entreprise_id == entreprise_id,
+            Utilisateur.role_id == ADMIN_ENTREPRISE_ROLE_ID,
+            Utilisateur.is_deleted == False,
+        )
+        current_count = (await db.execute(count_query)).scalar_one() or 0
+        if current_count >= MAX_ADMIN_ENTREPRISE:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Limite atteinte : maximum {MAX_ADMIN_ENTREPRISE} administrateurs par entreprise.",
+            )
     user = Utilisateur(**obj_in)
     db.add(user)
     await db.flush()
@@ -138,10 +159,23 @@ async def update_utilisateur(payload: AdminCheck, db: DbSession, id: int, data: 
 
 @router.put("/{id}/role", response_model=UtilisateurResponse)
 async def update_utilisateur_role(payload: AdminCheck, db: DbSession, id: int, data: UtilisateurRoleUpdate):
+    entreprise_id = payload.get("entreprise_id")
     result = await db.execute(select(Utilisateur).where(Utilisateur.id == id, Utilisateur.is_deleted == False))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur non trouvé")
+    if data.role_id == ADMIN_ENTREPRISE_ROLE_ID and entreprise_id is not None and user.role_id != ADMIN_ENTREPRISE_ROLE_ID:
+        count_query = select(func.count()).select_from(Utilisateur).where(
+            Utilisateur.entreprise_id == entreprise_id,
+            Utilisateur.role_id == ADMIN_ENTREPRISE_ROLE_ID,
+            Utilisateur.is_deleted == False,
+        )
+        current_count = (await db.execute(count_query)).scalar_one() or 0
+        if current_count >= MAX_ADMIN_ENTREPRISE:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Limite atteinte : maximum {MAX_ADMIN_ENTREPRISE} administrateurs par entreprise.",
+            )
     user.role_id = data.role_id
     await db.flush()
     await db.refresh(user)

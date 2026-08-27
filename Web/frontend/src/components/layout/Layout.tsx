@@ -7,7 +7,12 @@ import { useEffect, useState } from 'react'
 export function Layout() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen)
   const toggleSidebar = useUIStore((s) => s.toggleSidebar)
+  const hydrateThemeFromBackend = useUIStore((s) => s.hydrateThemeFromBackend)
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 992)
+
+  useEffect(() => {
+    hydrateThemeFromBackend()
+  }, [hydrateThemeFromBackend])
 
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 992)

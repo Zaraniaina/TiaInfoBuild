@@ -34,6 +34,7 @@ export function SettingsPage() {
   const [showUserModal, setShowUserModal] = useState(false)
   const [editingUser, setEditingUser] = useState<UserRow | null>(null)
   const [userForm, setUserForm] = useState({ prenom: '', nom: '', email: '', role_code: 'employe' as UserRole, password: '', telephone: '' })
+  const [formError, setFormError] = useState<string | null>(null)
   const [logs, setLogs] = useState<any[]>([])
   const [auditLoading, setAuditLoading] = useState(false)
 
@@ -92,21 +93,23 @@ export function SettingsPage() {
     api.get('/parametres/roles')
       .then(res => {
         const items = res.data.items || res.data || []
-        setRoles(items.map((r: any) => ({ id: r.id, code: r.code, nom: r.nom })))
+        const filtered = items
+          .map((r: any) => ({ id: r.id, code: r.code, nom: r.nom }))
+          .filter((r: RoleOption) => r.code !== 'super_admin')
+        setRoles(filtered)
       })
       .catch(() => {
         setRoles([
-          { id: 1, code: 'admin_entreprise', nom: 'Admin Entreprise' },
-          { id: 2, code: 'directeur', nom: 'Direction Générale' },
-          { id: 3, code: 'comptable', nom: 'Comptable' },
-          { id: 4, code: 'chef_chantier', nom: 'Chef de Chantier' },
-          { id: 5, code: 'chef_projet', nom: 'Chef de Projet' },
-          { id: 6, code: 'rh', nom: 'Responsable RH' },
-          { id: 7, code: 'materiel', nom: 'Responsable Matériel' },
-          { id: 8, code: 'magasinier', nom: 'Magasinier' },
-          { id: 9, code: 'commercial', nom: 'Commercial' },
-          { id: 10, code: 'employe', nom: 'Ouvrier / Employé' },
-          { id: 11, code: 'client', nom: 'Client' },
+          { id: 2, code: 'admin_entreprise', nom: 'Admin Entreprise' },
+          { id: 3, code: 'directeur', nom: 'Direction Générale' },
+          { id: 4, code: 'comptable', nom: 'Comptable' },
+          { id: 5, code: 'chef_chantier', nom: 'Chef de Chantier' },
+          { id: 6, code: 'chef_projet', nom: 'Chef de Projet' },
+          { id: 7, code: 'rh', nom: 'Responsable RH' },
+          { id: 8, code: 'materiel', nom: 'Responsable Matériel' },
+          { id: 9, code: 'magasinier', nom: 'Magasinier' },
+          { id: 10, code: 'commercial', nom: 'Commercial' },
+          { id: 11, code: 'employe', nom: 'Ouvrier / Employé' },
         ])
       })
   }
@@ -196,17 +199,24 @@ export function SettingsPage() {
   const openCreateUser = () => {
     setEditingUser(null)
     setUserForm({ prenom: '', nom: '', email: '', role_code: 'employe', password: '', telephone: '' })
+    setFormError(null)
     setShowUserModal(true)
   }
 
   const openEditUser = (u: UserRow) => {
     setEditingUser(u)
     setUserForm({ prenom: u.prenom, nom: u.nom, email: u.email, role_code: u.role_code, password: '', telephone: u.telephone || '' })
+    setFormError(null)
     setShowUserModal(true)
   }
 
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFormError(null)
+    if (userForm.role_code === 'admin_entreprise' && adminLimitReached) {
+      setFormError('Limite atteinte : maximum 2 administrateurs par entreprise.')
+      return
+    }
     setSaving(true)
     try {
       const payload: any = { ...userForm }
@@ -233,7 +243,7 @@ export function SettingsPage() {
       } else if (error.message) {
         message = error.message
       }
-      alert(message)
+      setFormError(message)
     } finally {
       setSaving(false)
     }
@@ -247,6 +257,9 @@ export function SettingsPage() {
       alert('Erreur lors du changement de statut')
     }
   }
+
+  const adminCount = users.filter(u => u.role_code === 'admin_entreprise' && u.statut === 'actif').length
+  const adminLimitReached = adminCount >= 2
 
   const filteredUsers = users.filter(u => `${u.prenom} ${u.nom}`.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()))
 
@@ -528,14 +541,20 @@ export function SettingsPage() {
                       <label className="form-label fw-semibold">Téléphone</label>
                       <input className="form-control" value={userForm.telephone} onChange={e => setUserForm({ ...userForm, telephone: e.target.value })} />
                     </div>
-                    <div className="col-md-12">
-                      <label className="form-label fw-semibold">Rôle</label>
-                      <select className="form-select" value={userForm.role_code} onChange={e => setUserForm({ ...userForm, role_code: e.target.value as UserRole })}>
-                        {roles.map(r => (
-                          <option key={r.code} value={r.code}>{r.nom}</option>
-                        ))}
-                      </select>
-                    </div>
+                     <div className="col-md-12">
+                       <label className="form-label fw-semibold">Rôle</label>
+                       <select className="form-select" value={userForm.role_code} onChange={e => setUserForm({ ...userForm, role_code: e.target.value as UserRole })}>
+                         {roles.map(r => (
+                           <option
+                             key={r.code}
+                             value={r.code}
+                             disabled={r.code === 'admin_entreprise' && adminLimitReached}
+                           >
+                             {r.nom}{r.code === 'admin_entreprise' && adminLimitReached ? ' (limite atteinte)' : ''}
+                           </option>
+                         ))}
+                       </select>
+                     </div>
                     {!editingUser && (
                       <div className="col-md-12">
                         <label className="form-label fw-semibold">Mot de passe</label>
@@ -544,16 +563,21 @@ export function SettingsPage() {
                           8 caractères minimum, 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial.
                         </div>
                       </div>
-                    )}
-                  </div>
-                </div>
-                <div className="modal-footer border-0 pt-0">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowUserModal(false)} disabled={saving}>Annuler</button>
-                  <button type="submit" className="btn btn-primary fw-bold" disabled={saving}>
-                    {saving ? 'Enregistrement...' : (editingUser ? 'Mettre à jour' : 'Créer l\'utilisateur')}
-                  </button>
-                </div>
-              </form>
+                     )}
+                   </div>
+                 </div>
+                 {formError && (
+                   <div className="alert alert-danger py-2 mb-0" role="alert">
+                     <i className="bi bi-exclamation-triangle me-2"></i>{formError}
+                   </div>
+                 )}
+                 <div className="modal-footer border-0 pt-0">
+                   <button type="button" className="btn btn-secondary" onClick={() => setShowUserModal(false)} disabled={saving}>Annuler</button>
+                   <button type="submit" className="btn btn-primary fw-bold" disabled={saving}>
+                     {saving ? 'Enregistrement...' : (editingUser ? 'Mettre à jour' : 'Créer l\'utilisateur')}
+                   </button>
+                 </div>
+               </form>
             </div>
           </div>
         </div>

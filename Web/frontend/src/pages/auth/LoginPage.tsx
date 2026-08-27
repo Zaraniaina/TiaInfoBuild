@@ -43,8 +43,8 @@ export function LoginPage() {
           <div
             className="mark"
             style={{
-              background: 'var(--tia-amber)',
-              color: 'var(--tia-navy)',
+              background: 'var(--tia-accent)',
+              color: 'var(--tia-accent-text)',
               width: '40px',
               height: '40px',
               borderRadius: '8px',
@@ -61,17 +61,17 @@ export function LoginPage() {
         </div>
 
         <div>
-          <div className="eyebrow mb-2" style={{ color: 'var(--tia-amber)' }}>Plateforme de gestion BTP</div>
+          <div className="eyebrow mb-2" style={{ color: 'var(--tia-accent)' }}>Plateforme de gestion BTP</div>
           <h2 className="font-display fw-bold mb-3" style={{ fontSize: '2rem', lineHeight: 1.15 }}>
             Un seul plan de suivi<br />pour tous vos chantiers.
           </h2>
-          <p className="mb-0 text-white-50" style={{ maxWidth: '26rem' }}>
+          <p className="mb-0" style={{ maxWidth: '26rem', opacity: 0.7 }}>
             Chantiers, ressources humaines, matériels, stocks et finances —
             pilotés depuis un tableau de bord unique, accessible du bureau au terrain.
           </p>
         </div>
 
-        <div className="small text-white-50">© 2026 TIA INFO BUILD — Madagascar</div>
+        <div className="small" style={{ opacity: 0.7 }}>© 2026 TIA INFO BUILD — Madagascar</div>
       </div>
 
       {/* Formulaire de connexion */}
@@ -159,7 +159,7 @@ export function LoginPage() {
 
           <div className="text-center mt-4 small">
             Pas encore d'entreprise ?{' '}
-            <Link to="/register" className="text-decoration-none fw-semibold" style={{ color: 'var(--tia-amber)' }}>
+            <Link to="/register" className="text-decoration-none fw-semibold" style={{ color: 'var(--tia-accent)' }}>
               Créer mon entreprise
             </Link>
           </div>

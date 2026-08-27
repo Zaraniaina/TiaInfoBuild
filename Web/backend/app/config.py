@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     secret_key: str = "CHANGE_ME_IN_PRODUCTION_ACCESS"
     secret_key_refresh: str = "CHANGE_ME_IN_PRODUCTION_REFRESH"
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 15
+    access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 7
 
     # Password policy

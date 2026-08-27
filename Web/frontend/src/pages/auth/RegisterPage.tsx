@@ -47,8 +47,8 @@ export function RegisterPage() {
           <div
             className="mark"
             style={{
-              background: 'var(--tia-amber)',
-              color: 'var(--tia-navy)',
+              background: 'var(--tia-accent)',
+              color: 'var(--tia-accent-text)',
               width: '40px',
               height: '40px',
               borderRadius: '8px',
@@ -65,21 +65,21 @@ export function RegisterPage() {
         </div>
 
         <div>
-          <div className="eyebrow mb-2" style={{ color: 'var(--tia-amber)' }}>
+          <div className="eyebrow mb-2" style={{ color: 'var(--tia-accent)' }}>
             Création de compte entreprise
           </div>
           <h2 className="font-display fw-bold mb-3" style={{ fontSize: '2rem', lineHeight: 1.15 }}>
             Créez votre entreprise en 1 minute,<br />
             vous gérez le reste depuis votre espace local.
           </h2>
-          <p className="mb-0 text-white-50" style={{ maxWidth: '26rem' }}>
+            <p className="mb-0" style={{ maxWidth: '26rem', opacity: 0.7 }}>
             Inscrivez votre entreprise et devenez administrateur.
             Vous pourrez ensuite ajouter vos employés, créer des chantiers,
             gérer vos matériels et suivre vos finances — le tout depuis un espace sécurisé.
           </p>
         </div>
 
-        <div className="small text-white-50">© 2026 TIA INFO BUILD — Madagascar</div>
+        <div className="small" style={{ opacity: 0.7 }}>© 2026 TIA INFO BUILD — Madagascar</div>
       </div>
 
       <div className="auth-form-side d-flex align-items-center justify-content-center p-4 overflow-auto">
@@ -137,7 +137,7 @@ export function RegisterPage() {
               </div>
             </div>
 
-            <hr style={{ borderColor: 'var(--tia-line)', margin: '1.5rem 0' }} />
+            <hr style={{ borderColor: 'var(--tia-border)', margin: '1.5rem 0' }} />
 
             <div className="eyebrow mb-2 text-primary" style={{ fontSize: '0.65rem' }}>RESPONSABLE (ADMINISTRATEUR)</div>
 
@@ -214,7 +214,7 @@ export function RegisterPage() {
 
           <div className="text-center mt-3 small">
             Vous avez déjà un compte ?{' '}
-            <a href="/login" className="text-decoration-none fw-semibold" style={{ color: 'var(--tia-amber)' }}>
+            <a href="/login" className="text-decoration-none fw-semibold" style={{ color: 'var(--tia-accent)' }}>
               Se connecter
             </a>
           </div>

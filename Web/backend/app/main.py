@@ -63,7 +63,7 @@ async def root():
 
 
 # Inclusion des routers
-from app.routers import auth, super_admin, chantiers, rh, stocks, commercial, finance, materiels, alertes, dashboard, parametres, sync, utilisateurs
+from app.routers import auth, super_admin, chantiers, rh, stocks, commercial, finance, materiels, alertes, dashboard, parametres, sync, utilisateurs, preferences
 
 api_prefix = "/api"
 
@@ -79,4 +79,5 @@ app.include_router(finance.router, prefix=f"{api_prefix}/finance", tags=["financ
 app.include_router(materiels.router, prefix=f"{api_prefix}/materiels", tags=["materiels"])
 app.include_router(alertes.router, prefix=f"{api_prefix}/alertes", tags=["alertes"])
 app.include_router(parametres.router, prefix=f"{api_prefix}/parametres", tags=["parametres"])
+app.include_router(preferences.router, prefix=f"{api_prefix}/preferences", tags=["preferences"])
 app.include_router(sync.router, prefix=f"{api_prefix}/sync", tags=["sync"])
