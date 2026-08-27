@@ -157,7 +157,7 @@ class MaterielRepository extends BaseRepository {
       FROM Materiel m
       JOIN Maintenance mt ON m.id = mt.materielId
       WHERE m.entrepriseId = ? AND m.is_deleted = 0 AND mt.is_deleted = 0
-      AND mt.prochaineDateEcheance < date('now')
+      AND mt.prochaineDateEcheance < date('now', 'localtime')
     `).get(entrepriseId);
     stats.maintenanceEnRetard = retard.count;
 

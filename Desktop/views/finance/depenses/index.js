@@ -80,7 +80,11 @@ class DepensesController {
         document.getElementById('formDepense')?.addEventListener('submit', e => this.handleSubmit(e));
         document.getElementById('btnDeleteDepense')?.addEventListener('click', () => this.confirmDelete());
         document.getElementById('btnConfirmDeleteDepense')?.addEventListener('click', () => this.executeDelete());
-        document.getElementById('btnValiderDepense')?.addEventListener('click', () => this.validerDepense());
+        document.getElementById('btnValiderDepense')?.addEventListener('click', (e) => this.openValidationModal(e.currentTarget.dataset.id, 'niveau1'));
+        document.getElementById('btnValiderComptable')?.addEventListener('click', (e) => this.openValidationModal(e.currentTarget.dataset.id, 'niveau2'));
+        document.getElementById('btnRefuserDepense')?.addEventListener('click', (e) => this.openValidationModal(e.currentTarget.dataset.id, 'refus'));
+        document.getElementById('formValidationDepense')?.addEventListener('submit', e => this.handleValidationSubmit(e));
+        document.getElementById('btnRefuserValidation')?.addEventListener('click', () => this.handleRefus());
     }
 
     async loadDepenses() {
@@ -169,6 +173,7 @@ class DepensesController {
 
         const statutConfig = {
             'en_attente': { class: 'bg-warning text-dark', label: 'En attente' },
+            'en_attente_comptable': { class: 'bg-warning text-dark', label: 'En attente comptable' },
             'validee': { class: 'bg-success', label: 'Validée' },
             'refusee': { class: 'bg-danger', label: 'Refusée' },
             'payee': { class: 'bg-primary', label: 'Payée' }
@@ -193,7 +198,21 @@ class DepensesController {
                     <td>
                         <div class="btn-group btn-group-sm">
                             <button class="btn btn-outline-primary btn-edit" data-id="${d.id}" title="Modifier" data-permission="depenses:update"><i class="bi bi-pencil"></i></button>
-                            ${d.statut === 'en_attente' ? `<button class="btn btn-outline-success btn-validate" data-id="${d.id}" title="Valider" data-permission="depenses:update"><i class="bi bi-check"></i></button>` : ''}
+                            ${d.statut === 'en_attente' || d.statut === 'en_attente_comptable' ? `
+                                <button class="btn btn-outline-warning btn-validate-n1" data-id="${d.id}" title="Valider Niveau 1" data-permission="depenses:update">
+                                    <i class="bi bi-arrow-right"></i>
+                                </button>
+                            ` : ''}
+                            ${d.statut === 'en_attente_comptable' ? `
+                                <button class="btn btn-outline-success btn-validate-n2" data-id="${d.id}" title="Valider Niveau 2 (Comptable)" data-permission="depenses:validate">
+                                    <i class="bi bi-check-double"></i>
+                                </button>
+                            ` : ''}
+                            ${d.statut !== 'validee' && d.statut !== 'payee' ? `
+                                <button class="btn btn-outline-danger btn-refuse" data-id="${d.id}" title="Refuser" data-permission="depenses:update">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            ` : ''}
                             <button class="btn btn-outline-danger btn-delete" data-id="${d.id}" title="Supprimer" data-permission="depenses:delete"><i class="bi bi-trash"></i></button>
                         </div>
                     </td>
@@ -202,7 +221,9 @@ class DepensesController {
         }).join('');
 
         tbody.querySelectorAll('.btn-edit').forEach(btn => btn.addEventListener('click', e => this.openModalEdition(e.currentTarget.dataset.id)));
-        tbody.querySelectorAll('.btn-validate').forEach(btn => btn.addEventListener('click', e => this.validerDepenseDirecte(e.currentTarget.dataset.id)));
+        tbody.querySelectorAll('.btn-validate-n1').forEach(btn => btn.addEventListener('click', e => this.openValidationModal(e.currentTarget.dataset.id, 'niveau1')));
+        tbody.querySelectorAll('.btn-validate-n2').forEach(btn => btn.addEventListener('click', e => this.openValidationModal(e.currentTarget.dataset.id, 'niveau2')));
+        tbody.querySelectorAll('.btn-refuse').forEach(btn => btn.addEventListener('click', e => this.openValidationModal(e.currentTarget.dataset.id, 'refus')));
         tbody.querySelectorAll('.btn-delete').forEach(btn => btn.addEventListener('click', e => this.confirmDelete(e.currentTarget.dataset.id)));
     }
 
@@ -309,6 +330,89 @@ class DepensesController {
             await window.api.depenses.invoke('update', parseInt(id), { statut: 'validee' });
             showToast('Dépense validée', 'success');
             await this.loadDepenses();
+        } catch (error) {
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    openValidationModal(id, niveau) {
+        this.depenseEnValidation = this.depensesData.find(d => String(d.id) === String(id));
+        if (!this.depenseEnValidation) { showToast('Dépense non trouvée', 'error'); return; }
+
+        document.getElementById('validationDepenseId').value = id;
+        document.getElementById('validationCommentaire').value = '';
+
+        const niveauInfo = document.getElementById('validationNiveauInfo');
+        const submitBtn = document.getElementById('btnSubmitValidation');
+
+        if (niveau === 'niveau1') {
+            document.getElementById('validationStatut').value = 'en_attente_comptable';
+            if (niveauInfo) niveauInfo.innerHTML = '<small>Validation Niveau 1 : Conformité chantier (Chef de Chantier) — La dépense sera transmise au Comptable pour validation finale</small>';
+            if (submitBtn) { submitBtn.className = 'btn btn-warning'; submitBtn.innerHTML = '<i class="bi bi-arrow-right me-1"></i>Transmettre au Comptable'; }
+        } else if (niveau === 'niveau2') {
+            document.getElementById('validationStatut').value = 'validee';
+            if (niveauInfo) niveauInfo.innerHTML = '<small>Validation Niveau 2 : Validation comptable finale (Comptable / Responsable Financier)</small>';
+            if (submitBtn) { submitBtn.className = 'btn btn-success'; submitBtn.innerHTML = '<i class="bi bi-check me-1"></i>Valider définitivement'; }
+        } else if (niveau === 'refus') {
+            document.getElementById('validationStatut').value = 'refusee';
+            if (niveauInfo) niveauInfo.innerHTML = '<small class="text-danger">Refus de la dépense — Motif requis</small>';
+            if (submitBtn) { submitBtn.className = 'btn btn-danger'; submitBtn.innerHTML = '<i class="bi bi-x me-1"></i>Refuser'; }
+        }
+
+        new bootstrap.Modal(document.getElementById('modalValidationDepense')).show();
+    }
+
+    async handleValidationSubmit(e) {
+        e.preventDefault();
+        const id = document.getElementById('validationDepenseId').value;
+        const statut = document.getElementById('validationStatut').value;
+        const commentaire = document.getElementById('validationCommentaire').value;
+
+        if (!id) return;
+
+        try {
+            const result = await window.api.depenses.invoke('valider', parseInt(id), {
+                statutValidation: statut,
+                commentaire: commentaire,
+                envoyerNotification: true
+            });
+
+            if (result?.success) {
+                showToast(`Dépense ${statut === 'validee' ? 'validée' : statut === 'refusee' ? 'refusée' : 'transmise au comptable'}`, 'success');
+                bootstrap.Modal.getInstance(document.getElementById('modalValidationDepense'))?.hide();
+                await this.loadDepenses();
+            } else {
+                showToast(`Erreur: ${result?.error || 'Inconnue'}`, 'error');
+            }
+        } catch (error) {
+            showToast(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    async handleRefus() {
+        const id = document.getElementById('validationDepenseId').value;
+        const commentaire = document.getElementById('validationCommentaire').value;
+
+        if (!id) return;
+        if (!commentaire || !commentaire.trim()) {
+            showToast('Veuillez saisir un motif de refus', 'warning');
+            return;
+        }
+
+        try {
+            const result = await window.api.depenses.invoke('valider', parseInt(id), {
+                statutValidation: 'refusee',
+                commentaire: commentaire,
+                envoyerNotification: true
+            });
+
+            if (result?.success) {
+                showToast('Dépense refusée', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('modalValidationDepense'))?.hide();
+                await this.loadDepenses();
+            } else {
+                showToast(`Erreur: ${result?.error || 'Inconnue'}`, 'error');
+            }
         } catch (error) {
             showToast(`Erreur: ${error.message}`, 'error');
         }

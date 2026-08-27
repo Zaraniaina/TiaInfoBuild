@@ -67,7 +67,7 @@ class FactureRepository extends BaseRepository {
    * @returns {Array} - Factures échues non payées
    */
   getEnRetard(entrepriseId) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = db.prepare("SELECT date('now', 'localtime') as today").get().today;
     const stmt = db.prepare(`
       SELECT f.*, 
              COALESCE(c.nom, cl.nom) as clientNom, 
@@ -125,6 +125,22 @@ class FactureRepository extends BaseRepository {
    */
   delete(id) {
     return this.softDelete(id);
+  }
+
+  /**
+   * Calculer le reste à payer d'une facture
+   * @param {number} factureId - ID facture
+   * @returns {number} - Montant restant dû
+   */
+  resteAPayer(factureId) {
+    const facture = this.getById(factureId);
+    if (!facture) return 0;
+    const paiements = db.prepare(`
+      SELECT COALESCE(SUM(montant), 0) as total FROM Paiement
+      WHERE factureId = ? AND is_deleted = 0
+    `).get(factureId);
+    const totalPaye = paiements?.total || 0;
+    return Math.max(0, (facture.montantTTC || facture.montant || 0) - totalPaye);
   }
 }
 

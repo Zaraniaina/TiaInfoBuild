@@ -129,6 +129,28 @@ class DashboardController {
       return { success: false, error: error.message, data: [] }
     }
   }
+
+  async getFinancesSante(event, entrepriseId) {
+    try {
+      const financeCtrl = require('./financeController')
+      const ctrl = new financeCtrl({ dashboard: this.repos.dashboard, factures: this.repos.factures, depenses: this.repos.depenses, alertes: this.repos.alertes })
+      return ctrl.getFinancesSante(event, entrepriseId)
+    } catch (error) {
+      console.error('DashboardController.getFinancesSante error:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  async getTrésorerie(event, entrepriseId) {
+    try {
+      const financeCtrl = require('./financeController')
+      const ctrl = new financeCtrl({ dashboard: this.repos.dashboard, factures: this.repos.factures, depenses: this.repos.depenses, alertes: this.repos.alertes })
+      return ctrl.getTrésorerie(event, entrepriseId)
+    } catch (error) {
+      console.error('DashboardController.getTrésorerie error:', error)
+      return { success: false, error: error.message }
+    }
+  }
 }
 
 module.exports = DashboardController

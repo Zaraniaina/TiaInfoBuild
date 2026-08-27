@@ -1,4 +1,27 @@
 <!-- Vue Dashboard / Tableau de bord -->
+<style>
+  /* Indicateurs cliquables (ADMIN) : signal visuel de drill-down */
+  .kpi-card--admin-clickable {
+    transition: transform .15s ease-in-out, box-shadow .15s ease-in-out, border-color .15s ease-in-out;
+  }
+  .kpi-card--admin-clickable:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 .5rem 1rem rgba(13, 110, 253, .18);
+    border-color: var(--bs-primary);
+  }
+  .kpi-card--admin-clickable .kpi-open-hint {
+    opacity: 0;
+    transition: opacity .15s ease-in-out;
+  }
+  .kpi-card--admin-clickable:hover .kpi-open-hint,
+  .kpi-card--admin-clickable:focus-visible .kpi-open-hint {
+    opacity: 1;
+  }
+  .kpi-card--admin-clickable:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+  }
+</style>
 <div class="dashboard-view" data-view="dashboard">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
@@ -271,6 +294,54 @@
         </div>
     </div>
 
+    <!-- Santé Système (ADMIN uniquement) -->
+    <div class="row g-3 mb-4 d-none" id="kpiCardsSystemHealth">
+        <div class="col-xl-4 col-md-6">
+            <div class="card kpi-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-secondary mb-1 small">Taille Base de Données</p>
+                            <h3 class="mb-0 text-dark" id="kpiSystemDbSize">—</h3>
+                        </div>
+                        <div class="kpi-icon bg-dark bg-opacity-10 text-dark rounded-circle p-3">
+                            <i class="bi bi-database fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="card kpi-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-secondary mb-1 small">Utilisateurs connectés (1h)</p>
+                            <h3 class="mb-0 text-primary" id="kpiSystemConnectedUsers">—</h3>
+                        </div>
+                        <div class="kpi-icon bg-primary bg-opacity-10 text-primary rounded-circle p-3">
+                            <i class="bi bi-people fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="card kpi-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-secondary mb-1 small">Erreurs récentes (24h)</p>
+                            <h3 class="mb-0 text-warning" id="kpiSystemRecentErrors">—</h3>
+                        </div>
+                        <div class="kpi-icon bg-warning bg-opacity-10 text-warning rounded-circle p-3">
+                            <i class="bi bi-exclamation-triangle fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Graphiques et activité -->
     <div class="row g-4">
@@ -390,7 +461,7 @@
                         </a>
                         <button class="btn btn-outline-secondary" id="btnQuickSync">
                             <i class="bi bi-arrow-clockwise me-2"></i>Synchroniser
-                            </a>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -442,7 +513,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Activité récente</h5>
-                    <a href="#activite" class="btn btn-sm btn-link p-0" data-route="activite">Voir tout</a>
+                    <button type="button" class="btn btn-sm btn-link p-0" id="btnVoirToutActivite">Voir tout</button>
                 </div>
                 <div class="card-body p-0" id="activiteRecenteList">
                     <div class="text-center py-4 text-secondary" id="activiteEmpty">

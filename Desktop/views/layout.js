@@ -59,85 +59,113 @@ const ROLE_SPACES = {
 
 // Routes autorisées par rôle
 const ROLE_ROUTES = {
-  ADMIN: ['dashboard', 'parametres', 'historique-logins'],
-  DIRECTEUR: ['dashboard', 'chantiers', 'finances', 'depenses', 'rapports', 'alertes', 'employes', 'pointages', 'equipes', 'materiels', 'fournisseurs', 'clients', 'devis', 'contrats', 'factures', 'historique-logins', 'parametres'],
-  CHEF_CHANTIER: ['dashboard', 'chantiers', 'employes', 'pointages', 'equipes', 'heures-sup', 'materiels', 'stocks', 'fournisseurs', 'mouvements', 'depenses', 'alertes', 'parametres'],
-  CHEF_PROJET: ['dashboard', 'chantiers', 'alertes', 'pointages', 'employes', 'equipes', 'parametres'],
-  COMPTABLE: ['dashboard', 'finances', 'depenses', 'rapports', 'alertes', 'factures', 'paiements', 'clients', 'contrats', 'fournisseurs', 'employes', 'pointages', 'equipes', 'devis', 'parametres'],
-  RH: ['dashboard', 'employes', 'pointages', 'equipes', 'heures-sup', 'parametres'],
-  MATERIEL: ['dashboard', 'materiels', 'alertes', 'chantiers', 'parametres'],
-  MAGASINIER: ['dashboard', 'stocks', 'fournisseurs', 'mouvements', 'alertes', 'parametres'],
-  COMMERCIAL: ['dashboard', 'clients', 'devis', 'contrats', 'factures', 'paiements', 'alertes', 'parametres']
+  ADMIN: ['dashboard', 'parametres', 'historique-logins', 'audit-log'],
+  DIRECTEUR: ['dashboard', 'chantiers', 'finances', 'depenses', 'tresorerie', 'budget-previsionnel', 'rapports', 'alertes', 'alertes-intelligentes', 'employes', 'pointages', 'equipes', 'materiels', 'fournisseurs', 'clients', 'devis', 'contrats', 'factures', 'pipeline', 'sous-traitants', 'projets', 'notifications', 'historique-logins', 'audit-log', 'parametres'],
+  CHEF_CHANTIER: ['dashboard', 'chantiers', 'sous-traitants', 'terrain', 'employes', 'pointages', 'equipes', 'heures-sup', 'materiels', 'stocks', 'fournisseurs', 'mouvements', 'depenses', 'alertes', 'alertes-intelligentes', 'notifications', 'parametres'],
+  CHEF_PROJET: ['dashboard', 'chantiers', 'projets', 'sous-traitants', 'budget-previsionnel', 'alertes', 'alertes-intelligentes', 'pointages', 'employes', 'equipes', 'heures-sup', 'materiels', 'depenses', 'notifications', 'parametres'],
+  COMPTABLE: ['dashboard', 'finances', 'depenses', 'tresorerie', 'budget-previsionnel', 'rapports', 'alertes', 'alertes-intelligentes', 'factures', 'paiements', 'clients', 'contrats', 'fournisseurs', 'employes', 'pointages', 'equipes', 'devis', 'sous-traitants', 'pipeline', 'notifications', 'parametres'],
+  RH: ['dashboard', 'employes', 'pointages', 'equipes', 'heures-sup', 'alertes', 'alertes-intelligentes', 'notifications', 'parametres'],
+  MATERIEL: ['dashboard', 'materiels', 'alertes', 'alertes-intelligentes', 'chantiers', 'notifications', 'parametres'],
+  MAGASINIER: ['dashboard', 'stocks', 'fournisseurs', 'mouvements', 'alertes', 'alertes-intelligentes', 'notifications', 'parametres'],
+  COMMERCIAL: ['dashboard', 'clients', 'devis', 'contrats', 'pipeline', 'catalogue-devis', 'factures', 'alertes', 'alertes-intelligentes', 'notifications', 'parametres']
 };
 
 const PERMISSION_MAP = {
-  'chantiers:create': ['ADMIN', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMMERCIAL'],
-  'chantiers:update': ['ADMIN', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMMERCIAL'],
-  'chantiers:delete': ['ADMIN', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMMERCIAL'], 
-  'employes:list': ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'],
-  'employes:get': ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'],
+  'chantiers:create': ['DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'],
+  'chantiers:update': ['DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'],
+  'chantiers:delete': ['DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'],
+  'employes:list': ['RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'],
+  'employes:get': ['RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'],
   'employes:create': ['ADMIN', 'RH'],
   'employes:update': ['ADMIN', 'RH'],
   'employes:delete': ['ADMIN', 'RH'],
-  'pointages:list': ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'],
+  'pointages:list': ['RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'],
   'pointages:create': ['ADMIN', 'RH', 'CHEF_CHANTIER'],
   'pointages:update': ['ADMIN', 'RH'],
   'pointages:delete': ['ADMIN', 'RH'],
-  'heures-sup:list': ['ADMIN', 'RH', 'DIRECTEUR', 'COMPTABLE'],
+  'heures-sup:list': ['RH', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'],
   'heures-sup:create': ['ADMIN', 'RH'],
   'heures-sup:update': ['ADMIN', 'RH'],
   'heures-sup:delete': ['ADMIN', 'RH'],
-  'equipes:list': ['ADMIN', 'RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'],
+  'equipes:list': ['RH', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'],
   'equipes:create': ['ADMIN', 'RH'],
   'equipes:update': ['ADMIN', 'RH'],
   'equipes:delete': ['ADMIN', 'RH'],
-  'articles:list': ['ADMIN', 'MAGASINIER', 'CHEF_CHANTIER', 'DIRECTEUR', 'COMPTABLE'],
+  'articles:list': ['MAGASINIER', 'CHEF_CHANTIER', 'DIRECTEUR', 'COMPTABLE'],
   'articles:create': ['ADMIN', 'MAGASINIER'],
   'articles:update': ['ADMIN', 'MAGASINIER'],
   'articles:delete': ['ADMIN', 'MAGASINIER'],
-  'fournisseurs:list': ['ADMIN', 'MAGASINIER', 'DIRECTEUR', 'COMPTABLE'],
+  'fournisseurs:list': ['MAGASINIER'],
   'fournisseurs:create': ['ADMIN', 'MAGASINIER'],
   'fournisseurs:update': ['ADMIN', 'MAGASINIER'],
   'fournisseurs:delete': ['ADMIN', 'MAGASINIER'],
-  'mouvements:list': ['ADMIN', 'MAGASINIER', 'CHEF_CHANTIER'],
-  'mouvements:create': ['ADMIN', 'MAGASINIER', 'CHEF_CHANTIER'],
+  'mouvements:list': ['MAGASINIER', 'CHEF_CHANTIER'],
+  'mouvements:create': ['ADMIN', 'MAGASINIER'],
   'mouvements:delete': ['ADMIN', 'MAGASINIER'],
-  'materiels:list': ['ADMIN', 'MATERIEL', 'CHEF_CHANTIER', 'DIRECTEUR'],
+  'materiels:list': ['MATERIEL', 'CHEF_CHANTIER', 'CHEF_PROJET'],
   'materiels:create': ['ADMIN', 'MATERIEL'],
   'materiels:update': ['ADMIN', 'MATERIEL'],
   'materiels:delete': ['ADMIN', 'MATERIEL'],
-  'clients:list': ['ADMIN', 'COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'],
-  'clients:create': ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'],
-  'clients:update': ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'],
-  'clients:delete': ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'],
-  'devis:list': ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'],
-  'devis:create': ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'],
-  'devis:update': ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'],
-  'devis:delete': ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'],
-  'contrats:list': ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'],
-  'contrats:create': ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'],
-  'contrats:update': ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'], 
-  'factures:list': ['ADMIN', 'COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'],
-  'factures:create': ['ADMIN', 'COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'],
-  'factures:update': ['ADMIN', 'COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'], 
-  'factures:dupliquer': ['ADMIN', 'COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'],
-  'factures:envoyer': ['ADMIN', 'COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'],
-  'paiements:list': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
+  'clients:list': ['COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'],
+  'clients:create': ['ADMIN', 'COMMERCIAL'],
+  'clients:update': ['ADMIN', 'COMMERCIAL'],
+  'clients:delete': ['ADMIN', 'COMMERCIAL'],
+  'devis:list': ['COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'],
+  'devis:create': ['ADMIN', 'COMMERCIAL'],
+  'devis:update': ['ADMIN', 'COMMERCIAL'],
+  'devis:delete': ['ADMIN', 'COMMERCIAL'],
+  'contrats:list': ['COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'],
+  'contrats:create': ['ADMIN', 'COMMERCIAL'],
+  'contrats:update': ['ADMIN', 'COMMERCIAL'],
+  'factures:list': ['COMMERCIAL', 'DIRECTEUR', 'COMPTABLE'],
+  'factures:create': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
+  'factures:update': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
+  'factures:dupliquer': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
+  'factures:envoyer': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
+  'paiements:list': ['COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'],
   'paiements:create': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
+  'paiements:update': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
+  'paiements:delete': ['ADMIN', 'COMPTABLE'],
   'utilisateurs:list': ['ADMIN'],
   'utilisateurs:create': ['ADMIN'],
   'utilisateurs:update': ['ADMIN'],
   'utilisateurs:delete': ['ADMIN'],
   'entreprises:update': ['ADMIN'],
-  'depenses:list': ['ADMIN', 'COMPTABLE', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'],
-  'depenses:create': ['ADMIN', 'COMPTABLE', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'],
+  'depenses:list': ['COMPTABLE', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET'],
+  'depenses:create': ['ADMIN', 'COMPTABLE', 'DIRECTEUR'],
   'depenses:update': ['ADMIN', 'COMPTABLE', 'DIRECTEUR'],
   'depenses:delete': ['ADMIN', 'COMPTABLE', 'DIRECTEUR'],
-  'factures:ajouterPaiement': ['ADMIN', 'COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'],
-  'devis:transformerEnContrat': ['ADMIN', 'COMMERCIAL', 'COMPTABLE', 'DIRECTEUR'],
-  'rapports:list': ['ADMIN', 'DIRECTEUR', 'COMPTABLE'],
-  'alertes:list': ['ADMIN', 'DIRECTEUR', 'COMPTABLE', 'RH', 'CHEF_CHANTIER', 'CHEF_PROJET', 'MATERIEL', 'MAGASINIER', 'COMMERCIAL'],
-  'dashboard:list': ['ADMIN', 'DIRECTEUR', 'COMPTABLE', 'RH', 'CHEF_CHANTIER', 'CHEF_PROJET', 'MATERIEL', 'MAGASINIER', 'COMMERCIAL']
+  'factures:ajouterPaiement': ['ADMIN', 'COMMERCIAL', 'COMPTABLE'],
+  'devis:transformerEnContrat': ['ADMIN', 'COMMERCIAL'],
+  'rapports:list': ['DIRECTEUR', 'COMPTABLE'],
+  'alertes:list': ['DIRECTEUR', 'COMPTABLE', 'RH', 'CHEF_CHANTIER', 'CHEF_PROJET', 'MATERIEL', 'MAGASINIER', 'COMMERCIAL'],
+  'audit:recent': ['ADMIN', 'DIRECTEUR'],
+  'audit:byModule': ['ADMIN', 'DIRECTEUR'],
+  'audit:byUtilisateur': ['ADMIN', 'DIRECTEUR'],
+  'dashboard:list': ['DIRECTEUR', 'COMPTABLE', 'RH', 'CHEF_CHANTIER', 'CHEF_PROJET', 'MATERIEL', 'MAGASINIER', 'COMMERCIAL'],
+  'sync:sync': ['ADMIN'],
+  'budgetPrevisionnel:list': ['ADMIN', 'DIRECTEUR', 'COMPTABLE', 'CHEF_PROJET'],
+  'budgetPrevisionnel:create': ['ADMIN', 'COMPTABLE', 'CHEF_PROJET'],
+  'budgetPrevisionnel:update': ['ADMIN', 'COMPTABLE', 'CHEF_PROJET'],
+  'budgetPrevisionnel:delete': ['ADMIN', 'COMPTABLE', 'CHEF_PROJET'],
+  'budgetPrevisionnel:comparer': ['ADMIN', 'DIRECTEUR', 'COMPTABLE', 'CHEF_PROJET'],
+  'sousTraitants:list': ['ADMIN', 'CHEF_CHANTIER', 'CHEF_PROJET', 'DIRECTEUR'],
+  'sousTraitants:create': ['ADMIN', 'CHEF_CHANTIER'],
+  'sousTraitants:update': ['ADMIN', 'CHEF_CHANTIER'],
+  'sousTraitants:delete': ['ADMIN', 'CHEF_CHANTIER'],
+  'catalogueDevis:list': ['ADMIN', 'COMMERCIAL'],
+  'catalogueDevis:create': ['ADMIN', 'COMMERCIAL'],
+  'catalogueDevis:update': ['ADMIN', 'COMMERCIAL'],
+  'catalogueDevis:delete': ['ADMIN', 'COMMERCIAL'],
+  'notifications:list': ['ADMIN', 'DIRECTEUR', 'COMPTABLE', 'RH', 'CHEF_CHANTIER', 'CHEF_PROJET', 'MATERIEL', 'MAGASINIER', 'COMMERCIAL'],
+  'notifications:create': ['ADMIN'],
+  'notifications:update': ['ADMIN'],
+  'notifications:delete': ['ADMIN'],
+  'tresorerie:list': ['ADMIN', 'COMPTABLE', 'DIRECTEUR'],
+  'projets:list': ['CHEF_PROJET', 'DIRECTEUR'],
+  'pipeline:list': ['COMMERCIAL', 'DIRECTEUR'],
+  'alertes-intelligentes:list': ['ADMIN', 'DIRECTEUR', 'COMPTABLE', 'RH', 'CHEF_CHANTIER', 'CHEF_PROJET', 'MATERIEL', 'MAGASINIER', 'COMMERCIAL'],
+  'terrain:access': ['CHEF_CHANTIER', 'ADMIN']
 };
 
 const ROLE_CODE_ALIASES = {
@@ -145,7 +173,7 @@ const ROLE_CODE_ALIASES = {
   DIRECTEUR: ['direction', 'daf', 'directeur', 'direction générale'],
   COMPTABLE: ['comptable', 'finance', 'responsable financier'],
   RH: ['rh', 'responsable rh', 'responsablerh', 'responsable rh'],
-  MATERIEL: ['materiel', 'responsable materiel', 'responsable_materiel', 'logisticien'],
+  MATERIEL: ['materiel', 'logisticien'],
   MAGASINIER: ['magasinier', 'stock', 'magasin'],
   COMMERCIAL: ['commercial', 'responsable commercial'],
   CHEF_CHANTIER: ['chef de chantier', 'conducteur', 'chef_chantier', 'chef chantier'],
@@ -186,8 +214,27 @@ function isRoleAllowed(allowedRoles, currentRoles) {
 function hasPermission(action, module) {
   const permissionKey = `${module}:${action}`;
   const currentRoles = getCurrentRoleCodes();
-  const allowed = PERMISSION_MAP[permissionKey];
-  return isRoleAllowed(allowed, currentRoles);
+  
+  const directMatch = PERMISSION_MAP[permissionKey];
+  if (directMatch) {
+    return isRoleAllowed(directMatch, currentRoles);
+  }
+  
+  const readKey = `${module}:list`;
+  const writeActions = ['create', 'update', 'delete'];
+  let fallbackKey = null;
+  if (writeActions.includes(action)) {
+    fallbackKey = `${module}:create`;
+  } else {
+    fallbackKey = readKey;
+  }
+  
+  const fallbackMatch = PERMISSION_MAP[fallbackKey];
+  if (fallbackMatch) {
+    return isRoleAllowed(fallbackMatch, currentRoles);
+  }
+  
+  return false;
 }
 
 // État global
@@ -273,7 +320,7 @@ function filterSidebarByRole(roleCode) {
   const isAdmin = currentRoles.includes('ADMIN');
 
   if (isAdmin) {
-    const ADMIN_ALLOWED_ROUTES = ['dashboard', 'parametres', 'historique-logins'];
+    const ADMIN_ALLOWED_ROUTES = ['dashboard', 'parametres', 'historique-logins', 'audit-log'];
     document.querySelectorAll('.sidebar-link[data-route]').forEach(link => {
       const route = link.dataset.route;
       link.style.display = ADMIN_ALLOWED_ROUTES.includes(route) ? '' : 'none';
@@ -677,6 +724,8 @@ async function handleLogout() {
 function initSyncButton() {
   const btnSync = document.getElementById('btnSync');
   if (btnSync) {
+    const canSync = hasPermission('sync', 'sync');
+    btnSync.style.display = canSync ? '' : 'none';
     btnSync.addEventListener('click', () => performSync());
   }
   updateSyncUI();
@@ -797,6 +846,27 @@ window.onCurrencyChanged = (newCurrency) => {
 };
 
 window.AppState = window.AppState;
+
+window.applyTheme = function() {
+  const theme = localStorage.getItem('tia_theme') || 'light';
+  document.documentElement.setAttribute('data-bs-theme', theme);
+  const icon = document.getElementById('themeIcon');
+  if (icon) {
+    icon.className = theme === 'dark' ? 'bi bi-sun' : 'bi bi-moon';
+  }
+};
+
+window.toggleTheme = function() {
+  const current = localStorage.getItem('tia_theme') || 'light';
+  const next = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('tia_theme', next);
+  window.applyTheme();
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  window.applyTheme();
+  document.getElementById('btnThemeToggle')?.addEventListener('click', window.toggleTheme);
+});
 window.updateSyncUI = updateSyncUI;
 window.performSync = performSync;
 window.handleLogout = handleLogout;

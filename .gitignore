@@ -14,7 +14,7 @@ tia_info_build.sqlite-wal
 Desktop/tia_info_build.sqlite
 plan_action.md
 .kombai
-roles_avec_admin_entreprise_tia_info_build.md
+ 
 implementation_plan.md
 conceptionTiaBuild.md
 .agents
@@ -24,3 +24,4 @@ plan_v2.md
 readme_v2.md
 plan.md
 roles_tia_builds
+

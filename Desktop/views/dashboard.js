@@ -15,6 +15,7 @@ class DashboardController {
         this.bindEvents();
         await this.loadDashboardData();
         this.updateDashboardVisibility();
+        this.setupAdminKpiDrillDown();
     }
 
     /**
@@ -28,6 +29,31 @@ class DashboardController {
         document.getElementById('btnQuickSync')?.addEventListener('click', () => {
             if (window.performSync) window.performSync();
         });
+
+        // Voir tout - Activité récente
+        document.getElementById('btnVoirToutActivite')?.addEventListener('click', () => {
+            const target = document.getElementById('activiteRecenteList');
+            if (!target) return;
+            const card = target.closest('.card') || target;
+            const rect = card.getBoundingClientRect();
+            const contentArea = document.getElementById('contentArea');
+            if (contentArea) {
+                const contentRect = contentArea.getBoundingClientRect();
+                const offset = rect.top - contentRect.top + contentArea.scrollTop - 20;
+                contentArea.scrollTo({ top: offset, behavior: 'smooth' });
+            } else {
+                window.scrollTo({ top: rect.top + window.pageYOffset - 20, behavior: 'smooth' });
+            }
+            setTimeout(() => {
+                if (contentArea) {
+                    const contentRect = contentArea.getBoundingClientRect();
+                    const cardRect = card.getBoundingClientRect();
+                    if (Math.abs(cardRect.top - contentRect.top - 20) > 40) {
+                        contentArea.scrollTop += cardRect.top - contentRect.top - 20;
+                    }
+                }
+            }, 350);
+        });
     }
 
     /**
@@ -38,44 +64,40 @@ class DashboardController {
         const currentRoles = window.AppState?.roles || [window.AppState?.roleCode || 'ADMIN'];
 
         try {
-            // Charger les KPIs de base pour tous les rôles
             await Promise.all([
                 this.loadKPIs(entrepriseId),
                 this.loadAlertes(entrepriseId)
             ]);
 
-            // Charger les données spécifiques selon le rôle
             const rolePromises = [];
 
-            // Direction/Comptable/Admin - CA, rapports financiers
             if (this.hasRoleAccess(currentRoles, ['ADMIN', 'DIRECTEUR', 'COMPTABLE'])) {
                 rolePromises.push(this.loadCAEvolution(entrepriseId));
                 rolePromises.push(this.loadFacturesRetard(entrepriseId));
             }
 
-            // Chantiers access - Admin, Direction, Chef Chantier, Chef Projet, Comptable
             if (this.hasRoleAccess(currentRoles, ['ADMIN', 'DIRECTEUR', 'CHEF_CHANTIER', 'CHEF_PROJET', 'COMPTABLE'])) {
                 rolePromises.push(this.loadTopChantiers(entrepriseId));
             }
 
-            // RH
             if (this.hasRoleAccess(currentRoles, ['ADMIN', 'RH', 'DIRECTEUR'])) {
                 rolePromises.push(this.loadRHStats(entrepriseId));
             }
 
-            // Commercial
             if (this.hasRoleAccess(currentRoles, ['ADMIN', 'COMMERCIAL', 'DIRECTEUR'])) {
                 rolePromises.push(this.loadCommercialStats(entrepriseId));
                 rolePromises.push(this.loadTopClients(entrepriseId));
                 rolePromises.push(this.loadCAByMoisChart(entrepriseId));
             }
 
-            // Logistique
-            if (this.hasRoleAccess(currentRoles, ['ADMIN', 'MAGASINIER', 'RESPONSABLE_MATERIEL', 'CHEF_CHANTIER'])) {
+            if (this.hasRoleAccess(currentRoles, ['ADMIN', 'MAGASINIER', 'MATERIEL', 'CHEF_CHANTIER'])) {
                 rolePromises.push(this.loadLogistiqueStats(entrepriseId));
             }
 
-            // Tous les rôles - activité récente
+            if (this.hasRoleAccess(currentRoles, ['ADMIN'])) {
+                rolePromises.push(this.loadSystemHealth(entrepriseId));
+            }
+
             rolePromises.push(this.loadActiviteRecente(entrepriseId));
 
             await Promise.all(rolePromises);
@@ -102,6 +124,12 @@ class DashboardController {
         const showAlertes = hasAccess('alertes') || hasPermission('list', 'alertes');
         const showQuickActions = showChantiers || showEmployes || showStocks || showFinances || showAlertes;
 
+        const canCreateChantier = hasPermission('create', 'chantiers');
+        const canCreateDevis = hasPermission('create', 'devis');
+        const canCreateEmploye = hasPermission('create', 'employes');
+        const canCreateArticle = hasPermission('create', 'articles');
+        const canSync = hasPermission('sync', 'sync');
+
         document.getElementById('kpiChantiersActifs')?.closest('.col-xl-3')?.classList.toggle('d-none', !showChantiers);
         document.getElementById('kpiEmployesPresents')?.closest('.col-xl-3')?.classList.toggle('d-none', !showEmployes);
         document.getElementById('kpiStocksAlerte')?.closest('.col-xl-3')?.classList.toggle('d-none', !showStocks);
@@ -124,16 +152,74 @@ class DashboardController {
         document.getElementById('cardRHChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'RH', 'DIRECTEUR']));
         document.getElementById('cardCommercialChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'COMMERCIAL', 'DIRECTEUR']));
         document.getElementById('cardCAByMoisChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'COMMERCIAL', 'DIRECTEUR', 'COMPTABLE']));
-        document.getElementById('cardLogistiqueChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'MAGASINIER', 'RESPONSABLE_MATERIEL', 'CHEF_CHANTIER']));
+        document.getElementById('cardLogistiqueChart')?.classList.toggle('d-none', !this.hasRoleAccess(roles, ['ADMIN', 'MAGASINIER', 'MATERIEL', 'CHEF_CHANTIER']));
 
-        document.querySelector('[data-route="chantiers/nouveau"]')?.classList.toggle('d-none', !showChantiers);
-        document.querySelector('[data-route="devis/nouveau"]')?.classList.toggle('d-none', !hasAccess('devis'));
-        document.querySelector('[data-route="employes/nouveau"]')?.classList.toggle('d-none', !showEmployes);
-        document.querySelector('[data-route="stocks/nouveau"]')?.classList.toggle('d-none', !showStocks);
+        const isAdmin = this.hasRoleAccess(roles, ['ADMIN']);
+        document.getElementById('kpiCardsSystemHealth')?.classList.toggle('d-none', !isAdmin);
+
+        document.querySelector('[data-route="chantiers/nouveau"]')?.classList.toggle('d-none', !canCreateChantier);
+        document.querySelector('[data-route="devis/nouveau"]')?.classList.toggle('d-none', !canCreateDevis);
+        document.querySelector('[data-route="employes/nouveau"]')?.classList.toggle('d-none', !canCreateEmploye);
+        document.querySelector('[data-route="stocks/nouveau"]')?.classList.toggle('d-none', !canCreateArticle);
+        document.getElementById('btnQuickSync')?.classList.toggle('d-none', !canSync);
 
         // Top clients visible pour commercial
         const showTopClients = hasAccess('clients') || hasPermission('list', 'clients');
         document.getElementById('topClientsCard')?.classList.toggle('d-none', !showTopClients);
+    }
+
+    /**
+     * Rend cliquables certains KPI du tableau de bord UNIQUEMENT pour le rôle
+     * Administrateur d'Entreprise, en les orientant vers la tâche métier BTP
+     * correspondante (drill-down). Aucun effet pour les autres rôles.
+     */
+    setupAdminKpiDrillDown() {
+        const isAdmin = window.AppState?.roles?.includes('ADMIN') || window.AppState?.roleCode === 'ADMIN';
+        if (!isAdmin) return;
+
+        // Mapping KPI (id de l'élément valeur) -> route cible + libellé métier
+        const navMap = {
+            // RH / Personnel
+            kpiRHEmployesActifs:      { route: '#employes',            label: 'Gestion des employés' },
+            kpiRHEquipesActives:      { route: '#equipes',             label: 'Équipes de chantier' },
+            kpiRHHeuresSup:           { route: '#heures-sup',          label: 'Heures supplémentaires en attente' },
+            // Commercial
+            kpiComNouveauxClients:    { route: '#clients',             label: 'Fichier clients' },
+            kpiComDevisAttente:       { route: '#devis',               label: 'Devis en attente de validation' },
+            kpiComFacturesImpayees:   { route: '#factures',            label: 'Factures impayées' },
+            kpiComTauxConversion:     { route: '#pipeline',            label: 'Pipeline commercial' },
+            // Santé / Supervision (admin)
+            kpiSystemDbSize:          { route: '#parametres?tab=maintenance', label: 'Maintenance préventive' },
+            kpiSystemConnectedUsers:  { route: '#historique-logins',   label: 'Historique des connexions' },
+            kpiSystemRecentErrors:    { route: '#audit-log',           label: 'Journal d\'audit' }
+        };
+
+        Object.entries(navMap).forEach(([id, { route, label }]) => {
+            const valueEl = document.getElementById(id);
+            if (!valueEl) return;
+            const card = valueEl.closest('.card.kpi-card');
+            if (!card || card.dataset.adminNavBound) return;
+
+            card.dataset.adminNavBound = '1';
+            card.style.cursor = 'pointer';
+            card.setAttribute('role', 'button');
+            card.setAttribute('tabindex', '0');
+            card.setAttribute('title', `Ouvrir : ${label}`);
+            card.classList.add('kpi-card--admin-clickable');
+
+            if (!card.querySelector('.kpi-open-hint')) {
+                const hint = document.createElement('div');
+                hint.className = 'kpi-open-hint small text-primary mt-2 fw-semibold';
+                hint.innerHTML = '<i class="bi bi-box-arrow-up-right me-1"></i>Ouvrir le module';
+                card.querySelector('.card-body')?.appendChild(hint);
+            }
+
+            const go = () => { if (window.router) window.router.navigate(route); };
+            card.addEventListener('click', go);
+            card.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+            });
+        });
     }
 
     /**
@@ -237,7 +323,7 @@ class DashboardController {
             data: {
                 labels,
                 datasets: [{
-                    label: 'CA (€)',
+                    label: `CA (${window.getCurrencySymbol ? window.getCurrencySymbol() : 'Ar'})`,
                     data: values,
                     borderColor: '#0d6efd',
                     backgroundColor: 'rgba(13, 110, 253, 0.1)',
@@ -818,6 +904,20 @@ class DashboardController {
         });
     }
 
+    async loadSystemHealth(entrepriseId) {
+        try {
+            const result = await window.api.systemMetrics.invoke('getHealth');
+            if (result?.success && result?.data) {
+                const data = result.data;
+                document.getElementById('kpiCardsSystemHealth').classList.remove('d-none');
+                document.getElementById('kpiSystemDbSize').textContent = data.dbSizeFormatted || '—';
+                document.getElementById('kpiSystemConnectedUsers').textContent = data.connectedUsers || 0;
+                document.getElementById('kpiSystemRecentErrors').textContent = data.recentErrors || 0;
+            }
+        } catch (error) {
+            console.error('Erreur chargement santé système:', error);
+        }
+    }
 
     // Utilitaires - utiliser la fonction globale pour la devise dynamique
     formatCurrency(amount) {

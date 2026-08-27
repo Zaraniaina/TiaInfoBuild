@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; padding: 20mm; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
+    .header-left h1 { font-size: 24px; color: #0f3460; }
+    .header-left p { color: #6c757d; font-size: 13px; margin-top: 4px; }
+    .header-right { text-align: right; }
+    .header-right .numero { font-size: 20px; font-weight: 700; color: #0f3460; }
+    .info-blocks { display: flex; gap: 20px; margin-bottom: 30px; }
+    .info-block { flex: 1; }
+    .info-block h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #6c757d; margin-bottom: 8px; border-bottom: 2px solid #e9ecef; padding-bottom: 4px; }
+    .info-block p { font-size: 13px; line-height: 1.6; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th { background: #f8f9fa; text-align: left; padding: 10px; font-size: 12px; text-transform: uppercase; color: #6c757d; border-bottom: 2px solid #dee2e6; }
+    td { padding: 10px; border-bottom: 1px solid #e9ecef; font-size: 13px; }
+    td.text-end, th.text-end { text-align: right; }
+    .totals { display: flex; justify-content: flex-end; }
+    .totals-table { width: 300px; }
+    .totals-table td { padding: 8px 10px; }
+    .totals-table .total-row { font-weight: 700; font-size: 16px; background: #f8f9fa; border-top: 2px solid #dee2e6; }
+    .mentions { margin-top: 30px; padding-top: 20px; border-top: 2px solid #dee2e6; font-size: 11px; color: #6c757d; line-height: 1.6; }
+    .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #adb5bd; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <h1>FACTURE</h1>
+      <p>{{entrepriseNom}}</p>
+    </div>
+    <div class="header-right">
+      <div class="numero">{{numero}}</div>
+      <p>Date d'émission : {{dateEmission}}</p>
+      <p>Échéance : {{dateEcheance}}</p>
+    </div>
+  </div>
+
+  <div class="info-blocks">
+    <div class="info-block">
+      <h3>Émetteur</h3>
+      <p>
+        <strong>{{entrepriseNom}}</strong><br>
+        {{entrepriseAdresse}}<br>
+        {{entrepriseCP}} {{entrepriseVille}}<br>
+        SIRET : {{entrepriseSiret}}<br>
+        TVA : {{entrepriseTVA}}
+      </p>
+    </div>
+    <div class="info-block">
+      <h3>Client</h3>
+      <p>
+        <strong>{{clientNom}}</strong><br>
+        {{clientAdresse}}<br>
+        {{clientCP}} {{clientVille}}<br>
+        SIRET : {{clientSiret}}<br>
+        TVA : {{clientTVA}}
+      </p>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th class="text-end">Qté</th>
+        <th class="text-end">P.U.</th>
+        <th class="text-end">Total HT</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{lignesHtml}}
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <table class="totals-table">
+      <tr><td>Total HT</td><td class="text-end">{{totalHT}}</td></tr>
+      <tr><td>TVA {{tva}}%</td><td class="text-end">{{totalTVA}}</td></tr>
+      <tr class="total-row"><td>Total TTC</td><td class="text-end">{{totalTTC}}</td></tr>
+      {{acompteHtml}}
+      <tr class="total-row"><td>Reste à payer</td><td class="text-end">{{resteAPayer}}</td></tr>
+    </table>
+  </div>
+
+  <div class="mentions">
+    <strong>Mentions légales :</strong><br>
+    {{mentionsLegales}}<br><br>
+    <strong>Conditions de paiement :</strong> {{conditionsPaiement}}<br>
+    <strong>Mode de paiement :</strong> {{modePaiement}}
+  </div>
+
+  <div class="footer">
+    Document généré le {{dateGeneration}} — TIA INFO BUILD v1.0
+  </div>
+</body>
+</html>

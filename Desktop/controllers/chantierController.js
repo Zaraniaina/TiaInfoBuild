@@ -299,6 +299,39 @@ class ChantierController {
       return { success: false, error: error.message };
     }
   }
+
+  async getPhotos(event, chantierId) {
+    try {
+      const items = this.repos.photosChantier.getByChantier(chantierId);
+      return { success: true, data: items };
+    } catch (error) {
+      console.error('ChantierController.getPhotos error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async createPhoto(event, chantierId, data, entrepriseId) {
+    try {
+      const result = this.repos.photosChantier.create({
+        chantierId,
+        ...data
+      }, entrepriseId);
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('ChantierController.createPhoto error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async deletePhoto(event, id) {
+    try {
+      const result = this.repos.photosChantier.softDelete(id);
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('ChantierController.deletePhoto error:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 module.exports = ChantierController;

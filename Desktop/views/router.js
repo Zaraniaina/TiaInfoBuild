@@ -111,7 +111,12 @@ class Router {
       clients: 'Clients', devis: 'Devis & Contrats', contrats: 'Contrats',
       factures: 'Factures', paiements: 'Paiements', finances: 'Finances',
       depenses: 'Dépenses', rapports: 'Rapports financiers', alertes: 'Alertes',
-      utilisateurs: 'Utilisateurs', parametres: 'Paramètres'
+      utilisateurs: 'Utilisateurs', parametres: 'Paramètres',
+      tresorerie: 'Trésorerie',       'budget-previsionnel': 'Budget Prévisionnel',
+      'sous-traitants': 'Sous-Traitants', 'catalogue-devis': 'Catalogue Devis',
+      notifications: 'Notifications', projets: 'Tableau de Bord Projets',
+      pipeline: 'Pipeline Commercial', 'alertes-intelligentes': 'Alertes Intelligentes',
+      terrain: 'Mode Terrain'
     };
     let title = 'TIA INFO BUILD';
     for (const [route, t] of Object.entries(titles)) {
@@ -307,6 +312,76 @@ window.router.add('paiements', async () => {
   if (window.paiementsController) await window.paiementsController.init();
 });
 
+window.router.add('paiements', async () => {
+  const html = await loadView('commercial/paiements/index.html');
+  document.getElementById('contentArea').innerHTML = html;
+  await window.loadScript('commercial/paiements/index.js');
+  if (window.paiementsController) await window.paiementsController.init();
+});
+
+window.router.add('tresorerie', async () => {
+  const html = await loadView('finances/tresorerie.html');
+  document.getElementById('contentArea').innerHTML = html;
+  await window.loadScript('finances/tresorerie.js');
+  if (window.tresorerieController) await window.tresorerieController.init();
+});
+
+window.router.add('budget-previsionnel', async () => {
+  const html = await loadView('finances/budget-previsionnel.html');
+  document.getElementById('contentArea').innerHTML = html;
+  await window.loadScript('finances/budget-previsionnel.js');
+  if (window.budgetPrevisionnelController) await window.budgetPrevisionnelController.init();
+});
+
+window.router.add('sous-traitants', async () => {
+  const html = await loadView('sous-traitants/index.html');
+  document.getElementById('contentArea').innerHTML = html;
+  await window.loadScript('sous-traitants/index.js');
+  if (window.sousTraitantsController) await window.sousTraitantsController.init();
+});
+
+window.router.add('catalogue-devis', async () => {
+  const html = await loadView('commercial/catalogue-devis.html');
+  document.getElementById('contentArea').innerHTML = html;
+  await window.loadScript('commercial/catalogue-devis.js');
+  if (window.catalogueController) await window.catalogueController.init();
+});
+
+window.router.add('notifications', async () => {
+  const html = await loadView('notifications/index.html');
+  document.getElementById('contentArea').innerHTML = html;
+  await window.loadScript('notifications/index.js');
+  if (window.notificationsController) await window.notificationsController.init();
+});
+
+window.router.add('projets', async () => {
+  const html = await loadView('projets/index.html');
+  document.getElementById('contentArea').innerHTML = html;
+  await window.loadScript('projets/index.js');
+  if (window.projetsController) await window.projetsController.init();
+});
+
+window.router.add('pipeline', async () => {
+  const html = await loadView('commercial/pipeline.html');
+  document.getElementById('contentArea').innerHTML = html;
+  await window.loadScript('commercial/pipeline.js');
+  if (window.pipelineController) await window.pipelineController.init();
+});
+
+window.router.add('alertes-intelligentes', async () => {
+  const html = await loadView('alertes/intelligentes.html');
+  document.getElementById('contentArea').innerHTML = html;
+  await window.loadScript('alertes/intelligentes.js');
+  if (window.alertesIntelligentesController) await window.alertesIntelligentesController.init();
+});
+
+window.router.add('terrain', async () => {
+  const html = await loadView('terrain/index.html');
+  document.getElementById('contentArea').innerHTML = html;
+  await window.loadScript('terrain/index.js');
+  if (window.terrainController) await window.terrainController.init();
+});
+
 window.router.add('finances', async () => {
   const html = await loadView('finance/index.html');
   document.getElementById('contentArea').innerHTML = html;
@@ -326,6 +401,28 @@ window.router.add('rapports', async () => {
   document.getElementById('contentArea').innerHTML = html;
   await window.loadScript('finance/rapports/index.js');
   if (window.rapportsController) await window.rapportsController.init();
+});
+
+window.router.add('employes/nouveau', async (to) => {
+  const html = await loadView('rh/employes/index.html');
+  document.getElementById('contentArea').innerHTML = html;
+  await window.loadScript('rh/employes/index.js');
+  if (window.employesController) {
+    await window.employesController.init();
+    await new Promise(resolve => setTimeout(resolve, 100));
+    if (window.employesController.openModalNouveau) window.employesController.openModalNouveau();
+  }
+});
+
+window.router.add('stocks/nouveau', async (to) => {
+  const html = await loadView('stocks/index.html');
+  document.getElementById('contentArea').innerHTML = html;
+  await window.loadScript('stocks/index.js');
+  if (window.stocksController) {
+    await window.stocksController.init();
+    await new Promise(resolve => setTimeout(resolve, 100));
+    if (window.stocksController.openModalNouvelArticle) window.stocksController.openModalNouvelArticle();
+  }
 });
 
 window.router.add('alertes', async () => {
@@ -353,6 +450,13 @@ window.router.add('historique-logins', async () => {
   document.getElementById('contentArea').innerHTML = html;
   await window.loadScript('historique-logins/index.js');
   if (window.historiqueConnexionsController) await window.historiqueConnexionsController.init();
+});
+
+window.router.add('audit-log', async () => {
+  const html = await loadView('audit-log/index.html');
+  document.getElementById('contentArea').innerHTML = html;
+  await window.loadScript('audit-log/index.js');
+  if (window.auditLogController) await window.auditLogController.init();
 });
 
 // Helpers globaux

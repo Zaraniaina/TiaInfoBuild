@@ -256,7 +256,7 @@ class ChantierRepository extends BaseRepository {
       SELECT COUNT(*) AS count FROM Phase p
       JOIN Chantier c ON c.id = p.chantierId
       WHERE c.entrepriseId = ? AND p.is_deleted = 0 AND c.is_deleted = 0
-      AND p.dateFin IS NOT NULL AND p.dateFin < date('now') AND p.avancementPct < 100
+      AND p.dateFin IS NOT NULL AND p.dateFin < date('now', 'localtime') AND p.avancementPct < 100
     `).get(entrepriseId);
     stats.phasesEnRetard = phasesRetard?.count || 0;
 

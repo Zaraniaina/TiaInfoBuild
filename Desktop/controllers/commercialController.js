@@ -1,4 +1,5 @@
 // Desktop/controllers/commercialController.js
+const db = require('../models/db')
 /**
  * Contrôleur Main Process - Module Commercial (Clients, Adresses, Devis, Contrats, Factures, Paiements)
  */
@@ -253,22 +254,39 @@ class CommercialController {
   }
 
   // --- FACTURES ---
-  async getListFactures(event, { entrepriseId, limit, offset, statut, search }) {
+  async getListFactures(event, { entrepriseId, limit, offset, statut, search, clientId, chantierId, dateDebut, dateFin }) {
     try {
       const where = [];
       const params = [];
       if (statut) {
-        where.push('statut = ?');
+        where.push('f.statut = ?');
         params.push(statut);
       }
       if (search) {
-        where.push('numero LIKE ?');
+        where.push('f.numero LIKE ?');
         params.push(`%${search}%`);
+      }
+      if (clientId) {
+        where.push('f.clientId = ?');
+        params.push(clientId);
+      }
+      if (chantierId) {
+        where.push('EXISTS (SELECT 1 FROM Contrat c WHERE c.id = f.contratId AND c.chantierId = ?)');
+        params.push(chantierId);
+      }
+      if (dateDebut) {
+        where.push('f.dateEmission >= ?');
+        params.push(dateDebut);
+      }
+      if (dateFin) {
+        where.push('f.dateEmission <= ?');
+        params.push(dateFin);
       }
 
       const items = this.repos.factures.getAll({
         entrepriseId, limit, offset,
-        where: where.join(' AND '), params
+        where: where.join(' AND '), params,
+        orderBy: 'f.dateEmission DESC'
       })
       const total = this.repos.factures.count({
         entrepriseId,
@@ -348,6 +366,71 @@ class CommercialController {
       return { success: true, data: items }
     } catch (error) {
       console.error('CommercialController.getPaiementsByFacture error:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  async transformerDepuisDevis(event, devisId, data) {
+    try {
+      const devis = this.repos.devis.getById(devisId)
+      if (!devis) return { success: false, error: 'Devis non trouvé' }
+
+      const entreprise = db.prepare('SELECT * FROM Entreprise WHERE id = ?').get(devis.entrepriseId)
+      const client = db.prepare('SELECT * FROM Client WHERE id = ? AND is_deleted = 0').get(devis.clientId)
+
+      const year = new Date().getFullYear()
+      const countResult = db.prepare('SELECT COUNT(*) as count FROM Facture WHERE entrepriseId = ? AND numero LIKE ?').get(devis.entrepriseId, `FAC-${year}-%`)
+      const nextNum = (countResult?.count || 0) + 1
+      const newNumero = `FAC-${year}-${String(nextNum).padStart(5, '0')}`
+
+      const montantTTC = devis.montantTTC || devis.montantTotal || devis.montant
+      const dateEcheance = new Date()
+      dateEcheance.setDate(dateEcheance.getDate() + (entreprise?.delaiPaiementDefaut ? parseInt(entreprise.delaiPaiementDefaut) : 30))
+
+      const factureData = {
+        numero: newNumero,
+        entrepriseId: devis.entrepriseId,
+        clientId: devis.clientId,
+        contratId: data?.contratId || null,
+        dateEmission: new Date().toISOString().split('T')[0],
+        dateEcheance: dateEcheance.toISOString().split('T')[0],
+        montantHT: devis.montantHT || 0,
+        montantTVA: devis.montantTVA || 0,
+        montantTTC: montantTTC || 0,
+        montant: montantTTC || 0,
+        tva: devis.tva || 20,
+        montantPaye: 0,
+        statut: 'emise',
+        notes: data?.notes || `Facture créée depuis le devis ${devis.numero || devis.reference || devis.id}`,
+        typeFacture: data?.typeFacture || 'normale',
+        referenceExterne: data?.referenceExterne || null
+      }
+
+      const facture = this.repos.factures.create(factureData)
+
+      const lignes = db.prepare(`
+        SELECT * FROM LigneDevis WHERE devisId = ? AND is_deleted = 0
+      `).all(devisId)
+
+      if (lignes.length > 0) {
+        const PaiementRepository = require('../models/repositories/PaiementRepository')
+        const paiementRepo = new PaiementRepository()
+        for (const ligne of lignes) {
+          paiementRepo.create({
+            factureId: facture.id,
+            entrepriseId: facture.entrepriseId,
+            montant: ligne.ligneTotalTTC || ligne.ligneTotal || 0,
+            modePaiement: 'virement',
+            notes: `Depuis ligne devis: ${ligne.description}`
+          })
+        }
+      }
+
+      db.prepare(`UPDATE Devis SET statut = 'transforme' WHERE id = ?`).run(devisId)
+
+      return { success: true, data: facture }
+    } catch (error) {
+      console.error('CommercialController.transformerDepuisDevis error:', error)
       return { success: false, error: error.message }
     }
   }

@@ -228,7 +228,13 @@
                         <i class="bi bi-trash me-1"></i>Supprimer
                     </button>
                     <button type="button" class="btn btn-outline-success" id="btnValiderDepense" style="display:none;">
-                        <i class="bi bi-check me-1"></i>Valider
+                        <i class="bi bi-check me-1"></i>Valider (Niveau 1)
+                    </button>
+                    <button type="button" class="btn btn-outline-success" id="btnValiderComptable" style="display:none;" data-permission="depenses:validate">
+                        <i class="bi bi-check-double me-1"></i>Valider (Niveau 2 - Comptable)
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" id="btnRefuserDepense" style="display:none;">
+                        <i class="bi bi-x me-1"></i>Refuser
                     </button>
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-save me-1"></i>Enregistrer
@@ -257,6 +263,43 @@
                     <i class="bi bi-trash me-1"></i>Supprimer
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modale Validation Dépense (2 niveaux) -->
+<div class="modal fade" id="modalValidationDepense" tabindex="-1" aria-labelledby="modalValidationDepenseLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalValidationDepenseLabel"><i class="bi bi-check-double me-2"></i>Validation de dépense</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formValidationDepense" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="validationDepenseId">
+                    <input type="hidden" name="statutValidation" id="validationStatut" value="validee">
+                    <div class="mb-3">
+                        <label class="form-label">Niveau de validation</label>
+                        <div id="validationNiveauInfo" class="alert alert-info py-2 mb-0">
+                            <small>Validation Niveau 1 : Conformité chantier (Chef de Chantier)</small>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="validationCommentaire">Commentaire</label>
+                        <textarea class="form-control" name="commentaire" id="validationCommentaire" rows="3" placeholder="Commentaire optionnel..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-outline-danger" id="btnRefuserValidation">
+                        <i class="bi bi-x me-1"></i>Refuser
+                    </button>
+                    <button type="submit" class="btn btn-success" id="btnSubmitValidation">
+                        <i class="bi bi-check me-1"></i>Valider
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

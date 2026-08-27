@@ -14,17 +14,19 @@
     "build:win": "electron-builder --win",
     "build:mac": "electron-builder --mac",
     "build:linux": "electron-builder --linux",
-    "test": "jest",
-    "test:unit": "jest --selectProjects unit",
-    "test:integration": "jest --selectProjects integration"
+    "test": "set TIA_TEST_DB=./tests/test.db&& jest",
+    "test:unit": "set TIA_TEST_DB=./tests/test.db&& jest --selectProjects unit",
+    "test:integration": "set TIA_TEST_DB=./tests/test.db&& jest --selectProjects integration",
+    "verify:permissions": "node scripts/verify-permissions.js"
   },
   "dependencies": {
     "axios": "^1.12.2",
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^12.4.1"
+    "better-sqlite3": "^13.0.3",
+    "nodemailer": "^9.0.5"
   },
   "devDependencies": {
-    "electron": "^38.1.0",
+    "electron": "^38.8.6",
     "electron-builder": "^26.0.12",
     "electron-rebuild": "^3.2.9",
     "jest": "^29.7.0"

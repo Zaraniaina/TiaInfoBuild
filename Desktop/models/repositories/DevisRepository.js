@@ -45,7 +45,7 @@ class DevisRepository extends BaseRepository {
   createWithLignes(data, entrepriseId) {
     const { lignes, ...devisData } = data;
 
-    return db.transaction(() => {
+    const transaction = db.transaction(() => {
       const lignesArr = Array.isArray(lignes) ? lignes : [];
 
       const calcHT = lignesArr.reduce((s, l) => s + ((l.quantite || 0) * (l.prixUnitaire || 0) * (1 - (l.remise || 0) / 100)), 0);
@@ -92,6 +92,7 @@ class DevisRepository extends BaseRepository {
 
       return this.getWithLignes(devis.id);
     });
+    return transaction();
   }
 
    /**
@@ -103,7 +104,7 @@ class DevisRepository extends BaseRepository {
   updateWithLignes(id, data) {
     const { lignes, ...devisData } = data;
 
-    return db.transaction(() => {
+    const transaction = db.transaction(() => {
       const ligneRepo = require('./LigneDevisRepository');
       const ligneRepoInstance = new ligneRepo();
 
@@ -134,6 +135,7 @@ class DevisRepository extends BaseRepository {
 
       return this.getWithLignes(id);
     });
+    return transaction();
   }
 
   /**

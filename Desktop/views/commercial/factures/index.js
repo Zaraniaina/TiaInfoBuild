@@ -22,18 +22,17 @@ class FacturesController {
     async loadReferences() {
         const entrepriseId = window.AppState?.entreprise?.id || 1;
         try {
-            // Charger les contrats
             const contratsResult = await window.api.contrats.invoke('list', { entrepriseId, limit: 1000, offset: 0 });
             if (contratsResult?.success && contratsResult.data?.items) {
                 this.contrats = contratsResult.data.items;
                 this.populateSelect('factureContrat', this.contrats, 'id', c => `Contrat #${c.id} - ${c.titre || c.objet || ''}`);
             }
             
-            // Charger les clients
             const clientsResult = await window.api.clients.invoke('list', { entrepriseId, limit: 1000 });
             if (clientsResult?.success && clientsResult.data?.items) {
                 this.clients = clientsResult.data.items;
                 this.populateSelect('factureClient', this.clients, 'id', c => this.getClientDisplayName(c));
+                this.populateSelect('filterClientFacture', this.clients, 'id', c => this.getClientDisplayName(c));
             }
         } catch (error) {
             console.error('Erreur chargement références factures:', error);
@@ -65,6 +64,10 @@ class FacturesController {
     bindEvents() {
         const searchInput = document.getElementById('searchFacture');
         const filterStatut = document.getElementById('filterStatutFacture');
+        const filterClient = document.getElementById('filterClientFacture');
+        const filterDateDebut = document.getElementById('filterDateDebutFacture');
+        const filterDateFin = document.getElementById('filterDateFinFacture');
+        const btnReset = document.getElementById('btnResetFactures');
         const formFacture = document.getElementById('formFacture');
         const formPaiement = document.getElementById('formPaiement');
 
@@ -82,6 +85,35 @@ class FacturesController {
 
         filterStatut?.addEventListener('change', () => {
             this.filters.statut = filterStatut.value;
+            this.currentPage = 1;
+            this.loadFactures();
+        });
+
+        filterClient?.addEventListener('change', () => {
+            this.filters.clientId = filterClient.value ? parseInt(filterClient.value) : null;
+            this.currentPage = 1;
+            this.loadFactures();
+        });
+
+        filterDateDebut?.addEventListener('change', () => {
+            this.filters.dateDebut = filterDateDebut.value || null;
+            this.currentPage = 1;
+            this.loadFactures();
+        });
+
+        filterDateFin?.addEventListener('change', () => {
+            this.filters.dateFin = filterDateFin.value || null;
+            this.currentPage = 1;
+            this.loadFactures();
+        });
+
+        btnReset?.addEventListener('click', () => {
+            this.filters = { search: '', statut: '', clientId: null, dateDebut: null, dateFin: null };
+            if (searchInput) searchInput.value = '';
+            if (filterStatut) filterStatut.value = '';
+            if (filterClient) filterClient.value = '';
+            if (filterDateDebut) filterDateDebut.value = '';
+            if (filterDateFin) filterDateFin.value = '';
             this.currentPage = 1;
             this.loadFactures();
         });
@@ -136,7 +168,10 @@ class FacturesController {
                 entrepriseId,
                 limit: this.pageSize,
                 offset: (this.currentPage - 1) * this.pageSize,
-                statut: this.filters.statut || undefined
+                statut: this.filters.statut || undefined,
+                clientId: this.filters.clientId || undefined,
+                dateDebut: this.filters.dateDebut || undefined,
+                dateFin: this.filters.dateFin || undefined
             });
 
             if (result?.success === false) {
@@ -146,7 +181,7 @@ class FacturesController {
             let items = result?.data?.items || result?.items || [];
             if (this.filters.search) {
                 const s = this.filters.search.toLowerCase();
-                items = items.filter(f => (f.numero && f.numero.toLowerCase().includes(s)));
+                items = items.filter(f => (f.numero && f.numero.toLowerCase().includes(s)) || (f.client && this.getClientDisplayName(f.client).toLowerCase().includes(s)));
             }
 
             if (items.length === 0) {
@@ -170,7 +205,7 @@ class FacturesController {
         const getStatutBadge = (statut) => {
             switch(statut) {
                 case 'paye': return '<span class="badge bg-success">Payée</span>';
-                case 'partiel': return '<span class="badge bg-warning text-dark">Partielle</span>';
+                case 'partiellement_payee': return '<span class="badge bg-warning text-dark">Partielle</span>';
                 case 'emise': return '<span class="badge bg-primary">Émise</span>';
                 case 'annulee': return '<span class="badge bg-secondary">Annulée</span>';
                 case 'brouillon':

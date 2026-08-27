@@ -124,7 +124,7 @@ class RapportsController {
                 });
             };
 
-            const facturesPeriode = filtrerParPeriode(factures, 'dateFacture');
+            const facturesPeriode = filtrerParPeriode(factures, 'dateEmission');
 
             // Charger dépenses
             let depenses = [];
@@ -135,7 +135,7 @@ class RapportsController {
                     depenses.push(...items.map(d => ({ ...d, chantier })));
                 }
             } catch { /* ignore */ }
-            const depensesPeriode = filtrerParPeriode(depenses, 'date');
+            const depensesPeriode = filtrerParPeriode(depenses, 'dateDepense');
 
             // Calculs KPIs
             const ca = facturesPeriode.reduce((s, f) => s + (parseFloat(f.montantTTC || f.montant || 0)), 0);
@@ -280,7 +280,7 @@ class RapportsController {
         const moisLabels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 
         factures.forEach(f => {
-            const d = new Date(f.dateFacture || f.createdAt);
+            const d = new Date(f.dateEmission || f.createdAt);
             if (isNaN(d)) return;
             const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
             if (!moisData[key]) moisData[key] = { ca: 0, depenses: 0, mois: d.getMonth(), annee: d.getFullYear() };
@@ -288,7 +288,7 @@ class RapportsController {
         });
 
         depenses.forEach(d => {
-            const date = new Date(d.date || d.dateDepense);
+            const date = new Date(d.dateDepense);
             if (isNaN(date)) return;
             const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
             if (!moisData[key]) moisData[key] = { ca: 0, depenses: 0, mois: date.getMonth(), annee: date.getFullYear() };
