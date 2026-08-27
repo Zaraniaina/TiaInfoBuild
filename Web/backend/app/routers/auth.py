@@ -110,11 +110,14 @@ async def refresh_token(payload: RefreshRequest, db: DbSession):
 
     user_id = int(data.get("sub", 0))
     result = await db.execute(
-        select(RefreshToken).where(
+        select(RefreshToken)
+        .where(
             RefreshToken.utilisateur_id == user_id,
             RefreshToken.revoked == False,
             RefreshToken.expires_at > datetime.now(),
         )
+        .order_by(RefreshToken.created_at.desc())
+        .limit(1)
     )
     token_obj = result.scalar_one_or_none()
     if not token_obj or not verify_password(payload.refresh_token, token_obj.token_hash):
@@ -143,7 +146,10 @@ async def logout(payload: RefreshRequest, db: DbSession):
         data = decode_token(payload.refresh_token, refresh=True)
         user_id = int(data.get("sub", 0))
         result = await db.execute(
-            select(RefreshToken).where(RefreshToken.utilisateur_id == user_id, RefreshToken.revoked == False)
+            select(RefreshToken)
+            .where(RefreshToken.utilisateur_id == user_id, RefreshToken.revoked == False)
+            .order_by(RefreshToken.created_at.desc())
+            .limit(1)
         )
         token_obj = result.scalar_one_or_none()
         if token_obj:
@@ -277,8 +283,8 @@ async def get_me(current_user: CurrentUser):
             "entreprise_id": current_user.get("entreprise_id"),
             "statut": user.statut,
             "must_change_password": user.must_change_password,
-            "date_creation": user.date_creation,
-            "derniere_connexion": user.derniere_connexion,
+            "date_creation": user.date_creation.isoformat() if user.date_creation else None,
+            "derniere_connexion": user.derniere_connexion.isoformat() if user.derniere_connexion else None,
         }
     }
 

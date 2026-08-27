@@ -53,7 +53,8 @@ api.interceptors.response.use(
           pendingRequests = [];
           original.headers.Authorization = `Bearer ${newAccess}`;
           return api(original);
-        } catch {
+        } catch (refreshError) {
+          console.error('[api] Token refresh failed:', refreshError);
           rejectPendingRequests();
           useAuthStore.getState().logout();
         } finally {
