@@ -135,7 +135,7 @@ export function StocksPage() {
       </div>
 
       {/* Tabs */}
-      <ul className="nav nav-pills mb-4 bg-white p-2 rounded shadow-sm">
+      <ul className="nav nav-pills mb-4 p-2 rounded shadow-sm">
         <li className="nav-item">
           <button className={`nav-link ${activeTab === 'articles' ? 'active' : ''}`} onClick={() => setActiveTab('articles')}>
             <i className="bi bi-box-seam me-2"></i>Articles & Matériaux
@@ -292,7 +292,7 @@ export function StocksPage() {
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
-              <div className="modal-header bg-primary text-white">
+              <div className="modal-header">
                 <h5 className="modal-title fw-bold">{selectedArticle ? 'Éditer l\'Article' : 'Nouveau Matériau / Article'}</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowArticleModal(false)}></button>
               </div>
@@ -340,7 +340,7 @@ export function StocksPage() {
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
-              <div className="modal-header bg-dark text-white">
+              <div className="modal-header">
                 <h5 className="modal-title fw-bold">Nouveau Mouvement de Stock</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowMouvementModal(false)}></button>
               </div>

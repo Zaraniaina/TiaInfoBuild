@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing_extensions import Annotated
@@ -17,7 +16,6 @@ from app.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
-    CREDENTIALS_EXCEPTION,
 )
 from app.models.utilisateur import Utilisateur
 from app.models.historique_connexion import HistoriqueConnexion
@@ -45,45 +43,65 @@ async def login(
     db: DbSession,
     request: Request,
 ):
-    result = await db.execute(select(Utilisateur).where(Utilisateur.email == credentials.email, Utilisateur.is_deleted == False))
-    user = result.scalar_one_or_none()
+    try:
+        result = await db.execute(select(Utilisateur).where(Utilisateur.email == credentials.email, Utilisateur.is_deleted == False))
+        user = result.scalar_one_or_none()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Email ou mot de passe incorrect",
+        )
+
     if not user or not verify_password(credentials.password, user.mot_de_passe_hash):
+        try:
+            await db.execute(
+                HistoriqueConnexion.__table__.insert().values(
+                    utilisateur_id=None,
+                    ip_address=request.client.host if request.client else None,
+                    user_agent=request.headers.get("user-agent"),
+                    reussi=False,
+                    date_connexion=datetime.now(),
+                )
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email ou mot de passe incorrect",
+        )
+
+    try:
+        role_code = user.role.code if user.role else Role.EMPLOYE
+        permissions = PERMISSION_MAP.get(role_code, [])
+        access_token = create_access_token(
+            subject=user.id,
+            role_code=role_code,
+            entreprise_id=user.entreprise_id,
+            permissions=permissions,
+        )
+        refresh_token = create_refresh_token(user.id)
+        refresh_hash = hash_password(refresh_token)
+        refresh_expires = datetime.now() + timedelta(days=settings.refresh_token_expire_days)
+        db_refresh = RefreshToken(utilisateur_id=user.id, token_hash=refresh_hash, expires_at=refresh_expires)
+        db.add(db_refresh)
+        user.derniere_connexion = datetime.now()
         await db.execute(
             HistoriqueConnexion.__table__.insert().values(
-                utilisateur_id=None,
+                utilisateur_id=user.id,
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent"),
-                reussi=False,
+                reussi=True,
                 date_connexion=datetime.now(),
             )
         )
         await db.commit()
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email ou mot de passe incorrect")
-
-    role_code = user.role.code if user.role else Role.EMPLOYE
-    permissions = PERMISSION_MAP.get(role_code, [])
-    access_token = create_access_token(
-        subject=user.id,
-        role_code=role_code,
-        entreprise_id=user.entreprise_id,
-        permissions=permissions,
-    )
-    refresh_token = create_refresh_token(user.id)
-    refresh_hash = hash_password(refresh_token)
-    refresh_expires = datetime.now() + timedelta(days=settings.refresh_token_expire_days)
-    db_refresh = RefreshToken(utilisateur_id=user.id, token_hash=refresh_hash, expires_at=refresh_expires)
-    db.add(db_refresh)
-    user.derniere_connexion = datetime.now()
-    await db.execute(
-        HistoriqueConnexion.__table__.insert().values(
-            utilisateur_id=user.id,
-            ip_address=request.client.host if request.client else None,
-            user_agent=request.headers.get("user-agent"),
-            reussi=True,
-            date_connexion=datetime.now(),
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Une erreur est survenue lors de la connexion. Veuillez réessayer.",
         )
-    )
-    await db.commit()
     return Token(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -124,7 +142,12 @@ async def refresh_token(payload: RefreshRequest, db: DbSession):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token invalide")
 
     token_obj.revoked = True
-    user_result = await db.execute(select(Utilisateur).where(Utilisateur.id == user_id, Utilisateur.is_deleted == False))
+    user_result = await db.execute(
+        select(Utilisateur).where(
+            Utilisateur.id == user_id,
+            Utilisateur.is_deleted == False,
+        )
+    )
     user = user_result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Utilisateur non trouvé")

@@ -131,7 +131,7 @@ export function RhPage() {
       </div>
 
       {/* Main Tabs */}
-      <ul className="nav nav-pills mb-4 bg-white p-2 rounded shadow-sm">
+      <ul className="nav nav-pills mb-4 p-2 rounded shadow-sm">
         <li className="nav-item">
           <button className={`nav-link ${activeTab === 'employes' ? 'active' : ''}`} onClick={() => setActiveTab('employes')}>
             <i className="bi bi-person-badge me-2"></i>Employés
@@ -297,7 +297,7 @@ export function RhPage() {
             </div>
           </div>
           <div className="card border-0 shadow-sm">
-            <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <div className="card-header py-3 d-flex justify-content-between align-items-center" style={{ background: 'var(--tia-bg-surface)' }}>
               <h6 className="mb-0 fw-bold">Pointages de la journée</h6>
               <input type="date" className="form-control form-control-sm w-auto" defaultValue={new Date().toISOString().split('T')[0]} />
             </div>
@@ -409,7 +409,7 @@ export function RhPage() {
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
-              <div className="modal-header bg-primary text-white">
+              <div className="modal-header">
                 <h5 className="modal-title fw-bold">
                   {selectedEmploye ? 'Éditer l\'employé' : 'Nouvel employé'}
                 </h5>
@@ -465,7 +465,7 @@ export function RhPage() {
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
-              <div className="modal-header bg-dark text-white">
+              <div className="modal-header">
                 <h5 className="modal-title fw-bold">Changement de Poste — {selectedEmploye.nom} {selectedEmploye.prenom}</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowChangementPosteModal(false)}></button>
               </div>

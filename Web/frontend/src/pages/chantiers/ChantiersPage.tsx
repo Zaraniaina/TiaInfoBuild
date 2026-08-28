@@ -270,11 +270,11 @@ export function ChantiersPage() {
                   <div className="row g-2 text-center border-top pt-3 mt-3 small">
                     <div className="col-6">
                       <span className="text-muted d-block">Début</span>
-                      <strong className="text-dark">{c.date_debut || 'Non définie'}</strong>
+                       <strong className="text-dark">{c.date_debut || 'Non définie'}</strong>
                     </div>
                     <div className="col-6">
                       <span className="text-muted d-block">Fin prévue</span>
-                      <strong className="text-dark">{c.date_fin_prevue || 'Non définie'}</strong>
+                       <strong className="text-dark">{c.date_fin_prevue || 'Non définie'}</strong>
                     </div>
                   </div>
                 </div>
@@ -345,7 +345,7 @@ export function ChantiersPage() {
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content">
-              <div className="modal-header bg-primary text-white">
+              <div className="modal-header">
                 <h5 className="modal-title fw-bold">
                   <i className="bi bi-building me-2"></i>{selectedChantier ? 'Éditer le Chantier' : 'Nouveau chantier'}
                 </h5>
@@ -603,7 +603,7 @@ export function ChantiersPage() {
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-xl modal-dialog-centered">
             <div className="modal-content">
-              <div className="modal-header bg-dark text-white">
+              <div className="modal-header">
                 <div>
                   <h5 className="modal-title fw-bold mb-0">{selectedChantier.nom}</h5>
                   <small className="font-monospace text-muted">{selectedChantier.numero}</small>
@@ -755,7 +755,7 @@ export function ChantiersPage() {
                 <button type="button" className="btn-close" onClick={() => setShowQRModal(false)}></button>
               </div>
               <div className="modal-body py-4">
-                <div className="bg-white p-4 rounded d-inline-block mb-3">
+                <div className="p-4 rounded d-inline-block mb-3" style={{ background: 'var(--tia-bg-surface)' }}>
                   <div style={{ width: '200px', height: '200px', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.8rem' }}>
                     QR TOKEN:<br/>{qrData.qr_token.slice(0, 20)}...
                   </div>

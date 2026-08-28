@@ -7,11 +7,24 @@ interface ProtectedRouteProps {
   allowedRoles?: string[]
 }
 
+function isTokenExpired(token: string | null): boolean {
+  if (!token) return true
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    const exp = payload.exp
+    if (!exp) return true
+    const now = Math.floor(Date.now() / 1000)
+    return now >= exp
+  } catch {
+    return true
+  }
+}
+
 export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   const { isAuthenticated, user, token } = useAuthStore()
   const location = useLocation()
 
-  if (!isAuthenticated || !token) {
+  if (!isAuthenticated || !token || isTokenExpired(token)) {
     return <Navigate to="/login" replace />
   }
 

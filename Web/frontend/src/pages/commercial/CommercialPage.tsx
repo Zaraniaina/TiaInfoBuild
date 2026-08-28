@@ -117,7 +117,7 @@ export function CommercialPage() {
       </div>
 
       {/* Tabs */}
-      <ul className="nav nav-pills mb-4 bg-white p-2 rounded shadow-sm">
+      <ul className="nav nav-pills mb-4 p-2 rounded shadow-sm">
         <li className="nav-item">
           <button className={`nav-link ${activeTab === 'devis' ? 'active' : ''}`} onClick={() => setActiveTab('devis')}>
             <i className="bi bi-file-earmark-text me-2"></i>Devis
@@ -311,7 +311,7 @@ export function CommercialPage() {
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
-              <div className="modal-header bg-primary text-white">
+              <div className="modal-header">
                 <h5 className="modal-title fw-bold">{selectedDevis ? 'Éditer le Devis' : 'Créer un Devis'}</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowDevisModal(false)}></button>
               </div>

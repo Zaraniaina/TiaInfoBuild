@@ -13,6 +13,43 @@ function resolvePendingRequests(token: string | null) {
   pendingRequests = [];
 }
 
+async function performTokenRefresh(): Promise<string | null> {
+  if (isRefreshing) {
+    return new Promise<string | null>((resolve) => {
+      pendingRequests.push(resolve);
+    });
+  }
+
+  isRefreshing = true;
+
+  try {
+    const refresh = useAuthStore.getState().refreshToken || localStorage.getItem('refresh_token');
+    if (!refresh) {
+      useAuthStore.getState().logout();
+      resolvePendingRequests(null);
+      return null;
+    }
+
+    const { data } = await axios.post(`${API_URL}/auth/refresh`, { refresh_token: refresh });
+    const newAccess = data.access_token;
+    const newRefresh = data.refresh_token;
+
+    localStorage.setItem('access_token', newAccess);
+    localStorage.setItem('refresh_token', newRefresh);
+    useAuthStore.getState().setTokens(newAccess, newRefresh || '');
+
+    resolvePendingRequests(newAccess);
+    return newAccess;
+  } catch (refreshError) {
+    console.error('[api] Token refresh failed:', refreshError);
+    resolvePendingRequests(null);
+    useAuthStore.getState().logout();
+    return null;
+  } finally {
+    isRefreshing = false;
+  }
+}
+
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token || localStorage.getItem('access_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -29,46 +66,12 @@ api.interceptors.response.use(
 
     original._retry = true;
 
-    if (isRefreshing) {
-      const newToken = await new Promise<string | null>((resolve) => {
-        pendingRequests.push(resolve);
-      });
-      if (newToken) {
-        original.headers.Authorization = `Bearer ${newToken}`;
-        return api(original);
-      }
-      return Promise.reject(error);
-    }
-
-    isRefreshing = true;
-
-    try {
-      const refresh = useAuthStore.getState().refreshToken || localStorage.getItem('refresh_token');
-      if (!refresh) {
-        useAuthStore.getState().logout();
-        return Promise.reject(error);
-      }
-
-      const { data } = await axios.post(`${API_URL}/auth/refresh`, { refresh_token: refresh });
-      const newAccess = data.access_token;
-      const newRefresh = data.refresh_token;
-
-      localStorage.setItem('access_token', newAccess);
-      if (newRefresh) localStorage.setItem('refresh_token', newRefresh);
-      useAuthStore.getState().setTokens(newAccess, newRefresh || '');
-
-      resolvePendingRequests(newAccess);
-
-      original.headers.Authorization = `Bearer ${newAccess}`;
+    const newToken = await performTokenRefresh();
+    if (newToken) {
+      original.headers.Authorization = `Bearer ${newToken}`;
       return api(original);
-    } catch (refreshError) {
-      console.error('[api] Token refresh failed:', refreshError);
-      resolvePendingRequests(null);
-      useAuthStore.getState().logout();
-      return Promise.reject(error);
-    } finally {
-      isRefreshing = false;
     }
+    return Promise.reject(error);
   }
 );
 
@@ -93,20 +96,9 @@ export function scheduleTokenRefresh() {
     }
 
     refreshTimer = setTimeout(async () => {
-      const refresh = useAuthStore.getState().refreshToken || localStorage.getItem('refresh_token');
-      if (!refresh) {
-        useAuthStore.getState().logout();
-        return;
-      }
-
-      try {
-        const { data } = await axios.post(`${API_URL}/auth/refresh`, { refresh_token: refresh });
-        localStorage.setItem('access_token', data.access_token);
-        if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
-        useAuthStore.getState().setTokens(data.access_token, data.refresh_token || '');
+      const newToken = await performTokenRefresh();
+      if (newToken) {
         scheduleTokenRefresh();
-      } catch {
-        useAuthStore.getState().logout();
       }
     }, delay);
   } catch {

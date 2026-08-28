@@ -1,7 +1,7 @@
 """Dépendances FastAPI: authentification et autorisation."""
 from fastapi import Depends, HTTPException, status
 
-from app.security import get_current_user, require_super_admin, CREDENTIALS_EXCEPTION
+from app.security import get_current_user, require_super_admin
 
 __all__ = ["get_current_user", "require_super_admin", "get_current_active_user"]
 

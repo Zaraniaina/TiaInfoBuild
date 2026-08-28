@@ -55,7 +55,7 @@ export const WorkerBadgeCard: React.FC<WorkerBadgeCardProps> = ({ employe, onPri
         </div>
 
         {/* QR Code Container */}
-        <div className="bg-white p-3 rounded-3 d-inline-block shadow-sm mb-3">
+        <div className="p-3 rounded-3 d-inline-block shadow-sm mb-3" style={{ background: 'var(--tia-bg-surface)' }}>
           <img
             src={qrImageUrl}
             alt={`Badge QR ${employe.nom}`}
@@ -71,7 +71,7 @@ export const WorkerBadgeCard: React.FC<WorkerBadgeCardProps> = ({ employe, onPri
 
       {/* Footer / Actions */}
       {onPrint && (
-        <div className="p-3 bg-dark bg-opacity-50 text-center border-top border-secondary border-opacity-25">
+        <div className="p-3 text-center border-top border-secondary border-opacity-25" style={{ background: 'rgba(0, 0, 0, 0.5)' }}>
           <button className="btn btn-outline-light btn-sm rounded-pill px-4 fw-semibold" onClick={onPrint}>
             <i className="bi bi-printer me-2"></i>Imprimer le Badge
           </button>

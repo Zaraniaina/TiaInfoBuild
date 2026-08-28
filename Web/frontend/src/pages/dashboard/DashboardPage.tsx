@@ -117,7 +117,7 @@ export function DashboardPage() {
       {renderAlert()}
       <div className="row g-3 mb-4">
         {renderKpi('Tenants Actifs', '15', 'Entreprises clientes abonnées', 'text-danger')}
-        {renderKpi('Utilisateurs Globaux', '124', 'Comptes actifs sur le SaaS', 'text-dark')}
+         {renderKpi('Utilisateurs Globaux', '124', 'Comptes actifs sur le SaaS', 'text-dark')}
         {renderKpi('Disponibilité Uptime', '99.9%', 'Plateforme opérationnelle', 'text-success')}
         {renderKpi('Recettes SaaS', '4.5M MGA', 'Mobile Money & Cartes ce mois', 'text-primary')}
       </div>
@@ -399,7 +399,7 @@ export function DashboardPage() {
         {renderKpi('Mon Taux Présence', '96%', 'Assiduité ce mois', 'text-success')}
       </div>
 
-      <div className="card border-0 shadow-sm p-4 mb-4 bg-gradient text-white" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }}>
+      <div className="card border-0 shadow-sm p-4 mb-4 bg-gradient text-white">
         <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
           <div>
             <h5 className="fw-bold mb-1"><i className="bi bi-qr-code-scan me-2 text-info"></i>Mon Badge Officiel de Pointage</h5>

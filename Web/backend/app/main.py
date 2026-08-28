@@ -3,13 +3,15 @@ Point d'entrée principal: application, routers, middleware, CORS.
 """
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.database import engine
+from app.middleware import LoggingMiddleware, MultiTenantMiddleware
 
 
 @asynccontextmanager
@@ -38,6 +40,9 @@ app = FastAPI(
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+app.add_middleware(LoggingMiddleware)
+app.add_middleware(MultiTenantMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -81,3 +86,27 @@ app.include_router(alertes.router, prefix=f"{api_prefix}/alertes", tags=["alerte
 app.include_router(parametres.router, prefix=f"{api_prefix}/parametres", tags=["parametres"])
 app.include_router(preferences.router, prefix=f"{api_prefix}/preferences", tags=["preferences"])
 app.include_router(sync.router, prefix=f"{api_prefix}/sync", tags=["sync"])
+
+
+# --- Handlers d'exceptions globaux ---
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Capture toutes les exceptions non gérées et retourne un message générique sans exposer de stack trace."""
+    import logging
+    logger = logging.getLogger("tia")
+    logger.error("Erreur non gérée sur %s: %s", request.url.path, exc, exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Une erreur interne est survenue. Veuillez réessayer ou contacter le support."},
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Garantit que les HTTPException retournent toujours un message clair."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=exc.headers,
+    )

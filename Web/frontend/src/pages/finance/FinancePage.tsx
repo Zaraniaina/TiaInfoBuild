@@ -129,7 +129,7 @@ export function FinancePage() {
       </div>
 
       {/* Main Tabs */}
-      <ul className="nav nav-pills mb-4 bg-white p-2 rounded shadow-sm">
+      <ul className="nav nav-pills mb-4 p-2 rounded shadow-sm">
         <li className="nav-item">
           <button className={`nav-link ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
             <i className="bi bi-pie-chart me-2"></i>Vue Globale & P&L

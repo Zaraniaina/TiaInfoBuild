@@ -290,7 +290,7 @@ export function SettingsPage() {
         </div>
       </div>
 
-      <ul className="nav nav-pills mb-4 bg-white p-2 rounded shadow-sm">
+      <ul className="nav nav-pills mb-4 p-2 rounded shadow-sm">
         <li className="nav-item">
           <button className={`nav-link ${activeTab === 'utilisateurs' ? 'active' : ''}`} onClick={() => setActiveTab('utilisateurs')}>
             <i className="bi bi-people me-2"></i>Utilisateurs & Rôles

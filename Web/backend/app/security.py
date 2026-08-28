@@ -23,12 +23,13 @@ oauth2_scheme = OAuth2PasswordBearer(
     auto_error=False,
 )
 
-# Codes d'erreur HTTP
-CREDENTIALS_EXCEPTION = HTTPException(
-    status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="Could not validate credentials",
-    headers={"WWW-Authenticate": "Bearer"},
-)
+# Codes d'erreur HTTP — factory pour éviter la mutation d'une instance partagée
+def credentials_exception() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 # --- Hachage mot de passe ---
@@ -99,7 +100,7 @@ def decode_token(token: str, refresh: bool = False) -> dict[str, Any]:
     try:
         payload = jwt.decode(token, secret, algorithms=[settings.algorithm])
         if payload.get("type") != ("refresh" if refresh else "access"):
-            raise CREDENTIALS_EXCEPTION
+            raise credentials_exception()
         return payload
     except jwt.ExpiredSignatureError as exc:
         raise HTTPException(
@@ -107,14 +108,14 @@ def decode_token(token: str, refresh: bool = False) -> dict[str, Any]:
             detail="Token expired",
         ) from exc
     except jwt.PyJWTError as exc:
-        raise CREDENTIALS_EXCEPTION from exc
+        raise credentials_exception() from exc
 
 
 async def get_current_user_payload(
     token: Annotated[str | None, Depends(oauth2_scheme)],
 ) -> dict[str, Any]:
     if not token:
-        raise CREDENTIALS_EXCEPTION
+        raise credentials_exception()
     return decode_token(token)
 
 
@@ -127,14 +128,22 @@ async def get_current_user(
 
     user_id = payload.get("sub")
     if not user_id:
-        raise CREDENTIALS_EXCEPTION
+        raise credentials_exception()
+
+    try:
+        user_id_int = int(user_id)
+    except (ValueError, TypeError):
+        raise credentials_exception()
 
     result = await db.execute(
-        select(Utilisateur).where(Utilisateur.id == int(user_id))
+        select(Utilisateur).where(
+            Utilisateur.id == user_id_int,
+            Utilisateur.is_deleted == False,
+        )
     )
     user = result.scalar_one_or_none()
     if not user or user.statut == "inactif":
-        raise CREDENTIALS_EXCEPTION
+        raise credentials_exception()
 
     payload["user"] = user
     return payload

@@ -10,8 +10,8 @@ Guide complet pour installer, initialiser la base de données MySQL via XAMPP, e
    - L'ensemble des 35 tables de la base de données (`schema.sql` & modèles SQLAlchemy `app/models/*.py`) utilisent des identifiants `BIGINT` (BigInteger en Python/SQL) pour supporter la haute volumétrie multi-tenant.
    - Migration Alembic : `007_convert_ids_to_bigint.py`.
 
-2. **Référentiel des 11 Rôles Utilisateurs (`roles_tia_builds/`)** :
-   - Application du contrôle d'accès basé sur les rôles (RBAC) avec **interfaces et tableaux de bord dédiés** pour chacun des 11 profils :
+2. **Référentiel des 12 Rôles Utilisateurs (`roles_tia_builds/`)** :
+    - Application du contrôle d'accès basé sur les rôles (RBAC) avec **interfaces et tableaux de bord dédiés** pour chacun des 12 profils :
      1. **Super Administrateur SaaS** (`super_admin`) : Back-office SaaS, gestion des abonnements tenants, Mobile Money billing.
      2. **Administrateur d'Entreprise** (`admin_entreprise`) : Gestion technique, rôles, sécurité, audit des logs de connexion.
      3. **Direction Générale / DAF** (`directeur`) : Pilotage P&L consolidé, marges réelles, validation des budgets & devis > 50M MGA.
@@ -60,7 +60,7 @@ Ce script lance automatiquement :
 - Backend sur http://localhost:8000
 - Frontend sur http://localhost:5173
 
-### Démarrage manuel
+### Démarrage manuel (Windows PowerShell — système insensible à la casse)
 
 ```powershell
 cd Web/backend
