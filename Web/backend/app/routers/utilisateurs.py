@@ -15,8 +15,18 @@ from app.models.utilisateur import Utilisateur
 from app.models.role import Role
 from app.schemas.utilisateur import UtilisateurCreate, UtilisateurUpdate, UtilisateurResponse, UtilisateurList, UtilisateurRoleUpdate
 
-ADMIN_ENTREPRISE_ROLE_ID = 2
+# Anciennement codé en dur à 2 ; on résout désormais l'id réel du rôle admin_entreprise
+# depuis la base pour ne pas dépendre de l'ordre d'insertion des rôles.
 MAX_ADMIN_ENTREPRISE = 2
+
+
+async def _resolve_admin_role_id(db: DbSession) -> int | None:
+    """Retourne l'id réel du rôle admin_entreprise (ou None s'il n'existe pas encore)."""
+    # On utilise le code littéral "admin_entreprise" : l'import `Role` ici est le modèle SQL,
+    # pas l'énuméré de core.permissions.
+    result = await db.execute(select(Role.id).where(Role.code == "admin_entreprise"))
+    return result.scalar_one_or_none()
+
 
 router = APIRouter(tags=["utilisateurs"])
 CurrentUser = Annotated[dict[str, Any], Depends(get_current_active_user)]
@@ -86,10 +96,12 @@ async def create_utilisateur(payload: AdminCheck, db: DbSession, data: Utilisate
             )
         obj_in["role_id"] = role.id
         del obj_in["role_code"]
-    if obj_in.get("role_id") == ADMIN_ENTREPRISE_ROLE_ID and entreprise_id is not None:
+    # Limite du nombre d'administrateurs par entreprise (id du rôle résolu dynamiquement)
+    admin_role_id = await _resolve_admin_role_id(db)
+    if admin_role_id is not None and obj_in.get("role_id") == admin_role_id and entreprise_id is not None:
         count_query = select(func.count()).select_from(Utilisateur).where(
             Utilisateur.entreprise_id == entreprise_id,
-            Utilisateur.role_id == ADMIN_ENTREPRISE_ROLE_ID,
+            Utilisateur.role_id == admin_role_id,
             Utilisateur.is_deleted == False,
         )
         current_count = (await db.execute(count_query)).scalar_one() or 0
@@ -164,10 +176,12 @@ async def update_utilisateur_role(payload: AdminCheck, db: DbSession, id: int, d
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur non trouvé")
-    if data.role_id == ADMIN_ENTREPRISE_ROLE_ID and entreprise_id is not None and user.role_id != ADMIN_ENTREPRISE_ROLE_ID:
+    # Limite du nombre d'administrateurs par entreprise (id du rôle résolu dynamiquement)
+    admin_role_id = await _resolve_admin_role_id(db)
+    if admin_role_id is not None and data.role_id == admin_role_id and entreprise_id is not None and user.role_id != admin_role_id:
         count_query = select(func.count()).select_from(Utilisateur).where(
             Utilisateur.entreprise_id == entreprise_id,
-            Utilisateur.role_id == ADMIN_ENTREPRISE_ROLE_ID,
+            Utilisateur.role_id == admin_role_id,
             Utilisateur.is_deleted == False,
         )
         current_count = (await db.execute(count_query)).scalar_one() or 0

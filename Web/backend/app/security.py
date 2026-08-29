@@ -96,18 +96,23 @@ def create_refresh_token(subject: str | int) -> str:
 
 
 def decode_token(token: str, refresh: bool = False) -> dict[str, Any]:
+    # Le secret diffère selon le type de token (accès vs rafraîchissement) :
+    # un token d'accès ne doit jamais être accepté comme token de rafraîchissement.
     secret = settings.secret_key_refresh if refresh else settings.secret_key
     try:
         payload = jwt.decode(token, secret, algorithms=[settings.algorithm])
+        # Vérification du "type" : empêche la réutilisation d'un token d'accès pour le refresh.
         if payload.get("type") != ("refresh" if refresh else "access"):
             raise credentials_exception()
         return payload
     except jwt.ExpiredSignatureError as exc:
+        # Token expiré : le front déclenchera un refresh via l'intercepteur Axios (401).
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token expired",
         ) from exc
     except jwt.PyJWTError as exc:
+        # Signature invalide ou token corrompu : on refuse l'accès sans fuite d'information.
         raise credentials_exception() from exc
 
 

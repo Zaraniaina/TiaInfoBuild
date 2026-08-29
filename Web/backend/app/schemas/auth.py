@@ -148,6 +148,15 @@ class RegisterEntrepriseRequest(BaseModel):
     password: str = Field(..., min_length=8)
     password_confirm: str = Field(..., min_length=8)
 
+    @field_validator("entreprise_email", mode="before")
+    @classmethod
+    def coerce_empty_email(cls, v: object) -> object:
+        # Défense en profondeur : le frontend peut envoyer une chaîne vide pour un email optionnel.
+        # On la normalise en None pour éviter une erreur de validation EmailStr (422).
+        if v is not None and str(v).strip() == "":
+            return None
+        return v
+
     @model_validator(mode="after")
     def check_passwords_match(self) -> "RegisterEntrepriseRequest":
         if self.password != self.password_confirm:

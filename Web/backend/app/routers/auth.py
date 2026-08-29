@@ -193,7 +193,9 @@ async def register(data: RegisterRequest, db: DbSession):
     obj_in = data.model_dump(exclude={"password"})
     obj_in["mot_de_passe_hash"] = hash_password(data.password)
     user = await crud.create(db, obj_in)
-    await db.refresh(user)
+    # Pas de db.refresh(user) : l'id est déjà renseigné après le flush, et un refresh
+    # chargerait en eager toutes les relations selectin (chantiers, clients, etc.) et
+    # échouerait en 500 si une seule colonne manque dans une table liée.
     return {"id": user.id, "email": user.email, "message": "Inscription réussie"}
 
 
@@ -214,7 +216,10 @@ async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, re
     )
     db.add(entreprise)
     await db.flush()
-    await db.refresh(entreprise)
+    # Pas de db.refresh(entreprise) : l'id est disponible après le flush. Un refresh
+    # chargerait en eager la relation selectin "pointages" (et tout le graphe), ce qui
+    # provoque un 500 "Unknown column" si la table pointages (ou une table liée) est
+    # désynchronisée du modèle ORM. Voir scripts/fix_missing_columns.py.
 
     role_crud = RoleCRUD()
     admin_role = await role_crud.get_by_code(db, Role.ADMIN_ENTREPRISE)
@@ -228,7 +233,8 @@ async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, re
         )
         db.add(admin_role)
         await db.flush()
-        await db.refresh(admin_role)
+        # Pas de db.refresh(admin_role) : admin_role.code / .id sont déjà disponibles
+        # après le flush. Un refresh chargerait en eager la relation selectin "utilisateurs".
 
     role_code = admin_role.code
     permissions = PERMISSION_MAP.get(role_code, [])
@@ -244,7 +250,8 @@ async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, re
     )
     db.add(admin_user)
     await db.flush()
-    await db.refresh(admin_user)
+    # Pas de db.refresh(admin_user) : admin_user.id / .email sont déjà disponibles
+    # après le flush. Un refresh rechargerait tout le graphe de relations selectin.
 
     access_token = create_access_token(
         subject=admin_user.id,
@@ -268,7 +275,9 @@ async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, re
         )
     )
     await db.commit()
-    await db.refresh(admin_user)
+    # Pas de db.refresh(admin_user) : les champs retournés (email, id) sont déjà
+    # chargés. Un refresh rechargerait tout le graphe de relations selectin de
+    # l'utilisateur et échouerait en 500 sur une colonne manquante d'une table liée.
 
     return RegisterEntrepriseResponse(
         entreprise_id=entreprise.id,

@@ -5,15 +5,26 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { api } from '@/services/api'
 
+// Politique de mot de passe alignée sur le backend (RegisterEntrepriseRequest) :
+// 8 caractères minimum + au moins une majuscule, une minuscule, un chiffre et un caractère spécial.
+const passwordPolicy = z
+  .string()
+  .min(8, 'Le mot de passe doit contenir au moins 8 caractères')
+  .regex(/[A-Z]/, 'Le mot de passe doit contenir au moins une majuscule')
+  .regex(/[a-z]/, 'Le mot de passe doit contenir au moins une minuscule')
+  .regex(/[0-9]/, 'Le mot de passe doit contenir au moins un chiffre')
+  .regex(/[^A-Za-z0-9]/, 'Le mot de passe doit contenir au moins un caractère spécial')
+
 const registerSchema = z.object({
   nom_entreprise: z.string().min(2, 'Nom d\'entreprise requis'),
+  // Email entreprise optionnel : on accepte une chaîne vide (sera normalisée en undefined avant l'envoi)
   entreprise_email: z.string().email('Email invalide').optional().or(z.literal('')),
   adresse: z.string().optional().or(z.literal('')),
   telephone: z.string().optional().or(z.literal('')),
   admin_prenom: z.string().min(1, 'Prénom requis'),
   admin_nom: z.string().min(1, 'Nom requis'),
   admin_email: z.string().email('Email invalide'),
-  password: z.string().min(6, 'Mot de passe requis (min. 6 caractères)'),
+  password: passwordPolicy,
   password_confirm: z.string()
 }).refine((data) => data.password === data.password_confirm, {
   message: 'Les mots de passe ne correspondent pas.',
@@ -21,6 +32,16 @@ const registerSchema = z.object({
 })
 
 type RegisterFormData = z.infer<typeof registerSchema>
+
+// Normalise les champs optionnels : une chaîne vide est transformée en `undefined`
+// pour que le backend (EmailStr | None) ne rejette pas la requête avec une erreur 422.
+function normalizePayload(data: RegisterFormData) {
+  const payload: Record<string, unknown> = { ...data }
+  for (const key of ['entreprise_email', 'adresse', 'telephone'] as const) {
+    if (payload[key] === '') delete payload[key]
+  }
+  return payload
+}
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -35,7 +56,8 @@ export function RegisterPage() {
     setError(null)
     setLoading(true)
     try {
-      await api.post('/auth/register-entreprise', data)
+      // On envoie un payload normalisé (pas de chaînes vides) pour éviter les erreurs 422 du backend
+      await api.post('/auth/register-entreprise', normalizePayload(data))
       alert('Entreprise créée avec succès ! Connectez-vous.')
       navigate('/login')
     } catch (err: any) {

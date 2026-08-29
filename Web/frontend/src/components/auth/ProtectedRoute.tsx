@@ -28,7 +28,9 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     return <Navigate to="/login" replace />
   }
 
-  const roleCode = user?.role_code || 'admin_entreprise'
+  // Par défaut on applique le rôle le moins privilégié (employé) afin de ne jamais
+  // sur-autoriser un utilisateur dont le rôle n'aurait pas pu être résolu.
+  const roleCode = user?.role_code || 'employe'
   const pathKey = '/' + location.pathname.split('/')[1]
 
   const allowed = allowedRoles || ROLE_MODULES[roleCode] || []

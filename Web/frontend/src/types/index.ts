@@ -70,7 +70,8 @@ export interface AuthResponse {
 // CHANTIERS
 // ============================================================
 
-export type StatutChantier = "planification" | "en_cours" | "suspendu" | "termine" | "annule";
+export type StatutChantier =
+  "planification" | "en_cours" | "suspendu" | "termine" | "annule";
 export type StatutPhase = "non_commencee" | "en_cours" | "terminee" | "bloquee";
 export type GraviteIncident = "faible" | "moyenne" | "elevee" | "critique";
 
@@ -146,9 +147,17 @@ export interface AffectationRessource {
 // RH
 // ============================================================
 
-export type TypeContrat = "CDI" | "CDD" | "INTERIM" | "STAGE" | "APPRENTISSAGE" | "JOURNALIER" | "SAISONNIER";
+export type TypeContrat =
+  | "CDI"
+  | "CDD"
+  | "INTERIM"
+  | "STAGE"
+  | "APPRENTISSAGE"
+  | "JOURNALIER"
+  | "SAISONNIER";
 export type StatutEmploye = "actif" | "inactif" | "suspendu";
-export type TypePointage = "present" | "absence_justifiee" | "absence_injustifiee" | "maladie" | "conge";
+export type TypePointage =
+  "present" | "absence_justifiee" | "absence_injustifiee" | "maladie" | "conge";
 export type StatutHeureSup = "en_attente" | "validee" | "refusee";
 export type TypeCompensation = "paiement" | "repos";
 
@@ -311,7 +320,8 @@ export interface Article {
   updated_at: string;
 }
 
-export type TypeMouvement = "entree" | "sortie" | "inventaire" | "retour" | "perte";
+export type TypeMouvement =
+  "entree" | "sortie" | "inventaire" | "retour" | "perte";
 
 export interface MouvementStock {
   id: number;
@@ -335,10 +345,12 @@ export interface MouvementStock {
 // ============================================================
 
 export type TypeClient = "particulier" | "entreprise" | "public";
-export type StatutDevis = "brouillon" | "envoye" | "accepte" | "refuse" | "expire";
+export type StatutDevis =
+  "brouillon" | "envoye" | "accepte" | "refuse" | "expire";
 export type StatutContrat = "en_cours" | "termine" | "resilié";
 export type TypeFacture = "standard" | "acompte" | "solde" | "avoir";
-export type StatutFacture = "emis" | "envoye" | "payee" | "partiellement_payee" | "en_retard" | "annule";
+export type StatutFacture =
+  "emis" | "envoye" | "payee" | "partiellement_payee" | "en_retard" | "annule";
 
 export interface Client {
   id: number;
@@ -554,7 +566,8 @@ export interface RapportFinancier {
 // MATERIALS
 // ============================================================
 
-export type StatutMateriel = "disponible" | "en_utilisation" | "en_maintenance" | "hors_service";
+export type StatutMateriel =
+  "disponible" | "en_utilisation" | "en_maintenance" | "hors_service";
 export type TypeMateriel = "engin" | "outil" | "vehicule";
 
 export interface Materiel {
@@ -608,7 +621,8 @@ export interface AlerteMateriel {
 // ALERTES
 // ============================================================
 
-export type NiveauGravite = "info" | "faible" | "moyenne" | "elevee" | "critique";
+export type NiveauGravite =
+  "info" | "faible" | "moyenne" | "elevee" | "critique";
 export type StatutAlerte = "non_lue" | "lue";
 
 export interface Alerte {
@@ -730,6 +744,11 @@ export interface SuperAdminStats {
   ca_total: number;
   entreprises_actives: number;
   abonnements: Record<string, number>;
+  nouveaux_utilisateurs_mois?: number;
+  uptime?: number;
+  revenu_mensuel?: number;
+  incidents_critiques?: number;
+  demandes_support?: number;
 }
 
 // ============================================================
@@ -769,6 +788,45 @@ export interface ChangePasswordRequest {
   confirm_password: string;
 }
 
-export type TypeContratEmploye = "CDI" | "CDD" | "INTERIM" | "STAGE" | "APPRENTISSAGE" | "JOURNALIER" | "SAISONNIER";
+export type TypeContratEmploye =
+  | "CDI"
+  | "CDD"
+  | "INTERIM"
+  | "STAGE"
+  | "APPRENTISSAGE"
+  | "JOURNALIER"
+  | "SAISONNIER";
 
 export type User = Utilisateur;
+
+// ============================================================
+// DASHBOARD CHARTS
+// ============================================================
+
+export interface ChartSeries {
+  labels: string[];
+  data: number[];
+}
+
+export interface ChartMultiSeries {
+  labels: string[];
+  datasets: Array<Record<string, unknown>>;
+}
+
+export interface TenantsEvolutionResponse {
+  labels: string[];
+  data: number[];
+  croissance: number;
+}
+
+export interface DashboardChartsResponse {
+  ca_evolution?: { labels: string[]; ca: number[]; depenses: number[] };
+  connexions_par_jour?: { labels: string[]; data: number[] };
+  depenses_par_poste?: { labels: string[]; data: number[] };
+  top_chantiers?: { labels: string[]; avancement: number[]; budget: number[] };
+  presence_hebdo?: { labels: string[]; data: number[] };
+  effectif_par_poste?: { labels: string[]; data: number[] };
+  parc_utilisation?: { labels: string[]; data: number[] };
+  stock_par_categorie?: { labels: string[]; data: number[] };
+  pipeline_commercial?: { labels: string[]; data: number[] };
+}

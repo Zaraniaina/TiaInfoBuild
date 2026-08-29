@@ -98,20 +98,8 @@ export function SettingsPage() {
           .filter((r: RoleOption) => r.code !== 'super_admin')
         setRoles(filtered)
       })
-      .catch(() => {
-        setRoles([
-          { id: 2, code: 'admin_entreprise', nom: 'Admin Entreprise' },
-          { id: 3, code: 'directeur', nom: 'Direction Générale' },
-          { id: 4, code: 'comptable', nom: 'Comptable' },
-          { id: 5, code: 'chef_chantier', nom: 'Chef de Chantier' },
-          { id: 6, code: 'chef_projet', nom: 'Chef de Projet' },
-          { id: 7, code: 'rh', nom: 'Responsable RH' },
-          { id: 8, code: 'materiel', nom: 'Responsable Matériel' },
-          { id: 9, code: 'magasinier', nom: 'Magasinier' },
-          { id: 10, code: 'commercial', nom: 'Commercial' },
-          { id: 11, code: 'employe', nom: 'Ouvrier / Employé' },
-        ])
-      })
+      // Pas de données factices : on n'affiche que les rôles réellement retournés par le backend.
+      .catch(() => setRoles([]))
   }
 
   const loadUsers = () => {
@@ -132,13 +120,8 @@ export function SettingsPage() {
           derniere_connexion: u.derniere_connexion,
         })))
       })
-      .catch(() => {
-        setUsers([
-          { id: 1, prenom: 'Admin', nom: 'System', email: 'admin@tia.mg', role_code: 'admin_entreprise', role_nom: 'Admin Entreprise', statut: 'actif', telephone: '', date_creation: '2026-01-01', derniere_connexion: '2026-08-24 08:00' },
-          { id: 2, prenom: 'Michel', nom: 'RABARISON', email: 'michel@tia.mg', role_code: 'chef_chantier', role_nom: 'Chef de Chantier', statut: 'actif', telephone: '', date_creation: '2026-02-01', derniere_connexion: '2026-08-23 17:30' },
-          { id: 3, prenom: 'Jean', nom: 'DUPONT', email: 'jean@tia.mg', role_code: 'employe', role_nom: 'Ouvrier', statut: 'inactif', telephone: '', date_creation: '2026-03-10', derniere_connexion: '2026-07-15 12:00' },
-        ])
-      })
+      // Pas de données factices : on n'affiche que les utilisateurs réellement retournés par le backend.
+      .catch(() => setUsers([]))
       .finally(() => setLoading(false))
   }
 
@@ -146,13 +129,8 @@ export function SettingsPage() {
     setAuditLoading(true)
     api.get('/parametres/audit-logs?size=50')
       .then(res => setLogs(res.data.items || res.data || []))
-      .catch(() => {
-        setLogs([
-          { id: 1, utilisateur_id: 1, ip_address: '192.168.1.50', user_agent: 'Chrome 128.0.0 (Windows 11)', reussi: true, date_connexion: '2026-08-24 08:00:12' },
-          { id: 2, utilisateur_id: 2, ip_address: '192.168.1.51', user_agent: 'Firefox 120.0 (Windows 11)', reussi: true, date_connexion: '2026-08-23 17:45:00' },
-          { id: 3, utilisateur_id: 3, ip_address: '10.0.0.5', user_agent: 'Chrome 128.0.0 (Android)', reussi: false, date_connexion: '2026-08-22 09:12:33' },
-        ])
-      })
+      // Pas de données factices : on n'affiche que les journaux réellement retournés par le backend.
+      .catch(() => setLogs([]))
       .finally(() => setAuditLoading(false))
   }
 
@@ -219,6 +197,23 @@ export function SettingsPage() {
     }
     setSaving(true)
     try {
+      // Création : le mot de passe est obligatoire et doit respecter la politique du backend
+      // (8 caractères + majuscule, minuscule, chiffre et caractère spécial) pour éviter un 422.
+      if (!editingUser) {
+        const pw = userForm.password || ''
+        const pwErrors: string[] = []
+        if (pw.length < 8) pwErrors.push('au moins 8 caractères')
+        if (!/[A-Z]/.test(pw)) pwErrors.push('une majuscule')
+        if (!/[a-z]/.test(pw)) pwErrors.push('une minuscule')
+        if (!/[0-9]/.test(pw)) pwErrors.push('un chiffre')
+        if (!/[^A-Za-z0-9]/.test(pw)) pwErrors.push('un caractère spécial')
+        if (pwErrors.length > 0) {
+          setFormError(`Mot de passe invalide : il doit contenir ${pwErrors.join(', ')}.`)
+          setSaving(false)
+          return
+        }
+      }
+
       const payload: any = { ...userForm }
       if (editingUser) {
         delete payload.password

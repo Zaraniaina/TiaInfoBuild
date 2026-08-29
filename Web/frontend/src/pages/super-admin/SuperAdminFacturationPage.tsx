@@ -8,12 +8,8 @@ export function SuperAdminFacturationPage() {
   useEffect(() => {
     api.get('/super-admin/facturation')
       .then(res => setItems(res.data.items || res.data || []))
-      .catch(() => {
-        setItems([
-          { id: 1, entreprise: 'BTP PRO MADAGASCAR SARL', montant: 350000, statut: 'paye', date_echeance: '2026-09-01', date_paiement: '2026-08-28', moyen: 'MVola' },
-          { id: 2, entreprise: 'SOMAPROC MADAGASCAR', montut: 150000, statut: 'en_attente', date_echeance: '2026-09-05', date_paiement: null, moyen: '-' },
-        ])
-      })
+      // Pas de données factices : on n'affiche que les factures réellement retournées par le backend.
+      .catch(() => setItems([]))
       .finally(() => setLoading(false))
   }, [])
 
