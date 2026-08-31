@@ -4,9 +4,10 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '@/hooks/useAuth'
+import { formatErrorMessage } from '@/utils/errorMessage'
 
 const loginSchema = z.object({
-  email: z.string().email('Email invalide'),
+  email: z.string().email('Adresse email invalide'),
   password: z.string().min(1, 'Mot de passe requis'),
 })
 
@@ -28,7 +29,7 @@ export function LoginPage() {
     try {
       await loginUser(data)
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Connexion échouée'
+      const message = formatErrorMessage(err, 'Identifiants invalides ou problème de connexion.')
       setServerError(message)
     } finally {
       setIsLoading(false)
@@ -141,7 +142,7 @@ export function LoginPage() {
               )}
             </div>
 
-            <div className="auth-field d-flex align-items-center justify-content-between">
+            <div className="auth-field d-flex align-items-center justify-content-between mb-4">
               <div className="form-check">
                 <input className="form-check-input auth-checkbox" type="checkbox" id="rememberMe" />
                 <label className="form-check-label auth-checkbox-label" htmlFor="rememberMe">
@@ -152,7 +153,7 @@ export function LoginPage() {
 
             <button
               type="submit"
-              className="btn btn-auth-primary w-100 py-2.5 fw-bold mt-1"
+              className="btn btn-auth-primary w-100 py-2.5 fw-bold"
               disabled={isLoading}
             >
               {isLoading ? (
