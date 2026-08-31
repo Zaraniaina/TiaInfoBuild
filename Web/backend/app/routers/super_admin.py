@@ -1,5 +1,5 @@
 """Router pour le Super Admin (propriétaire SaaS)."""
-from datetime import datetime
+from datetime import datetime, timedelta  # noqa: F401
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -72,6 +72,38 @@ async def get_stats(payload: CurrentUser, db: DbSession):
         incidents_critiques=incidents_critiques,
         demandes_support=demandes_support,
     )
+
+
+@router.get("/tenants-evolution")
+async def tenants_evolution(payload: CurrentUser, db: DbSession, months: int = Query(default=8, ge=1, le=24)):
+    """Évolution mensuelle des nouveaux tenants (entreprises) sur la plateforme SaaS."""
+    now = datetime.now()
+    debut = datetime(now.year, 1, 1) if months >= 12 else datetime(now.year, now.month, 1) - timedelta(days=30 * (months - 1))
+    result = await db.execute(
+        select(Entreprise.date_creation).where(Entreprise.date_creation >= debut)
+    )
+    rows = result.fetchall() or []
+    buckets = {}
+    cur = debut
+    while cur <= now:
+        buckets[cur.strftime("%Y-%m")] = 0
+        if cur.month == 12:
+            cur = datetime(cur.year + 1, 1, 1)
+        else:
+            cur = datetime(cur.year, cur.month + 1, 1)
+    for row in rows:
+        dc = row[0]
+        if dc:
+            key = dc.strftime("%Y-%m")
+            buckets[key] = buckets.get(key, 0) + 1
+    labels = list(buckets.keys())
+    data = list(buckets.values())
+    total = sum(data)
+    active_mois = sum(1 for v in data if v > 0)
+    croissance = 0.0
+    if active_mois and data[0] > 0:
+        croissance = round(((data[-1] - data[0]) / data[0]) * 100.0, 1)
+    return {"labels": labels, "data": data, "croissance": croissance}
 
 
 @router.get("/entreprises", response_model=list[EntrepriseResponse])

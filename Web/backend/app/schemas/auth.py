@@ -82,11 +82,11 @@ class ChangePasswordRequest(BaseModel):
 
     old_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=8)
-    confirm_password: str = Field(..., min_length=8)
+    confirm_password: str | None = Field(default=None)
 
     @model_validator(mode="after")
     def check_passwords_match(self) -> "ChangePasswordRequest":
-        if self.new_password != self.confirm_password:
+        if self.confirm_password is not None and self.new_password != self.confirm_password:
             raise ValueError("Les mots de passe ne correspondent pas")
         return self
 
@@ -147,6 +147,15 @@ class RegisterEntrepriseRequest(BaseModel):
     admin_email: EmailStr
     password: str = Field(..., min_length=8)
     password_confirm: str = Field(..., min_length=8)
+
+    @field_validator("entreprise_email", mode="before")
+    @classmethod
+    def coerce_empty_email(cls, v: object) -> object:
+        # Défense en profondeur : le frontend peut envoyer une chaîne vide pour un email optionnel.
+        # On la normalise en None pour éviter une erreur de validation EmailStr (422).
+        if v is not None and str(v).strip() == "":
+            return None
+        return v
 
     @model_validator(mode="after")
     def check_passwords_match(self) -> "RegisterEntrepriseRequest":

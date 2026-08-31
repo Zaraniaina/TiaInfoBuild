@@ -2,7 +2,7 @@
 
 Stack : FastAPI + SQLAlchemy + MySQL | React + TypeScript + Vite + Bootstrap
 
-## Démarrage rapide
+## Démarrage rapide (Windows PowerShell — système insensible à la casse)
 
 ```powershell
 cd Web

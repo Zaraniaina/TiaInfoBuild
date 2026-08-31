@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '@/hooks/useAuth'
+import { useToast } from '@/stores/toast.store'
 
 const loginSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -13,7 +14,7 @@ type LoginFormData = z.infer<typeof loginSchema>
 
 export function LoginForm() {
   const { loginUser } = useAuth()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const { showToast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
@@ -21,13 +22,34 @@ export function LoginForm() {
   })
 
   const onSubmit = async (data: LoginFormData) => {
-    setServerError(null)
     setIsLoading(true)
     try {
       await loginUser(data)
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Connexion échouée'
-      setServerError(message)
+      const status = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { status?: number; data?: { detail?: string } } }).response?.status
+        : null
+      const serverDetail = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : null
+
+      if (status === 401) {
+        showToast(
+          'error',
+          'Connexion échouée',
+          serverDetail || 'Email ou mot de passe incorrect',
+          6000,
+        )
+      } else if (status === 422) {
+        showToast('error', 'Données invalides', 'Veuillez vérifier vos informations.', 6000)
+      } else {
+        showToast(
+          'error',
+          'Erreur de connexion',
+          'Une erreur est survenue. Veuillez réessayer plus tard.',
+          6000,
+        )
+      }
     } finally {
       setIsLoading(false)
     }
@@ -45,12 +67,6 @@ export function LoginForm() {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          {serverError && (
-            <div className="alert alert-danger" role="alert">
-              {serverError}
-            </div>
-          )}
-
           <div className="mb-3">
             <label htmlFor="email" className="form-label">Email</label>
             <div className="input-group">

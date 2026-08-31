@@ -12,7 +12,7 @@ API REST de l'application de gestion BTP **TIA INFO BUILD**.
 
 ---
 
-## 🚀 Démarrage
+## 🚀 Démarrage (Windows PowerShell — système insensible à la casse)
 
 ```powershell
 cd Web/backend
@@ -27,6 +27,7 @@ alembic upgrade head
 
 # Initialiser la base (rôles, admin de démo)
 python app/scripts/init_db.py
+
 
 # Lancer le serveur
 uvicorn app.main:app --reload --port 8000
@@ -76,7 +77,7 @@ app/
 ## 🔐 Authentification & Rôles
 
 - **JWT** : access token (15 min) + refresh token (7 jours)
-- **RBAC** : 11 rôles avec permissions granulaires
+- **RBAC** : 12 rôles avec permissions granulaires
 - **Endpoints protégés** : la majorité des routes nécessitent un token Bearer
 
 ### Rôles disponibles
@@ -94,6 +95,7 @@ app/
 | Commercial | `commercial` | Clients, devis, contrats, factures |
 | Comptable | `comptable` | Finance, dépenses, alertes |
 | Employé | `employe` | Accès limité |
+| Client | `client` | Accès lecture devis/factures |
 
 ---
 

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { Depense, RapportFinancier } from '@/types'
 import { financeService } from '@/services/finance.service'
+import { useAuthStore } from '@/stores/auth.store'
+import { getRolePermissions } from '@/config/roles.config'
 
 interface BudgetOverrun {
   id: number
@@ -25,6 +27,8 @@ interface ClientOutstanding {
 }
 
 export function FinancePage() {
+  const { user } = useAuthStore()
+  const perms = getRolePermissions(user?.role_code || '')
   const [activeTab, setActiveTab] = useState<'overview' | 'depenses' | 'rapports' | 'budget' | 'paiements' | 'encours'>('overview')
   const [depenses, setDepenses] = useState<Depense[]>([])
   const [rapports, setRapports] = useState<RapportFinancier[]>([])
@@ -116,12 +120,12 @@ export function FinancePage() {
           <h2 className="mb-1"><i className="bi bi-bank me-2 text-primary"></i>Gestion Financière</h2>
           <p className="text-secondary mb-0">Suivez la trésorerie, la rentabilité, les dépenses et les bilans financiers</p>
         </div>
-        {activeTab === 'depenses' && (
+        {activeTab === 'depenses' && perms.canCreateDepense && (
           <button className="btn btn-primary fw-bold" onClick={() => setShowModal(true)}>
             <i className="bi bi-plus-circle me-2"></i>Nouvelle Dépense
           </button>
         )}
-        {activeTab === 'rapports' && (
+        {activeTab === 'rapports' && perms.canExportFinance && (
           <button className="btn btn-primary fw-bold" onClick={handleGenerateRapport} disabled={generating}>
             <i className="bi bi-file-earmark-bar-graph me-2"></i>{generating ? 'Génération...' : 'Générer Rapport'}
           </button>
@@ -129,7 +133,7 @@ export function FinancePage() {
       </div>
 
       {/* Main Tabs */}
-      <ul className="nav nav-pills mb-4 bg-white p-2 rounded shadow-sm">
+      <ul className="nav nav-pills mb-4 p-2 rounded shadow-sm">
         <li className="nav-item">
           <button className={`nav-link ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
             <i className="bi bi-pie-chart me-2"></i>Vue Globale & P&L

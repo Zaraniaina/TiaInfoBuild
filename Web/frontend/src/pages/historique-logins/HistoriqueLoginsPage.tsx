@@ -17,12 +17,8 @@ export function HistoriqueLoginsPage() {
   useEffect(() => {
     api.get('/parametres/audit-logs')
       .then(res => setLogs((res.data as any).items || (res.data as any) || []))
-      .catch(() => {
-        setLogs([
-          { id: 1, utilisateur_id: 1, ip_address: '192.168.1.50', user_agent: 'Chrome 128.0.0 (Windows 11)', reussi: true, date_connexion: '2026-08-19 08:00:12' },
-          { id: 2, utilisateur_id: 1, ip_address: '192.168.1.50', user_agent: 'Firefox 120.0 (Windows 11)', reussi: false, date_connexion: '2026-08-18 17:45:00' }
-        ])
-      })
+      // Pas de données factices : on n'affiche que les connexions réellement retournées par le backend.
+      .catch(() => setLogs([]))
       .finally(() => setLoading(false))
   }, [])
 

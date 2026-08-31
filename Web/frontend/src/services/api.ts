@@ -6,11 +6,48 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 export const api = axios.create({ baseURL: API_URL });
 
 let isRefreshing = false;
-let pendingRequests: Array<(token: string) => void> = [];
+let pendingRequests: Array<(token: string | null) => void> = [];
 
-function rejectPendingRequests() {
-  pendingRequests.forEach((resolve) => resolve(''));
+function resolvePendingRequests(token: string | null) {
+  pendingRequests.forEach((resolve) => resolve(token));
   pendingRequests = [];
+}
+
+export async function performTokenRefresh(): Promise<string | null> {
+  if (isRefreshing) {
+    return new Promise<string | null>((resolve) => {
+      pendingRequests.push(resolve);
+    });
+  }
+
+  isRefreshing = true;
+
+  try {
+    const refresh = useAuthStore.getState().refreshToken || localStorage.getItem('refresh_token');
+    if (!refresh) {
+      useAuthStore.getState().logout();
+      resolvePendingRequests(null);
+      return null;
+    }
+
+    const { data } = await axios.post(`${API_URL}/auth/refresh`, { refresh_token: refresh });
+    const newAccess = data.access_token;
+    const newRefresh = data.refresh_token;
+
+    localStorage.setItem('access_token', newAccess);
+    localStorage.setItem('refresh_token', newRefresh);
+    useAuthStore.getState().setTokens(newAccess, newRefresh || '');
+
+    resolvePendingRequests(newAccess);
+    return newAccess;
+  } catch (refreshError) {
+    console.error('[api] Token refresh failed:', refreshError);
+    resolvePendingRequests(null);
+    useAuthStore.getState().logout();
+    return null;
+  } finally {
+    isRefreshing = false;
+  }
 }
 
 api.interceptors.request.use((config) => {
@@ -23,55 +60,65 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
-      original._retry = true;
+    if (error.response?.status !== 401 || original._retry) {
+      return Promise.reject(error);
+    }
 
-      if (isRefreshing) {
-        await new Promise((resolve) => {
-          pendingRequests.push(resolve);
-        });
-        const token = useAuthStore.getState().token || localStorage.getItem('access_token');
-        if (token) {
-          original.headers.Authorization = `Bearer ${token}`;
-          return api(original);
-        }
-        return Promise.reject(error);
-      }
+    original._retry = true;
 
-      isRefreshing = true;
-      const refresh = useAuthStore.getState().refreshToken || localStorage.getItem('refresh_token');
-
-      if (refresh) {
-        try {
-          const { data } = await axios.post(`${API_URL}/auth/refresh`, { refresh_token: refresh });
-          const newAccess = data.access_token;
-          const newRefresh = data.refresh_token;
-          localStorage.setItem('access_token', newAccess);
-          if (newRefresh) localStorage.setItem('refresh_token', newRefresh);
-          useAuthStore.getState().setTokens(newAccess, newRefresh || '');
-          pendingRequests.forEach((resolve) => resolve(newAccess));
-          pendingRequests = [];
-          original.headers.Authorization = `Bearer ${newAccess}`;
-          return api(original);
-        } catch (refreshError) {
-          console.error('[api] Token refresh failed:', refreshError);
-          rejectPendingRequests();
-          useAuthStore.getState().logout();
-        } finally {
-          isRefreshing = false;
-        }
-      } else {
-        rejectPendingRequests();
-        useAuthStore.getState().logout();
-      }
+    const newToken = await performTokenRefresh();
+    if (newToken) {
+      original.headers.Authorization = `Bearer ${newToken}`;
+      return api(original);
     }
     return Promise.reject(error);
   }
 );
 
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function scheduleTokenRefresh() {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  const token = useAuthStore.getState().token || localStorage.getItem('access_token');
+  if (!token) return;
+
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const exp = payload.exp;
+    const now = Math.floor(Date.now() / 1000);
+    const timeLeft = exp - now;
+    const refreshBefore = 5 * 60;
+    const delay = Math.max(0, (timeLeft - refreshBefore) * 1000);
+
+    if (delay <= 0) {
+      performTokenRefresh().then((newToken) => {
+        if (newToken) scheduleTokenRefresh();
+      });
+      return;
+    }
+
+    refreshTimer = setTimeout(async () => {
+      const newToken = await performTokenRefresh();
+      if (newToken) {
+        scheduleTokenRefresh();
+      }
+    }, delay);
+  } catch {
+    // ignore parse errors
+  }
+}
+
+export function cancelTokenRefresh() {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
+}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (event) => {
     if (event.key === 'access_token' && event.newValue === null) {
+      cancelTokenRefresh();
       useAuthStore.getState().logout();
     }
   });

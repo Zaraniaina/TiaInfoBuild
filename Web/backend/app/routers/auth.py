@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing_extensions import Annotated
@@ -17,7 +16,6 @@ from app.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
-    CREDENTIALS_EXCEPTION,
 )
 from app.models.utilisateur import Utilisateur
 from app.models.historique_connexion import HistoriqueConnexion
@@ -45,45 +43,65 @@ async def login(
     db: DbSession,
     request: Request,
 ):
-    result = await db.execute(select(Utilisateur).where(Utilisateur.email == credentials.email, Utilisateur.is_deleted == False))
-    user = result.scalar_one_or_none()
+    try:
+        result = await db.execute(select(Utilisateur).where(Utilisateur.email == credentials.email, Utilisateur.is_deleted == False))
+        user = result.scalar_one_or_none()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Email ou mot de passe incorrect",
+        )
+
     if not user or not verify_password(credentials.password, user.mot_de_passe_hash):
+        try:
+            await db.execute(
+                HistoriqueConnexion.__table__.insert().values(
+                    utilisateur_id=None,
+                    ip_address=request.client.host if request.client else None,
+                    user_agent=request.headers.get("user-agent"),
+                    reussi=False,
+                    date_connexion=datetime.now(),
+                )
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email ou mot de passe incorrect",
+        )
+
+    try:
+        role_code = user.role.code if user.role else Role.EMPLOYE
+        permissions = PERMISSION_MAP.get(role_code, [])
+        access_token = create_access_token(
+            subject=user.id,
+            role_code=role_code,
+            entreprise_id=user.entreprise_id,
+            permissions=permissions,
+        )
+        refresh_token = create_refresh_token(user.id)
+        refresh_hash = hash_password(refresh_token)
+        refresh_expires = datetime.now() + timedelta(days=settings.refresh_token_expire_days)
+        db_refresh = RefreshToken(utilisateur_id=user.id, token_hash=refresh_hash, expires_at=refresh_expires)
+        db.add(db_refresh)
+        user.derniere_connexion = datetime.now()
         await db.execute(
             HistoriqueConnexion.__table__.insert().values(
-                utilisateur_id=None,
+                utilisateur_id=user.id,
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent"),
-                reussi=False,
+                reussi=True,
                 date_connexion=datetime.now(),
             )
         )
         await db.commit()
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email ou mot de passe incorrect")
-
-    role_code = user.role.code if user.role else Role.EMPLOYE
-    permissions = PERMISSION_MAP.get(role_code, [])
-    access_token = create_access_token(
-        subject=user.id,
-        role_code=role_code,
-        entreprise_id=user.entreprise_id,
-        permissions=permissions,
-    )
-    refresh_token = create_refresh_token(user.id)
-    refresh_hash = hash_password(refresh_token)
-    refresh_expires = datetime.now() + timedelta(days=settings.refresh_token_expire_days)
-    db_refresh = RefreshToken(utilisateur_id=user.id, token_hash=refresh_hash, expires_at=refresh_expires)
-    db.add(db_refresh)
-    user.derniere_connexion = datetime.now()
-    await db.execute(
-        HistoriqueConnexion.__table__.insert().values(
-            utilisateur_id=user.id,
-            ip_address=request.client.host if request.client else None,
-            user_agent=request.headers.get("user-agent"),
-            reussi=True,
-            date_connexion=datetime.now(),
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Une erreur est survenue lors de la connexion. Veuillez réessayer.",
         )
-    )
-    await db.commit()
     return Token(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -124,7 +142,12 @@ async def refresh_token(payload: RefreshRequest, db: DbSession):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token invalide")
 
     token_obj.revoked = True
-    user_result = await db.execute(select(Utilisateur).where(Utilisateur.id == user_id, Utilisateur.is_deleted == False))
+    user_result = await db.execute(
+        select(Utilisateur).where(
+            Utilisateur.id == user_id,
+            Utilisateur.is_deleted == False,
+        )
+    )
     user = user_result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Utilisateur non trouvé")
@@ -170,7 +193,9 @@ async def register(data: RegisterRequest, db: DbSession):
     obj_in = data.model_dump(exclude={"password"})
     obj_in["mot_de_passe_hash"] = hash_password(data.password)
     user = await crud.create(db, obj_in)
-    await db.refresh(user)
+    # Pas de db.refresh(user) : l'id est déjà renseigné après le flush, et un refresh
+    # chargerait en eager toutes les relations selectin (chantiers, clients, etc.) et
+    # échouerait en 500 si une seule colonne manque dans une table liée.
     return {"id": user.id, "email": user.email, "message": "Inscription réussie"}
 
 
@@ -191,7 +216,10 @@ async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, re
     )
     db.add(entreprise)
     await db.flush()
-    await db.refresh(entreprise)
+    # Pas de db.refresh(entreprise) : l'id est disponible après le flush. Un refresh
+    # chargerait en eager la relation selectin "pointages" (et tout le graphe), ce qui
+    # provoque un 500 "Unknown column" si la table pointages (ou une table liée) est
+    # désynchronisée du modèle ORM. Voir scripts/fix_missing_columns.py.
 
     role_crud = RoleCRUD()
     admin_role = await role_crud.get_by_code(db, Role.ADMIN_ENTREPRISE)
@@ -205,7 +233,8 @@ async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, re
         )
         db.add(admin_role)
         await db.flush()
-        await db.refresh(admin_role)
+        # Pas de db.refresh(admin_role) : admin_role.code / .id sont déjà disponibles
+        # après le flush. Un refresh chargerait en eager la relation selectin "utilisateurs".
 
     role_code = admin_role.code
     permissions = PERMISSION_MAP.get(role_code, [])
@@ -221,7 +250,8 @@ async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, re
     )
     db.add(admin_user)
     await db.flush()
-    await db.refresh(admin_user)
+    # Pas de db.refresh(admin_user) : admin_user.id / .email sont déjà disponibles
+    # après le flush. Un refresh rechargerait tout le graphe de relations selectin.
 
     access_token = create_access_token(
         subject=admin_user.id,
@@ -245,7 +275,9 @@ async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, re
         )
     )
     await db.commit()
-    await db.refresh(admin_user)
+    # Pas de db.refresh(admin_user) : les champs retournés (email, id) sont déjà
+    # chargés. Un refresh rechargerait tout le graphe de relations selectin de
+    # l'utilisateur et échouerait en 500 sur une colonne manquante d'une table liée.
 
     return RegisterEntrepriseResponse(
         entreprise_id=entreprise.id,
@@ -264,8 +296,20 @@ async def change_password(payload: ChangePasswordRequest, db: DbSession, current
     if not user or not verify_password(payload.old_password, user.mot_de_passe_hash):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ancien mot de passe incorrect")
     user.mot_de_passe_hash = hash_password(payload.new_password)
+    user.must_change_password = False
     await db.commit()
-    return {"message": "Mot de passe modifié avec succès"}
+    return {
+        "message": "Mot de passe modifié avec succès",
+        "user": {
+            "id": user.id,
+            "nom": user.nom,
+            "prenom": user.prenom,
+            "email": user.email,
+            "role_code": current_user.get("role_code"),
+            "entreprise_id": current_user.get("entreprise_id"),
+            "must_change_password": False,
+        }
+    }
 
 
 @router.get("/me")

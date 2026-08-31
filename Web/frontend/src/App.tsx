@@ -1,5 +1,8 @@
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { scheduleTokenRefresh, cancelTokenRefresh } from '@/services/api'
+import { useAuthStore } from '@/stores/auth.store'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
@@ -22,6 +25,13 @@ import { SuperAdminParametresPage } from '@/pages/super-admin/SuperAdminParametr
 import { ClientPage } from '@/pages/client/ClientPage'
 
 function App() {
+  const token = useAuthStore((s) => s.token)
+
+  useEffect(() => {
+    if (token) scheduleTokenRefresh()
+    return () => cancelTokenRefresh()
+  }, [token])
+
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />

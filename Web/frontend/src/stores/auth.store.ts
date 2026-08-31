@@ -1,12 +1,18 @@
 import { create } from 'zustand';
+import { scheduleTokenRefresh, cancelTokenRefresh } from '@/services/api';
 
-interface User {
+export interface User {
   id: number;
   email: string;
   nom: string;
   prenom?: string;
   role_code: string;
   entreprise_id?: number;
+  telephone?: string;
+  statut?: string;
+  must_change_password?: boolean;
+  date_creation?: string;
+  derniere_connexion?: string;
 }
 
 interface AuthState {
@@ -41,8 +47,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem('refresh_token', refreshToken);
     localStorage.setItem('user_info', JSON.stringify(user));
     set({ token, refreshToken, user, isAuthenticated: true });
+    scheduleTokenRefresh();
   },
   logout: () => {
+    cancelTokenRefresh();
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_info');
@@ -50,11 +58,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   setUser: (user) => {
     localStorage.setItem('user_info', JSON.stringify(user));
-    set({ user });
+    set({ user, isAuthenticated: true });
   },
-  setTokens: (token, refreshToken) => {
+   setTokens: (token, refreshToken) => {
     localStorage.setItem('access_token', token);
-    localStorage.setItem('refresh_token', refreshToken);
+    if (refreshToken) {
+      localStorage.setItem('refresh_token', refreshToken);
+    } else {
+      localStorage.removeItem('refresh_token');
+    }
     set({ token, refreshToken });
+    scheduleTokenRefresh();
   },
 }));

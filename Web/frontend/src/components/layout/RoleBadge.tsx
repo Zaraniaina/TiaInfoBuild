@@ -22,7 +22,7 @@ export function RoleBadge({ roleCode }: RoleBadgeProps) {
     if (code === 'super_admin') return 'badge bg-danger'
     if (code === 'admin_entreprise') return 'badge bg-primary'
     if (['directeur', 'chef_projet'].includes(code)) return 'badge bg-info'
-    if (['chef_chantier', 'rh', 'comptable'].includes(code)) return 'badge bg-warning text-dark'
+    if (['chef_chantier', 'rh', 'comptable'].includes(code)) return 'badge bg-warning'
     return 'badge bg-secondary'
   }
 

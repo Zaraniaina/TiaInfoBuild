@@ -116,7 +116,7 @@ export function Sidebar() {
                 {user.prenom?.[0] || 'U'}{user.nom?.[0] || ''}
               </div>
               <div className="flex-grow-1 text-truncate">
-                <div className="small fw-semibold text-white text-truncate">{user.prenom} {user.nom}</div>
+                <div className="small fw-semibold text-truncate" style={{ color: 'var(--tia-text-primary)' }}>{user.prenom} {user.nom}</div>
                 <small className="text-muted text-truncate d-block" style={{ fontSize: '0.72rem' }}>{user.email}</small>
               </div>
             </div>

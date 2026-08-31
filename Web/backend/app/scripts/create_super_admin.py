@@ -26,7 +26,7 @@ async def create_super_admin(email: str, password: str, nom: str = "Super Admin"
             {"email": email},
         )
         if user_result.fetchone():
-            print(f"ℹ️  Utilisateur {email} existe déjà")
+            print(f"  Utilisateur {email} existe déjà")
             return
 
         await conn.execute(
@@ -42,7 +42,7 @@ async def create_super_admin(email: str, password: str, nom: str = "Super Admin"
                 "role_id": role_row[0],
             },
         )
-    print(f"✅ Super Admin créé: {email}")
+    print(f" Super Admin créé: {email}")
 
 
 if __name__ == "__main__":

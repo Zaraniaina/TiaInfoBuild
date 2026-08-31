@@ -80,7 +80,7 @@ async def seed():
 
     async with AsyncSessionLocal() as db:
         # 1. Insérer les rôles (ignorer si déjà présents)
-        print("📋 Création des rôles système...")
+        print(" Création des rôles système...")
         for role in ROLES_SYSTEME:
             await db.execute(text("""
                 INSERT IGNORE INTO roles (id, nom, code, description, is_system)
@@ -88,7 +88,7 @@ async def seed():
             """), role)
 
         # 2. Créer l'entreprise de test
-        print("🏢 Création de l'entreprise de test...")
+        print(" Création de l'entreprise de test...")
         result = await db.execute(text(
             "SELECT id FROM entreprises WHERE nom = :nom LIMIT 1"
         ), {"nom": ENTREPRISE_TEST["nom"]})
@@ -108,7 +108,7 @@ async def seed():
             ent = result.fetchone()
 
         entreprise_id = ent[0]
-        print(f"   ✅ Entreprise ID: {entreprise_id}")
+        print(f"    Entreprise ID: {entreprise_id}")
 
         # 3. Créer le super admin (entreprise_id = NULL)
         print("👤 Création du super admin...")
@@ -120,9 +120,9 @@ async def seed():
                 INSERT INTO utilisateurs (email, nom, prenom, mot_de_passe_hash, statut, must_change_password, role_id)
                 VALUES (:email, :nom, :prenom, :hash, :statut, :must_change_password, :role_id)
             """), {**SUPER_ADMIN, "hash": hash_password(MOT_DE_PASSE_DEMO)})
-            print(f"   ✅ Super admin: {SUPER_ADMIN['email']} / {MOT_DE_PASSE_DEMO}")
+            print(f"    Super admin: {SUPER_ADMIN['email']} / {MOT_DE_PASSE_DEMO}")
         else:
-            print(f"   ℹ️  Super admin déjà existant: {SUPER_ADMIN['email']}")
+            print(f"   ℹ  Super admin déjà existant: {SUPER_ADMIN['email']}")
 
         # 4. Créer l'admin entreprise
         print("👤 Création de l'admin entreprise...")
@@ -134,17 +134,17 @@ async def seed():
                 INSERT INTO utilisateurs (email, nom, prenom, mot_de_passe_hash, statut, must_change_password, role_id, entreprise_id)
                 VALUES (:email, :nom, :prenom, :hash, :statut, :must_change_password, :role_id, :entreprise_id)
             """), {**ADMIN_ENTREPRISE, "hash": hash_password(MOT_DE_PASSE_DEMO), "entreprise_id": entreprise_id})
-            print(f"   ✅ Admin entreprise: {ADMIN_ENTREPRISE['email']} / {MOT_DE_PASSE_DEMO}")
+            print(f"    Admin entreprise: {ADMIN_ENTREPRISE['email']} / {MOT_DE_PASSE_DEMO}")
         else:
-            print(f"   ℹ️  Admin entreprise déjà existant: {ADMIN_ENTREPRISE['email']}")
+            print(f"   ℹ  Admin entreprise déjà existant: {ADMIN_ENTREPRISE['email']}")
 
         await db.commit()
 
-    print("\n✅ Seed terminé avec succès !")
-    print("\n📋 Comptes de connexion créés:")
+    print("\n Seed terminé avec succès !")
+    print("\n Comptes de connexion créés:")
     print(f"   Super Admin  : {SUPER_ADMIN['email']} / {MOT_DE_PASSE_DEMO}")
     print(f"   Admin Entrep.: {ADMIN_ENTREPRISE['email']} / {MOT_DE_PASSE_DEMO}")
-    print("\n🚀 Vous pouvez maintenant démarrer le serveur: uvicorn app.main:app --reload")
+    print("\n Vous pouvez maintenant démarrer le serveur: uvicorn app.main:app --reload")
 
 
 if __name__ == "__main__":

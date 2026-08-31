@@ -53,6 +53,7 @@ materiel_crud = MaterielCRUD()
 # ==================== MATERIAUX ====================
 
 
+@router.get("", response_model=list[MaterielList])
 @router.get("/", response_model=list[MaterielList])
 async def list_materiaux(
     payload: CurrentUserPayload,
@@ -78,6 +79,7 @@ async def list_materiaux(
     return list(result.scalars().all())
 
 
+@router.post("", response_model=MaterielResponse, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=MaterielResponse, status_code=status.HTTP_201_CREATED)
 async def create_materiel(
     payload: CurrentUserPayload,
