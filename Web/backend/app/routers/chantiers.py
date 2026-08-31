@@ -55,6 +55,7 @@ class IncidentCreate(BaseModel):
     statut: str = Field(default="signale", max_length=20)
 
 
+@router.get("")
 @router.get("/", response_model=dict)
 async def list_chantiers(
     payload: CurrentUserPayload,
@@ -99,6 +100,7 @@ async def list_chantiers(
     }
 
 
+@router.post("")
 @router.post("/", response_model=ChantierResponse, status_code=status.HTTP_201_CREATED)
 async def create_chantier(
     payload: CurrentUserPayload,

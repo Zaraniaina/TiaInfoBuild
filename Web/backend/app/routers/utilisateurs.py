@@ -35,6 +35,7 @@ DbSession = Annotated[AsyncSession, Depends(get_db)]
 AdminCheck = Annotated[dict[str, Any], Depends(require_permission("parametres:write"))]
 
 
+@router.get("", response_model=dict)
 @router.get("/", response_model=dict)
 async def list_utilisateurs(
     payload: AdminCheck,
@@ -62,6 +63,7 @@ async def list_utilisateurs(
     }
 
 
+@router.post("", response_model=UtilisateurResponse, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=UtilisateurResponse, status_code=status.HTTP_201_CREATED)
 async def create_utilisateur(payload: AdminCheck, db: DbSession, data: UtilisateurCreate):
     entreprise_id = payload.get("entreprise_id")
@@ -82,6 +84,7 @@ async def create_utilisateur(payload: AdminCheck, db: DbSession, data: Utilisate
         obj_in["entreprise_id"] = entreprise_id
     from app.security import hash_password
     obj_in["mot_de_passe_hash"] = hash_password(data.password)
+    obj_in["must_change_password"] = True  # L'utilisateur doit modifier son mot de passe après la 1ère connexion
     if obj_in.get("role_code"):
         if obj_in["role_code"] == "super_admin" and creator_role != "super_admin":
             raise HTTPException(
@@ -119,14 +122,13 @@ async def create_utilisateur(payload: AdminCheck, db: DbSession, data: Utilisate
 
 
 @router.get("/{id}/bon-de-creation", response_class=Response)
-async def get_bon_creation(payload: AdminCheck, db: DbSession, id: int):
-    """Génère un PDF 'Bon de création' contenant le login, les rôles de l'entreprise
-    et un mot de passe temporaire pour le compte utilisateur indiqué.
+async def get_bon_creation(payload: AdminCheck, db: DbSession, id: int, temp_password: str | None = Query(default=None)):
+    """Génère un PDF 'Bon de création' contenant le login, le rôle de l'utilisateur,
+    les rôles de l'entreprise et le mot de passe temporaire défini par l'administrateur.
 
-    Le mot de passe temporaire est regénéré à la volée, haché et stocké :
-    il n'est jamais persistance en clair et n'est jamais retourné hors du PDF.
+    Ne réinitialise pas le mot de passe en base si le mot de passe initial à la création est transmis.
     """
-    enteprise_id = payload.get("entreprise_id")
+    entreprise_id = payload.get("entreprise_id")
     result = await db.execute(
         select(Utilisateur).where(Utilisateur.id == id, Utilisateur.is_deleted == False)
     )
@@ -136,11 +138,8 @@ async def get_bon_creation(payload: AdminCheck, db: DbSession, id: int):
     if entreprise_id is not None and user.entreprise_id != entreprise_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
 
-    temp_password = generate_temp_password()
-    user.mot_de_passe_hash = hash_password(temp_password)
-    user.must_change_password = True
-    await db.flush()
-    await db.refresh(user)
+    # Si aucun mot de passe n'est passé en paramètre, on conserve celui configuré
+    pwd_display = temp_password if temp_password else "•••••••• (Défini lors de la création)"
 
     # Rôles disponibles dans l'entreprise (hors super_admin)
     roles_result = await db.execute(select(Role).order_by(Role.id))
@@ -150,7 +149,7 @@ async def get_bon_creation(payload: AdminCheck, db: DbSession, id: int):
         user=user,
         entreprise=user.entreprise,
         entreprise_roles=entreprise_roles,
-        temp_password=temp_password,
+        temp_password=pwd_display,
     )
 
     return Response(

@@ -13,7 +13,7 @@ function resolvePendingRequests(token: string | null) {
   pendingRequests = [];
 }
 
-async function performTokenRefresh(): Promise<string | null> {
+export async function performTokenRefresh(): Promise<string | null> {
   if (isRefreshing) {
     return new Promise<string | null>((resolve) => {
       pendingRequests.push(resolve);
@@ -79,7 +79,7 @@ let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function scheduleTokenRefresh() {
   if (refreshTimer) clearTimeout(refreshTimer);
-  const token = useAuthStore.getState().token;
+  const token = useAuthStore.getState().token || localStorage.getItem('access_token');
   if (!token) return;
 
   try {
@@ -91,7 +91,9 @@ export function scheduleTokenRefresh() {
     const delay = Math.max(0, (timeLeft - refreshBefore) * 1000);
 
     if (delay <= 0) {
-      useAuthStore.getState().logout();
+      performTokenRefresh().then((newToken) => {
+        if (newToken) scheduleTokenRefresh();
+      });
       return;
     }
 

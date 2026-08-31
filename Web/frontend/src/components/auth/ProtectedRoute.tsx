@@ -21,10 +21,16 @@ function isTokenExpired(token: string | null): boolean {
 }
 
 export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
-  const { isAuthenticated, user, token } = useAuthStore()
+  const { isAuthenticated, user, token, refreshToken } = useAuthStore()
   const location = useLocation()
+  const storedRefreshToken = refreshToken || localStorage.getItem('refresh_token')
 
-  if (!isAuthenticated || !token || isTokenExpired(token)) {
+  const expired = isTokenExpired(token)
+  if (!isAuthenticated && !storedRefreshToken) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (expired && !storedRefreshToken) {
     return <Navigate to="/login" replace />
   }
 

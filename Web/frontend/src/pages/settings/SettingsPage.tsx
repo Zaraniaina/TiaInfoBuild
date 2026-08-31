@@ -314,8 +314,9 @@ export function SettingsPage() {
       loadUsers();
       if (!editingUser && response?.data?.id) {
         const newId = response.data.id;
+        const tempPassword = userForm.password;
         api
-          .get(`/utilisateurs/${newId}/bon-de-creation`, {
+          .get(`/utilisateurs/${newId}/bon-de-creation?temp_password=${encodeURIComponent(tempPassword)}`, {
             responseType: "blob",
           })
           .then((r) => {

@@ -37,6 +37,7 @@ app = FastAPI(
     version="1.0.0",
     debug=settings.app_debug,
     lifespan=lifespan,
+    redirect_slashes=False,
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)

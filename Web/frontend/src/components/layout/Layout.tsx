@@ -1,13 +1,15 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, Link } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { useUIStore } from '@/stores/ui.store'
+import { useAuthStore } from '@/stores/auth.store'
 import { useEffect, useState } from 'react'
 
 export function Layout() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen)
   const toggleSidebar = useUIStore((s) => s.toggleSidebar)
   const hydrateThemeFromBackend = useUIStore((s) => s.hydrateThemeFromBackend)
+  const user = useAuthStore((s) => s.user)
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 992)
 
   useEffect(() => {
@@ -32,6 +34,17 @@ export function Layout() {
       )}
       <div className={`main-area${isDesktop && !sidebarOpen ? ' sidebar-collapsed' : ''}`}>
         <Topbar />
+        {user?.must_change_password && (
+          <div className="alert alert-warning border-0 rounded-0 mb-0 d-flex align-items-center justify-content-between px-4 py-2" style={{ backgroundColor: '#fff3cd', color: '#664d03', zIndex: 100 }}>
+            <div className="d-flex align-items-center">
+              <i className="bi bi-shield-exclamation me-2 fs-5"></i>
+              <span>Vous utilisez actuellement un mot de passe temporaire. Pour la sécurité de votre compte, veuillez le modifier dès maintenant.</span>
+            </div>
+            <Link to="/settings" className="btn btn-sm btn-warning text-dark fw-bold ms-3">
+              Modifier mon mot de passe
+            </Link>
+          </div>
+        )}
         <main className="flex-grow-1">
           <Outlet />
         </main>
