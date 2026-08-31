@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.core.permissions import PERMISSION_MAP, Role
 from app.database import get_db
 from app.models.entreprise import Entreprise
-from app.models.role import Role
+from app.models.role import Role as RoleModel
 from app.models.utilisateur import Utilisateur
 from app.models.preference import Preference
 from app.models.historique_connexion import HistoriqueConnexion
@@ -119,9 +119,9 @@ async def update_profile(payload: CurrentUserPayload, db: DbDep, data: Utilisate
 async def list_roles(payload: CurrentUserPayload, db: DbDep):
     _require_permission(payload, "parametres:read")
     role_code = payload.get("role_code")
-    query = select(Role).order_by(Role.id)
+    query = select(RoleModel).order_by(RoleModel.id)
     if role_code != Role.SUPER_ADMIN:
-        query = query.where(Role.code != "super_admin")
+        query = query.where(RoleModel.code != "super_admin")
     result = await db.execute(query)
     roles = result.scalars().all()
     return [RoleResponse.model_validate(role) for role in roles]

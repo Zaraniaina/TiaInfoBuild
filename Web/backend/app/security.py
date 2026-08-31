@@ -3,6 +3,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import jwt
+import secrets
+import string
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pwdlib import PasswordHash
@@ -42,6 +44,23 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return pwd_hash.verify(plain_password, hashed_password)
     except Exception:
         return False
+
+
+def generate_temp_password(length: int = 12) -> str:
+    """Génère un mot de passe temporaire robuste respectant la politique de sécurité."""
+    if length < 8:
+        length = 8
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*-_"
+    while True:
+        password = "".join(secrets.choice(alphabet) for _ in range(length))
+        if (
+            len(password) >= 8
+            and any(c.isupper() for c in password)
+            and any(c.islower() for c in password)
+            and any(c.isdigit() for c in password)
+            and any(c in "!@#$%^&*-_" for c in password)
+        ):
+            return password
 
 
 # --- JWT Tokens ---
