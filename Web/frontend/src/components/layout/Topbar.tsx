@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUIStore } from '@/stores/ui.store'
 import { useToastStore } from '@/stores/toast.store'
@@ -7,6 +8,7 @@ import { api } from '@/services/api'
 import { formatErrorMessage } from '@/utils/errorMessage'
 
 export function Topbar() {
+  const navigate = useNavigate()
   const { user, setUser, logout } = useAuthStore()
   const { toggleSidebar, sidebarOpen, theme, setTheme, hydrateThemeFromBackend } = useUIStore()
   const [notifications, setNotifications] = useState<Array<{ id: number; titre: string }>>([])
@@ -304,7 +306,17 @@ export function Topbar() {
                 <i className="bi bi-key me-2 text-warning"></i>Changer mon mot de passe
               </button>
               {['admin_entreprise', 'super_admin'].includes(user?.role_code || '') && (
-                <button className="dropdown-item py-2" onClick={() => { setShowUserMenu(false); window.location.href = '/settings' }}>
+                <button
+                  className="dropdown-item py-2"
+                  onClick={() => {
+                    setShowUserMenu(false)
+                    if (user?.role_code === 'super_admin') {
+                      navigate('/super-admin/parametres')
+                    } else {
+                      navigate('/settings')
+                    }
+                  }}
+                >
                   <i className="bi bi-gear me-2 text-secondary"></i>Paramètres
                 </button>
               )}
