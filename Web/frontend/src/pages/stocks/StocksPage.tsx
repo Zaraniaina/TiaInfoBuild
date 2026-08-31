@@ -2,12 +2,11 @@ import { useEffect, useState } from 'react'
 import type { Article, MouvementStock, Fournisseur } from '@/types'
 import { stocksService } from '@/services/stocks.service'
 import { useAuthStore } from '@/stores/auth.store'
+import { getRolePermissions } from '@/config/roles.config'
 
 export function StocksPage() {
   const { user } = useAuthStore()
-  const roleCode = user?.role_code || 'employe'
-  const canCreateArticle = ['magasinier'].includes(roleCode)
-  const canCreateMouvement = ['magasinier', 'chef_chantier', 'employe'].includes(roleCode)
+  const perms = getRolePermissions(user?.role_code || '')
 
   const [activeTab, setActiveTab] = useState<'articles' | 'mouvements' | 'fournisseurs'>('articles')
   const [articles, setArticles] = useState<Article[]>([])
@@ -123,11 +122,11 @@ export function StocksPage() {
           <h2 className="mb-1"><i className="bi bi-box-seam me-2 text-primary"></i>Gestion des Stocks</h2>
           <p className="text-secondary mb-0">Articles, matériaux de chantier, mouvements et fournisseurs</p>
         </div>
-        {activeTab === 'articles' ? (
+        {activeTab === 'articles' && perms.canCreateArticle ? (
           <button className="btn btn-primary fw-bold" onClick={() => { setSelectedArticle(null); setArticleForm({ stock_actuel: 0, stock_mini: 10, prix_vente: 0 }); setShowArticleModal(true); }}>
             <i className="bi bi-plus-lg me-2"></i>Nouvel article
           </button>
-        ) : activeTab === 'mouvements' ? (
+        ) : activeTab === 'mouvements' && perms.canAddMouvementStock ? (
           <button className="btn btn-primary fw-bold" onClick={() => { setMouvementForm({ article_id: articles[0]?.id || 1, quantite: 1, type_mouvement: 'entree', notes: '' }); setShowMouvementModal(true); }}>
             <i className="bi bi-arrow-left-right me-2"></i>Nouveau mouvement
           </button>
@@ -135,7 +134,7 @@ export function StocksPage() {
       </div>
 
       {/* Tabs */}
-      <ul className="nav nav-pills mb-4 bg-white p-2 rounded shadow-sm">
+      <ul className="nav nav-pills mb-4 p-2 rounded shadow-sm">
         <li className="nav-item">
           <button className={`nav-link ${activeTab === 'articles' ? 'active' : ''}`} onClick={() => setActiveTab('articles')}>
             <i className="bi bi-box-seam me-2"></i>Articles & Matériaux
@@ -292,7 +291,7 @@ export function StocksPage() {
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
-              <div className="modal-header bg-primary text-white">
+              <div className="modal-header">
                 <h5 className="modal-title fw-bold">{selectedArticle ? 'Éditer l\'Article' : 'Nouveau Matériau / Article'}</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowArticleModal(false)}></button>
               </div>
@@ -340,7 +339,7 @@ export function StocksPage() {
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
-              <div className="modal-header bg-dark text-white">
+              <div className="modal-header">
                 <h5 className="modal-title fw-bold">Nouveau Mouvement de Stock</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowMouvementModal(false)}></button>
               </div>

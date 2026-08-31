@@ -28,6 +28,7 @@ def _require_permission(payload: dict[str, Any], permission: str) -> None:
         )
 
 
+@router.get("", response_model=list[AlerteList])
 @router.get("/", response_model=list[AlerteList])
 async def list_alertes(
     payload: CurrentUserPayload,

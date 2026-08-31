@@ -7,15 +7,36 @@ interface ProtectedRouteProps {
   allowedRoles?: string[]
 }
 
-export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
-  const { isAuthenticated, user, token } = useAuthStore()
-  const location = useLocation()
+function isTokenExpired(token: string | null): boolean {
+  if (!token) return true
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    const exp = payload.exp
+    if (!exp) return true
+    const now = Math.floor(Date.now() / 1000)
+    return now >= exp
+  } catch {
+    return true
+  }
+}
 
-  if (!isAuthenticated || !token) {
+export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
+  const { isAuthenticated, user, token, refreshToken } = useAuthStore()
+  const location = useLocation()
+  const storedRefreshToken = refreshToken || localStorage.getItem('refresh_token')
+
+  const expired = isTokenExpired(token)
+  if (!isAuthenticated && !storedRefreshToken) {
     return <Navigate to="/login" replace />
   }
 
-  const roleCode = user?.role_code || 'admin_entreprise'
+  if (expired && !storedRefreshToken) {
+    return <Navigate to="/login" replace />
+  }
+
+  // Par défaut on applique le rôle le moins privilégié (employé) afin de ne jamais
+  // sur-autoriser un utilisateur dont le rôle n'aurait pas pu être résolu.
+  const roleCode = user?.role_code || 'employe'
   const pathKey = '/' + location.pathname.split('/')[1]
 
   const allowed = allowedRoles || ROLE_MODULES[roleCode] || []

@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import type { Devis, Facture, Client, Contrat, Paiement } from '@/types'
 import { commercialService } from '@/services/commercial.service'
 import { useAuthStore } from '@/stores/auth.store'
+import { getRolePermissions } from '@/config/roles.config'
 
 export function CommercialPage() {
   const { user } = useAuthStore()
-  const roleCode = user?.role_code || 'employe'
-  const canCreateDevis = ['commercial', 'directeur'].includes(roleCode)
+  const perms = getRolePermissions(user?.role_code || '')
 
   const [activeTab, setActiveTab] = useState<'devis' | 'factures' | 'clients' | 'contrats' | 'paiements'>('devis')
 
@@ -109,15 +109,20 @@ export function CommercialPage() {
           <h2 className="mb-1"><i className="bi bi-cart me-2 text-primary"></i>Commercial & Facturation</h2>
           <p className="text-secondary mb-0">Gestion de la relation client, des devis, des contrats et du suivi des encaissements</p>
         </div>
-        {activeTab === 'devis' && canCreateDevis && (
+        {activeTab === 'devis' && perms.canCreateDevis && (
           <button className="btn btn-primary fw-bold" onClick={() => { setSelectedDevis(null); setDevisForm({ numero: `DEV-2026-00${devisList.length + 1}`, montant_ht: 0, tva: 20, statut: 'brouillon' }); setShowDevisModal(true); }}>
             <i className="bi bi-plus-lg me-2"></i>Nouveau Devis
+          </button>
+        )}
+        {activeTab === 'clients' && perms.canCreateClient && (
+          <button className="btn btn-primary fw-bold" onClick={() => { setSelectedClient(null); setClientForm({ nom: '', email: '', telephone: '', adresse: '' }); setShowClientModal(true); }}>
+            <i className="bi bi-person-plus me-2"></i>Nouveau Client
           </button>
         )}
       </div>
 
       {/* Tabs */}
-      <ul className="nav nav-pills mb-4 bg-white p-2 rounded shadow-sm">
+      <ul className="nav nav-pills mb-4 p-2 rounded shadow-sm">
         <li className="nav-item">
           <button className={`nav-link ${activeTab === 'devis' ? 'active' : ''}`} onClick={() => setActiveTab('devis')}>
             <i className="bi bi-file-earmark-text me-2"></i>Devis
@@ -311,7 +316,7 @@ export function CommercialPage() {
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
-              <div className="modal-header bg-primary text-white">
+              <div className="modal-header">
                 <h5 className="modal-title fw-bold">{selectedDevis ? 'Éditer le Devis' : 'Créer un Devis'}</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowDevisModal(false)}></button>
               </div>

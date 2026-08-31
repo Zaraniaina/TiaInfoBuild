@@ -44,3 +44,7 @@ class Utilisateur(Base):
     @property
     def role_code(self) -> str | None:
         return self.role.code if self.role else None
+
+    @property
+    def role_nom(self) -> str | None:
+        return self.role.nom if self.role else None

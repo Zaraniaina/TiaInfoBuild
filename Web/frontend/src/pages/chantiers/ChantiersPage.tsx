@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import type { Chantier } from '@/types'
 import { chantiersService } from '@/services/chantiers.service'
 import { useAuthStore } from '@/stores/auth.store'
+import { getRolePermissions } from '@/config/roles.config'
 
 export function ChantiersPage() {
   const { user } = useAuthStore()
   const roleCode = user?.role_code || 'employe'
-  const canCreateChantier = ['super_admin', 'admin_entreprise', 'directeur', 'chef_projet', 'chef_chantier'].includes(roleCode)
+  const perms = getRolePermissions(roleCode)
 
   const [chantiers, setChantiers] = useState<Chantier[]>([])
   const [loading, setLoading] = useState(true)
@@ -152,7 +153,7 @@ export function ChantiersPage() {
           <p className="text-secondary mb-0">Gestion et suivi des chantiers</p>
         </div>
 
-        {canCreateChantier && (
+        {perms.canCreateChantier && (
           <button className="btn btn-primary fw-bold" onClick={() => { setSelectedChantier(null); setFormData({}); setShowModal(true); }}>
             <i className="bi bi-plus-lg me-1"></i>Nouveau chantier
           </button>
@@ -270,11 +271,11 @@ export function ChantiersPage() {
                   <div className="row g-2 text-center border-top pt-3 mt-3 small">
                     <div className="col-6">
                       <span className="text-muted d-block">Début</span>
-                      <strong className="text-dark">{c.date_debut || 'Non définie'}</strong>
+                       <strong className="text-dark">{c.date_debut || 'Non définie'}</strong>
                     </div>
                     <div className="col-6">
                       <span className="text-muted d-block">Fin prévue</span>
-                      <strong className="text-dark">{c.date_fin_prevue || 'Non définie'}</strong>
+                       <strong className="text-dark">{c.date_fin_prevue || 'Non définie'}</strong>
                     </div>
                   </div>
                 </div>
@@ -308,7 +309,7 @@ export function ChantiersPage() {
                   <th className="d-none d-lg-table-cell">Budget prévu</th>
                   <th className="d-none d-lg-table-cell">Budget consommé</th>
                   <th>Statut</th>
-                  <th style={{ width: '120px' }}>Actions</th>
+                  <th className="text-end" style={{ width: '140px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -321,16 +322,22 @@ export function ChantiersPage() {
                     <td className="d-none d-lg-table-cell">{c.budget_prevu?.toLocaleString()} MGA</td>
                     <td className="d-none d-lg-table-cell text-danger fw-semibold">{c.budget_reel?.toLocaleString()} MGA</td>
                     <td>{getStatutBadge(c.statut)}</td>
-                    <td>
-                      <button className="btn btn-sm btn-outline-warning me-1" onClick={() => handleGenerateQR(c.id)} title="QR Pointage">
-                        <i className="bi bi-qr-code-scan"></i>
-                      </button>
-                      <button className="btn btn-sm btn-outline-primary me-1" onClick={() => { setSelectedChantier(c); setShowDetailModal(true); }}>
-                        <i className="bi bi-eye"></i>
-                      </button>
-                      <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setFormData(c); setShowModal(true); }}>
-                        <i className="bi bi-pencil"></i>
-                      </button>
+                    <td className="text-end">
+                      <div className="d-inline-flex gap-1 align-items-center justify-content-end">
+                        {perms.canScanQR && (
+                          <button className="btn btn-sm btn-outline-warning" onClick={() => handleGenerateQR(c.id)} title="QR Pointage">
+                            <i className="bi bi-qr-code-scan"></i>
+                          </button>
+                        )}
+                        <button className="btn btn-sm btn-outline-primary" onClick={() => { setSelectedChantier(c); setShowDetailModal(true); }}>
+                          <i className="bi bi-eye"></i>
+                        </button>
+                        {perms.canEditChantier && (
+                          <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setFormData(c); setShowModal(true); }}>
+                            <i className="bi bi-pencil"></i>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -345,7 +352,7 @@ export function ChantiersPage() {
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content">
-              <div className="modal-header bg-primary text-white">
+              <div className="modal-header">
                 <h5 className="modal-title fw-bold">
                   <i className="bi bi-building me-2"></i>{selectedChantier ? 'Éditer le Chantier' : 'Nouveau chantier'}
                 </h5>
@@ -603,7 +610,7 @@ export function ChantiersPage() {
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-xl modal-dialog-centered">
             <div className="modal-content">
-              <div className="modal-header bg-dark text-white">
+              <div className="modal-header">
                 <div>
                   <h5 className="modal-title fw-bold mb-0">{selectedChantier.nom}</h5>
                   <small className="font-monospace text-muted">{selectedChantier.numero}</small>
@@ -755,7 +762,7 @@ export function ChantiersPage() {
                 <button type="button" className="btn-close" onClick={() => setShowQRModal(false)}></button>
               </div>
               <div className="modal-body py-4">
-                <div className="bg-white p-4 rounded d-inline-block mb-3">
+                <div className="p-4 rounded d-inline-block mb-3" style={{ background: 'var(--tia-bg-surface)' }}>
                   <div style={{ width: '200px', height: '200px', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.8rem' }}>
                     QR TOKEN:<br/>{qrData.qr_token.slice(0, 20)}...
                   </div>

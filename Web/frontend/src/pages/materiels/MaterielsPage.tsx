@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react'
 import type { Materiel } from '@/types'
 import { materielsService } from '@/services/materiels.service'
+import { useAuthStore } from '@/stores/auth.store'
+import { getRolePermissions } from '@/config/roles.config'
 
 export function MaterielsPage() {
+  const { user } = useAuthStore()
+  const perms = getRolePermissions(user?.role_code || 'employe')
   const [materiels, setMateriels] = useState<Materiel[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -63,9 +67,11 @@ export function MaterielsPage() {
           <h2 className="mb-1"><i className="bi bi-tools me-2 text-info"></i>Gestion du Parc Matériel</h2>
           <p className="text-secondary mb-0">Engins, véhicules, équipements et suivis d'interventions de maintenance</p>
         </div>
-        <button className="btn btn-info text-white fw-bold" onClick={() => setShowModal(true)}>
-          <i className="bi bi-plus-circle me-2"></i>Nouveau Matériel
-        </button>
+        {perms.canCreateMateriel && (
+          <button className="btn btn-info text-white fw-bold" onClick={() => setShowModal(true)}>
+            <i className="bi bi-plus-circle me-2"></i>Nouveau Matériel
+          </button>
+        )}
       </div>
 
       {loading ? (

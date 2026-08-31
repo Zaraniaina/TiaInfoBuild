@@ -3,8 +3,10 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthStore } from './stores/auth.store'
+import { useToastStore } from '@/stores/toast.store'
 import { api } from './services/api'
 import App from './App'
+import { ToastContainer } from '@/components/ui/ToastContainer'
 import './styles/index.css'
 
 const queryClient = new QueryClient({
@@ -33,6 +35,12 @@ function Root() {
         if (data?.user) setUser(data.user)
       } catch (err) {
         console.error('[Root] /auth/me failed:', err)
+        useToastStore.getState().addToast({
+          type: 'error',
+          title: 'Session expirée',
+          message: 'Veuillez vous reconnecter.',
+          duration: 5000,
+        })
         logout()
       } finally {
         setReady(true)
@@ -56,6 +64,7 @@ function Root() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <App />
+          <ToastContainer />
         </BrowserRouter>
       </QueryClientProvider>
     </StrictMode>

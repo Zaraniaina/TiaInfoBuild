@@ -4,9 +4,10 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '@/hooks/useAuth'
+import { formatErrorMessage } from '@/utils/errorMessage'
 
 const loginSchema = z.object({
-  email: z.string().email('Email invalide'),
+  email: z.string().email('Adresse email invalide'),
   password: z.string().min(1, 'Mot de passe requis'),
 })
 
@@ -28,7 +29,7 @@ export function LoginPage() {
     try {
       await loginUser(data)
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Connexion échouée'
+      const message = formatErrorMessage(err, 'Identifiants invalides ou problème de connexion.')
       setServerError(message)
     } finally {
       setIsLoading(false)
@@ -38,110 +39,121 @@ export function LoginPage() {
   return (
     <div className="auth-shell">
       {/* Panneau visuel gauche */}
-      <div className="auth-visual blueprint-pattern text-white p-5 d-none d-lg-flex flex-column justify-content-between">
-        <div className="d-flex align-items-center gap-2">
-          <div
-            className="mark"
-            style={{
-              background: 'var(--tia-amber)',
-              color: 'var(--tia-navy)',
-              width: '40px',
-              height: '40px',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: 'var(--font-display)',
-              fontWeight: 800
-            }}
-          >
-            TB
+      <div className="auth-visual d-none d-lg-flex flex-column justify-content-between">
+        <div className="d-flex align-items-center gap-3">
+          <div className="mark">
+            <i className="bi bi-building"></i>
           </div>
-          <div className="font-display fw-bold fs-5">TIA INFO BUILD</div>
+          <div>
+            <div className="brand-name">TIA INFO BUILD</div>
+            <div className="brand-sub">Plateforme BTP</div>
+          </div>
         </div>
 
-        <div>
-          <div className="eyebrow mb-2" style={{ color: 'var(--tia-amber)' }}>Plateforme de gestion BTP</div>
-          <h2 className="font-display fw-bold mb-3" style={{ fontSize: '2rem', lineHeight: 1.15 }}>
-            Un seul plan de suivi<br />pour tous vos chantiers.
+        <div className="auth-visual-content">
+          <div className="eyebrow mb-3">Pilotage BTP</div>
+          <h2 className="auth-visual-title">
+            Un seul tableau de bord<br />
+            pour tous vos chantiers.
           </h2>
-          <p className="mb-0 text-white-50" style={{ maxWidth: '26rem' }}>
+          <p className="auth-visual-text">
             Chantiers, ressources humaines, matériels, stocks et finances —
-            pilotés depuis un tableau de bord unique, accessible du bureau au terrain.
+            pilotés depuis un espace unique, accessible du bureau au terrain.
           </p>
+          <div className="auth-visual-stats mt-4">
+            <div className="auth-stat">
+              <div className="auth-stat-value">100%</div>
+              <div className="auth-stat-label">Suivi temps réel</div>
+            </div>
+            <div className="auth-stat">
+              <div className="auth-stat-value">24/7</div>
+              <div className="auth-stat-label">Accès sécurisé</div>
+            </div>
+            <div className="auth-stat">
+              <div className="auth-stat-value">+50</div>
+              <div className="auth-stat-label">Modules actifs</div>
+            </div>
+          </div>
         </div>
 
-        <div className="small text-white-50">© 2026 TIA INFO BUILD — Madagascar</div>
+        <div className="small auth-visual-footer">© 2026 TIA INFO BUILD — Madagascar</div>
       </div>
 
       {/* Formulaire de connexion */}
-      <div className="auth-form-side d-flex align-items-center justify-content-center p-4">
-        <div className="auth-card w-100" style={{ maxWidth: '420px' }}>
-          <div className="mb-4 text-center text-lg-start">
-            <div className="eyebrow mb-1 text-primary">Espace de connexion</div>
-            <h1 className="font-display fw-bold text-dark" style={{ fontSize: '1.6rem' }}>Bienvenue</h1>
-            <p className="text-secondary mb-0">Connectez-vous pour accéder à votre espace local.</p>
+      <div className="auth-form-side">
+        <div className="auth-card">
+          <div className="auth-card-header mb-4">
+            <div className="eyebrow mb-2">Espace de connexion</div>
+            <h1 className="auth-card-title">Bienvenue</h1>
+            <p className="auth-card-subtitle">Connectez-vous pour accéder à votre espace de gestion BTP.</p>
           </div>
 
           {serverError && (
-            <div className="alert alert-danger" role="alert">
+            <div className="alert alert-danger auth-alert" role="alert">
+              <i className="bi bi-exclamation-circle me-2"></i>
               {serverError}
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="mb-3">
-              <label htmlFor="email" className="form-label fw-semibold">Adresse email</label>
-              <div className="input-group">
-                <span className="input-group-text"><i className="bi bi-envelope"></i></span>
+          <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
+            <div className="auth-field">
+              <label htmlFor="email" className="auth-label">Adresse email</label>
+              <div className="auth-input-group">
+                <span className="auth-input-icon">
+                  <i className="bi bi-envelope"></i>
+                </span>
                 <input
                   id="email"
                   type="email"
-                  className="form-control"
+                  className="form-control auth-input"
                   placeholder="votre@email.com"
                   {...register('email')}
                 />
               </div>
               {errors.email && (
-                <div className="text-danger mt-1 small">{errors.email.message}</div>
+                <div className="auth-error"><i className="bi bi-exclamation-triangle me-1"></i>{errors.email.message}</div>
               )}
             </div>
 
-            <div className="mb-3">
-              <label htmlFor="password" className="form-label fw-semibold">Mot de passe</label>
-              <div className="input-group">
-                <span className="input-group-text"><i className="bi bi-lock"></i></span>
+            <div className="auth-field">
+              <label htmlFor="password" className="auth-label">Mot de passe</label>
+              <div className="auth-input-group">
+                <span className="auth-input-icon">
+                  <i className="bi bi-lock"></i>
+                </span>
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  className="form-control"
+                  className="form-control auth-input"
                   placeholder="••••••••"
                   {...register('password')}
                 />
                 <button
-                  className="btn btn-outline-secondary"
                   type="button"
+                  className="auth-password-toggle"
                   onClick={() => setShowPassword(!showPassword)}
-                  aria-label="Afficher/masquer le mot de passe"
+                  aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                 >
                   <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
                 </button>
               </div>
               {errors.password && (
-                <div className="text-danger mt-1 small">{errors.password.message}</div>
+                <div className="auth-error"><i className="bi bi-exclamation-triangle me-1"></i>{errors.password.message}</div>
               )}
             </div>
 
-            <div className="mb-3 d-flex align-items-center justify-content-between">
+            <div className="auth-field d-flex align-items-center justify-content-between mb-4">
               <div className="form-check">
-                <input className="form-check-input" type="checkbox" id="rememberMe" />
-                <label className="form-check-label small text-secondary" htmlFor="rememberMe">Se souvenir de moi</label>
+                <input className="form-check-input auth-checkbox" type="checkbox" id="rememberMe" />
+                <label className="form-check-label auth-checkbox-label" htmlFor="rememberMe">
+                  Se souvenir de moi
+                </label>
               </div>
             </div>
 
             <button
               type="submit"
-              className="btn btn-tia-primary w-100 py-2 mt-1 fw-bold"
+              className="btn btn-auth-primary w-100 py-2.5 fw-bold"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -157,11 +169,13 @@ export function LoginPage() {
             </button>
           </form>
 
-          <div className="text-center mt-4 small">
-            Pas encore d'entreprise ?{' '}
-            <Link to="/register" className="text-decoration-none fw-semibold" style={{ color: 'var(--tia-amber)' }}>
-              Créer mon entreprise
-            </Link>
+          <div className="auth-footer mt-4 text-center">
+            <p className="auth-footer-text">
+              Pas encore d’entreprise ?{' '}
+              <Link to="/register" className="auth-link">
+                Créer mon entreprise <i className="bi bi-arrow-right-short"></i>
+              </Link>
+            </p>
           </div>
         </div>
       </div>

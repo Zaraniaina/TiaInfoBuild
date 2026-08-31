@@ -1,40 +1,71 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { api } from '@/services/api'
+import { useToastStore } from '@/stores/toast.store'
+import { formatErrorMessage } from '@/utils/errorMessage'
+
+const passwordPolicy = z
+  .string()
+  .min(8, 'Le mot de passe doit contenir au moins 8 caractères')
+  .regex(/[A-Z]/, 'Le mot de passe doit contenir au moins une majuscule')
+  .regex(/[a-z]/, 'Le mot de passe doit contenir au moins une minuscule')
+  .regex(/[0-9]/, 'Le mot de passe doit contenir au moins un chiffre')
+  .regex(/[^A-Za-z0-9]/, 'Le mot de passe doit contenir au moins un caractère spécial')
+
+const registerSchema = z.object({
+  nom_entreprise: z.string().min(2, 'Nom d\'entreprise requis'),
+  entreprise_email: z.string().email('Email invalide').optional().or(z.literal('')),
+  adresse: z.string().optional().or(z.literal('')),
+  telephone: z.string().optional().or(z.literal('')),
+  admin_prenom: z.string().min(1, 'Prénom requis'),
+  admin_nom: z.string().min(1, 'Nom requis'),
+  admin_email: z.string().email('Email invalide'),
+  password: passwordPolicy,
+  password_confirm: z.string()
+}).refine((data) => data.password === data.password_confirm, {
+  message: 'Les mots de passe ne correspondent pas.',
+  path: ['password_confirm'],
+})
+
+type RegisterFormData = z.infer<typeof registerSchema>
+
+function normalizePayload(data: RegisterFormData) {
+  const payload: Record<string, unknown> = { ...data }
+  for (const key of ['entreprise_email', 'adresse', 'telephone'] as const) {
+    if (payload[key] === '') delete payload[key]
+  }
+  return payload
+}
 
 export function RegisterPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  const [form, setForm] = useState({
-    nom_entreprise: '',
-    entreprise_email: '',
-    adresse: '',
-    telephone: '',
-    admin_prenom: '',
-    admin_nom: '',
-    admin_email: '',
-    password: '',
-    password_confirm: ''
+  const { register: registerField, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (data: RegisterFormData) => {
     setError(null)
-
-    if (form.password !== form.password_confirm) {
-      setError('Les mots de passe ne correspondent pas.')
-      return
-    }
-
     setLoading(true)
     try {
-      await api.post('/auth/register-entreprise', form)
-      alert('Entreprise créée avec succès ! Connectez-vous.')
+      await api.post('/auth/register-entreprise', normalizePayload(data))
+      useToastStore.getState().addToast({
+        type: 'success',
+        title: 'Entreprise créée',
+        message: 'Votre entreprise et votre compte administrateur ont été créés avec succès. Veuillez vous connecter.',
+        duration: 5000,
+      })
       navigate('/login')
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Erreur lors de la création de l\'entreprise.')
+    } catch (err: unknown) {
+      const msg = formatErrorMessage(err, 'Erreur lors de la création de l\'entreprise.')
+      setError(msg)
     } finally {
       setLoading(false)
     }
@@ -42,181 +73,252 @@ export function RegisterPage() {
 
   return (
     <div className="auth-shell">
-      <div className="auth-visual blueprint-pattern text-white p-5 d-none d-lg-flex flex-column justify-content-between">
-        <div className="d-flex align-items-center gap-2">
-          <div
-            className="mark"
-            style={{
-              background: 'var(--tia-amber)',
-              color: 'var(--tia-navy)',
-              width: '40px',
-              height: '40px',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: 'var(--font-display)',
-              fontWeight: 800
-            }}
-          >
-            TB
+      {/* Panneau Visuel Gauche */}
+      <div className="auth-visual d-none d-lg-flex flex-column justify-content-between">
+        <div className="d-flex align-items-center gap-3">
+          <div className="mark">
+            <i className="bi bi-building"></i>
           </div>
-          <div className="font-display fw-bold fs-5">TIA INFO BUILD</div>
+          <div>
+            <div className="brand-name">TIA INFO BUILD</div>
+            <div className="brand-sub">Plateforme BTP</div>
+          </div>
         </div>
 
-        <div>
-          <div className="eyebrow mb-2" style={{ color: 'var(--tia-amber)' }}>
-            Création de compte entreprise
-          </div>
-          <h2 className="font-display fw-bold mb-3" style={{ fontSize: '2rem', lineHeight: 1.15 }}>
-            Créez votre entreprise en 1 minute,<br />
-            vous gérez le reste depuis votre espace local.
+        <div className="auth-visual-content">
+          <div className="eyebrow mb-3">Inscription Entreprise</div>
+          <h2 className="auth-visual-title">
+            Créez votre entreprise<br />
+            en quelques minutes.
           </h2>
-          <p className="mb-0 text-white-50" style={{ maxWidth: '26rem' }}>
-            Inscrivez votre entreprise et devenez administrateur.
-            Vous pourrez ensuite ajouter vos employés, créer des chantiers,
-            gérer vos matériels et suivre vos finances — le tout depuis un espace sécurisé.
+          <p className="auth-visual-text">
+            Inscrivez votre entreprise pour piloter vos chantiers, vos équipes RH, vos matériels
+            et vos finances depuis un espace unique et sécurisé.
           </p>
         </div>
 
-        <div className="small text-white-50">© 2026 TIA INFO BUILD — Madagascar</div>
+        <div className="small auth-visual-footer">© 2026 TIA INFO BUILD — Madagascar</div>
       </div>
 
-      <div className="auth-form-side d-flex align-items-center justify-content-center p-4 overflow-auto">
-        <div className="auth-card w-100 py-3" style={{ maxWidth: '480px' }}>
-          <div className="mb-4 text-center text-lg-start">
-            <div className="eyebrow mb-1 text-primary">Créer une entreprise</div>
-            <h1 className="font-display fw-bold text-dark" style={{ fontSize: '1.6rem' }}>Inscription</h1>
-            <p className="text-secondary mb-0">Créez votre compte administrateur en même temps que votre entreprise.</p>
+      {/* Formulaire d'inscription */}
+      <div className="auth-form-side">
+        <div className="auth-card auth-card-wide">
+          <div className="auth-card-header mb-4">
+            <div className="eyebrow mb-2">Création de compte</div>
+            <h1 className="auth-card-title">Inscrire votre entreprise</h1>
+            <p className="auth-card-subtitle">Remplissez les informations ci-dessous pour créer votre espace administrateur.</p>
           </div>
 
-          {error && <div className="alert alert-danger" role="alert">{error}</div>}
-
-          <form onSubmit={handleSubmit}>
-            <div className="eyebrow mb-2 text-primary" style={{ fontSize: '0.65rem' }}>ENTREPRISE</div>
-
-            <div className="mb-3">
-              <label className="form-label fw-semibold">Nom de l'entreprise *</label>
-              <input
-                type="text"
-                className="form-control"
-                required
-                value={form.nom_entreprise}
-                onChange={e => setForm({ ...form, nom_entreprise: e.target.value })}
-              />
+          {error && (
+            <div className="alert alert-danger auth-alert" role="alert">
+              <i className="bi bi-exclamation-circle me-2"></i>
+              {error}
             </div>
+          )}
 
-            <div className="mb-3">
-              <label className="form-label fw-semibold">Email de l'entreprise</label>
-              <input
-                type="email"
-                className="form-control"
-                value={form.entreprise_email}
-                onChange={e => setForm({ ...form, entreprise_email: e.target.value })}
-              />
-            </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
+            <div className="auth-section-label mb-2">Informations Entreprise</div>
 
-            <div className="row g-2 mb-3">
-              <div className="col-6">
-                <label className="form-label fw-semibold">Adresse</label>
+            <div className="auth-field">
+              <label htmlFor="nom_entreprise" className="auth-label">Nom de l'entreprise *</label>
+              <div className="auth-input-group">
+                <span className="auth-input-icon"><i className="bi bi-building"></i></span>
                 <input
+                  id="nom_entreprise"
                   type="text"
-                  className="form-control"
-                  value={form.adresse}
-                  onChange={e => setForm({ ...form, adresse: e.target.value })}
+                  className="form-control auth-input"
+                  placeholder="Ex: BTP Océan Indien"
+                  {...registerField('nom_entreprise')}
                 />
               </div>
-              <div className="col-6">
-                <label className="form-label fw-semibold">Téléphone</label>
+              {errors.nom_entreprise && (
+                <div className="auth-error"><i className="bi bi-exclamation-triangle me-1"></i>{errors.nom_entreprise.message}</div>
+              )}
+            </div>
+
+            <div className="auth-field">
+              <label htmlFor="entreprise_email" className="auth-label">Email professionnel de l'entreprise</label>
+              <div className="auth-input-group">
+                <span className="auth-input-icon"><i className="bi bi-envelope"></i></span>
                 <input
-                  type="text"
-                  className="form-control"
-                  value={form.telephone}
-                  onChange={e => setForm({ ...form, telephone: e.target.value })}
+                  id="entreprise_email"
+                  type="email"
+                  className="form-control auth-input"
+                  placeholder="contact@entreprise.mg"
+                  {...registerField('entreprise_email')}
                 />
               </div>
             </div>
-
-            <hr style={{ borderColor: 'var(--tia-line)', margin: '1.5rem 0' }} />
-
-            <div className="eyebrow mb-2 text-primary" style={{ fontSize: '0.65rem' }}>RESPONSABLE (ADMINISTRATEUR)</div>
 
             <div className="row g-3 mb-3">
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">Prénom *</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  required
-                  value={form.admin_prenom}
-                  onChange={e => setForm({ ...form, admin_prenom: e.target.value })}
-                />
+              <div className="col-12 col-sm-6">
+                <div className="auth-field mb-0">
+                  <label htmlFor="adresse" className="auth-label">Adresse siège</label>
+                  <div className="auth-input-group">
+                    <span className="auth-input-icon"><i className="bi bi-geo-alt"></i></span>
+                    <input
+                      id="adresse"
+                      type="text"
+                      className="form-control auth-input"
+                      placeholder="Antananarivo"
+                      {...registerField('adresse')}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">Nom *</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  required
-                  value={form.admin_nom}
-                  onChange={e => setForm({ ...form, admin_nom: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label fw-semibold">Email du responsable *</label>
-              <input
-                type="email"
-                className="form-control"
-                required
-                value={form.admin_email}
-                onChange={e => setForm({ ...form, admin_email: e.target.value })}
-              />
-            </div>
-
-            <div className="row g-2 mb-3">
-              <div className="col-6">
-                <label className="form-label fw-semibold">Mot de passe *</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  required
-                  value={form.password}
-                  onChange={e => setForm({ ...form, password: e.target.value })}
-                />
-              </div>
-              <div className="col-6">
-                <label className="form-label fw-semibold">Confirmation *</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  required
-                  value={form.password_confirm}
-                  onChange={e => setForm({ ...form, password_confirm: e.target.value })}
-                />
+              <div className="col-12 col-sm-6">
+                <div className="auth-field mb-0">
+                  <label htmlFor="telephone" className="auth-label">Téléphone</label>
+                  <div className="auth-input-group">
+                    <span className="auth-input-icon"><i className="bi bi-telephone"></i></span>
+                    <input
+                      id="telephone"
+                      type="text"
+                      className="form-control auth-input"
+                      placeholder="+261 34 00 000 00"
+                      {...registerField('telephone')}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
-            <button type="submit" className="btn btn-tia-primary w-100 py-2 mt-2 fw-bold" disabled={loading}>
+            <hr className="auth-divider" />
+
+            <div className="auth-section-label mb-2">Administrateur du compte</div>
+
+            <div className="row g-3 mb-3">
+              <div className="col-12 col-sm-6">
+                <div className="auth-field mb-0">
+                  <label htmlFor="admin_prenom" className="auth-label">Prénom *</label>
+                  <div className="auth-input-group">
+                    <span className="auth-input-icon"><i className="bi bi-person"></i></span>
+                    <input
+                      id="admin_prenom"
+                      type="text"
+                      className="form-control auth-input"
+                      placeholder="Jean"
+                      {...registerField('admin_prenom')}
+                    />
+                  </div>
+                  {errors.admin_prenom && (
+                    <div className="auth-error"><i className="bi bi-exclamation-triangle me-1"></i>{errors.admin_prenom.message}</div>
+                  )}
+                </div>
+              </div>
+              <div className="col-12 col-sm-6">
+                <div className="auth-field mb-0">
+                  <label htmlFor="admin_nom" className="auth-label">Nom *</label>
+                  <div className="auth-input-group">
+                    <span className="auth-input-icon"><i className="bi bi-person-badge"></i></span>
+                    <input
+                      id="admin_nom"
+                      type="text"
+                      className="form-control auth-input"
+                      placeholder="Rakoto"
+                      {...registerField('admin_nom')}
+                    />
+                  </div>
+                  {errors.admin_nom && (
+                    <div className="auth-error"><i className="bi bi-exclamation-triangle me-1"></i>{errors.admin_nom.message}</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="auth-field">
+              <label htmlFor="admin_email" className="auth-label">Email de connexion de l'administrateur *</label>
+              <div className="auth-input-group">
+                <span className="auth-input-icon"><i className="bi bi-envelope-at"></i></span>
+                <input
+                  id="admin_email"
+                  type="email"
+                  className="form-control auth-input"
+                  placeholder="admin@entreprise.mg"
+                  {...registerField('admin_email')}
+                />
+              </div>
+              {errors.admin_email && (
+                <div className="auth-error"><i className="bi bi-exclamation-triangle me-1"></i>{errors.admin_email.message}</div>
+              )}
+            </div>
+
+            <div className="row g-3 mb-3">
+              <div className="col-12 col-sm-6">
+                <div className="auth-field mb-0">
+                  <label htmlFor="password" className="auth-label">Mot de passe *</label>
+                  <div className="auth-input-group">
+                    <span className="auth-input-icon"><i className="bi bi-lock"></i></span>
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      className="form-control auth-input"
+                      placeholder="••••••••"
+                      {...registerField('password')}
+                    />
+                    <button
+                      type="button"
+                      className="auth-password-toggle"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label="Toggle password"
+                    >
+                      <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <div className="auth-error"><i className="bi bi-exclamation-triangle me-1"></i>{errors.password.message}</div>
+                  )}
+                </div>
+              </div>
+              <div className="col-12 col-sm-6">
+                <div className="auth-field mb-0">
+                  <label htmlFor="password_confirm" className="auth-label">Confirmation *</label>
+                  <div className="auth-input-group">
+                    <span className="auth-input-icon"><i className="bi bi-shield-lock"></i></span>
+                    <input
+                      id="password_confirm"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      className="form-control auth-input"
+                      placeholder="••••••••"
+                      {...registerField('password_confirm')}
+                    />
+                    <button
+                      type="button"
+                      className="auth-password-toggle"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      aria-label="Toggle confirm password"
+                    >
+                      <i className={`bi ${showConfirmPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                    </button>
+                  </div>
+                  {errors.password_confirm && (
+                    <div className="auth-error"><i className="bi bi-exclamation-triangle me-1"></i>{errors.password_confirm.message}</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" className="btn btn-auth-primary w-100 py-2.5 fw-bold mt-3" disabled={loading}>
               {loading ? (
                 <>
                   <span className="spinner-border spinner-border-sm me-2"></span>
-                  Création...
+                  Création de votre entreprise...
                 </>
               ) : (
                 <>
-                  <i className="bi bi-rocket me-2"></i>Créer mon entreprise
+                  <i className="bi bi-rocket-takeoff me-2"></i>Créer mon entreprise
                 </>
               )}
             </button>
           </form>
 
-          <div className="text-center mt-3 small">
-            Vous avez déjà un compte ?{' '}
-            <a href="/login" className="text-decoration-none fw-semibold" style={{ color: 'var(--tia-amber)' }}>
-              Se connecter
-            </a>
+          <div className="auth-footer mt-4 text-center">
+            <p className="auth-footer-text">
+              Vous avez déjà un compte ?{' '}
+              <Link to="/login" className="auth-link">
+                Se connecter <i className="bi bi-arrow-right-short"></i>
+              </Link>
+            </p>
           </div>
         </div>
       </div>

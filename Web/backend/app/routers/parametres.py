@@ -3,10 +3,10 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.core.permissions import PERMISSION_MAP
+from app.core.permissions import PERMISSION_MAP, Role
 from app.database import get_db
 from app.models.entreprise import Entreprise
-from app.models.role import Role
+from app.models.role import Role as RoleModel
 from app.models.utilisateur import Utilisateur
 from app.models.preference import Preference
 from app.models.historique_connexion import HistoriqueConnexion
@@ -108,17 +108,36 @@ async def update_profile(payload: CurrentUserPayload, db: DbDep, data: Utilisate
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur non trouvé")
     obj_in = data.model_dump(exclude_unset=True)
+    # Filtrer uniquement les champs autorisés pour la modification du profil personnel
+    allowed_profile_fields = {"nom", "prenom", "telephone", "email"}
     for field, value in obj_in.items():
-        setattr(user, field, value)
+        if field in allowed_profile_fields and value is not None:
+            setattr(user, field, value)
     await db.flush()
-    await db.refresh(user)
-    return {"utilisateur": user}
+    # Retourner un objet sérialisable sans db.refresh() (évite les erreurs selectin)
+    return {
+        "utilisateur": {
+            "id": user.id,
+            "nom": user.nom,
+            "prenom": user.prenom,
+            "email": user.email,
+            "telephone": user.telephone,
+            "role_code": user.role_code,
+            "entreprise_id": user.entreprise_id,
+            "must_change_password": user.must_change_password,
+            "statut": user.statut,
+        }
+    }
 
 
 @router.get("/roles")
 async def list_roles(payload: CurrentUserPayload, db: DbDep):
     _require_permission(payload, "parametres:read")
-    result = await db.execute(select(Role).order_by(Role.id))
+    role_code = payload.get("role_code")
+    query = select(RoleModel).order_by(RoleModel.id)
+    if role_code != Role.SUPER_ADMIN:
+        query = query.where(RoleModel.code != "super_admin")
+    result = await db.execute(query)
     roles = result.scalars().all()
     return [RoleResponse.model_validate(role) for role in roles]
 
