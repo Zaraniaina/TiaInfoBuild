@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import type { Chantier } from '@/types'
 import { chantiersService } from '@/services/chantiers.service'
 import { useAuthStore } from '@/stores/auth.store'
+import { getRolePermissions } from '@/config/roles.config'
 
 export function ChantiersPage() {
   const { user } = useAuthStore()
   const roleCode = user?.role_code || 'employe'
-  const canCreateChantier = ['super_admin', 'admin_entreprise', 'directeur', 'chef_projet', 'chef_chantier'].includes(roleCode)
+  const perms = getRolePermissions(roleCode)
 
   const [chantiers, setChantiers] = useState<Chantier[]>([])
   const [loading, setLoading] = useState(true)
@@ -152,7 +153,7 @@ export function ChantiersPage() {
           <p className="text-secondary mb-0">Gestion et suivi des chantiers</p>
         </div>
 
-        {canCreateChantier && (
+        {perms.canCreateChantier && (
           <button className="btn btn-primary fw-bold" onClick={() => { setSelectedChantier(null); setFormData({}); setShowModal(true); }}>
             <i className="bi bi-plus-lg me-1"></i>Nouveau chantier
           </button>
@@ -322,15 +323,19 @@ export function ChantiersPage() {
                     <td className="d-none d-lg-table-cell text-danger fw-semibold">{c.budget_reel?.toLocaleString()} MGA</td>
                     <td>{getStatutBadge(c.statut)}</td>
                     <td>
-                      <button className="btn btn-sm btn-outline-warning me-1" onClick={() => handleGenerateQR(c.id)} title="QR Pointage">
-                        <i className="bi bi-qr-code-scan"></i>
-                      </button>
+                      {perms.canScanQR && (
+                        <button className="btn btn-sm btn-outline-warning me-1" onClick={() => handleGenerateQR(c.id)} title="QR Pointage">
+                          <i className="bi bi-qr-code-scan"></i>
+                        </button>
+                      )}
                       <button className="btn btn-sm btn-outline-primary me-1" onClick={() => { setSelectedChantier(c); setShowDetailModal(true); }}>
                         <i className="bi bi-eye"></i>
                       </button>
-                      <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setFormData(c); setShowModal(true); }}>
-                        <i className="bi bi-pencil"></i>
-                      </button>
+                      {perms.canEditChantier && (
+                        <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setFormData(c); setShowModal(true); }}>
+                          <i className="bi bi-pencil"></i>
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
