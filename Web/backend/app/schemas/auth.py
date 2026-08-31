@@ -82,11 +82,11 @@ class ChangePasswordRequest(BaseModel):
 
     old_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=8)
-    confirm_password: str = Field(..., min_length=8)
+    confirm_password: str | None = Field(default=None)
 
     @model_validator(mode="after")
     def check_passwords_match(self) -> "ChangePasswordRequest":
-        if self.new_password != self.confirm_password:
+        if self.confirm_password is not None and self.new_password != self.confirm_password:
             raise ValueError("Les mots de passe ne correspondent pas")
         return self
 

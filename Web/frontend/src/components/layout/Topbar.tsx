@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUIStore } from '@/stores/ui.store'
 import { useToastStore } from '@/stores/toast.store'
@@ -8,24 +7,29 @@ import { api } from '@/services/api'
 import { formatErrorMessage } from '@/utils/errorMessage'
 
 export function Topbar() {
-  const navigate = useNavigate()
   const { user, setUser, logout } = useAuthStore()
   const { toggleSidebar, sidebarOpen, theme, setTheme, hydrateThemeFromBackend } = useUIStore()
   const [notifications, setNotifications] = useState<Array<{ id: number; titre: string }>>([])
-  
+
+  // Dropdowns React (pas de Bootstrap JS)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showNotifMenu, setShowNotifMenu] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+  const notifMenuRef = useRef<HTMLDivElement>(null)
+
   // Modales
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
-  
+
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   // Formulaires
   const [profileForm, setProfileForm] = useState({
-    nom: user?.nom || '',
-    prenom: user?.prenom || '',
-    email: user?.email || '',
+    nom: '',
+    prenom: '',
+    email: '',
     telephone: '',
   })
 
@@ -35,6 +39,20 @@ export function Topbar() {
     confirm_password: '',
   })
   const [passwordError, setPasswordError] = useState<string | null>(null)
+
+  // Fermer les menus au clic extérieur
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false)
+      }
+      if (notifMenuRef.current && !notifMenuRef.current.contains(e.target as Node)) {
+        setShowNotifMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -61,6 +79,15 @@ export function Topbar() {
     }
   }, [user])
 
+  // Écouter l'événement global pour ouvrir la modale mot de passe (depuis Layout.tsx)
+  useEffect(() => {
+    const handler = () => {
+      handleOpenPassword()
+    }
+    window.addEventListener('open-change-password-modal', handler)
+    return () => window.removeEventListener('open-change-password-modal', handler)
+  }, [])
+
   const confirmLogout = async () => {
     setIsLoggingOut(true)
     try {
@@ -68,7 +95,7 @@ export function Topbar() {
       if (refresh) await api.post('/auth/logout', { refresh_token: refresh })
     } catch { /* ignore */ }
     logout()
-    navigate('/login')
+    window.location.href = '/login'
   }
 
   const handleOpenProfile = () => {
@@ -78,6 +105,7 @@ export function Topbar() {
       email: user?.email || '',
       telephone: '',
     })
+    setShowUserMenu(false)
     setShowProfileModal(true)
   }
 
@@ -87,12 +115,15 @@ export function Topbar() {
     try {
       const res = await api.put('/parametres/profile', profileForm)
       const updatedUser = res.data?.utilisateur || res.data
-      if (updatedUser) {
+      if (updatedUser && user) {
         setUser({
-          ...user!,
-          nom: updatedUser.nom || profileForm.nom,
-          prenom: updatedUser.prenom || profileForm.prenom,
-          email: updatedUser.email || profileForm.email,
+          ...user,
+          nom: updatedUser.nom ?? user.nom,
+          prenom: updatedUser.prenom ?? user.prenom,
+          email: updatedUser.email ?? user.email,
+          telephone: updatedUser.telephone ?? user.telephone,
+          must_change_password: updatedUser.must_change_password ?? user.must_change_password,
+          statut: updatedUser.statut ?? user.statut,
         })
       }
       useToastStore.getState().addToast({
@@ -118,6 +149,7 @@ export function Topbar() {
   const handleOpenPassword = () => {
     setPasswordForm({ old_password: '', new_password: '', confirm_password: '' })
     setPasswordError(null)
+    setShowUserMenu(false)
     setShowPasswordModal(true)
   }
 
@@ -145,12 +177,18 @@ export function Topbar() {
 
     setIsSaving(true)
     try {
-      await api.post('/auth/change-password', {
+      const res = await api.post('/auth/change-password', {
         old_password: passwordForm.old_password,
         new_password: passwordForm.new_password,
       })
+      // Mettre à jour le store avec les données retournées par le backend
+      const updatedUser = res.data?.user
       if (user) {
-        setUser({ ...user, must_change_password: false } as any)
+        setUser({
+          ...user,
+          must_change_password: false,
+          ...(updatedUser || {}),
+        })
       }
       useToastStore.getState().addToast({
         type: 'success',
@@ -205,56 +243,77 @@ export function Topbar() {
           <span className="theme-indicator" aria-hidden="true"></span>
         </button>
 
-        <div className="topbar-notifications dropdown">
-          <button className="btn btn-link notification-btn" data-bs-toggle="dropdown" aria-label="Notifications">
+        {/* Notifications — dropdown React */}
+        <div className="topbar-notifications" ref={notifMenuRef} style={{ position: 'relative' }}>
+          <button
+            className="btn btn-link notification-btn"
+            aria-label="Notifications"
+            onClick={() => { setShowNotifMenu(v => !v); setShowUserMenu(false) }}
+          >
             <i className="bi bi-bell"></i>
             {notifications.length > 0 && (
               <span className="notification-badge">{notifications.length}</span>
             )}
           </button>
-          <div className="dropdown-menu dropdown-menu-end">
-            <div className="dropdown-header">Notifications</div>
-            {notifications.length === 0 ? (
-              <div className="dropdown-item text-muted">Aucune notification</div>
-            ) : (
-              notifications.map(n => (
-                <div key={n.id} className="dropdown-item">{n.titre}</div>
-              ))
-            )}
-          </div>
+          {showNotifMenu && (
+            <div
+              className="dropdown-menu dropdown-menu-end show shadow"
+              style={{ position: 'absolute', right: 0, top: '100%', zIndex: 1050, minWidth: 260 }}
+            >
+              <div className="dropdown-header">Notifications</div>
+              {notifications.length === 0 ? (
+                <div className="dropdown-item text-muted">Aucune notification</div>
+              ) : (
+                notifications.map(n => (
+                  <div key={n.id} className="dropdown-item">{n.titre}</div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="topbar-user dropdown">
-          <button className="btn btn-link user-btn" data-bs-toggle="dropdown" aria-label="Menu utilisateur">
+        {/* Menu utilisateur — dropdown React */}
+        <div className="topbar-user" ref={userMenuRef} style={{ position: 'relative' }}>
+          <button
+            className="btn btn-link user-btn"
+            aria-label="Menu utilisateur"
+            onClick={() => { setShowUserMenu(v => !v); setShowNotifMenu(false) }}
+          >
             <div className="user-avatar">
               <i className="bi bi-person"></i>
             </div>
             <span className="user-name d-none d-md-inline">
               {user?.prenom} {user?.nom}
             </span>
-            <i className="bi bi-chevron-down ms-1"></i>
+            <i className={`bi bi-chevron-${showUserMenu ? 'up' : 'down'} ms-1`}></i>
           </button>
-          <div className="dropdown-menu dropdown-menu-end shadow border-0">
-            <div className="dropdown-item border-bottom py-2">
-              <div className="fw-bold">{user?.prenom} {user?.nom}</div>
-              <small className="text-muted">{user?.email}</small>
-            </div>
-            <button className="dropdown-item py-2" onClick={handleOpenProfile}>
-              <i className="bi bi-person me-2 text-primary"></i>Mon Profil
-            </button>
-            <button className="dropdown-item py-2" onClick={handleOpenPassword}>
-              <i className="bi bi-key me-2 text-warning"></i>Changer mon mot de passe
-            </button>
-            {['admin_entreprise', 'super_admin'].includes(user?.role_code || '') && (
-              <button className="dropdown-item py-2" onClick={() => navigate('/settings')}>
-                <i className="bi bi-gear me-2 text-secondary"></i>Paramètres
+
+          {showUserMenu && (
+            <div
+              className="dropdown-menu dropdown-menu-end show shadow border-0"
+              style={{ position: 'absolute', right: 0, top: '100%', zIndex: 1050, minWidth: 230 }}
+            >
+              <div className="dropdown-item border-bottom py-2" style={{ pointerEvents: 'none' }}>
+                <div className="fw-bold">{user?.prenom} {user?.nom}</div>
+                <small className="text-muted">{user?.email}</small>
+              </div>
+              <button className="dropdown-item py-2" onClick={handleOpenProfile}>
+                <i className="bi bi-person me-2 text-primary"></i>Mon Profil
               </button>
-            )}
-            <div className="dropdown-divider"></div>
-            <button className="dropdown-item text-danger py-2" onClick={() => setShowLogoutModal(true)}>
-              <i className="bi bi-box-arrow-right me-2"></i>Déconnexion
-            </button>
-          </div>
+              <button className="dropdown-item py-2" onClick={handleOpenPassword}>
+                <i className="bi bi-key me-2 text-warning"></i>Changer mon mot de passe
+              </button>
+              {['admin_entreprise', 'super_admin'].includes(user?.role_code || '') && (
+                <button className="dropdown-item py-2" onClick={() => { setShowUserMenu(false); window.location.href = '/settings' }}>
+                  <i className="bi bi-gear me-2 text-secondary"></i>Paramètres
+                </button>
+              )}
+              <div className="dropdown-divider"></div>
+              <button className="dropdown-item text-danger py-2" onClick={() => { setShowUserMenu(false); setShowLogoutModal(true) }}>
+                <i className="bi bi-box-arrow-right me-2"></i>Déconnexion
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -296,49 +355,30 @@ export function Topbar() {
                   <div className="row g-3">
                     <div className="col-md-6">
                       <label className="form-label fw-semibold">Prénom</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        required
-                        value={profileForm.prenom}
-                        onChange={(e) => setProfileForm({ ...profileForm, prenom: e.target.value })}
-                      />
+                      <input type="text" className="form-control" required value={profileForm.prenom}
+                        onChange={(e) => setProfileForm({ ...profileForm, prenom: e.target.value })} />
                     </div>
                     <div className="col-md-6">
                       <label className="form-label fw-semibold">Nom</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        required
-                        value={profileForm.nom}
-                        onChange={(e) => setProfileForm({ ...profileForm, nom: e.target.value })}
-                      />
+                      <input type="text" className="form-control" required value={profileForm.nom}
+                        onChange={(e) => setProfileForm({ ...profileForm, nom: e.target.value })} />
                     </div>
                     <div className="col-md-12">
                       <label className="form-label fw-semibold">Adresse email</label>
-                      <input
-                        type="email"
-                        className="form-control"
-                        required
-                        value={profileForm.email}
-                        onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                      />
+                      <input type="email" className="form-control" required value={profileForm.email}
+                        onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })} />
                     </div>
                     <div className="col-md-12">
                       <label className="form-label fw-semibold">Téléphone</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={profileForm.telephone}
-                        onChange={(e) => setProfileForm({ ...profileForm, telephone: e.target.value })}
-                      />
+                      <input type="text" className="form-control" value={profileForm.telephone}
+                        onChange={(e) => setProfileForm({ ...profileForm, telephone: e.target.value })} />
                     </div>
                   </div>
                 </div>
                 <div className="modal-footer border-0 pt-0">
                   <button type="button" className="btn btn-secondary" onClick={() => setShowProfileModal(false)} disabled={isSaving}>Annuler</button>
                   <button type="submit" className="btn btn-primary fw-bold" disabled={isSaving}>
-                    {isSaving ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                    {isSaving ? 'Enregistrement...' : 'Enregistrer'}
                   </button>
                 </div>
               </form>
@@ -362,34 +402,23 @@ export function Topbar() {
                   <div className="row g-3">
                     <div className="col-md-12">
                       <label className="form-label fw-semibold">Mot de passe actuel / temporaire</label>
-                      <input
-                        type="password"
-                        className="form-control"
-                        required
+                      <input type="password" className="form-control" required
                         value={passwordForm.old_password}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, old_password: e.target.value })}
-                      />
+                        autoFocus
+                        onChange={(e) => setPasswordForm({ ...passwordForm, old_password: e.target.value })} />
                     </div>
                     <div className="col-md-12">
                       <label className="form-label fw-semibold">Nouveau mot de passe</label>
-                      <input
-                        type="password"
-                        className="form-control"
-                        required
+                      <input type="password" className="form-control" required
                         value={passwordForm.new_password}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })}
-                      />
+                        onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })} />
                       <div className="form-text">8 caractères minimum, 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial.</div>
                     </div>
                     <div className="col-md-12">
                       <label className="form-label fw-semibold">Confirmer le nouveau mot de passe</label>
-                      <input
-                        type="password"
-                        className="form-control"
-                        required
+                      <input type="password" className="form-control" required
                         value={passwordForm.confirm_password}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, confirm_password: e.target.value })}
-                      />
+                        onChange={(e) => setPasswordForm({ ...passwordForm, confirm_password: e.target.value })} />
                     </div>
                   </div>
                   {passwordError && (
@@ -414,4 +443,3 @@ export function Topbar() {
     </header>
   )
 }
-

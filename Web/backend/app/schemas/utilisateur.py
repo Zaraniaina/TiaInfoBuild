@@ -45,6 +45,7 @@ class UtilisateurUpdate(BaseModel):
 
     nom: str | None = Field(default=None, min_length=1, max_length=100)
     prenom: str | None = Field(default=None, max_length=100)
+    email: EmailStr | None = Field(default=None)
     telephone: str | None = Field(default=None, max_length=50)
     role_id: int | None = None
     role_code: str | None = None

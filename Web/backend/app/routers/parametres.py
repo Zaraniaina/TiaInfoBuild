@@ -108,11 +108,26 @@ async def update_profile(payload: CurrentUserPayload, db: DbDep, data: Utilisate
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur non trouvé")
     obj_in = data.model_dump(exclude_unset=True)
+    # Filtrer uniquement les champs autorisés pour la modification du profil personnel
+    allowed_profile_fields = {"nom", "prenom", "telephone", "email"}
     for field, value in obj_in.items():
-        setattr(user, field, value)
+        if field in allowed_profile_fields and value is not None:
+            setattr(user, field, value)
     await db.flush()
-    await db.refresh(user)
-    return {"utilisateur": user}
+    # Retourner un objet sérialisable sans db.refresh() (évite les erreurs selectin)
+    return {
+        "utilisateur": {
+            "id": user.id,
+            "nom": user.nom,
+            "prenom": user.prenom,
+            "email": user.email,
+            "telephone": user.telephone,
+            "role_code": user.role_code,
+            "entreprise_id": user.entreprise_id,
+            "must_change_password": user.must_change_password,
+            "statut": user.statut,
+        }
+    }
 
 
 @router.get("/roles")

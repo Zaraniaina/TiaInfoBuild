@@ -1,4 +1,4 @@
-import { Outlet, Link } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { useUIStore } from '@/stores/ui.store'
@@ -40,9 +40,12 @@ export function Layout() {
               <i className="bi bi-shield-exclamation me-2 fs-5"></i>
               <span>Vous utilisez actuellement un mot de passe temporaire. Pour la sécurité de votre compte, veuillez le modifier dès maintenant.</span>
             </div>
-            <Link to="/settings" className="btn btn-sm btn-warning text-dark fw-bold ms-3">
+            <button
+              className="btn btn-sm btn-warning text-dark fw-bold ms-3"
+              onClick={() => window.dispatchEvent(new Event('open-change-password-modal'))}
+            >
               Modifier mon mot de passe
-            </Link>
+            </button>
           </div>
         )}
         <main className="flex-grow-1">

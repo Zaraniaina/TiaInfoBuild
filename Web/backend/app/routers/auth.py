@@ -296,8 +296,20 @@ async def change_password(payload: ChangePasswordRequest, db: DbSession, current
     if not user or not verify_password(payload.old_password, user.mot_de_passe_hash):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ancien mot de passe incorrect")
     user.mot_de_passe_hash = hash_password(payload.new_password)
+    user.must_change_password = False
     await db.commit()
-    return {"message": "Mot de passe modifié avec succès"}
+    return {
+        "message": "Mot de passe modifié avec succès",
+        "user": {
+            "id": user.id,
+            "nom": user.nom,
+            "prenom": user.prenom,
+            "email": user.email,
+            "role_code": current_user.get("role_code"),
+            "entreprise_id": current_user.get("entreprise_id"),
+            "must_change_password": False,
+        }
+    }
 
 
 @router.get("/me")
