@@ -66,6 +66,13 @@ class UtilisateurRoleUpdate(BaseModel):
     role_id: int = Field(..., ge=1)
 
 
+class RoleSimpleResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    code: str
+    nom: str
+
+
 class UtilisateurResponse(BaseModel):
     """Schéma de réponse pour un utilisateur (détail)."""
 
@@ -75,6 +82,8 @@ class UtilisateurResponse(BaseModel):
     entreprise_id: int | None = None
     role_id: int | None = None
     role_code: str | None = None
+    role_nom: str | None = None
+    role: RoleSimpleResponse | None = None
     nom: str
     prenom: str | None = None
     email: EmailStr
@@ -99,6 +108,8 @@ class UtilisateurList(BaseModel):
     telephone: str | None = None
     role_id: int | None = None
     role_code: str | None = None
+    role_nom: str | None = None
+    role: RoleSimpleResponse | None = None
     statut: str | None = None
     entreprise_id: int | None = None
     date_creation: datetime | None = None

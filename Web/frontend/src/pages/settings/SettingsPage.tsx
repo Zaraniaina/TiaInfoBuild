@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { api } from "@/services/api";
 import { useAuthStore } from "@/stores/auth.store";
+import { useToastStore } from "@/stores/toast.store";
+import { ROLE_NAMES } from "@/config/roles.config";
+import { formatErrorMessage } from "@/utils/errorMessage";
 
 type UserRole =
   | "admin_entreprise"
@@ -166,7 +169,6 @@ export function SettingsPage() {
           .filter((r: RoleOption) => r.code !== "super_admin");
         setRoles(filtered);
       })
-      // Pas de données factices : on n'affiche que les rôles réellement retournés par le backend.
       .catch(() => setRoles([]));
   };
 
@@ -176,21 +178,24 @@ export function SettingsPage() {
       .then((res) => {
         const items = res.data.items || res.data || [];
         setUsers(
-          items.map((u: UtilisateurListItem) => ({
-            id: u.id,
-            prenom: u.prenom || "",
-            nom: u.nom || "",
-            email: u.email || "",
-            role_code: u.role_code || u.role?.code || "employe",
-            role_nom: u.role?.nom || u.role_nom || "Employé",
-            statut: u.statut === "inactif" ? "inactif" : "actif",
-            telephone: u.telephone || "",
-            date_creation: u.date_creation,
-            derniere_connexion: u.derniere_connexion,
-          })),
+          items.map((u: UtilisateurListItem) => {
+            const code = (u.role_code || u.role?.code || "employe") as UserRole;
+            const nom = u.role?.nom || u.role_nom || ROLE_NAMES[code] || "Employé";
+            return {
+              id: u.id,
+              prenom: u.prenom || "",
+              nom: u.nom || "",
+              email: u.email || "",
+              role_code: code,
+              role_nom: nom,
+              statut: u.statut === "inactif" ? "inactif" : "actif",
+              telephone: u.telephone || "",
+              date_creation: u.date_creation,
+              derniere_connexion: u.derniere_connexion,
+            };
+          }),
         );
       })
-      // Pas de données factices : on n'affiche que les utilisateurs réellement retournés par le backend.
       .catch(() => setUsers([]));
   };
 
@@ -220,9 +225,19 @@ export function SettingsPage() {
         delai_paiement_defaut: entrepriseForm.delai_paiement_jours,
       };
       await api.put("/parametres/entreprise", payload);
-      alert("Paramètres d'entreprise sauvegardés avec succès !");
-    } catch {
-      alert("Erreur lors de la sauvegarde");
+      useToastStore.getState().addToast({
+        type: "success",
+        title: "Paramètres Entreprise",
+        message: "Les paramètres d'entreprise ont été enregistrés avec succès !",
+        duration: 4000,
+      });
+    } catch (err) {
+      useToastStore.getState().addToast({
+        type: "error",
+        title: "Erreur",
+        message: formatErrorMessage(err, "Erreur lors de la sauvegarde des paramètres."),
+        duration: 5000,
+      });
     } finally {
       setSaving(false);
     }
@@ -233,9 +248,19 @@ export function SettingsPage() {
     setSaving(true);
     try {
       await api.put("/parametres/profile", profilForm);
-      alert("Profil utilisateur mis à jour !");
-    } catch {
-      alert("Erreur lors de la mise à jour");
+      useToastStore.getState().addToast({
+        type: "success",
+        title: "Profil mis à jour",
+        message: "Vos informations de profil ont été enregistrées avec succès !",
+        duration: 4000,
+      });
+    } catch (err) {
+      useToastStore.getState().addToast({
+        type: "error",
+        title: "Erreur",
+        message: formatErrorMessage(err, "Erreur lors de la mise à jour du profil."),
+        duration: 5000,
+      });
     } finally {
       setSaving(false);
     }
@@ -280,8 +305,6 @@ export function SettingsPage() {
     }
     setSaving(true);
     try {
-      // Création : le mot de passe est obligatoire et doit respecter la politique du backend
-      // (8 caractères + majuscule, minuscule, chiffre et caractère spécial) pour éviter un 422.
       if (!editingUser) {
         const pw = userForm.password || "";
         const pwErrors: string[] = [];
@@ -307,8 +330,20 @@ export function SettingsPage() {
       let response: { data: { id?: number } } | undefined;
       if (editingUser) {
         await api.put(`/utilisateurs/${editingUser.id}`, payload);
+        useToastStore.getState().addToast({
+          type: "success",
+          title: "Utilisateur mis à jour",
+          message: `L'utilisateur ${userForm.prenom} ${userForm.nom} a été modifié.`,
+          duration: 4000,
+        });
       } else {
         response = await api.post("/utilisateurs", payload);
+        useToastStore.getState().addToast({
+          type: "success",
+          title: "Utilisateur créé",
+          message: `Compte créé pour ${userForm.prenom} ${userForm.nom}. Bon de création généré.`,
+          duration: 4000,
+        });
       }
       setShowUserModal(false);
       loadUsers();
@@ -329,29 +364,16 @@ export function SettingsPage() {
             URL.revokeObjectURL(url);
           })
           .catch(() =>
-            alert(
-              "Compte créé, mais le bon de création PDF n'a pas pu être généré.",
-            ),
+            useToastStore.getState().addToast({
+              type: "warning",
+              title: "Bon de création",
+              message: "Le compte a été créé, mais le PDF n'a pas pu être téléchargé automatiquement.",
+              duration: 5000,
+            }),
           );
       }
     } catch (error: unknown) {
-      let message = "Erreur lors de l'enregistrement de l'utilisateur";
-      const err = error as {
-        response?: { data?: { detail?: unknown } };
-        message?: string;
-      };
-      const detail = err?.response?.data?.detail;
-      if (detail) {
-        if (Array.isArray(detail)) {
-          message = detail
-            .map((e: { msg?: string }) => e.msg || String(e))
-            .join(", ");
-        } else {
-          message = String(detail);
-        }
-      } else if (err.message) {
-        message = err.message;
-      }
+      const message = formatErrorMessage(error, "Erreur lors de l'enregistrement de l'utilisateur.");
       setFormError(message);
     } finally {
       setSaving(false);
@@ -361,15 +383,27 @@ export function SettingsPage() {
   const handleToggleUser = async (u: UserRow) => {
     try {
       await api.post(`/utilisateurs/${u.id}/toggle-actif`);
+      const newStatus = u.statut === "actif" ? "inactif" : "actif";
       setUsers((prev) =>
         prev.map((x) =>
           x.id === u.id
-            ? { ...x, statut: x.statut === "actif" ? "inactif" : "actif" }
+            ? { ...x, statut: newStatus }
             : x,
         ),
       );
-    } catch {
-      alert("Erreur lors du changement de statut");
+      useToastStore.getState().addToast({
+        type: newStatus === "actif" ? "success" : "info",
+        title: "Statut mis à jour",
+        message: `Compte de ${u.prenom} ${u.nom} est désormais ${newStatus === "actif" ? "actif" : "désactivé"}.`,
+        duration: 4000,
+      });
+    } catch (err) {
+      useToastStore.getState().addToast({
+        type: "error",
+        title: "Erreur Statut",
+        message: formatErrorMessage(err, "Erreur lors du changement de statut."),
+        duration: 5000,
+      });
     }
   };
 

@@ -122,6 +122,7 @@ async def create_utilisateur(payload: AdminCheck, db: DbSession, data: Utilisate
 
 
 @router.get("/{id}/bon-de-creation", response_class=Response)
+@router.get("/{id}/bon-de-creation/", response_class=Response)
 async def get_bon_creation(payload: AdminCheck, db: DbSession, id: int, temp_password: str | None = Query(default=None)):
     """Génère un PDF 'Bon de création' contenant le login, le rôle de l'utilisateur,
     les rôles de l'entreprise et le mot de passe temporaire défini par l'administrateur.
@@ -226,24 +227,11 @@ def _render_bon_creation_pdf(user, entreprise, entreprise_roles, temp_password: 
     pdf.cell(0, 5, "Ce mot de passe expire a la premiere connexion. Pensez a le modifier.", new_x="LMARGIN", new_y="NEXT", align="C")
 
     pdf.ln(4)
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.set_text_color(40, 40, 40)
-    pdf.cell(0, 7, "Roles disponibles dans l'entreprise", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("Helvetica", "", 10)
-    pdf.set_text_color(20, 20, 20)
-    pdf.set_fill_color(240, 240, 240)
-    pdf.cell(70, 7, "Code", border=1, fill=True)
-    pdf.cell(0, 7, "Intitule", border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
-    for r in (entreprise_roles or []):
-        pdf.cell(70, 6, str(getattr(r, "code", "")), border=1)
-        pdf.cell(0, 6, str(getattr(r, "nom", "")), border=1, new_x="LMARGIN", new_y="NEXT")
-
-    pdf.ln(8)
     pdf.set_font("Helvetica", "I", 8)
     pdf.set_text_color(140, 140, 140)
     pdf.cell(0, 5, "Document genere automatiquement par TIA INFO BUILD - Diffusion interdite.", new_x="LMARGIN", new_y="NEXT", align="C")
 
-    return pdf.output()
+    return bytes(pdf.output())
 
 
 @router.get("/{id}", response_model=UtilisateurResponse)

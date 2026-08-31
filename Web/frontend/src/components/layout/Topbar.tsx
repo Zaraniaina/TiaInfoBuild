@@ -2,24 +2,46 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUIStore } from '@/stores/ui.store'
+import { useToastStore } from '@/stores/toast.store'
 import { settingsService } from '@/services/settings.service'
 import { api } from '@/services/api'
+import { formatErrorMessage } from '@/utils/errorMessage'
 
 export function Topbar() {
   const navigate = useNavigate()
-  const { user, logout } = useAuthStore()
+  const { user, setUser, logout } = useAuthStore()
   const { toggleSidebar, sidebarOpen, theme, setTheme, hydrateThemeFromBackend } = useUIStore()
   const [notifications, setNotifications] = useState<Array<{ id: number; titre: string }>>([])
+  
+  // Modales
   const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const [hydrated, setHydrated] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+
+  // Formulaires
+  const [profileForm, setProfileForm] = useState({
+    nom: user?.nom || '',
+    prenom: user?.prenom || '',
+    email: user?.email || '',
+    telephone: '',
+  })
+
+  const [passwordForm, setPasswordForm] = useState({
+    old_password: '',
+    new_password: '',
+    confirm_password: '',
+  })
+  const [passwordError, setPasswordError] = useState<string | null>(null)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
 
   useEffect(() => {
-    hydrateThemeFromBackend().then(() => setHydrated(true))
+    hydrateThemeFromBackend()
   }, [hydrateThemeFromBackend])
 
   useEffect(() => {
@@ -27,6 +49,17 @@ export function Topbar() {
       setNotifications(res.data.items || [])
     }).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        nom: user.nom || '',
+        prenom: user.prenom || '',
+        email: user.email || '',
+        telephone: '',
+      })
+    }
+  }, [user])
 
   const confirmLogout = async () => {
     setIsLoggingOut(true)
@@ -36,6 +69,102 @@ export function Topbar() {
     } catch { /* ignore */ }
     logout()
     navigate('/login')
+  }
+
+  const handleOpenProfile = () => {
+    setProfileForm({
+      nom: user?.nom || '',
+      prenom: user?.prenom || '',
+      email: user?.email || '',
+      telephone: '',
+    })
+    setShowProfileModal(true)
+  }
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSaving(true)
+    try {
+      const res = await api.put('/parametres/profile', profileForm)
+      const updatedUser = res.data?.utilisateur || res.data
+      if (updatedUser) {
+        setUser({
+          ...user!,
+          nom: updatedUser.nom || profileForm.nom,
+          prenom: updatedUser.prenom || profileForm.prenom,
+          email: updatedUser.email || profileForm.email,
+        })
+      }
+      useToastStore.getState().addToast({
+        type: 'success',
+        title: 'Profil mis à jour',
+        message: 'Vos informations personnelles ont été enregistrées avec succès.',
+        duration: 4000,
+      })
+      setShowProfileModal(false)
+    } catch (err) {
+      const msg = formatErrorMessage(err, 'Erreur lors de la mise à jour du profil.')
+      useToastStore.getState().addToast({
+        type: 'error',
+        title: 'Erreur Profil',
+        message: msg,
+        duration: 5000,
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleOpenPassword = () => {
+    setPasswordForm({ old_password: '', new_password: '', confirm_password: '' })
+    setPasswordError(null)
+    setShowPasswordModal(true)
+  }
+
+  const handleSavePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordError(null)
+
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      setPasswordError('Les mots de passe ne correspondent pas.')
+      return
+    }
+
+    const pw = passwordForm.new_password
+    const pwErrors: string[] = []
+    if (pw.length < 8) pwErrors.push('au moins 8 caractères')
+    if (!/[A-Z]/.test(pw)) pwErrors.push('une majuscule')
+    if (!/[a-z]/.test(pw)) pwErrors.push('une minuscule')
+    if (!/[0-9]/.test(pw)) pwErrors.push('un chiffre')
+    if (!/[^A-Za-z0-9]/.test(pw)) pwErrors.push('un caractère spécial')
+
+    if (pwErrors.length > 0) {
+      setPasswordError(`Mot de passe invalide : doit contenir ${pwErrors.join(', ')}.`)
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      await api.post('/auth/change-password', {
+        old_password: passwordForm.old_password,
+        new_password: passwordForm.new_password,
+      })
+      if (user) {
+        setUser({ ...user, must_change_password: false } as any)
+      }
+      useToastStore.getState().addToast({
+        type: 'success',
+        title: 'Mot de passe modifié',
+        message: 'Votre mot de passe a été mis à jour avec succès.',
+        duration: 4000,
+      })
+      setShowPasswordModal(false)
+    } catch (err) {
+      const msg = formatErrorMessage(err, 'Erreur lors du changement de mot de passe.')
+      setPasswordError(msg)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const cycleTheme = async () => {
@@ -105,21 +234,31 @@ export function Topbar() {
             </span>
             <i className="bi bi-chevron-down ms-1"></i>
           </button>
-          <div className="dropdown-menu dropdown-menu-end">
-            <div className="dropdown-item">
+          <div className="dropdown-menu dropdown-menu-end shadow border-0">
+            <div className="dropdown-item border-bottom py-2">
+              <div className="fw-bold">{user?.prenom} {user?.nom}</div>
               <small className="text-muted">{user?.email}</small>
             </div>
-            <div className="dropdown-divider"></div>
-            <button className="dropdown-item" onClick={() => navigate('/settings')}>
-              <i className="bi bi-gear me-2"></i>Paramètres
+            <button className="dropdown-item py-2" onClick={handleOpenProfile}>
+              <i className="bi bi-person me-2 text-primary"></i>Mon Profil
             </button>
-            <button className="dropdown-item text-danger" onClick={() => setShowLogoutModal(true)}>
+            <button className="dropdown-item py-2" onClick={handleOpenPassword}>
+              <i className="bi bi-key me-2 text-warning"></i>Changer mon mot de passe
+            </button>
+            {['admin_entreprise', 'super_admin'].includes(user?.role_code || '') && (
+              <button className="dropdown-item py-2" onClick={() => navigate('/settings')}>
+                <i className="bi bi-gear me-2 text-secondary"></i>Paramètres
+              </button>
+            )}
+            <div className="dropdown-divider"></div>
+            <button className="dropdown-item text-danger py-2" onClick={() => setShowLogoutModal(true)}>
               <i className="bi bi-box-arrow-right me-2"></i>Déconnexion
             </button>
           </div>
         </div>
       </div>
 
+      {/* Modal Déconnexion */}
       {showLogoutModal && (
         <div className="modal fade show" style={{ display: 'block' }} tabIndex={-1} aria-modal="true" role="dialog">
           <div className="modal-dialog modal-sm modal-dialog-centered">
@@ -129,7 +268,7 @@ export function Topbar() {
                 <button type="button" className="btn-close" onClick={() => setShowLogoutModal(false)} disabled={isLoggingOut}></button>
               </div>
               <div className="modal-body">
-                <p className="mb-0">Voulez-vous vraiment vous déconnecter ? Vous devrez vous reconnecter pour accéder à la plateforme.</p>
+                <p className="mb-0">Voulez-vous vraiment vous déconnecter ?</p>
               </div>
               <div className="modal-footer border-0 pt-0">
                 <button className="btn btn-secondary" onClick={() => setShowLogoutModal(false)} disabled={isLoggingOut}>Annuler</button>
@@ -142,6 +281,137 @@ export function Topbar() {
         </div>
       )}
       {showLogoutModal && <div className="modal-backdrop fade show" onClick={() => setShowLogoutModal(false)}></div>}
+
+      {/* Modal Mon Profil */}
+      {showProfileModal && (
+        <div className="modal fade show" style={{ display: 'block' }} tabIndex={-1} aria-modal="true" role="dialog">
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow">
+              <div className="modal-header border-bottom">
+                <h5 className="modal-title fw-bold"><i className="bi bi-person me-2 text-primary"></i>Mon Profil</h5>
+                <button type="button" className="btn-close" onClick={() => setShowProfileModal(false)} disabled={isSaving}></button>
+              </div>
+              <form onSubmit={handleSaveProfile}>
+                <div className="modal-body">
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Prénom</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        required
+                        value={profileForm.prenom}
+                        onChange={(e) => setProfileForm({ ...profileForm, prenom: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Nom</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        required
+                        value={profileForm.nom}
+                        onChange={(e) => setProfileForm({ ...profileForm, nom: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-12">
+                      <label className="form-label fw-semibold">Adresse email</label>
+                      <input
+                        type="email"
+                        className="form-control"
+                        required
+                        value={profileForm.email}
+                        onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-12">
+                      <label className="form-label fw-semibold">Téléphone</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={profileForm.telephone}
+                        onChange={(e) => setProfileForm({ ...profileForm, telephone: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer border-0 pt-0">
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowProfileModal(false)} disabled={isSaving}>Annuler</button>
+                  <button type="submit" className="btn btn-primary fw-bold" disabled={isSaving}>
+                    {isSaving ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {showProfileModal && <div className="modal-backdrop fade show" onClick={() => setShowProfileModal(false)}></div>}
+
+      {/* Modal Changer Mot de passe */}
+      {showPasswordModal && (
+        <div className="modal fade show" style={{ display: 'block' }} tabIndex={-1} aria-modal="true" role="dialog">
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow">
+              <div className="modal-header border-bottom">
+                <h5 className="modal-title fw-bold"><i className="bi bi-key me-2 text-warning"></i>Changer mon mot de passe</h5>
+                <button type="button" className="btn-close" onClick={() => setShowPasswordModal(false)} disabled={isSaving}></button>
+              </div>
+              <form onSubmit={handleSavePassword}>
+                <div className="modal-body">
+                  <div className="row g-3">
+                    <div className="col-md-12">
+                      <label className="form-label fw-semibold">Mot de passe actuel / temporaire</label>
+                      <input
+                        type="password"
+                        className="form-control"
+                        required
+                        value={passwordForm.old_password}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, old_password: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-12">
+                      <label className="form-label fw-semibold">Nouveau mot de passe</label>
+                      <input
+                        type="password"
+                        className="form-control"
+                        required
+                        value={passwordForm.new_password}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })}
+                      />
+                      <div className="form-text">8 caractères minimum, 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial.</div>
+                    </div>
+                    <div className="col-md-12">
+                      <label className="form-label fw-semibold">Confirmer le nouveau mot de passe</label>
+                      <input
+                        type="password"
+                        className="form-control"
+                        required
+                        value={passwordForm.confirm_password}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, confirm_password: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  {passwordError && (
+                    <div className="alert alert-danger py-2 mt-3 mb-0" role="alert">
+                      <i className="bi bi-exclamation-triangle me-2"></i>
+                      {passwordError}
+                    </div>
+                  )}
+                </div>
+                <div className="modal-footer border-0 pt-0">
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowPasswordModal(false)} disabled={isSaving}>Annuler</button>
+                  <button type="submit" className="btn btn-warning fw-bold text-dark" disabled={isSaving}>
+                    {isSaving ? 'Mise à jour...' : 'Changer le mot de passe'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {showPasswordModal && <div className="modal-backdrop fade show" onClick={() => setShowPasswordModal(false)}></div>}
     </header>
   )
 }
+
