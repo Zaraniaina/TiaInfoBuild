@@ -309,7 +309,7 @@ export function ChantiersPage() {
                   <th className="d-none d-lg-table-cell">Budget prévu</th>
                   <th className="d-none d-lg-table-cell">Budget consommé</th>
                   <th>Statut</th>
-                  <th style={{ width: '120px' }}>Actions</th>
+                  <th className="text-end" style={{ width: '140px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -322,20 +322,22 @@ export function ChantiersPage() {
                     <td className="d-none d-lg-table-cell">{c.budget_prevu?.toLocaleString()} MGA</td>
                     <td className="d-none d-lg-table-cell text-danger fw-semibold">{c.budget_reel?.toLocaleString()} MGA</td>
                     <td>{getStatutBadge(c.statut)}</td>
-                    <td>
-                      {perms.canScanQR && (
-                        <button className="btn btn-sm btn-outline-warning me-1" onClick={() => handleGenerateQR(c.id)} title="QR Pointage">
-                          <i className="bi bi-qr-code-scan"></i>
+                    <td className="text-end">
+                      <div className="d-inline-flex gap-1 align-items-center justify-content-end">
+                        {perms.canScanQR && (
+                          <button className="btn btn-sm btn-outline-warning" onClick={() => handleGenerateQR(c.id)} title="QR Pointage">
+                            <i className="bi bi-qr-code-scan"></i>
+                          </button>
+                        )}
+                        <button className="btn btn-sm btn-outline-primary" onClick={() => { setSelectedChantier(c); setShowDetailModal(true); }}>
+                          <i className="bi bi-eye"></i>
                         </button>
-                      )}
-                      <button className="btn btn-sm btn-outline-primary me-1" onClick={() => { setSelectedChantier(c); setShowDetailModal(true); }}>
-                        <i className="bi bi-eye"></i>
-                      </button>
-                      {perms.canEditChantier && (
-                        <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setFormData(c); setShowModal(true); }}>
-                          <i className="bi bi-pencil"></i>
-                        </button>
-                      )}
+                        {perms.canEditChantier && (
+                          <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setFormData(c); setShowModal(true); }}>
+                            <i className="bi bi-pencil"></i>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

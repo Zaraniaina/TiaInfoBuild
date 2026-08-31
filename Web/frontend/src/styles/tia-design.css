@@ -95,7 +95,7 @@
 }
 
 /* ============================================================
-   2. TOKENS GLOBAUX — DARK MODE & VISIBILITÉ STRICTE DE TEXTE
+   2. TOKENS GLOBAUX — DARK MODE & ADAPTATION TOTALE
    ============================================================ */
 [data-theme="dark"] {
   --tia-bg-base: #0F172A;
@@ -158,7 +158,7 @@
   --bs-modal-border-color: var(--tia-border);
 }
 
-/* Forcer la lisibilité parfaite de TOUS les textes en mode sombre */
+/* Surcharge stricte des fonds et textes Bootstrap en mode sombre */
 [data-theme="dark"] body,
 [data-theme="dark"] .app-shell,
 [data-theme="dark"] .main-area {
@@ -204,6 +204,19 @@
   color: var(--tia-text-muted) !important;
 }
 
+[data-theme="dark"] .bg-light,
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] .bg-body-secondary,
+[data-theme="dark"] .modal-footer,
+[data-theme="dark"] .card-footer,
+[data-theme="dark"] .table-light,
+[data-theme="dark"] .table-light th,
+[data-theme="dark"] .table-light td {
+  background-color: var(--tia-bg-raised) !important;
+  color: var(--tia-text-primary) !important;
+  border-color: var(--tia-border) !important;
+}
+
 [data-theme="dark"] .table,
 [data-theme="dark"] .table th,
 [data-theme="dark"] .table td {
@@ -230,14 +243,33 @@
   color: var(--tia-text-primary) !important;
 }
 
+[data-theme="dark"] .nav-pills,
+[data-theme="dark"] .nav-tabs {
+  background-color: var(--tia-bg-surface) !important;
+  border-color: var(--tia-border) !important;
+}
+
 [data-theme="dark"] .nav-pills .nav-link:not(.active),
 [data-theme="dark"] .nav-tabs .nav-link:not(.active) {
   color: var(--tia-text-secondary) !important;
 }
 
-[data-theme="dark"] .badge.bg-light {
+[data-theme="dark"] .nav-tabs .nav-link.active {
   background-color: var(--tia-bg-raised) !important;
   color: var(--tia-text-primary) !important;
+}
+
+[data-theme="dark"] .badge.bg-light,
+[data-theme="dark"] .badge.bg-secondary {
+  background-color: var(--tia-bg-raised) !important;
+  color: var(--tia-text-secondary) !important;
+  border-color: var(--tia-border) !important;
+}
+
+[data-theme="dark"] .input-group-text,
+[data-theme="dark"] .input-group-text.bg-light {
+  background-color: var(--tia-bg-raised) !important;
+  color: var(--tia-text-secondary) !important;
   border-color: var(--tia-border) !important;
 }
 
@@ -538,7 +570,7 @@ h1, h2, h3, h4, h5, h6, .font-display {
 }
 
 /* ============================================================
-   5. COMPOSANTS ET GRILLES DE PAGES (BOUTONS DE CREATION / ALIGNEMENT)
+   5. COMPOSANTS ET GRILLES DE PAGES (BOUTONS DE CREATION & TABLES)
    ============================================================ */
 .container-fluid {
   width: 100%;
@@ -548,7 +580,7 @@ h1, h2, h3, h4, h5, h6, .font-display {
   padding-right: 1.5rem;
 }
 
-/* --- Positionnement propre des en-têtes et des boutons de création --- */
+/* Positionnement strict des en-têtes et des boutons de création */
 .container-fluid > .d-flex:first-child,
 .page-header {
   display: flex;
@@ -644,6 +676,21 @@ h1, h2, h3, h4, h5, h6, .font-display {
 .btn-outline-secondary:hover {
   background-color: var(--tia-bg-hover);
   color: var(--tia-text-primary);
+}
+
+/* Alignement strict des colonnes d'action dans les tableaux */
+.table th.text-end,
+.table td.text-end,
+.table-actions {
+  text-align: right !important;
+  white-space: nowrap !important;
+}
+
+.table td .btn,
+.table-actions .btn {
+  padding: 0.28rem 0.55rem;
+  font-size: 0.8rem;
+  line-height: 1.2;
 }
 
 /* --- Cards & Containers --- */
