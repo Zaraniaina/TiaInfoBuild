@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
+import { useNavigate } from 'react-router-dom'
 import type { Entreprise } from '@/types'
 
 export function SuperAdminEntreprisesPage() {
+  const navigate = useNavigate()
   const [entreprises, setEntreprises] = useState<Entreprise[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     nom: '',
     email: '',
@@ -14,19 +17,18 @@ export function SuperAdminEntreprisesPage() {
     adresse: '',
     abonnement: 'pro',
     devise: 'MGA',
+    admin_nom: '',
+    admin_prenom: '',
+    admin_email: '',
+    admin_password: '',
+    admin_telephone: '',
   })
-  const [submitting, setSubmitting] = useState(false)
 
   const fetchEntreprises = () => {
     setLoading(true)
     api.get<Entreprise[]>('/super-admin/entreprises')
       .then(res => setEntreprises(res.data))
-      .catch(() => {
-        setEntreprises([
-          { id: 1, nom: 'BTP PRO MADAGASCAR SARL', email: 'contact@btppro.mg', abonnement: 'premium', actif: true, date_creation: '2026-01-15', created_at: '', updated_at: '', devise: 'MGA', prefixe_devis: 'DEV', prefixe_facture: 'FAC', prefixe_contrat: 'CTR', tva_defaut: 20, delai_paiement_defaut: 30, validite_devis: 30 },
-          { id: 2, nom: 'SOMAPROC MADAGASCAR', email: 'contact@somaproc.mg', abonnement: 'pro', actif: true, date_creation: '2026-02-01', created_at: '', updated_at: '', devise: 'MGA', prefixe_devis: 'DEV', prefixe_facture: 'FAC', prefixe_contrat: 'CTR', tva_defaut: 20, delai_paiement_defaut: 30, validite_devis: 30 }
-        ])
-      })
+      .catch(() => setEntreprises([]))
       .finally(() => setLoading(false))
   }
 
@@ -49,10 +51,10 @@ export function SuperAdminEntreprisesPage() {
     try {
       await api.post('/super-admin/entreprises', formData)
       setShowModal(false)
-      setFormData({ nom: '', email: '', telephone: '', adresse: '', abonnement: 'pro', devise: 'MGA' })
+      setFormData({ nom: '', email: '', telephone: '', adresse: '', abonnement: 'pro', devise: 'MGA', admin_nom: '', admin_prenom: '', admin_email: '', admin_password: '', admin_telephone: '' })
       fetchEntreprises()
-    } catch {
-      alert('Erreur lors de la création de l\'entreprise')
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || "Erreur lors de la création de l'entreprise")
     } finally {
       setSubmitting(false)
     }
@@ -65,10 +67,10 @@ export function SuperAdminEntreprisesPage() {
 
   const getPlanBadge = (plan: string) => {
     switch (plan.toLowerCase()) {
-      case 'premium': return 'bg-primary'
-      case 'pro': return 'bg-success'
-      case 'enterprise': return 'bg-dark'
-      default: return 'bg-secondary'
+      case 'premium': return 'bg-primary bg-opacity-10 text-primary border'
+      case 'pro': return 'bg-success bg-opacity-10 text-success border'
+      case 'enterprise': return 'bg-secondary bg-opacity-10 text-dark border'
+      default: return 'bg-light text-dark border'
     }
   }
 
@@ -76,16 +78,16 @@ export function SuperAdminEntreprisesPage() {
     <div className="container-fluid py-4">
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
         <div>
-          <h2 className="fw-bold mb-1"><i className="bi bi-buildings me-2 text-danger"></i>Entreprises Abonnées (Tenants)</h2>
+          <h2 className="fw-bold mb-1"><i className="bi bi-buildings me-2 text-secondary"></i>Entreprises Abonnées (Tenants)</h2>
           <p className="text-secondary mb-0">Gestion du parc des entreprises clientes et des souscriptions SaaS</p>
         </div>
-        <button className="btn btn-danger fw-bold" onClick={() => setShowModal(true)}>
+        <button className="btn btn-outline-secondary fw-bold" onClick={() => setShowModal(true)}>
           <i className="bi bi-plus-circle me-2"></i>Nouvelle Entreprise
         </button>
       </div>
 
-      <div className="table-card mb-4">
-        <div className="table-header">
+      <div className="card border-0 shadow-sm mb-4">
+        <div className="card-body p-3">
           <div className="input-group" style={{ maxWidth: '400px' }}>
             <span className="input-group-text bg-light border-end-0"><i className="bi bi-search"></i></span>
             <input
@@ -97,9 +99,12 @@ export function SuperAdminEntreprisesPage() {
             />
           </div>
         </div>
+      </div>
+
+      <div className="card border-0 shadow-sm">
         <div className="table-responsive">
-          <table className="table mb-0">
-            <thead>
+          <table className="table mb-0 align-middle">
+            <thead className="table-light">
               <tr>
                 <th>Entreprise</th>
                 <th>Contact</th>
@@ -127,7 +132,7 @@ export function SuperAdminEntreprisesPage() {
                   </td>
                   <td><span className="badge bg-light text-dark border">{e.devise || 'MGA'}</span></td>
                   <td>
-                    <span className={`badge ${e.actif ? 'bg-success' : 'bg-danger'}`}>
+                    <span className={`badge ${e.actif ? 'bg-success bg-opacity-10 text-success border' : 'bg-danger bg-opacity-10 text-danger border'}`}>
                       <i className={`bi ${e.actif ? 'bi-check-circle' : 'bi-x-circle'} me-1`}></i>
                       {e.actif ? 'Actif' : 'Suspendu'}
                     </span>
@@ -154,17 +159,18 @@ export function SuperAdminEntreprisesPage() {
         </div>
       </div>
 
-      {/* Modal Création Entreprise */}
+      {/* Modal Création Entreprise + Admin */}
       {showModal && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-dialog modal-dialog-centered modal-lg">
             <div className="modal-content border-0 shadow">
-              <div className="modal-header bg-danger text-white">
+              <div className="modal-header bg-secondary text-white">
                 <h5 className="modal-title fw-bold"><i className="bi bi-building-add me-2"></i>Créer une Entreprise Cliente</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowModal(false)}></button>
               </div>
               <form onSubmit={handleCreate}>
                 <div className="modal-body">
+                  <h6 className="text-secondary mb-3">Informations entreprise</h6>
                   <div className="mb-3">
                     <label className="form-label fw-semibold">Nom de l'entreprise *</label>
                     <input
@@ -200,6 +206,16 @@ export function SuperAdminEntreprisesPage() {
                   </div>
                   <div className="row g-3 mb-3">
                     <div className="col-md-6">
+                      <label className="form-label fw-semibold">Adresse</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Adresse de l'entreprise"
+                        value={formData.adresse}
+                        onChange={e => setFormData({ ...formData, adresse: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-3">
                       <label className="form-label fw-semibold">Formule Abonnement</label>
                       <select
                         className="form-select"
@@ -212,7 +228,7 @@ export function SuperAdminEntreprisesPage() {
                         <option value="enterprise">Enterprise</option>
                       </select>
                     </div>
-                    <div className="col-md-6">
+                    <div className="col-md-3">
                       <label className="form-label fw-semibold">Devise Principale</label>
                       <select
                         className="form-select"
@@ -225,11 +241,73 @@ export function SuperAdminEntreprisesPage() {
                       </select>
                     </div>
                   </div>
+
+                  <hr className="my-4" />
+                  <h6 className="text-secondary mb-3">Administrateur de l'entreprise</h6>
+                  <div className="row g-3 mb-3">
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Nom *</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        required
+                        placeholder="Nom du responsable"
+                        value={formData.admin_nom}
+                        onChange={e => setFormData({ ...formData, admin_nom: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Prénom *</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        required
+                        placeholder="Prénom du responsable"
+                        value={formData.admin_prenom}
+                        onChange={e => setFormData({ ...formData, admin_prenom: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="row g-3 mb-3">
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Email admin *</label>
+                      <input
+                        type="email"
+                        className="form-control"
+                        required
+                        placeholder="admin@entreprise.mg"
+                        value={formData.admin_email}
+                        onChange={e => setFormData({ ...formData, admin_email: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Téléphone admin</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="034 00 000 00"
+                        value={formData.admin_telephone}
+                        onChange={e => setFormData({ ...formData, admin_telephone: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Mot de passe admin *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      required
+                      placeholder="Mot de passe initial (sera changé à la première connexion)"
+                      value={formData.admin_password}
+                      onChange={e => setFormData({ ...formData, admin_password: e.target.value })}
+                    />
+                    <div className="form-text">L'admin devra changer ce mot de passe à sa première connexion.</div>
+                  </div>
                 </div>
                 <div className="modal-footer bg-light">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Annuler</button>
-                  <button type="submit" className="btn btn-danger fw-bold" disabled={submitting}>
-                    {submitting ? 'Création...' : 'Créer l\'Entreprise'}
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowModal(false)}>Annuler</button>
+                  <button type="submit" className="btn btn-outline-secondary fw-bold" disabled={submitting}>
+                    {submitting ? 'Création...' : 'Créer l\'Entreprise et son Admin'}
                   </button>
                 </div>
               </form>

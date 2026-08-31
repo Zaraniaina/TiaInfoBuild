@@ -29,7 +29,7 @@ export function AlertesPage() {
     <div className="container-fluid py-4">
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-          <h2 className="mb-1"><i className="bi bi-bell me-2 text-danger"></i>Centre d'Alertes System</h2>
+          <h2 className="mb-1 text-secondary"><i className="bi bi-bell me-2"></i>Centre d'Alertes System</h2>
           <p className="text-secondary mb-0">Notifications critiques, retards de paiement et niveaux de stock bas</p>
         </div>
         <button className="btn btn-outline-secondary" onClick={() => alertesService.markAllAsRead().then(loadAlertes)}>
@@ -39,15 +39,15 @@ export function AlertesPage() {
 
       {loading ? (
         <div className="text-center py-5">
-          <div className="spinner-border text-danger" role="status"></div>
+          <div className="spinner-border text-secondary" role="status"></div>
         </div>
       ) : (
         <div className="list-group border-0 shadow-sm">
           {alertes.map(a => (
-            <div key={a.id} className={`list-group-item list-group-item-action p-3 mb-2 rounded border-0 shadow-sm ${!a.lue ? 'bg-light border-start border-4 border-danger' : ''}`}>
+            <div key={a.id} className={`list-group-item list-group-item-action p-3 mb-2 rounded border-0 shadow-sm ${!a.lue ? 'bg-light border-start border-4 border-secondary' : ''}`}>
               <div className="d-flex justify-content-between align-items-center mb-1">
                 <div className="d-flex align-items-center gap-2">
-                  <span className={`badge ${a.niveau_gravite === 'critique' || a.niveau_gravite === 'elevee' ? 'bg-danger' : a.niveau_gravite === 'moyenne' ? 'bg-warning text-dark' : 'bg-info'}`}>
+                  <span className={`badge ${a.niveau_gravite === 'critique' || a.niveau_gravite === 'elevee' ? 'bg-danger bg-opacity-10 text-danger border' : a.niveau_gravite === 'moyenne' ? 'bg-warning bg-opacity-10 text-dark border' : 'bg-light text-dark border'}`}>
                     {a.niveau_gravite?.toUpperCase()}
                   </span>
                   <h6 className="mb-0 fw-bold">{a.titre}</h6>

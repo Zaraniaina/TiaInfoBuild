@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { api } from '@/services/api'
 import { useToastStore } from '@/stores/toast.store'
 import { formatErrorMessage } from '@/utils/errorMessage'
+import { AuthVisualPanel } from '@/components/auth/AuthVisualPanel'
 
 const passwordPolicy = z
   .string()
@@ -74,31 +75,18 @@ export function RegisterPage() {
   return (
     <div className="auth-shell">
       {/* Panneau Visuel Gauche */}
-      <div className="auth-visual d-none d-lg-flex flex-column justify-content-between">
-        <div className="d-flex align-items-center gap-3">
-          <div className="mark">
-            <i className="bi bi-building"></i>
-          </div>
-          <div>
-            <div className="brand-name">TIA INFO BUILD</div>
-            <div className="brand-sub">Plateforme BTP</div>
-          </div>
-        </div>
-
-        <div className="auth-visual-content">
-          <div className="eyebrow mb-3">Inscription Entreprise</div>
-          <h2 className="auth-visual-title">
-            Créez votre entreprise<br />
-            en quelques minutes.
-          </h2>
-          <p className="auth-visual-text">
-            Inscrivez votre entreprise pour piloter vos chantiers, vos équipes RH, vos matériels
-            et vos finances depuis un espace unique et sécurisé.
-          </p>
-        </div>
-
-        <div className="small auth-visual-footer">© 2026 TIA INFO BUILD — Madagascar</div>
-      </div>
+      <AuthVisualPanel
+        eyebrow="Inscription Entreprise"
+        title="Créez votre entreprise en quelques minutes."
+        subtitle="Inscrivez votre entreprise pour piloter vos chantiers, vos équipes RH, vos matériels et vos finances depuis un espace unique et sécurisé."
+        highlightedWord="entreprise"
+        stats={[
+          { value: '100%', label: 'Suivi temps réel', icon: 'bi-activity' },
+          { value: '24/7', label: 'Accès sécurisé', icon: 'bi-shield-lock' },
+          { value: '+50', label: 'Modules actifs', icon: 'bi-grid-3x3-gap' },
+          { value: '99.9%', label: 'Disponibilité', icon: 'bi-speedometer2' },
+        ]}
+      />
 
       {/* Formulaire d'inscription */}
       <div className="auth-form-side">

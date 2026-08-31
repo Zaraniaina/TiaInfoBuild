@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '@/hooks/useAuth'
 import { formatErrorMessage } from '@/utils/errorMessage'
+import { AuthVisualPanel } from '@/components/auth/AuthVisualPanel'
 
 const loginSchema = z.object({
   email: z.string().email('Adresse email invalide'),
@@ -39,45 +40,18 @@ export function LoginPage() {
   return (
     <div className="auth-shell">
       {/* Panneau visuel gauche */}
-      <div className="auth-visual d-none d-lg-flex flex-column justify-content-between">
-        <div className="d-flex align-items-center gap-3">
-          <div className="mark">
-            <i className="bi bi-building"></i>
-          </div>
-          <div>
-            <div className="brand-name">TIA INFO BUILD</div>
-            <div className="brand-sub">Plateforme BTP</div>
-          </div>
-        </div>
-
-        <div className="auth-visual-content">
-          <div className="eyebrow mb-3">Pilotage BTP</div>
-          <h2 className="auth-visual-title">
-            Un seul tableau de bord<br />
-            pour tous vos chantiers.
-          </h2>
-          <p className="auth-visual-text">
-            Chantiers, ressources humaines, matériels, stocks et finances —
-            pilotés depuis un espace unique, accessible du bureau au terrain.
-          </p>
-          <div className="auth-visual-stats mt-4">
-            <div className="auth-stat">
-              <div className="auth-stat-value">100%</div>
-              <div className="auth-stat-label">Suivi temps réel</div>
-            </div>
-            <div className="auth-stat">
-              <div className="auth-stat-value">24/7</div>
-              <div className="auth-stat-label">Accès sécurisé</div>
-            </div>
-            <div className="auth-stat">
-              <div className="auth-stat-value">+50</div>
-              <div className="auth-stat-label">Modules actifs</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="small auth-visual-footer">© 2026 TIA INFO BUILD — Madagascar</div>
-      </div>
+      <AuthVisualPanel
+        eyebrow="Pilotage BTP"
+        title="Un seul tableau de bord pour tous vos chantiers."
+        subtitle="Chantiers, ressources humaines, matériels, stocks et finances — pilotés depuis un espace unique, accessible du bureau au terrain."
+        highlightedWord="chantiers."
+        stats={[
+          { value: '100%', label: 'Suivi temps réel', icon: 'bi-activity' },
+          { value: '24/7', label: 'Accès sécurisé', icon: 'bi-shield-lock' },
+          { value: '+50', label: 'Modules actifs', icon: 'bi-grid-3x3-gap' },
+          { value: '99.9%', label: 'Disponibilité', icon: 'bi-speedometer2' },
+        ]}
+      />
 
       {/* Formulaire de connexion */}
       <div className="auth-form-side">

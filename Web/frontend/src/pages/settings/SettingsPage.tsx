@@ -420,28 +420,28 @@ export function SettingsPage() {
 
   const getRoleBadge = (role: string) => {
     const map: Record<string, string> = {
-      super_admin: "bg-danger",
-      admin_entreprise: "bg-primary",
-      directeur: "bg-success",
-      comptable: "bg-info",
-      chef_chantier: "bg-warning text-dark",
-      chef_projet: "bg-dark",
-      rh: "bg-purple text-white",
-      materiel: "bg-secondary",
-      magasinier: "bg-secondary",
-      commercial: "bg-success",
+      super_admin: "bg-danger bg-opacity-10 text-danger border",
+      admin_entreprise: "bg-primary bg-opacity-10 text-primary border",
+      directeur: "bg-success bg-opacity-10 text-success border",
+      comptable: "bg-info bg-opacity-10 text-info border",
+      chef_chantier: "bg-warning bg-opacity-10 text-dark border",
+      chef_projet: "bg-secondary bg-opacity-10 text-dark border",
+      rh: "bg-light text-dark border",
+      materiel: "bg-light text-dark border",
+      magasinier: "bg-light text-dark border",
+      commercial: "bg-success bg-opacity-10 text-success border",
       employe: "bg-light text-dark border",
       client: "bg-light text-dark border",
     };
-    return map[role] || "bg-secondary";
+    return map[role] || "bg-light text-dark border";
   };
 
   return (
     <div className="container-fluid py-4">
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-          <h2 className="mb-1 fw-bold">
-            <i className="bi bi-gear me-2 text-primary"></i>Administration &
+          <h2 className="mb-1 fw-bold text-secondary">
+            <i className="bi bi-gear me-2"></i>Administration &
             Paramètres
           </h2>
           <p className="text-secondary mb-0">
@@ -502,7 +502,7 @@ export function SettingsPage() {
               />
             </div>
             <button
-              className="btn btn-primary fw-bold"
+              className="btn btn-outline-secondary fw-bold"
               onClick={openCreateUser}
             >
               <i className="bi bi-person-plus me-2"></i>Nouvel Utilisateur
@@ -535,7 +535,7 @@ export function SettingsPage() {
                     </td>
                     <td>
                       <span
-                        className={`badge ${u.statut === "actif" ? "bg-success" : "bg-secondary"}`}
+                        className={`badge ${u.statut === "actif" ? "bg-success bg-opacity-10 text-success border" : "bg-secondary bg-opacity-10 text-dark border"}`}
                       >
                         {u.statut === "actif" ? "Actif" : "Inactif"}
                       </span>
@@ -818,23 +818,23 @@ export function SettingsPage() {
 
             <button
               type="submit"
-              className="btn btn-primary fw-bold"
+              className="btn btn-outline-secondary fw-bold"
               disabled={saving}
             >
               {saving ? "Enregistrement..." : "Enregistrer les paramètres"}
             </button>
           </form>
         ) : (
-          <div className="text-center py-5">
-            <div className="spinner-border text-primary" role="status"></div>
-          </div>
+        <div className="text-center py-5">
+          <div className="spinner-border text-secondary" role="status"></div>
+        </div>
         ))}
 
       {activeTab === "audit" && (
         <div className="table-card">
           <div className="table-header">
             <h5 className="fw-bold mb-0">
-              <i className="bi bi-shield-check me-2 text-primary"></i>Journal
+              <i className="bi bi-shield-check me-2"></i>Journal
               d'activité
             </h5>
             <button
@@ -867,7 +867,7 @@ export function SettingsPage() {
                     <td className="small text-muted">{l.user_agent || "—"}</td>
                     <td>
                       <span
-                        className={`badge ${l.reussi ? "bg-success" : "bg-danger"}`}
+                        className={`badge ${l.reussi ? "bg-success bg-opacity-10 text-success border" : "bg-danger bg-opacity-10 text-danger border"}`}
                       >
                         {l.reussi ? "Succès" : "Échec"}
                       </span>
@@ -929,7 +929,7 @@ export function SettingsPage() {
           </div>
           <button
             type="submit"
-            className="btn btn-primary fw-bold mt-4"
+            className="btn btn-outline-secondary fw-bold mt-4"
             disabled={saving}
           >
             Mettre à jour le profil
@@ -1074,17 +1074,17 @@ export function SettingsPage() {
                 <div className="modal-footer border-0 pt-0">
                   <button
                     type="button"
-                    className="btn btn-secondary"
+                     className="btn btn-outline-secondary"
                     onClick={() => setShowUserModal(false)}
                     disabled={saving}
                   >
                     Annuler
                   </button>
-                  <button
-                    type="submit"
-                    className="btn btn-primary fw-bold"
-                    disabled={saving}
-                  >
+                    <button
+                      type="submit"
+                      className="btn btn-outline-secondary fw-bold"
+                      disabled={saving}
+                    >
                     {saving
                       ? "Enregistrement..."
                       : editingUser

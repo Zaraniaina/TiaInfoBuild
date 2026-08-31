@@ -104,22 +104,22 @@ export function CommercialPage() {
   return (
     <div className="container-fluid py-4">
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <h2 className="mb-1"><i className="bi bi-cart me-2 text-primary"></i>Commercial & Facturation</h2>
-          <p className="text-secondary mb-0">Gestion de la relation client, des devis, des contrats et du suivi des encaissements</p>
+        <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+          <div>
+            <h2 className="mb-1 text-secondary"><i className="bi bi-cart me-2"></i>Commercial & Facturation</h2>
+            <p className="text-secondary mb-0">Gestion de la relation client, des devis, des contrats et du suivi des encaissements</p>
+          </div>
+          {activeTab === 'devis' && perms.canCreateDevis && (
+            <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedDevis(null); setDevisForm({ numero: `DEV-2026-00${devisList.length + 1}`, montant_ht: 0, tva: 20, statut: 'brouillon' }); setShowDevisModal(true); }}>
+              <i className="bi bi-plus-lg me-2"></i>Nouveau Devis
+            </button>
+          )}
+          {activeTab === 'clients' && perms.canCreateClient && (
+            <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedClient(null); setClientForm({ nom: '', email: '', telephone: '', adresse: '' }); setShowClientModal(true); }}>
+              <i className="bi bi-person-plus me-2"></i>Nouveau Client
+            </button>
+          )}
         </div>
-        {activeTab === 'devis' && perms.canCreateDevis && (
-          <button className="btn btn-primary fw-bold" onClick={() => { setSelectedDevis(null); setDevisForm({ numero: `DEV-2026-00${devisList.length + 1}`, montant_ht: 0, tva: 20, statut: 'brouillon' }); setShowDevisModal(true); }}>
-            <i className="bi bi-plus-lg me-2"></i>Nouveau Devis
-          </button>
-        )}
-        {activeTab === 'clients' && perms.canCreateClient && (
-          <button className="btn btn-primary fw-bold" onClick={() => { setSelectedClient(null); setClientForm({ nom: '', email: '', telephone: '', adresse: '' }); setShowClientModal(true); }}>
-            <i className="bi bi-person-plus me-2"></i>Nouveau Client
-          </button>
-        )}
-      </div>
 
       {/* Tabs */}
       <ul className="nav nav-pills mb-4 p-2 rounded shadow-sm">
@@ -153,7 +153,7 @@ export function CommercialPage() {
       {/* Content */}
       {loading ? (
         <div className="text-center py-5">
-          <div className="spinner-border text-primary" role="status"></div>
+          <div className="spinner-border text-secondary" role="status"></div>
         </div>
       ) : activeTab === 'devis' ? (
         <div className="card border-0 shadow-sm">
@@ -173,21 +173,21 @@ export function CommercialPage() {
               <tbody>
                 {devisList.map(d => (
                   <tr key={d.id}>
-                    <td className="font-monospace fw-bold text-primary">{d.numero}</td>
-                    <td className="fw-semibold">Client #{d.client_id}</td>
-                    <td>{d.objet}</td>
-                    <td className="font-monospace">{d.montant_ht?.toLocaleString()} MGA</td>
-                    <td className="font-monospace fw-bold text-dark">{d.montant_ttc?.toLocaleString()} MGA</td>
-                    <td>
-                      <span className={`badge ${d.statut === 'accepte' ? 'bg-success' : d.statut === 'envoye' ? 'bg-info' : 'bg-secondary'}`}>
-                        {d.statut}
-                      </span>
-                    </td>
-                    <td>
-                      <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedDevis(d); setDevisForm(d); setShowDevisModal(true); }}>
-                        <i className="bi bi-pencil"></i>
-                      </button>
-                    </td>
+                     <td className="font-monospace fw-bold text-dark">{d.numero}</td>
+                     <td className="fw-semibold">Client #{d.client_id}</td>
+                     <td>{d.objet}</td>
+                     <td className="font-monospace">{d.montant_ht?.toLocaleString()} MGA</td>
+                     <td className="font-monospace fw-bold text-dark">{d.montant_ttc?.toLocaleString()} MGA</td>
+                     <td>
+                       <span className={`badge ${d.statut === 'accepte' ? 'bg-success bg-opacity-10 text-success border' : d.statut === 'envoye' ? 'bg-light text-dark border' : 'bg-light text-dark border'}`}>
+                         {d.statut}
+                       </span>
+                     </td>
+                     <td>
+                       <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedDevis(d); setDevisForm(d); setShowDevisModal(true); }}>
+                         <i className="bi bi-pencil"></i>
+                       </button>
+                     </td>
                   </tr>
                 ))}
               </tbody>
@@ -216,10 +216,10 @@ export function CommercialPage() {
                       <td className="font-monospace fw-bold text-dark">{f.numero}</td>
                       <td className="fw-semibold">Client #{f.client_id}</td>
                       <td className="font-monospace fw-bold">{f.montant_ttc?.toLocaleString()} MGA</td>
-                      <td className="font-monospace text-success">{f.montant_paye?.toLocaleString()} MGA</td>
-                      <td className="font-monospace text-danger fw-bold">{reste.toLocaleString()} MGA</td>
+                      <td className="font-monospace text-secondary">{f.montant_paye?.toLocaleString()} MGA</td>
+                      <td className="font-monospace text-secondary fw-bold">{reste.toLocaleString()} MGA</td>
                       <td>
-                        <span className={`badge ${f.statut === 'payee' ? 'bg-success' : f.statut === 'partiellement_payee' ? 'bg-warning text-dark' : 'bg-danger'}`}>
+                        <span className={`badge ${f.statut === 'payee' ? 'bg-success bg-opacity-10 text-success border' : f.statut === 'partiellement_payee' ? 'bg-warning bg-opacity-10 text-dark border' : 'bg-danger bg-opacity-10 text-danger border'}`}>
                           {f.statut}
                         </span>
                       </td>
@@ -244,7 +244,7 @@ export function CommercialPage() {
                   <div className="card-body">
                     <div className="d-flex justify-content-between align-items-start mb-2">
                       <h5 className="fw-bold text-dark mb-0">{c.entreprise || `${c.nom} ${c.prenom}`}</h5>
-                      <span className="badge bg-primary bg-opacity-10 text-primary">Client BTP</span>
+                       <span className="badge bg-primary bg-opacity-10 text-primary border">Client BTP</span>
                     </div>
                     <p className="text-muted small mb-1"><i className="bi bi-person me-2"></i>Contact: {c.nom} {c.prenom}</p>
                     <p className="text-muted small mb-1"><i className="bi bi-envelope me-2"></i>{c.email || '—'}</p>
@@ -273,9 +273,9 @@ export function CommercialPage() {
                   <tr key={ctr.id}>
                     <td className="font-monospace fw-bold text-dark">{ctr.reference}</td>
                     <td>{ctr.objet}</td>
-                    <td className="font-monospace fw-bold text-primary">{ctr.montant?.toLocaleString()} MGA</td>
-                    <td className="small text-muted">{ctr.date_debut} → {ctr.date_fin}</td>
-                    <td><span className="badge bg-success">{ctr.statut}</span></td>
+                     <td className="font-monospace fw-bold text-secondary">{ctr.montant?.toLocaleString()} MGA</td>
+                     <td className="small text-muted">{ctr.date_debut} → {ctr.date_fin}</td>
+                     <td><span className="badge bg-success bg-opacity-10 text-success border">{ctr.statut}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -300,7 +300,7 @@ export function CommercialPage() {
                   <tr key={p.id}>
                     <td className="fw-semibold">Facture #{p.facture_id}</td>
                     <td>{p.date_paiement}</td>
-                    <td className="font-monospace fw-bold text-success">+{p.montant?.toLocaleString()} MGA</td>
+                    <td className="font-monospace fw-bold text-secondary">+{p.montant?.toLocaleString()} MGA</td>
                     <td><span className="badge bg-light text-dark border">{p.mode_paiement}</span></td>
                     <td className="font-monospace small text-muted">{p.reference || '—'}</td>
                   </tr>
@@ -339,17 +339,17 @@ export function CommercialPage() {
                       <label className="form-label fw-semibold">TVA (%)</label>
                       <input type="number" className="form-control font-monospace" value={devisForm.tva || 20} onChange={e => setDevisForm({ ...devisForm, tva: Number(e.target.value) })} />
                     </div>
-                    <div className="col-12 p-3 bg-light rounded text-center">
-                      <small className="text-muted d-block">Montant Calculé TTC (Estimation)</small>
-                      <h3 className="fw-bold text-success mb-0">
-                        {((Number(devisForm.montant_ht || 0)) * (1 + (Number(devisForm.tva || 20) / 100))).toLocaleString()} MGA
-                      </h3>
-                    </div>
+                     <div className="col-12 p-3 bg-light rounded text-center">
+                       <small className="text-muted d-block">Montant Calculé TTC (Estimation)</small>
+                       <h3 className="fw-bold text-secondary mb-0">
+                         {((Number(devisForm.montant_ht || 0)) * (1 + (Number(devisForm.tva || 20) / 100))).toLocaleString()} MGA
+                       </h3>
+                     </div>
                   </div>
                 </div>
                 <div className="modal-footer bg-light">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowDevisModal(false)}>Annuler</button>
-                  <button type="submit" className="btn btn-primary fw-bold">Générer le devis</button>
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowDevisModal(false)}>Annuler</button>
+                  <button type="submit" className="btn btn-outline-secondary fw-bold">Générer le devis</button>
                 </div>
               </form>
             </div>

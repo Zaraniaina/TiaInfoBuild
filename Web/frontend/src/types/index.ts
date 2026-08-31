@@ -749,6 +749,9 @@ export interface SuperAdminStats {
   revenu_mensuel?: number;
   incidents_critiques?: number;
   demandes_support?: number;
+  entreprises_inactives?: number;
+  factures_en_retard?: number;
+  total_paiements?: number;
 }
 
 // ============================================================

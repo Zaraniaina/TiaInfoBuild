@@ -115,22 +115,22 @@ export function FinancePage() {
   return (
     <div className="container-fluid py-4">
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <h2 className="mb-1"><i className="bi bi-bank me-2 text-primary"></i>Gestion Financière</h2>
-          <p className="text-secondary mb-0">Suivez la trésorerie, la rentabilité, les dépenses et les bilans financiers</p>
+        <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+          <div>
+            <h2 className="mb-1 text-secondary"><i className="bi bi-bank me-2"></i>Gestion Financière</h2>
+            <p className="text-secondary mb-0">Suivez la trésorerie, la rentabilité, les dépenses et les bilans financiers</p>
+          </div>
+          {activeTab === 'depenses' && perms.canCreateDepense && (
+            <button className="btn btn-outline-secondary fw-bold" onClick={() => setShowModal(true)}>
+              <i className="bi bi-plus-circle me-2"></i>Nouvelle Dépense
+            </button>
+          )}
+          {activeTab === 'rapports' && perms.canExportFinance && (
+            <button className="btn btn-outline-secondary fw-bold" onClick={handleGenerateRapport} disabled={generating}>
+              <i className="bi bi-file-earmark-bar-graph me-2"></i>{generating ? 'Génération...' : 'Générer Rapport'}
+            </button>
+          )}
         </div>
-        {activeTab === 'depenses' && perms.canCreateDepense && (
-          <button className="btn btn-primary fw-bold" onClick={() => setShowModal(true)}>
-            <i className="bi bi-plus-circle me-2"></i>Nouvelle Dépense
-          </button>
-        )}
-        {activeTab === 'rapports' && perms.canExportFinance && (
-          <button className="btn btn-primary fw-bold" onClick={handleGenerateRapport} disabled={generating}>
-            <i className="bi bi-file-earmark-bar-graph me-2"></i>{generating ? 'Génération...' : 'Générer Rapport'}
-          </button>
-        )}
-      </div>
 
       {/* Main Tabs */}
       <ul className="nav nav-pills mb-4 p-2 rounded shadow-sm">
@@ -168,7 +168,7 @@ export function FinancePage() {
 
       {loading ? (
         <div className="text-center py-5">
-          <div className="spinner-border text-primary" role="status"></div>
+          <div className="spinner-border text-secondary" role="status"></div>
         </div>
       ) : activeTab === 'overview' ? (
         <div>
@@ -176,19 +176,19 @@ export function FinancePage() {
             <div className="col-md-4">
               <div className="card border-0 shadow-sm text-center p-4">
                 <small className="text-muted text-uppercase fw-bold">Chiffre d'Affaires Brut</small>
-                <h2 className="fw-bold text-success mt-2 mb-0">145 000 000 MGA</h2>
+                <h2 className="fw-bold text-secondary mt-2 mb-0">145 000 000 MGA</h2>
               </div>
             </div>
             <div className="col-md-4">
               <div className="card border-0 shadow-sm text-center p-4">
                 <small className="text-muted text-uppercase fw-bold">Dépenses Cumulées</small>
-                <h2 className="fw-bold text-danger mt-2 mb-0">85 000 000 MGA</h2>
+                <h2 className="fw-bold text-secondary mt-2 mb-0">85 000 000 MGA</h2>
               </div>
             </div>
             <div className="col-md-4">
               <div className="card border-0 shadow-sm text-center p-4">
                 <small className="text-muted text-uppercase fw-bold">Résultat Net</small>
-                <h2 className="fw-bold text-primary mt-2 mb-0">+ 60 000 000 MGA</h2>
+                <h2 className="fw-bold text-secondary mt-2 mb-0">+ 60 000 000 MGA</h2>
               </div>
             </div>
           </div>
@@ -211,10 +211,10 @@ export function FinancePage() {
                   <tr key={dep.id}>
                     <td className="fw-semibold">{dep.description}</td>
                     <td><span className="badge bg-light text-dark text-capitalize">{dep.categorie || 'Autre'}</span></td>
-                    <td className="fw-bold text-danger">{dep.montant?.toLocaleString()} MGA</td>
+                    <td className="fw-bold text-secondary">{dep.montant?.toLocaleString()} MGA</td>
                     <td>{dep.date_depense}</td>
                     <td>
-                      <span className={`badge ${dep.statut === 'validee' ? 'bg-success' : dep.statut === 'refusee' ? 'bg-danger' : 'bg-warning text-dark'}`}>
+                      <span className={`badge ${dep.statut === 'validee' ? 'bg-success bg-opacity-10 text-success border' : dep.statut === 'refusee' ? 'bg-danger bg-opacity-10 text-danger border' : 'bg-warning bg-opacity-10 text-dark border'}`}>
                         {dep.statut}
                       </span>
                     </td>
@@ -242,15 +242,15 @@ export function FinancePage() {
                 {overruns.map(o => (
                   <tr key={o.id}>
                     <td className="fw-semibold">{o.nom}</td>
-                    <td className="font-monospace">{o.budget_prevu.toLocaleString()} MGA</td>
-                    <td className="font-monospace text-danger">{o.budget_reel.toLocaleString()} MGA</td>
-                    <td className="font-monospace fw-bold text-danger">+{o.depassement.toLocaleString()} MGA</td>
+                    <td className="font-monospace text-secondary">{o.budget_prevu.toLocaleString()} MGA</td>
+                    <td className="font-monospace text-secondary">{o.budget_reel.toLocaleString()} MGA</td>
+                    <td className="font-monospace fw-bold text-secondary">+{o.depassement.toLocaleString()} MGA</td>
                     <td>
-                      <span className={`badge ${o.taux_depassement > 10 ? 'bg-danger' : 'bg-warning text-dark'}`}>
+                      <span className={`badge ${o.taux_depassement > 10 ? 'bg-danger bg-opacity-10 text-danger border' : 'bg-warning bg-opacity-10 text-dark border'}`}>
                         +{o.taux_depassement}%
                       </span>
                     </td>
-                    <td><span className="badge bg-secondary">{o.statut}</span></td>
+                    <td><span className="badge bg-light text-dark border">{o.statut}</span></td>
                   </tr>
                 ))}
                 {overruns.length === 0 && (
@@ -282,11 +282,11 @@ export function FinancePage() {
                     <td>{p.date_echeance}</td>
                     <td>{p.date_paiement}</td>
                     <td>
-                      <span className={`badge ${p.en_retard ? 'bg-danger' : 'bg-success'}`}>
+                      <span className={`badge ${p.en_retard ? 'bg-danger bg-opacity-10 text-danger border' : 'bg-success bg-opacity-10 text-success border'}`}>
                         {p.delai_jours > 0 ? `+${p.delai_jours}` : p.delai_jours}
                       </span>
                     </td>
-                    <td><span className="badge bg-info">Payée</span></td>
+                    <td><span className="badge bg-light text-dark border">Payée</span></td>
                   </tr>
                 ))}
                 {paymentDelays.length === 0 && (
@@ -316,12 +316,12 @@ export function FinancePage() {
                   <tr key={idx}>
                     <td className="fw-semibold">{c.nom}</td>
                     <td className="text-muted">{c.entreprise || '—'}</td>
-                    <td className="font-monospace text-danger fw-bold">{c.encours_actuel.toLocaleString()} MGA</td>
+                    <td className="font-monospace text-secondary fw-bold">{c.encours_actuel.toLocaleString()} MGA</td>
                     <td className="font-monospace text-muted">{c.encours_max.toLocaleString()} MGA</td>
-                    <td className="font-monospace fw-bold text-danger">{c.depassement.toLocaleString()} MGA</td>
+                    <td className="font-monospace fw-bold text-secondary">{c.depassement.toLocaleString()} MGA</td>
                     <td className="text-muted">{c.nb_factures_impayees}</td>
                     <td>
-                      <span className={`badge ${c.depasse_limite ? 'bg-danger' : 'bg-success'}`}>
+                      <span className={`badge ${c.depasse_limite ? 'bg-danger bg-opacity-10 text-danger border' : 'bg-success bg-opacity-10 text-success border'}`}>
                         {c.depasse_limite ? 'Dépassé' : 'OK'}
                       </span>
                     </td>
@@ -397,8 +397,8 @@ export function FinancePage() {
                   </div>
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={saving}>Annuler</button>
-                  <button type="submit" className="btn btn-primary" disabled={saving}>
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowModal(false)} disabled={saving}>Annuler</button>
+                  <button type="submit" className="btn btn-outline-secondary" disabled={saving}>
                     {saving ? 'Enregistrement...' : 'Enregistrer'}
                   </button>
                 </div>

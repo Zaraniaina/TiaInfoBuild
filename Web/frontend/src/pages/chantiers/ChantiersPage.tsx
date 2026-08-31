@@ -128,12 +128,12 @@ export function ChantiersPage() {
 
   const getStatutBadge = (statut: string) => {
     switch (statut) {
-      case 'en_cours': return <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill fw-semibold">En cours</span>
-      case 'planification': return <span className="badge bg-info bg-opacity-10 text-info px-3 py-2 rounded-pill fw-semibold">Planifié</span>
-      case 'suspendu': return <span className="badge bg-warning bg-opacity-10 text-warning px-3 py-2 rounded-pill fw-semibold">Suspendu</span>
-      case 'termine': return <span className="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill fw-semibold">Terminé</span>
-      case 'annule': case 'arrete': return <span className="badge bg-danger bg-opacity-10 text-danger px-3 py-2 rounded-pill fw-semibold">Arrêté</span>
-      default: return <span className="badge bg-secondary px-3 py-2 rounded-pill">{statut}</span>
+      case 'en_cours': return <span className="badge bg-secondary bg-opacity-10 text-dark border px-3 py-2 rounded-pill fw-semibold">En cours</span>
+      case 'planification': return <span className="badge bg-light text-dark border px-3 py-2 rounded-pill fw-semibold">Planifié</span>
+      case 'suspendu': return <span className="badge bg-warning bg-opacity-10 text-dark border px-3 py-2 rounded-pill fw-semibold">Suspendu</span>
+      case 'termine': return <span className="badge bg-success bg-opacity-10 text-success border px-3 py-2 rounded-pill fw-semibold">Terminé</span>
+      case 'annule': case 'arrete': return <span className="badge bg-danger bg-opacity-10 text-danger border px-3 py-2 rounded-pill fw-semibold">Arrêté</span>
+      default: return <span className="badge bg-light text-dark border px-3 py-2 rounded-pill">{statut}</span>
     }
   }
 
@@ -147,18 +147,18 @@ export function ChantiersPage() {
   return (
     <div className="container-fluid py-4">
       {/* Header avec actions */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <h2 className="mb-1"><i className="bi bi-building me-2 text-primary"></i>Chantiers</h2>
-          <p className="text-secondary mb-0">Gestion et suivi des chantiers</p>
-        </div>
+        <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+          <div>
+            <h2 className="mb-1 text-secondary"><i className="bi bi-building me-2"></i>Chantiers</h2>
+            <p className="text-secondary mb-0">Gestion et suivi des chantiers</p>
+          </div>
 
-        {perms.canCreateChantier && (
-          <button className="btn btn-primary fw-bold" onClick={() => { setSelectedChantier(null); setFormData({}); setShowModal(true); }}>
-            <i className="bi bi-plus-lg me-1"></i>Nouveau chantier
-          </button>
-        )}
-      </div>
+          {perms.canCreateChantier && (
+            <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedChantier(null); setFormData({}); setShowModal(true); }}>
+              <i className="bi bi-plus-lg me-1"></i>Nouveau chantier
+            </button>
+          )}
+        </div>
 
       {/* Filtres et recherche */}
       <div className="card border-0 shadow-sm mb-4">
@@ -207,14 +207,14 @@ export function ChantiersPage() {
 
               <div className="btn-group" role="group">
                 <button
-                  className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  className={`btn ${viewMode === 'table' ? 'btn-outline-secondary' : 'btn-outline-secondary'}`}
                   onClick={() => setViewMode('table')}
                   title="Vue Tableau"
                 >
                   <i className="bi bi-table"></i>
                 </button>
                 <button
-                  className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  className={`btn ${viewMode === 'cards' ? 'btn-outline-secondary' : 'btn-outline-secondary'}`}
                   onClick={() => setViewMode('cards')}
                   title="Vue Cartes"
                 >
@@ -229,15 +229,15 @@ export function ChantiersPage() {
       {/* Content */}
       {loading ? (
         <div className="text-center py-5">
-          <div className="spinner-border text-primary" role="status"></div>
+          <div className="spinner-border text-secondary" role="status"></div>
         </div>
       ) : filteredChantiers.length === 0 ? (
         <div className="card border-0 shadow-sm text-center py-5">
           <div className="card-body">
             <i className="bi bi-building display-1 text-secondary"></i>
-            <h4 className="mt-3 fw-bold">Aucun chantier</h4>
+            <h4 className="mt-3 fw-bold text-secondary">Aucun chantier</h4>
             <p className="text-secondary">Commencez par créer votre premier chantier</p>
-            <button className="btn btn-primary fw-bold" onClick={() => { setSelectedChantier(null); setFormData({}); setShowModal(true); }}>
+            <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedChantier(null); setFormData({}); setShowModal(true); }}>
               <i className="bi bi-plus-lg me-1"></i>Créer un chantier
             </button>
           </div>
@@ -255,18 +255,18 @@ export function ChantiersPage() {
                   <h5 className="card-title fw-bold text-dark mb-2">{c.nom}</h5>
                   <p className="text-muted small mb-3 text-truncate">{c.description || 'Aucune description'}</p>
 
-                  <div className="mb-3">
-                    <div className="d-flex justify-content-between small mb-1">
-                      <span className="text-muted">Budget consommé</span>
-                      <span className="fw-bold">{c.budget_reel?.toLocaleString()} / {c.budget_prevu?.toLocaleString()} MGA</span>
-                    </div>
-                    <div className="progress" style={{ height: '6px' }}>
-                      <div
-                        className="progress-bar bg-primary"
-                        style={{ width: `${Math.min(100, (c.budget_reel / (c.budget_prevu || 1)) * 100)}%` }}
-                      ></div>
-                    </div>
-                  </div>
+                   <div className="mb-3">
+                     <div className="d-flex justify-content-between small mb-1">
+                       <span className="text-muted">Budget consommé</span>
+                       <span className="fw-bold">{c.budget_reel?.toLocaleString()} / {c.budget_prevu?.toLocaleString()} MGA</span>
+                     </div>
+                     <div className="progress" style={{ height: '6px' }}>
+                       <div
+                         className="progress-bar bg-secondary"
+                         style={{ width: `${Math.min(100, (c.budget_reel / (c.budget_prevu || 1)) * 100)}%` }}
+                       ></div>
+                     </div>
+                   </div>
 
                   <div className="row g-2 text-center border-top pt-3 mt-3 small">
                     <div className="col-6">
@@ -279,17 +279,17 @@ export function ChantiersPage() {
                     </div>
                   </div>
                 </div>
-                <div className="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-2">
-                  <button className="btn btn-sm btn-link text-primary p-0 fw-semibold" onClick={() => { setSelectedChantier(c); setShowDetailModal(true); }}>
+                 <div className="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-2">
+                  <button className="btn btn-sm btn-link text-secondary p-0 fw-semibold" onClick={() => { setSelectedChantier(c); setShowDetailModal(true); }}>
                     <i className="bi bi-eye me-1"></i> Voir détails
                   </button>
                   <div className="d-flex gap-1">
-                    <button className="btn btn-sm btn-outline-warning" onClick={() => handleGenerateQR(c.id)} title="QR Pointage">
-                      <i className="bi bi-qr-code-scan"></i>
-                    </button>
-                    <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setFormData(c); setShowModal(true); }}>
-                      <i className="bi bi-pencil"></i>
-                    </button>
+                   <button className="btn btn-sm btn-outline-secondary" onClick={() => handleGenerateQR(c.id)} title="QR Pointage">
+                     <i className="bi bi-qr-code-scan"></i>
+                   </button>
+                   <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setFormData(c); setShowModal(true); }}>
+                     <i className="bi bi-pencil"></i>
+                   </button>
                   </div>
                 </div>
               </div>
@@ -318,20 +318,20 @@ export function ChantiersPage() {
                     <td className="fw-bold text-secondary">{c.id}</td>
                     <td className="fw-semibold text-dark">{c.nom}</td>
                     <td className="font-monospace small">{c.numero}</td>
-                    <td className="d-none d-md-table-cell small">{c.date_debut || '—'} → {c.date_fin_prevue || '—'}</td>
+                    <td className="font-monospace small text-muted">{c.date_debut || '—'} → {c.date_fin_prevue || '—'}</td>
                     <td className="d-none d-lg-table-cell">{c.budget_prevu?.toLocaleString()} MGA</td>
-                    <td className="d-none d-lg-table-cell text-danger fw-semibold">{c.budget_reel?.toLocaleString()} MGA</td>
+                    <td className="d-none d-lg-table-cell text-secondary fw-semibold">{c.budget_reel?.toLocaleString()} MGA</td>
                     <td>{getStatutBadge(c.statut)}</td>
                     <td className="text-end">
                       <div className="d-inline-flex gap-1 align-items-center justify-content-end">
-                        {perms.canScanQR && (
-                          <button className="btn btn-sm btn-outline-warning" onClick={() => handleGenerateQR(c.id)} title="QR Pointage">
-                            <i className="bi bi-qr-code-scan"></i>
-                          </button>
-                        )}
-                        <button className="btn btn-sm btn-outline-primary" onClick={() => { setSelectedChantier(c); setShowDetailModal(true); }}>
-                          <i className="bi bi-eye"></i>
-                        </button>
+                         {perms.canScanQR && (
+                           <button className="btn btn-sm btn-outline-secondary" onClick={() => handleGenerateQR(c.id)} title="QR Pointage">
+                             <i className="bi bi-qr-code-scan"></i>
+                           </button>
+                         )}
+                         <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setShowDetailModal(true); }}>
+                           <i className="bi bi-eye"></i>
+                         </button>
                         {perms.canEditChantier && (
                           <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setFormData(c); setShowModal(true); }}>
                             <i className="bi bi-pencil"></i>
@@ -518,7 +518,7 @@ export function ChantiersPage() {
                               </div>
                               <div className="d-flex align-items-center gap-3">
                                 <div className="progress" style={{ width: '120px', height: '8px' }}>
-                                  <div className="progress-bar bg-success" style={{ width: `${p.avancement_pct}%` }}></div>
+                                  <div className="progress-bar bg-secondary" style={{ width: `${p.avancement_pct}%` }}></div>
                                 </div>
                                 <span className="fw-bold">{p.avancement_pct}%</span>
                               </div>
@@ -538,7 +538,7 @@ export function ChantiersPage() {
                             <input type="number" className="form-control" name="phase_ordre" placeholder="Ordre" defaultValue={0} min={0} />
                           </div>
                           <div className="col-md-3">
-                            <button type="submit" className="btn btn-primary w-100">Ajouter</button>
+                            <button type="submit" className="btn btn-outline-secondary w-100">Ajouter</button>
                           </div>
                         </div>
                       </form>
@@ -553,12 +553,12 @@ export function ChantiersPage() {
                           {selectedChantier.incidents.map(inc => (
                             <div key={inc.id} className="list-group-item d-flex justify-content-between align-items-center">
                               <div>
-                                <h6 className="mb-0 fw-semibold text-danger">{inc.titre}</h6>
+                                 <h6 className="mb-0 fw-semibold text-secondary">{inc.titre}</h6>
                                 <small className="text-muted">Date: {inc.date_incident}</small>
                               </div>
-                              <span className={`badge ${inc.statut === 'resolu' ? 'bg-success' : 'bg-warning text-dark'}`}>
-                                {inc.statut === 'resolu' ? 'Résolu' : 'En cours'}
-                              </span>
+                                 <span className={`badge ${inc.statut === 'resolu' ? 'bg-success bg-opacity-10 text-success border' : 'bg-warning bg-opacity-10 text-dark border'}`}>
+                                   {inc.statut === 'resolu' ? 'Résolu' : 'En cours'}
+                                 </span>
                             </div>
                           ))}
                         </div>
@@ -580,7 +580,7 @@ export function ChantiersPage() {
                             </select>
                           </div>
                           <div className="col-md-3">
-                            <button type="submit" className="btn btn-danger w-100">Signaler</button>
+                            <button type="submit" className="btn btn-outline-secondary w-100">Signaler</button>
                           </div>
                         </div>
                       </form>
@@ -595,8 +595,8 @@ export function ChantiersPage() {
                   )}
 
                   <div className="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Annuler</button>
-                    <button type="submit" className="btn btn-primary fw-bold">Enregistrer</button>
+                    <button type="button" className="btn btn-outline-secondary" onClick={() => setShowModal(false)}>Annuler</button>
+                    <button type="submit" className="btn btn-outline-secondary fw-bold">Enregistrer</button>
                   </div>
                 </form>
               </div>
@@ -682,7 +682,7 @@ export function ChantiersPage() {
                               </div>
                               <div className="d-flex align-items-center gap-3">
                                 <div className="progress" style={{ width: '120px', height: '8px' }}>
-                                  <div className="progress-bar bg-success" style={{ width: `${p.avancement_pct}%` }}></div>
+                                  <div className="progress-bar bg-secondary" style={{ width: `${p.avancement_pct}%` }}></div>
                                 </div>
                                 <span className="fw-bold">{p.avancement_pct}%</span>
                               </div>
@@ -703,12 +703,12 @@ export function ChantiersPage() {
                           {selectedChantier.incidents.map(inc => (
                             <div key={inc.id} className="list-group-item d-flex justify-content-between align-items-center">
                               <div>
-                                <h6 className="mb-0 fw-semibold text-danger">{inc.titre}</h6>
+                                 <h6 className="mb-0 fw-semibold text-secondary">{inc.titre}</h6>
                                 <small className="text-muted">Date: {inc.date_incident}</small>
                               </div>
-                              <span className={`badge ${inc.statut === 'resolu' ? 'bg-success' : 'bg-warning'}`}>
-                                {inc.statut === 'resolu' ? 'Résolu' : 'En cours'}
-                              </span>
+                               <span className={`badge ${inc.statut === 'resolu' ? 'bg-success bg-opacity-10 text-success border' : 'bg-warning bg-opacity-10 text-dark border'}`}>
+                                 {inc.statut === 'resolu' ? 'Résolu' : 'En cours'}
+                               </span>
                             </div>
                           ))}
                         </div>
@@ -721,31 +721,31 @@ export function ChantiersPage() {
                   {activeDetailTab === 'budget' && (
                     <div className="row g-3">
                       <div className="col-md-4">
-                        <div className="p-3 bg-light rounded text-center">
-                          <small className="text-muted d-block">Budget Prévu</small>
-                          <h4 className="fw-bold text-primary mb-0">{selectedChantier.budget_prevu?.toLocaleString()} MGA</h4>
-                        </div>
-                      </div>
-                      <div className="col-md-4">
-                        <div className="p-3 bg-light rounded text-center">
-                          <small className="text-muted d-block">Budget Consommé</small>
-                          <h4 className="fw-bold text-danger mb-0">{selectedChantier.budget_reel?.toLocaleString()} MGA</h4>
-                        </div>
-                      </div>
-                      <div className="col-md-4">
-                        <div className="p-3 bg-light rounded text-center">
-                          <small className="text-muted d-block">Solde Restant</small>
-                          <h4 className="fw-bold text-success mb-0">
-                            {((selectedChantier.budget_prevu || 0) - (selectedChantier.budget_reel || 0)).toLocaleString()} MGA
-                          </h4>
-                        </div>
-                      </div>
+                         <div className="p-3 bg-light rounded text-center">
+                           <small className="text-muted d-block">Budget Prévu</small>
+                           <h4 className="fw-bold text-secondary mb-0">{selectedChantier.budget_prevu?.toLocaleString()} MGA</h4>
+                         </div>
+                       </div>
+                       <div className="col-md-4">
+                         <div className="p-3 bg-light rounded text-center">
+                           <small className="text-muted d-block">Budget Consommé</small>
+                           <h4 className="fw-bold text-secondary mb-0">{selectedChantier.budget_reel?.toLocaleString()} MGA</h4>
+                         </div>
+                       </div>
+                       <div className="col-md-4">
+                         <div className="p-3 bg-light rounded text-center">
+                           <small className="text-muted d-block">Solde Restant</small>
+                           <h4 className="fw-bold text-secondary mb-0">
+                             {((selectedChantier.budget_prevu || 0) - (selectedChantier.budget_reel || 0)).toLocaleString()} MGA
+                           </h4>
+                         </div>
+                       </div>
                     </div>
                   )}
                 </div>
               </div>
               <div className="modal-footer bg-light">
-                <button className="btn btn-secondary" onClick={() => setShowDetailModal(false)}>Fermer</button>
+                <button className="btn btn-outline-secondary" onClick={() => setShowDetailModal(false)}>Fermer</button>
               </div>
             </div>
           </div>
@@ -772,7 +772,7 @@ export function ChantiersPage() {
                 <p className="text-muted small font-monospace">Token: {qrData.qr_token}</p>
               </div>
               <div className="modal-footer justify-content-center">
-                <button className="btn btn-secondary" onClick={() => setShowQRModal(false)}>Fermer</button>
+                <button className="btn btn-outline-secondary" onClick={() => setShowQRModal(false)}>Fermer</button>
               </div>
             </div>
           </div>

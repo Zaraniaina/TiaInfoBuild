@@ -132,11 +132,11 @@ export function DashboardPage() {
   const renderAlert = () => {
     if (!meta.alert) return null;
     const colors: Record<string, string> = {
-      danger: "bg-danger bg-opacity-10 text-danger",
-      primary: "bg-primary bg-opacity-10 text-primary",
-      info: "bg-info bg-opacity-10 text-info",
-      success: "bg-success bg-opacity-10 text-success",
-      warning: "bg-warning bg-opacity-10 text-warning",
+      danger: "bg-danger bg-opacity-10 text-danger border",
+      primary: "bg-primary bg-opacity-10 text-primary border",
+      info: "bg-info bg-opacity-10 text-info border",
+      success: "bg-success bg-opacity-10 text-success border",
+      warning: "bg-warning bg-opacity-10 text-warning border",
     };
     return (
       <div
@@ -251,50 +251,50 @@ export function DashboardPage() {
                 <i className="bi bi-sliders me-2 text-primary"></i>Conformité
                 Paramétrage
               </h5>
-              <div className="d-flex flex-column gap-2">
+                <div className="d-flex flex-column gap-2">
                 <div className="d-flex justify-content-between align-items-center p-2 bg-light rounded">
                   <span className="small fw-semibold">
                     Rôles & Permissions RBAC
                   </span>
-                  <span className="badge bg-success">Conforme</span>
+                  <span className="badge bg-success bg-opacity-10 text-success border">Conforme</span>
                 </div>
                 <div className="d-flex justify-content-between align-items-center p-2 bg-light rounded">
                   <span className="small fw-semibold">
                     Format Numérotation Devis
                   </span>
-                  <span className="badge bg-success">Actif</span>
+                  <span className="badge bg-success bg-opacity-10 text-success border">Actif</span>
                 </div>
                 <div className="d-flex justify-content-between align-items-center p-2 bg-light rounded">
                   <span className="small fw-semibold">
                     Seuils Alertes Budgétaires
                   </span>
-                  <span className="badge bg-success">Configuré</span>
+                  <span className="badge bg-success bg-opacity-10 text-success border">Configuré</span>
                 </div>
                 <div className="d-flex justify-content-between align-items-center p-2 bg-light rounded">
                   <span className="small fw-semibold">
                     Politique Pointage Bureau
                   </span>
-                  <span className="badge bg-info">QR Fixe</span>
+                  <span className="badge bg-light text-dark border">QR Fixe</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
         <div className="card border-0 shadow-sm p-4 mb-4">
-          <h5 className="fw-bold mb-3">
-            <i className="bi bi-gear-fill me-2 text-primary"></i>Actions rapides
+          <h5 className="fw-bold mb-3 text-secondary">
+            <i className="bi bi-gear-fill me-2"></i>Actions rapides
             administration
           </h5>
           <div className="d-flex gap-2 flex-wrap">
             <button
-              className="btn btn-primary fw-bold"
+              className="btn btn-outline-secondary fw-bold"
               onClick={() => navigate("/settings")}
             >
               <i className="bi bi-person-gear me-2"></i>Gérer Comptes &
               Permissions
             </button>
             <button
-              className="btn btn-outline-dark fw-bold"
+              className="btn btn-outline-secondary fw-bold"
               onClick={() => navigate("/historique-logins")}
             >
               <i className="bi bi-shield-check me-2"></i>Audit Logs Connexions
@@ -477,7 +477,7 @@ export function DashboardPage() {
     return (
       <div>
         {renderAlert()}
-        <div className="alert-bar mb-4 bg-primary bg-opacity-10 text-primary border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div className="alert-bar mb-4 bg-secondary bg-opacity-10 text-dark border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
           <div>
             <strong>Mon Chantier : {chantierPrincipal}</strong>
             <div className="small mb-0">
@@ -487,13 +487,13 @@ export function DashboardPage() {
           </div>
           <div className="d-flex gap-2">
             <button
-              className="btn btn-warning fw-bold text-dark"
+              className="btn btn-outline-secondary fw-bold"
               onClick={() => setShowScannerModal(true)}
             >
               <i className="bi bi-qr-code-scan me-2"></i>Scanner Badges Ouvriers
             </button>
             <button
-              className="btn btn-light fw-bold text-primary"
+              className="btn btn-outline-secondary fw-bold"
               onClick={() =>
                 alert(
                   "Auto-déclaration GPS enregistrée pour le Chef de Chantier (Catégorie B).",
@@ -814,7 +814,7 @@ export function DashboardPage() {
                         <small className="text-muted">{t.chantier}</small>
                       </div>
                       <span
-                        className={`badge ${t.statut === "En cours" ? "bg-warning text-dark" : "bg-secondary"}`}
+                        className={`badge ${t.statut === "En cours" ? "bg-warning bg-opacity-10 text-dark border" : "bg-secondary bg-opacity-10 text-dark border"}`}
                       >
                         {t.statut}
                       </span>
@@ -867,8 +867,8 @@ export function DashboardPage() {
     <div className="container-fluid py-4">
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-          <h2 className="mb-1 fw-bold">
-            <i className="bi bi-speedometer2 me-2 text-primary"></i>
+          <h2 className="mb-1 fw-bold text-secondary">
+            <i className="bi bi-speedometer2 me-2"></i>
             {dashboardTitle}
           </h2>
           <p className="text-secondary mb-0">
@@ -892,7 +892,7 @@ export function DashboardPage() {
 
       {loading ? (
         <div className="text-center py-5">
-          <div className="spinner-border text-primary" role="status"></div>
+          <div className="spinner-border text-secondary" role="status"></div>
         </div>
       ) : (
         renderContent()

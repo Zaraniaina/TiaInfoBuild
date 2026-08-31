@@ -8,23 +8,16 @@ export function SuperAdminLogsPage() {
   useEffect(() => {
     api.get('/super-admin/logs')
       .then(res => setLogs(res.data.items || res.data || []))
-      .catch(() => {
-        setLogs([
-          { id: 1, niveau: 'info', message: 'Nouvelle entreprise inscrite: BTP PRO MADAGASCAR', date: '2026-08-24 10:12', utilisateur: 'system' },
-          { id: 2, niveau: 'warning', message: 'Échec de paiement abonnement: SOMAPROC MADAGASCAR', date: '2026-08-24 09:45', utilisateur: 'system' },
-          { id: 3, niveau: 'error', message: 'Incident base de données: timeout connexion MySQL', date: '2026-08-23 23:18', utilisateur: 'system' },
-          { id: 4, niveau: 'info', message: 'Sauvegarde automatique effectuée', date: '2026-08-23 22:00', utilisateur: 'system' },
-        ])
-      })
+      .catch(() => setLogs([]))
       .finally(() => setLoading(false))
   }, [])
 
   const getNiveauBadge = (niveau: string) => {
     switch (niveau.toLowerCase()) {
-      case 'info': return <span className="badge bg-info">Info</span>
-      case 'warning': return <span className="badge bg-warning text-dark">Warning</span>
-      case 'error': return <span className="badge bg-danger">Erreur</span>
-      default: return <span className="badge bg-secondary">{niveau}</span>
+      case 'info': return <span className="badge bg-light text-dark border">Info</span>
+      case 'warning': return <span className="badge bg-warning bg-opacity-10 text-dark border">Warning</span>
+      case 'error': return <span className="badge bg-danger bg-opacity-10 text-dark border">Erreur</span>
+      default: return <span className="badge bg-light text-dark border">{niveau}</span>
     }
   }
 
@@ -32,19 +25,19 @@ export function SuperAdminLogsPage() {
     <div className="container-fluid py-4">
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-          <h2 className="fw-bold mb-1"><i className="bi bi-activity me-2 text-danger"></i>Logs & Supervision</h2>
+          <h2 className="fw-bold mb-1 text-secondary"><i className="bi bi-activity me-2"></i>Logs & Supervision</h2>
           <p className="text-secondary mb-0">Journal des événements techniques, incidents et activités système.</p>
         </div>
-        <button className="btn btn-outline-danger fw-bold"><i className="bi bi-download me-2"></i>Exporter logs</button>
+        <button className="btn btn-outline-secondary fw-bold" onClick={() => alert('Export des logs disponible prochainement')}><i className="bi bi-download me-2"></i>Exporter logs</button>
       </div>
 
       {loading ? (
-        <div className="text-center py-5"><div className="spinner-border text-danger" role="status"></div></div>
+        <div className="text-center py-5"><div className="spinner-border text-secondary" role="status"></div></div>
       ) : (
-        <div className="table-card">
+        <div className="card border-0 shadow-sm">
           <div className="table-responsive">
-            <table className="table mb-0">
-              <thead>
+            <table className="table mb-0 align-middle">
+              <thead className="table-light">
                 <tr>
                   <th>Niveau</th>
                   <th>Message</th>

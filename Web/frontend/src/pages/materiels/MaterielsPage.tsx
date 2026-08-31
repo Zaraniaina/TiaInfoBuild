@@ -31,11 +31,11 @@ export function MaterielsPage() {
 
   const getStatutBadge = (statut: string) => {
     switch (statut) {
-      case 'disponible': return <span className="badge bg-success">Disponible</span>
-      case 'en_utilisation': return <span className="badge bg-primary">En Utilisation</span>
-      case 'en_maintenance': return <span className="badge bg-warning text-dark">Maintenance</span>
-      case 'hors_service': return <span className="badge bg-danger">Hors Service</span>
-      default: return <span className="badge bg-secondary">{statut}</span>
+      case 'disponible': return <span className="badge bg-success bg-opacity-10 text-success border">Disponible</span>
+      case 'en_utilisation': return <span className="badge bg-secondary bg-opacity-10 text-dark border">En Utilisation</span>
+      case 'en_maintenance': return <span className="badge bg-warning bg-opacity-10 text-dark border">Maintenance</span>
+      case 'hors_service': return <span className="badge bg-danger bg-opacity-10 text-danger border">Hors Service</span>
+      default: return <span className="badge bg-light text-dark border">{statut}</span>
     }
   }
 
@@ -62,21 +62,21 @@ export function MaterielsPage() {
   return (
     <div className="container-fluid py-4">
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <h2 className="mb-1"><i className="bi bi-tools me-2 text-info"></i>Gestion du Parc Matériel</h2>
-          <p className="text-secondary mb-0">Engins, véhicules, équipements et suivis d'interventions de maintenance</p>
+        <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+          <div>
+            <h2 className="mb-1 text-secondary"><i className="bi bi-tools me-2"></i>Gestion du Parc Matériel</h2>
+            <p className="text-secondary mb-0">Engins, véhicules, équipements et suivis d'interventions de maintenance</p>
+          </div>
+          {perms.canCreateMateriel && (
+            <button className="btn btn-outline-secondary fw-bold" onClick={() => setShowModal(true)}>
+              <i className="bi bi-plus-circle me-2"></i>Nouveau Matériel
+            </button>
+          )}
         </div>
-        {perms.canCreateMateriel && (
-          <button className="btn btn-info text-white fw-bold" onClick={() => setShowModal(true)}>
-            <i className="bi bi-plus-circle me-2"></i>Nouveau Matériel
-          </button>
-        )}
-      </div>
 
       {loading ? (
         <div className="text-center py-5">
-          <div className="spinner-border text-info" role="status"></div>
+          <div className="spinner-border text-secondary" role="status"></div>
         </div>
       ) : (
         <div className="row g-4">
@@ -132,8 +132,8 @@ export function MaterielsPage() {
                   </div>
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={saving}>Annuler</button>
-                  <button type="submit" className="btn btn-primary" disabled={saving}>
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowModal(false)} disabled={saving}>Annuler</button>
+                  <button type="submit" className="btn btn-outline-secondary" disabled={saving}>
                     {saving ? 'Enregistrement...' : 'Enregistrer'}
                   </button>
                 </div>
