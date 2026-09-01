@@ -42,9 +42,11 @@ from app.schemas.facture import (
     LigneFactureResponse,
 )
 from app.schemas.contrat import ContratCreate, ContratUpdate, ContratResponse, ContratList
+from app.schemas.avenant import AvenantCreate, AvenantUpdate, AvenantResponse, AvenantList
 from app.security import CurrentUserPayload, DbDep
 from app.security import hash_password, generate_temp_password
 from app.models.utilisateur import Utilisateur
+from app.crud.avenant import AvenantCRUD
 
 router = APIRouter(tags=["commercial"])
 
@@ -633,6 +635,95 @@ async def delete_contrat(
     if not contrat:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contrat non trouvé")
     contrat.is_deleted = True
+    await db.flush()
+    return None
+
+
+# ==================== AVENANTS ====================
+
+avenant_crud = AvenantCRUD()
+
+
+@router.get("/contrats/{contrat_id}/avenants", response_model=list[AvenantList])
+async def list_avenants(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    contrat_id: int,
+):
+    _require_permission(payload, "commercial:read")
+    avenants, _ = await avenant_crud.get_by_contrat(db, contrat_id)
+    return avenants
+
+
+@router.get("/avenants", response_model=list[AvenantList])
+async def list_all_avenants(
+    payload: CurrentUserPayload,
+    db: DbDep,
+):
+    _require_permission(payload, "commercial:read")
+    entreprise_id = _get_entreprise_id(payload)
+    avenants, _ = await avenant_crud.get_by_entreprise(db, entreprise_id)
+    return avenants
+
+
+@router.post("/contrats/{contrat_id}/avenants", response_model=AvenantResponse, status_code=status.HTTP_201_CREATED)
+async def create_avenant(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    contrat_id: int,
+    data: AvenantCreate,
+):
+    _require_permission(payload, "commercial:write")
+    entreprise_id = _get_entreprise_id(payload)
+    obj_in = data.model_dump()
+    obj_in["contrat_id"] = contrat_id
+    obj_in["entreprise_id"] = entreprise_id
+    if not obj_in.get("numero"):
+        obj_in["numero"] = await generate_numero(db, "AV", Avenant, "numero")
+    avenant = await avenant_crud.create(db, obj_in)
+    await db.refresh(avenant)
+    return avenant
+
+
+@router.get("/avenants/{id}", response_model=AvenantResponse)
+async def get_avenant(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+):
+    _require_permission(payload, "commercial:read")
+    avenant = await avenant_crud.get(db, id)
+    if not avenant or avenant.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Avenant non trouvé")
+    return avenant
+
+
+@router.put("/avenants/{id}", response_model=AvenantResponse)
+async def update_avenant(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+    data: AvenantUpdate,
+):
+    _require_permission(payload, "commercial:write")
+    avenant = await avenant_crud.get(db, id)
+    if not avenant or avenant.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Avenant non trouvé")
+    obj_in = data.model_dump(exclude_unset=True)
+    return await avenant_crud.update(db, avenant, obj_in)
+
+
+@router.delete("/avenants/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_avenant(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+):
+    _require_permission(payload, "commercial:delete")
+    avenant = await avenant_crud.get(db, id)
+    if not avenant or avenant.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Avenant non trouvé")
+    avenant.is_deleted = True
     await db.flush()
     return None
 

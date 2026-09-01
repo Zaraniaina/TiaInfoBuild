@@ -7,6 +7,7 @@ from app.models.affectation_ressource import AffectationRessource
 from app.models.alerte import Alerte
 from app.models.alerte_materiel import AlerteMateriel
 from app.models.article import Article
+from app.models.avenant import Avenant
 from app.models.chantier import Chantier
 from app.models.client import Client
 from app.models.client_adresse import ClientAdresse
@@ -47,6 +48,7 @@ __all__ = [
     "Alerte",
     "AlerteMateriel",
     "Article",
+    "Avenant",
     "Chantier",
     "Client",
     "ClientAdresse",

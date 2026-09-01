@@ -191,6 +191,7 @@ export interface RolePermissions {
   // Commercial & Devis
   canCreateClient: boolean
   canCreateDevis: boolean
+  canCreateFacture: boolean
   canValidateDevis: boolean
   canAddPaiement: boolean
 
@@ -239,6 +240,7 @@ export function getRolePermissions(roleCode: string): RolePermissions {
       // Commercial & Devis
       canCreateClient: false,
       canCreateDevis: false,
+      canCreateFacture: false,
       canValidateDevis: false,
       canAddPaiement: false,
 
@@ -306,6 +308,7 @@ export function getRolePermissions(roleCode: string): RolePermissions {
     canCreateClient: isAdmin || isCommercial,
     // Le Directeur valide mais ne crée pas les devis courants
     canCreateDevis: isAdmin || isCommercial,
+    canCreateFacture: isAdmin || isCommercial,
     canValidateDevis: isAdmin || isDirecteur || isCommercial,
     canAddPaiement: isAdmin || isCommercial || isComptable,
 

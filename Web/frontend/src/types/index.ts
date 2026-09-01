@@ -527,6 +527,22 @@ export interface Paiement {
   updated_at: string;
 }
 
+export interface Avenant {
+  id: number;
+  entreprise_id: number;
+  contrat_id: number;
+  numero: string;
+  description?: string;
+  impact_montant: number;
+  date_signature?: string;
+  statut: string;
+  fichier_url?: string;
+  notes?: string;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // ============================================================
 // FINANCE
 // ============================================================

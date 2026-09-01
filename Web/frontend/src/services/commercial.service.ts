@@ -66,6 +66,11 @@ export const commercialService = {
     return res.data
   },
 
+  async validerDevis(devisId: number, approuve: boolean) {
+    const res = await api.post<Devis>(`/commercial/devis/${devisId}/valider`, { approuve })
+    return res.data
+  },
+
   // Contrats
   async getContrats() {
     const res = await api.get<Contrat[]>('/commercial/contrats')

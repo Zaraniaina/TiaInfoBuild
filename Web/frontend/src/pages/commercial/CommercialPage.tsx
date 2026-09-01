@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { Devis, Facture, Client, Contrat, Paiement, LigneDevis, LigneFacture } from '@/types'
+import type { Devis, Facture, Client, Contrat, Paiement, LigneDevis, LigneFacture, Chantier, Avenant } from '@/types'
 import { commercialService } from '@/services/commercial.service'
+import { chantiersService } from '@/services/chantiers.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
 import { useToastStore } from '@/stores/toast.store'
@@ -9,13 +10,15 @@ export function CommercialPage() {
   const { user } = useAuthStore()
   const perms = getRolePermissions(user?.role_code || '')
 
-  const [activeTab, setActiveTab] = useState<'devis' | 'factures' | 'clients' | 'contrats' | 'paiements'>('devis')
+  const [activeTab, setActiveTab] = useState<'devis' | 'factures' | 'clients' | 'contrats' | 'paiements' | 'chantiers' | 'avenants'>('devis')
 
   const [devisList, setDevisList] = useState<Devis[]>([])
   const [factures, setFactures] = useState<Facture[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [contrats, setContrats] = useState<Contrat[]>([])
   const [paiements, setPaiements] = useState<Paiement[]>([])
+  const [chantiers, setChantiers] = useState<Chantier[]>([])
+  const [avenants, setAvenants] = useState<Avenant[]>([])
   const [loading, setLoading] = useState(true)
 
   // Filters
@@ -24,6 +27,7 @@ export function CommercialPage() {
   // Modals
   const [showDevisModal, setShowDevisModal] = useState(false)
   const [showFactureModal, setShowFactureModal] = useState(false)
+  const [showPaiementModal, setShowPaiementModal] = useState(false)
   const [selectedDevis, setSelectedDevis] = useState<Devis | null>(null)
   const [devisForm, setDevisForm] = useState<Partial<Devis>>({
     numero: 'DEV-2026-001',
@@ -46,6 +50,14 @@ export function CommercialPage() {
     statut: 'emis'
   })
 
+  const [paiementForm, setPaiementForm] = useState<Partial<Paiement>>({
+    facture_id: undefined,
+    montant: 0,
+    mode_paiement: 'virement',
+    reference: '',
+    notes: ''
+  })
+
   // Lignes de devis (éléments éditables dans la modal)
   // Chaque ligne peut être partielle avant création côté serveur
   const [lines, setLines] = useState<Partial<LigneDevis>[]>([])
@@ -53,8 +65,14 @@ export function CommercialPage() {
 
   // Clients modal state
   const [showClientModal, setShowClientModal] = useState(false)
-  const [clientForm, setClientForm] = useState<Partial<Client>>({ nom: '', email: '', telephone: '', adresse: '' })
+  const [clientForm, setClientForm] = useState<Partial<Client>>({ type: 'particulier', civilite: 'M.', nom: '', prenom: '', email: '', telephone: '', adresse: '', entreprise: '', siret: '', numero_tva: '' })
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
+  const [selectedChantier, setSelectedChantier] = useState<Chantier | null>(null)
+  const [showChantierModal, setShowChantierModal] = useState(false)
+  const [chantierForm, setChantierForm] = useState<Partial<Chantier>>({ nom: '', numero: '', statut: 'planification', budget_prevu: 0, marge_cible: 15, tva: 20, description: '' })
+  const [selectedAvenant, setSelectedAvenant] = useState<Avenant | null>(null)
+  const [showAvenantModal, setShowAvenantModal] = useState(false)
+  const [avenantForm, setAvenantForm] = useState<Partial<Avenant>>({ numero: '', description: '', impact_montant: 0, statut: 'propose' })
   const { addToast } = useToastStore()
 
   const loadData = async () => {
@@ -75,6 +93,12 @@ export function CommercialPage() {
       } else if (activeTab === 'paiements') {
         const data = await commercialService.getPaiements()
         setPaiements(data)
+      } else if (activeTab === 'chantiers') {
+        const data = await chantiersService.getAll()
+        setChantiers(data)
+      } else if (activeTab === 'avenants') {
+        const data = await avenantsService.getAll()
+        setAvenants(data)
       }
     } catch {
       setDevisList([])
@@ -319,6 +343,53 @@ export function CommercialPage() {
     document.body.removeChild(link)
   }
 
+  const handleSaveChantier = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      if (selectedChantier) {
+        await chantiersService.update(selectedChantier.id, chantierForm)
+        addToast({ type: 'success', title: 'Chantier mis à jour', message: 'Le chantier a été modifié.' })
+      } else {
+        await chantiersService.create(chantierForm)
+        addToast({ type: 'success', title: 'Chantier créé', message: 'Le chantier a été créé.' })
+      }
+      setShowChantierModal(false)
+      loadData()
+    } catch {
+      addToast({ type: 'error', title: 'Erreur', message: 'Impossible d\'enregistrer le chantier.' })
+    }
+  }
+
+  const handleSaveAvenant = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      if (selectedAvenant) {
+        await avenantsService.update(selectedAvenant.id, avenantForm)
+        addToast({ type: 'success', title: 'Avenant mis à jour', message: 'L\'avenant a été modifié.' })
+      } else {
+        await avenantsService.create(0, avenantForm)
+        addToast({ type: 'success', title: 'Avenant créé', message: 'L\'avenant a été créé.' })
+      }
+      setShowAvenantModal(false)
+      loadData()
+    } catch {
+      addToast({ type: 'error', title: 'Erreur', message: 'Impossible d\'enregistrer l\'avenant.' })
+    }
+  }
+
+  const handleSavePaiement = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      await commercialService.createPaiement(paiementForm)
+      setShowPaiementModal(false)
+      setPaiementForm({ facture_id: undefined, montant: 0, mode_paiement: 'virement', reference: '', notes: '' })
+      loadData()
+      addToast({ type: 'success', title: 'Paiement enregistré', message: 'Le paiement a été ajouté.' })
+    } catch {
+      addToast({ type: 'error', title: 'Erreur', message: 'Impossible d\'enregistrer le paiement.' })
+    }
+  }
+
   return (
     <div className="container-fluid py-4">
       {/* Header */}
@@ -337,7 +408,7 @@ export function CommercialPage() {
               <i className="bi bi-person-plus me-2"></i>Nouveau Client
             </button>
           )}
-          {activeTab === 'factures' && perms.canCreateDevis && (
+          {activeTab === 'factures' && perms.canCreateFacture && (
             <button className="btn btn-outline-secondary fw-bold" onClick={() => {
               setSelectedFacture(null)
               setFactureForm({ numero: `FAC-2026-00${factures.length + 1}`, client_id: factures.length ? factures[0].client_id : 1, type: 'standard', montant_ht: 0, tva: 20, montant_ttc: 0, statut: 'emis' })
@@ -345,6 +416,21 @@ export function CommercialPage() {
               setShowFactureModal(true)
             }}>
               <i className="bi bi-plus-lg me-2"></i>Nouvelle Facture
+            </button>
+          )}
+          {activeTab === 'paiements' && perms.canAddPaiement && (
+            <button className="btn btn-outline-secondary fw-bold" onClick={() => { setPaiementForm({ facture_id: undefined, montant: 0, mode_paiement: 'virement', reference: '', notes: '' }); setShowPaiementModal(true); }}>
+              <i className="bi bi-plus-lg me-2"></i>Nouveau Paiement
+            </button>
+          )}
+          {activeTab === 'chantiers' && perms.canCreateChantier && (
+            <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedChantier(null); setChantierForm({ nom: '', numero: '', statut: 'planification', budget_prevu: 0, marge_cible: 15, tva: 20, description: '', client_id: undefined, contrat_id: undefined }); setShowChantierModal(true); }}>
+              <i className="bi bi-plus-lg me-2"></i>Nouveau Chantier
+            </button>
+          )}
+          {activeTab === 'avenants' && perms.canCreateDevis && (
+            <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedAvenant(null); setAvenantForm({ numero: '', description: '', impact_montant: 0, statut: 'propose' }); setShowAvenantModal(true); }}>
+              <i className="bi bi-plus-lg me-2"></i>Nouvel Avenant
             </button>
           )}
         </div>
@@ -374,6 +460,16 @@ export function CommercialPage() {
         <li className="nav-item">
           <button className={`nav-link ${activeTab === 'paiements' ? 'active' : ''}`} onClick={() => setActiveTab('paiements')}>
             <i className="bi bi-cash-coin me-2"></i>Paiements
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'chantiers' ? 'active' : ''}`} onClick={() => setActiveTab('chantiers')}>
+            <i className="bi bi-building me-2"></i>Chantiers
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'avenants' ? 'active' : ''}`} onClick={() => setActiveTab('avenants')}>
+            <i className="bi bi-file-earmark-plus me-2"></i>Avenants
           </button>
         </li>
       </ul>
@@ -411,25 +507,64 @@ export function CommercialPage() {
                          {d.statut}
                        </span>
                      </td>
-                     <td>
-                       <button className="btn btn-sm btn-outline-secondary me-2" onClick={() => { setSelectedDevis(d); setDevisForm(d); setShowDevisModal(true); }}>
-                         <i className="bi bi-pencil"></i>
-                       </button>
-                       {d.statut === 'accepte' && (
-                         <button className="btn btn-sm btn-outline-success" onClick={async () => {
-                           try {
-                             await commercialService.convertDevisToContrat(d.id)
-                             addToast({ type: 'success', title: 'Transformé', message: 'Le devis a été transformé en contrat.' })
-                             setActiveTab('contrats')
-                             loadData()
-                           } catch (e) {
-                             addToast({ type: 'error', title: 'Erreur', message: 'Impossible de transformer le devis.' })
-                           }
-                         }}>
-                           <i className="bi bi-file-earmark-check"></i>
-                         </button>
-                       )}
-                     </td>
+                      <td>
+                        <button className="btn btn-sm btn-outline-secondary me-1" onClick={() => { setSelectedDevis(d); setDevisForm(d); setShowDevisModal(true); }}>
+                          <i className="bi bi-pencil"></i>
+                        </button>
+                        {d.statut === 'brouillon' && perms.canValidateDevis && (
+                          <button className="btn btn-sm btn-outline-primary me-1" onClick={async () => {
+                            try {
+                              await commercialService.updateDevis(d.id, { ...d, statut: 'envoye' })
+                              addToast({ type: 'success', title: 'Envoyé', message: 'Le devis a été envoyé au client.' })
+                              loadData()
+                            } catch {
+                              addToast({ type: 'error', title: 'Erreur', message: 'Impossible d\'envoyer le devis.' })
+                            }
+                          }}>
+                            <i className="bi bi-send"></i>
+                          </button>
+                        )}
+                        {d.statut === 'envoye' && perms.canValidateDevis && (
+                          <>
+                            <button className="btn btn-sm btn-outline-success me-1" onClick={async () => {
+                              try {
+                                await commercialService.validerDevis(d.id, true)
+                                addToast({ type: 'success', title: 'Validé', message: 'Le devis a été accepté.' })
+                                loadData()
+                              } catch {
+                                addToast({ type: 'error', title: 'Erreur', message: 'Impossible de valider le devis.' })
+                              }
+                            }}>
+                              <i className="bi bi-check-lg"></i>
+                            </button>
+                            <button className="btn btn-sm btn-outline-danger me-1" onClick={async () => {
+                              try {
+                                await commercialService.validerDevis(d.id, false)
+                                addToast({ type: 'warning', title: 'Refusé', message: 'Le devis a été refusé.' })
+                                loadData()
+                              } catch {
+                                addToast({ type: 'error', title: 'Erreur', message: 'Impossible de refuser le devis.' })
+                              }
+                            }}>
+                              <i className="bi bi-x-lg"></i>
+                            </button>
+                          </>
+                        )}
+                        {d.statut === 'accepte' && (
+                          <button className="btn btn-sm btn-outline-success" onClick={async () => {
+                            try {
+                              await commercialService.convertDevisToContrat(d.id)
+                              addToast({ type: 'success', title: 'Transformé', message: 'Le devis a été transformé en contrat.' })
+                              setActiveTab('contrats')
+                              loadData()
+                            } catch (e) {
+                              addToast({ type: 'error', title: 'Erreur', message: 'Impossible de transformer le devis.' })
+                            }
+                          }}>
+                            <i className="bi bi-file-earmark-check"></i>
+                          </button>
+                        )}
+                      </td>
                   </tr>
                 ))}
               </tbody>
@@ -532,6 +667,76 @@ export function CommercialPage() {
             </table>
           </div>
         </div>
+      ) : activeTab === 'chantiers' ? (
+        <div className="card border-0 shadow-sm">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th>N° Chantier</th>
+                  <th>Nom</th>
+                  <th>Client</th>
+                  <th>Statut</th>
+                  <th>Budget Prévu</th>
+                  <th>Budget Réel</th>
+                  <th>Date Début</th>
+                  <th>Date Fin Prévue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {chantiers.map(c => (
+                  <tr key={c.id}>
+                    <td className="font-monospace fw-bold text-dark">{c.numero}</td>
+                    <td className="fw-semibold">{c.nom}</td>
+                    <td>{c.client_id ? `Client #${c.client_id}` : '—'}</td>
+                    <td>
+                      <span className={`badge ${c.statut === 'en_cours' ? 'bg-success bg-opacity-10 text-success border' : c.statut === 'termine' ? 'bg-light text-dark border' : 'bg-warning bg-opacity-10 text-dark border'}`}>
+                        {c.statut}
+                      </span>
+                    </td>
+                    <td className="font-monospace">{c.budget_prevu?.toLocaleString()} MGA</td>
+                    <td className="font-monospace text-secondary">{c.budget_reel?.toLocaleString()} MGA</td>
+                    <td className="small text-muted">{c.date_debut || '—'}</td>
+                    <td className="small text-muted">{c.date_fin_prevue || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : activeTab === 'avenants' ? (
+        <div className="card border-0 shadow-sm">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th>N° Avenant</th>
+                  <th>Contrat</th>
+                  <th>Description</th>
+                  <th>Impact Montant</th>
+                  <th>Date Signature</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {avenants.map(a => (
+                  <tr key={a.id}>
+                    <td className="font-monospace fw-bold text-dark">{a.numero}</td>
+                    <td className="fw-semibold">Contrat #{a.contrat_id}</td>
+                    <td>{a.description || '—'}</td>
+                    <td className="font-monospace">{a.impact_montant?.toLocaleString()} MGA</td>
+                    <td className="small text-muted">{a.date_signature || '—'}</td>
+                    <td>
+                      <span className={`badge ${a.statut === 'signe' ? 'bg-success bg-opacity-10 text-success border' : 'bg-warning bg-opacity-10 text-dark border'}`}>
+                        {a.statut}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
         <div className="card border-0 shadow-sm">
           <div className="table-responsive">
@@ -574,16 +779,56 @@ export function CommercialPage() {
                 <div className="modal-body">
                   <div className="row g-3">
                     <div className="col-12">
+                      <label className="form-label fw-semibold">Type de client *</label>
+                      <select className="form-select" required value={clientForm.type || 'particulier'} onChange={e => setClientForm({ ...clientForm, type: e.target.value })}>
+                        <option value="particulier">Particulier</option>
+                        <option value="entreprise">Entreprise</option>
+                        <option value="administration_publique">Administration publique</option>
+                        <option value="association">Association</option>
+                        <option value="ong">ONG</option>
+                        <option value="promoteur_immobilier">Promoteur immobilier</option>
+                      </select>
+                    </div>
+                    <div className="col-12 col-sm-6">
+                      <label className="form-label fw-semibold">Civilité</label>
+                      <select className="form-select" value={clientForm.civilite || ''} onChange={e => setClientForm({ ...clientForm, civilite: e.target.value })}>
+                        <option value="">—</option>
+                        <option value="M">M.</option>
+                        <option value="Mme">Mme</option>
+                        <option value="Mx">Mx</option>
+                      </select>
+                    </div>
+                    <div className="col-12 col-sm-6">
                       <label className="form-label fw-semibold">Nom *</label>
                       <input type="text" className="form-control" required value={clientForm.nom || ''} onChange={e => setClientForm({ ...clientForm, nom: e.target.value })} />
+                    </div>
+                    <div className="col-12 col-sm-6">
+                      <label className="form-label fw-semibold">Prénom</label>
+                      <input type="text" className="form-control" value={clientForm.prenom || ''} onChange={e => setClientForm({ ...clientForm, prenom: e.target.value })} />
+                    </div>
+                    <div className="col-12 col-sm-6">
+                      <label className="form-label fw-semibold">Entreprise / Raison sociale</label>
+                      <input type="text" className="form-control" value={clientForm.entreprise || ''} onChange={e => setClientForm({ ...clientForm, entreprise: e.target.value })} />
+                    </div>
+                    <div className="col-12 col-sm-6">
+                      <label className="form-label fw-semibold">SIRET</label>
+                      <input type="text" className="form-control" value={clientForm.siret || ''} onChange={e => setClientForm({ ...clientForm, siret: e.target.value })} />
+                    </div>
+                    <div className="col-12 col-sm-6">
+                      <label className="form-label fw-semibold">N° TVA</label>
+                      <input type="text" className="form-control" value={clientForm.numero_tva || ''} onChange={e => setClientForm({ ...clientForm, numero_tva: e.target.value })} />
                     </div>
                     <div className="col-12">
                       <label className="form-label fw-semibold">Email</label>
                       <input type="email" className="form-control" value={clientForm.email || ''} onChange={e => setClientForm({ ...clientForm, email: e.target.value })} />
                     </div>
-                    <div className="col-12">
+                    <div className="col-12 col-sm-6">
                       <label className="form-label fw-semibold">Téléphone</label>
                       <input type="text" className="form-control" value={clientForm.telephone || ''} onChange={e => setClientForm({ ...clientForm, telephone: e.target.value })} />
+                    </div>
+                    <div className="col-12 col-sm-6">
+                      <label className="form-label fw-semibold">Portable</label>
+                      <input type="text" className="form-control" value={clientForm.portable || ''} onChange={e => setClientForm({ ...clientForm, portable: e.target.value })} />
                     </div>
                     <div className="col-12">
                       <label className="form-label fw-semibold">Adresse</label>
@@ -713,6 +958,169 @@ export function CommercialPage() {
                 <div className="modal-footer bg-light">
                   <button type="button" className="btn btn-outline-secondary" onClick={() => setShowFactureModal(false)}>Annuler</button>
                   <button type="submit" className="btn btn-outline-secondary fw-bold">Générer la facture</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Paiement Builder */}
+      {showPaiementModal && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-md modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold">Enregistrer un Paiement</h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setShowPaiementModal(false)}></button>
+              </div>
+              <form onSubmit={handleSavePaiement}>
+                <div className="modal-body">
+                  <div className="row g-3">
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">Facture *</label>
+                      <select className="form-select" required value={paiementForm.facture_id || ''} onChange={e => setPaiementForm({ ...paiementForm, facture_id: Number(e.target.value) })}>
+                        <option value="">Sélectionner une facture</option>
+                        {factures.map(f => (
+                          <option key={f.id} value={f.id}>{f.numero} — {f.client_id ? `Client #${f.client_id}` : ''}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">Montant (MGA) *</label>
+                      <input type="number" className="form-control" required min="0" step="0.01" value={paiementForm.montant || 0} onChange={e => setPaiementForm({ ...paiementForm, montant: Number(e.target.value) })} />
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">Mode de règlement</label>
+                      <select className="form-select" value={paiementForm.mode_paiement || 'virement'} onChange={e => setPaiementForm({ ...paiementForm, mode_paiement: e.target.value })}>
+                        <option value="virement">Virement</option>
+                        <option value="cheque">Chèque</option>
+                        <option value="espece">Espèce</option>
+                        <option value="mobile_money">Mobile Money</option>
+                        <option value="autre">Autre</option>
+                      </select>
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">Référence transaction</label>
+                      <input type="text" className="form-control" value={paiementForm.reference || ''} onChange={e => setPaiementForm({ ...paiementForm, reference: e.target.value })} />
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">Notes</label>
+                      <textarea className="form-control" rows={2} value={paiementForm.notes || ''} onChange={e => setPaiementForm({ ...paiementForm, notes: e.target.value })}></textarea>
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer bg-light">
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowPaiementModal(false)}>Annuler</button>
+                  <button type="submit" className="btn btn-outline-secondary fw-bold">Enregistrer le paiement</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Chantier Builder */}
+      {showChantierModal && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-md modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold">{selectedChantier ? 'Éditer le Chantier' : 'Créer un Chantier'}</h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setShowChantierModal(false)}></button>
+              </div>
+              <form onSubmit={handleSaveChantier}>
+                <div className="modal-body">
+                  <div className="row g-3">
+                    <div className="col-12 col-sm-6">
+                      <label className="form-label fw-semibold">Nom *</label>
+                      <input type="text" className="form-control" required value={chantierForm.nom || ''} onChange={e => setChantierForm({ ...chantierForm, nom: e.target.value })} />
+                    </div>
+                    <div className="col-12 col-sm-6">
+                      <label className="form-label fw-semibold">Numéro</label>
+                      <input type="text" className="form-control font-monospace" value={chantierForm.numero || ''} onChange={e => setChantierForm({ ...chantierForm, numero: e.target.value })} />
+                    </div>
+                    <div className="col-12 col-sm-6">
+                      <label className="form-label fw-semibold">Statut</label>
+                      <select className="form-select" value={chantierForm.statut || 'planification'} onChange={e => setChantierForm({ ...chantierForm, statut: e.target.value })}>
+                        <option value="planification">Planification</option>
+                        <option value="en_cours">En cours</option>
+                        <option value="termine">Terminé</option>
+                        <option value="resilie">Résilié</option>
+                      </select>
+                    </div>
+                    <div className="col-12 col-sm-6">
+                      <label className="form-label fw-semibold">Client</label>
+                      <select className="form-select" value={chantierForm.client_id || ''} onChange={e => setChantierForm({ ...chantierForm, client_id: Number(e.target.value) || undefined })}>
+                        <option value="">Sélectionner un client</option>
+                        {clients.map(c => (
+                          <option key={c.id} value={c.id}>{c.entreprise || `${c.nom} ${c.prenom}`}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-12 col-sm-6">
+                      <label className="form-label fw-semibold">Budget prévu (MGA)</label>
+                      <input type="number" className="form-control font-monospace" value={chantierForm.budget_prevu || 0} onChange={e => setChantierForm({ ...chantierForm, budget_prevu: Number(e.target.value) })} />
+                    </div>
+                    <div className="col-12 col-sm-6">
+                      <label className="form-label fw-semibold">Marge cible (%)</label>
+                      <input type="number" className="form-control font-monospace" value={chantierForm.marge_cible || 0} onChange={e => setChantierForm({ ...chantierForm, marge_cible: Number(e.target.value) })} />
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">Description</label>
+                      <textarea className="form-control" rows={2} value={chantierForm.description || ''} onChange={e => setChantierForm({ ...chantierForm, description: e.target.value })}></textarea>
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer bg-light">
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowChantierModal(false)}>Annuler</button>
+                  <button type="submit" className="btn btn-outline-secondary fw-bold">Créer le chantier</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Avenant Builder */}
+      {showAvenantModal && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-md modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold">{selectedAvenant ? 'Éditer l\'Avenant' : 'Créer un Avenant'}</h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setShowAvenantModal(false)}></button>
+              </div>
+              <form onSubmit={handleSaveAvenant}>
+                <div className="modal-body">
+                  <div className="row g-3">
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">N° Avenant *</label>
+                      <input type="text" className="form-control font-monospace" required value={avenantForm.numero || ''} onChange={e => setAvenantForm({ ...avenantForm, numero: e.target.value })} />
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">Description</label>
+                      <textarea className="form-control" rows={2} value={avenantForm.description || ''} onChange={e => setAvenantForm({ ...avenantForm, description: e.target.value })}></textarea>
+                    </div>
+                    <div className="col-12 col-sm-6">
+                      <label className="form-label fw-semibold">Impact montant (MGA)</label>
+                      <input type="number" className="form-control font-monospace" value={avenantForm.impact_montant || 0} onChange={e => setAvenantForm({ ...avenantForm, impact_montant: Number(e.target.value) })} />
+                    </div>
+                    <div className="col-12 col-sm-6">
+                      <label className="form-label fw-semibold">Date signature</label>
+                      <input type="date" className="form-control" value={avenantForm.date_signature || ''} onChange={e => setAvenantForm({ ...avenantForm, date_signature: e.target.value })} />
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">Statut</label>
+                      <select className="form-select" value={avenantForm.statut || 'propose'} onChange={e => setAvenantForm({ ...avenantForm, statut: e.target.value })}>
+                        <option value="propose">Proposé</option>
+                        <option value="signe">Signé</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer bg-light">
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowAvenantModal(false)}>Annuler</button>
+                  <button type="submit" className="btn btn-outline-secondary fw-bold">Créer l'avenant</button>
                 </div>
               </form>
             </div>
