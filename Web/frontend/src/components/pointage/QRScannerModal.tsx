@@ -20,6 +20,44 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'danger' | 'info'; text: string } | null>(null)
   const [lastScanned, setLastScanned] = useState<any | null>(null)
 
+  const showGlobalToast = (text: string, type: 'success' | 'danger' | 'info' = 'info') => {
+    try {
+      const id = `tia-toast-${Date.now()}`
+      const el = document.createElement('div')
+      el.id = id
+      el.style.position = 'fixed'
+      el.style.right = '20px'
+      el.style.top = '20px'
+      el.style.zIndex = '2000'
+      el.style.padding = '10px 14px'
+      el.style.borderRadius = '8px'
+      el.style.boxShadow = '0 6px 18px rgba(0,0,0,0.12)'
+      el.style.fontSize = '0.95rem'
+      el.style.transition = 'opacity 0.3s ease, transform 0.3s ease'
+      el.style.opacity = '1'
+      el.style.transform = 'translateY(0)'
+      if (type === 'success') {
+        el.style.background = '#1e7e34'
+        el.style.color = '#fff'
+      } else if (type === 'danger') {
+        el.style.background = '#c82333'
+        el.style.color = '#fff'
+      } else {
+        el.style.background = '#0d6efd'
+        el.style.color = '#fff'
+      }
+      el.textContent = text
+      document.body.appendChild(el)
+      setTimeout(() => {
+        el.style.opacity = '0'
+        el.style.transform = 'translateY(-8px)'
+        setTimeout(() => el.remove(), 350)
+      }, 3500)
+    } catch (e) {
+      // noop if DOM not available
+    }
+  }
+
   if (!isOpen) return null
 
   const handleScanSubmit = async (e?: React.FormEvent) => {
@@ -62,6 +100,8 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
         type: 'success',
         text: result.message || 'Pointage enregistré avec succès !',
       })
+      // notification globale
+      showGlobalToast(result.message || 'Pointage enregistré avec succès !', 'success')
       setQrCodeInput('')
       if (onPointageSuccess) onPointageSuccess(result)
     } catch (err: any) {

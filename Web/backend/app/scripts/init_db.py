@@ -75,11 +75,11 @@ ADMIN_ENTREPRISE = {
 MOT_DE_PASSE_DEMO = "Admin123!"
 
 PLANS_DEFAUT = [
-    {"nom": "Essai Gratuit", "code": "essai", "description": "Accès complet 30 jours", "prix_mensuel": 0, "prix_annuel": 0, "utilisateurs_max": 2, "chantiers_max": 1, "stockage_go": 1, "duree_essai_jours": 30, "actif": 1},
+    {"nom": "Essai Gratuit", "code": "essai", "description": "Accès complet 30 jours", "prix_mensuel": 1, "prix_annuel": 1, "utilisateurs_max": 2, "chantiers_max": 1, "stockage_go": 1, "duree_essai_jours": 30, "actif": 1},
     {"nom": "Starter", "code": "starter", "description": "Pour les petites entreprises", "prix_mensuel": 15000, "prix_annuel": 150000, "utilisateurs_max": 5, "chantiers_max": 3, "stockage_go": 10, "duree_essai_jours": 30, "actif": 1},
     {"nom": "Pro", "code": "pro", "description": "Le plus populaire", "prix_mensuel": 40000, "prix_annuel": 400000, "utilisateurs_max": 20, "chantiers_max": 10, "stockage_go": 50, "duree_essai_jours": 30, "actif": 1},
     {"nom": "Business", "code": "business", "description": "Entreprises établies", "prix_mensuel": 100000, "prix_annuel": 1000000, "utilisateurs_max": 50, "chantiers_max": 25, "stockage_go": 200, "duree_essai_jours": 30, "actif": 1},
-    {"nom": "Enterprise", "code": "enterprise", "description": "Sur devis", "prix_mensuel": 0, "prix_annuel": 0, "utilisateurs_max": 999, "chantiers_max": 999, "stockage_go": 999, "duree_essai_jours": 30, "actif": 1},
+    {"nom": "Enterprise", "code": "enterprise", "description": "Sur devis", "prix_mensuel": 1, "prix_annuel": 1, "utilisateurs_max": 999, "chantiers_max": 999, "stockage_go": 999, "duree_essai_jours": 30, "actif": 1},
 ]
 
 

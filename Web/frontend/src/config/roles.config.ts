@@ -94,7 +94,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/pricing',
   ],
   employe: [
-    '/dashboard',
+    // Pas d'accès au dashboard global pour l'ouvrier (accès mobile limité)
     '/chantiers',
     '/rh',
     '/materiels',
@@ -168,6 +168,10 @@ export interface RolePermissions {
   canDeleteEmploye: boolean
   canValidatePointage: boolean
   canScanQR: boolean
+  // Actions terrain & tâches
+  canReportTask: boolean
+  canDeclareConsumption: boolean
+  canGenerateQR: boolean
 
   // Finance & Dépenses
   canCreateDepense: boolean
@@ -194,6 +198,8 @@ export interface RolePermissions {
   canAccessSettings: boolean
   canManageUsers: boolean
   canViewAuditLogs: boolean
+  // Abonnements / offres
+  canManageSubscription: boolean
 }
 
 export function getRolePermissions(roleCode: string): RolePermissions {
@@ -240,6 +246,12 @@ export function getRolePermissions(roleCode: string): RolePermissions {
       canAccessSettings: true,
       canManageUsers: true,
       canViewAuditLogs: true,
+      // Gestion abonnement tenant
+      canManageSubscription: true,
+      // Actions terrain non autorisées
+      canReportTask: false,
+      canDeclareConsumption: false,
+      canGenerateQR: false,
     }
   }
   const isAdmin = ['super_admin'].includes(role)
@@ -251,39 +263,49 @@ export function getRolePermissions(roleCode: string): RolePermissions {
   const isMateriel = role === 'materiel'
   const isMagasinier = role === 'magasinier'
   const isCommercial = role === 'commercial'
+  const isEmploye = role === 'employe'
 
   return {
     // Chantiers
-    canCreateChantier: isAdmin || isDirecteur || isChefProjet,
-    canEditChantier: isAdmin || isDirecteur || isChefProjet || isChefChantier,
+    // Création réservée à l'Admin SaaS et au Chef de Projet (DG consulte/valide)
+    canCreateChantier: isAdmin || isChefProjet,
+    canEditChantier: isAdmin || isChefProjet || isChefChantier,
     canDeleteChantier: isAdmin,
     canValidatePhase: isAdmin || isDirecteur || isChefProjet,
 
     // RH
-    canCreateEmploye: isAdmin || isRH || isDirecteur,
+    canCreateEmploye: isAdmin || isRH,
     canEditEmploye: isAdmin || isRH,
     canDeleteEmploye: isAdmin || isRH,
     canValidatePointage: isAdmin || isRH || isChefProjet || isChefChantier,
-    canScanQR: isAdmin || isRH || isChefChantier || isChefProjet,
+    // L'ouvrier doit pouvoir scanner le QR code depuis son mobile
+    canScanQR: isEmploye || isAdmin || isRH || isChefChantier || isChefProjet,
+    // Actions terrain & tâches
+    canReportTask: isChefChantier || isChefProjet || isEmploye,
+    canDeclareConsumption: isChefChantier || isMagasinier || isEmploye,
+    canGenerateQR: isChefChantier || isMagasinier || isChefProjet || isAdmin,
 
     // Finance
-    canCreateDepense: isAdmin || isComptable || isDirecteur || isChefProjet || isChefChantier,
+    // Saisie opérationnelle : Comptable, Chef de Chantier et Chef de Projet peuvent créer
+    canCreateDepense: isAdmin || isComptable || isChefProjet || isChefChantier,
     canValidateDepense: isAdmin || isDirecteur || isComptable,
     canExportFinance: isAdmin || isDirecteur || isComptable,
 
     // Stocks
-    canCreateArticle: isAdmin || isMagasinier || isDirecteur,
-    canAddMouvementStock: isAdmin || isMagasinier || isChefChantier || isChefProjet,
+    // Création d'articles: magasinier et admin; mouvements: magasinier et chef chantier
+    canCreateArticle: isAdmin || isMagasinier,
+    canAddMouvementStock: isAdmin || isMagasinier || isChefChantier,
     canDeleteArticle: isAdmin || isMagasinier,
 
     // Matériel
-    canCreateMateriel: isAdmin || isMateriel || isDirecteur,
+    canCreateMateriel: isAdmin || isMateriel,
     canAddMaintenance: isAdmin || isMateriel,
     canAssignMateriel: isAdmin || isMateriel || isChefProjet || isChefChantier,
 
     // Commercial
-    canCreateClient: isAdmin || isCommercial || isDirecteur,
-    canCreateDevis: isAdmin || isCommercial || isDirecteur,
+    canCreateClient: isAdmin || isCommercial,
+    // Le Directeur valide mais ne crée pas les devis courants
+    canCreateDevis: isAdmin || isCommercial,
     canValidateDevis: isAdmin || isDirecteur || isCommercial,
     canAddPaiement: isAdmin || isCommercial || isComptable,
 
@@ -291,5 +313,7 @@ export function getRolePermissions(roleCode: string): RolePermissions {
     canAccessSettings: isAdmin,
     canManageUsers: isAdmin,
     canViewAuditLogs: isAdmin || isDirecteur,
+    // Abonnement (tenant)
+    canManageSubscription: role === 'admin_entreprise' || isAdmin,
   }
 }

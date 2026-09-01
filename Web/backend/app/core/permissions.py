@@ -44,6 +44,9 @@ ALL_PERMISSIONS: Final[list[str]] = [
     "materiels:read", "materiels:write", "materiels:delete",
     "alertes:read", "alertes:write",
     "parametres:read", "parametres:write",
+    # Permissions fines pour les workflows terrain et abonnement
+    "pointage:write", "taches:write", "consommation:write",
+    "subscriptions:read", "subscriptions:write",
     "super_admin:read", "super_admin:write",
 ]
 
@@ -56,12 +59,15 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
         "dashboard:read",
         "parametres:read",
         "parametres:write",
+        # gestion abonnement / offre du tenant
+        "subscriptions:read",
+        "subscriptions:write",
     ],
     Role.DIRECTEUR: [
         "dashboard:read",
         "chantiers:read",
         "finance:read",
-        "commercial:read", "commercial:write",
+        "commercial:read",
         "rh:read",
         "materiels:read",
         "stocks:read",
@@ -75,19 +81,23 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
         "stocks:read", "stocks:write",
         "finance:read",
         "alertes:read",
+        # pointage et déclarations terrain
+        "pointage:write", "taches:write", "consommation:write",
     ],
     Role.CHEF_PROJET: [
         "dashboard:read",
-        "chantiers:read", "chantiers:write", "chantiers:delete",
+        "chantiers:read", "chantiers:write",
         "rh:read", "rh:write",
         "materiels:read", "materiels:write",
         "stocks:read",
         "finance:read",
         "alertes:read",
+        # validation / supervision des pointages et tâches de son périmètre
+        "pointage:write", "taches:write",
     ],
     Role.COMPTABLE: [
         "dashboard:read",
-        "finance:read", "finance:write", "finance:delete",
+        "finance:read", "finance:write",
         "commercial:read", "commercial:write",
         "chantiers:read",
         "rh:read",
@@ -98,6 +108,8 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
         "rh:read", "rh:write", "rh:delete",
         "chantiers:read",
         "alertes:read",
+        # validation des pointages et gestion des heures
+        "pointage:write",
     ],
     Role.MATERIEL: [
         "dashboard:read",
@@ -110,6 +122,8 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
         "stocks:read", "stocks:write", "stocks:delete",
         "chantiers:read",
         "alertes:read",
+        # pointage dépôt (QR code fixe) et déclarations de sortie
+        "pointage:write", "consommation:write",
     ],
     Role.COMMERCIAL: [
         "dashboard:read",
@@ -119,12 +133,14 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
         "alertes:read",
     ],
     Role.EMPLOYE: [
-        "dashboard:read",
+        # Ouvrier / Employé de terrain : accès strictement limité à ses données
         "rh:read",
         "chantiers:read",
         "materiels:read",
-        "stocks:read", "stocks:write",
+        "stocks:read",
         "alertes:read",
+        # actions limitées au niveau individuel : pointage, tâches, consommation
+        "pointage:write", "taches:write", "consommation:write",
     ],
     Role.CLIENT: [
         "dashboard:read",

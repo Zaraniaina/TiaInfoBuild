@@ -123,11 +123,11 @@ export function RhPage() {
           </div>
           {activeTab === 'employes' && (
             <div className="d-flex gap-2">
-              {perms.canScanQR && (
-                <button className="btn btn-outline-secondary fw-bold" onClick={() => setShowScannerModal(true)}>
-                  <i className="bi bi-qr-code-scan me-2"></i>Scanner Pointage
-                </button>
-              )}
+                {perms.canGenerateQR && (
+                  <button className="btn btn-outline-secondary fw-bold" onClick={() => setShowScannerModal(true)}>
+                    <i className="bi bi-qr-code-scan me-2"></i>Scanner Pointage
+                  </button>
+                )}
               {perms.canCreateEmploye && (
                 <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedEmploye(null); setEmployeForm({ type_contrat: 'CDI', statut: 'actif', salaire_base: 0 }); setShowEmployeModal(true); }}>
                   <i className="bi bi-person-plus me-2"></i>Nouvel employé

@@ -8,8 +8,8 @@ class PlanBase(BaseModel):
     nom: str = Field(..., min_length=1, max_length=100)
     code: str = Field(..., min_length=1, max_length=50)
     description: str | None = None
-    prix_mensuel: float = Field(..., gt=0)
-    prix_annuel: float = Field(..., gt=0)
+    prix_mensuel: float = Field(..., ge=0)
+    prix_annuel: float = Field(..., ge=0)
     utilisateurs_max: int = Field(default=5, ge=1)
     chantiers_max: int = Field(default=3, ge=1)
     stockage_go: int = Field(default=5, ge=1)
@@ -25,8 +25,8 @@ class PlanUpdate(BaseModel):
     nom: str | None = Field(default=None, min_length=1, max_length=100)
     code: str | None = Field(default=None, min_length=1, max_length=50)
     description: str | None = None
-    prix_mensuel: float | None = Field(default=None, gt=0)
-    prix_annuel: float | None = Field(default=None, gt=0)
+    prix_mensuel: float | None = Field(default=None, ge=0)
+    prix_annuel: float | None = Field(default=None, ge=0)
     utilisateurs_max: int | None = Field(default=None, ge=1)
     chantiers_max: int | None = Field(default=None, ge=1)
     stockage_go: int | None = Field(default=None, ge=1)

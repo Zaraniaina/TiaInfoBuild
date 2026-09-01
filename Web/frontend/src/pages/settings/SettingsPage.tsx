@@ -4,7 +4,7 @@ import { subscriptionsService } from '@/services/subscriptions.service'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from "@/stores/auth.store";
 import { useToastStore } from "@/stores/toast.store";
-import { ROLE_NAMES } from "@/config/roles.config";
+import { ROLE_NAMES, getRolePermissions } from "@/config/roles.config";
 import { formatErrorMessage } from "@/utils/errorMessage";
 
 type UserRole =
@@ -81,6 +81,8 @@ interface AlerteLog {
 
 export function SettingsPage() {
   const { user } = useAuthStore();
+  const roleCode = user?.role_code || 'employe'
+  const perms = getRolePermissions(roleCode)
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<
     "utilisateurs" | "parametres" | "audit" | "profil"
@@ -605,9 +607,15 @@ export function SettingsPage() {
                 )}
               </div>
               <div>
-                <button className="btn btn-outline-secondary" onClick={() => navigate('/pricing')}>
-                  Gérer l'abonnement
-                </button>
+                {perms.canManageSubscription ? (
+                  <button className="btn btn-outline-secondary" onClick={() => navigate('/pricing')}>
+                    Gérer l'abonnement
+                  </button>
+                ) : (
+                  <button className="btn btn-outline-secondary" disabled title="Vous n'êtes pas autorisé à gérer l'abonnement">
+                    Gérer l'abonnement
+                  </button>
+                )}
               </div>
             </div>
           </div>

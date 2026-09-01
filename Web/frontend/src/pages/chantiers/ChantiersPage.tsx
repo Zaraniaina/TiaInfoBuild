@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Chantier } from '@/types'
 import { chantiersService } from '@/services/chantiers.service'
+import { QRScannerModal } from '@/components/pointage/QRScannerModal'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
 
@@ -20,6 +21,7 @@ export function ChantiersPage() {
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showQRModal, setShowQRModal] = useState(false)
   const [qrData, setQrData] = useState<{ qr_token: string; chantier_nom: string; date_validite: string } | null>(null)
+  const [showScannerModal, setShowScannerModal] = useState(false)
   const [activeTabModal, setActiveTabModal] = useState<'infos' | 'budget' | 'phases' | 'incidents' | 'ressources'>('infos')
   const [activeDetailTab, setActiveDetailTab] = useState<'general' | 'phases' | 'incidents' | 'budget'>('general')
 
@@ -279,17 +281,26 @@ export function ChantiersPage() {
                     </div>
                   </div>
                 </div>
-                 <div className="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-2">
+                   <div className="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-2">
                   <button className="btn btn-sm btn-link text-secondary p-0 fw-semibold" onClick={() => { setSelectedChantier(c); setShowDetailModal(true); }}>
                     <i className="bi bi-eye me-1"></i> Voir détails
                   </button>
                   <div className="d-flex gap-1">
-                   <button className="btn btn-sm btn-outline-secondary" onClick={() => handleGenerateQR(c.id)} title="QR Pointage">
-                     <i className="bi bi-qr-code-scan"></i>
-                   </button>
-                   <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setFormData(c); setShowModal(true); }}>
-                     <i className="bi bi-pencil"></i>
-                   </button>
+                   {perms.canGenerateQR && (
+                     <>
+                       <button className="btn btn-sm btn-outline-secondary" onClick={() => handleGenerateQR(c.id)} title="Générer QR Chantier">
+                         <i className="bi bi-qr-code-scan"></i>
+                       </button>
+                       <button className="btn btn-sm btn-outline-secondary" onClick={() => { setShowScannerModal(true); setSelectedChantier(c); }} title="Scanner badge employé">
+                         <i className="bi bi-phone-vibrate"></i>
+                       </button>
+                     </>
+                   )}
+                   {perms.canEditChantier && (
+                     <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setFormData(c); setShowModal(true); }}>
+                       <i className="bi bi-pencil"></i>
+                     </button>
+                   )}
                   </div>
                 </div>
               </div>
@@ -324,11 +335,11 @@ export function ChantiersPage() {
                     <td>{getStatutBadge(c.statut)}</td>
                     <td className="text-end">
                       <div className="d-inline-flex gap-1 align-items-center justify-content-end">
-                         {perms.canScanQR && (
-                           <button className="btn btn-sm btn-outline-secondary" onClick={() => handleGenerateQR(c.id)} title="QR Pointage">
-                             <i className="bi bi-qr-code-scan"></i>
-                           </button>
-                         )}
+                           {perms.canGenerateQR && (
+                             <button className="btn btn-sm btn-outline-secondary" onClick={() => handleGenerateQR(c.id)} title="QR Pointage">
+                               <i className="bi bi-qr-code-scan"></i>
+                             </button>
+                           )}
                          <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setShowDetailModal(true); }}>
                            <i className="bi bi-eye"></i>
                          </button>
@@ -528,20 +539,22 @@ export function ChantiersPage() {
                       ) : (
                         <p className="text-muted small mb-3">Aucune phase configurée pour ce chantier.</p>
                       )}
-                      <form onSubmit={handleAddPhase} className="border-top pt-3">
-                        <h6 className="fw-bold mb-2">Ajouter une phase</h6>
-                        <div className="row g-2">
-                          <div className="col-md-6">
-                            <input type="text" className="form-control" name="phase_nom" placeholder="Nom de la phase" required />
+                      {perms.canReportTask && (
+                        <form onSubmit={handleAddPhase} className="border-top pt-3">
+                          <h6 className="fw-bold mb-2">Ajouter une phase</h6>
+                          <div className="row g-2">
+                            <div className="col-md-6">
+                              <input type="text" className="form-control" name="phase_nom" placeholder="Nom de la phase" required />
+                            </div>
+                            <div className="col-md-3">
+                              <input type="number" className="form-control" name="phase_ordre" placeholder="Ordre" defaultValue={0} min={0} />
+                            </div>
+                            <div className="col-md-3">
+                              <button type="submit" className="btn btn-outline-secondary w-100">Ajouter</button>
+                            </div>
                           </div>
-                          <div className="col-md-3">
-                            <input type="number" className="form-control" name="phase_ordre" placeholder="Ordre" defaultValue={0} min={0} />
-                          </div>
-                          <div className="col-md-3">
-                            <button type="submit" className="btn btn-outline-secondary w-100">Ajouter</button>
-                          </div>
-                        </div>
-                      </form>
+                        </form>
+                      )}
                     </div>
                   )}
 
@@ -565,25 +578,27 @@ export function ChantiersPage() {
                       ) : (
                         <p className="text-muted small mb-3">Aucun incident signalé.</p>
                       )}
-                      <form onSubmit={handleAddIncident} className="border-top pt-3">
-                        <h6 className="fw-bold mb-2">Signaler un incident</h6>
-                        <div className="row g-2">
-                          <div className="col-md-6">
-                            <input type="text" className="form-control" name="incident_titre" placeholder="Titre de l'incident" required />
+                      {perms.canReportTask && (
+                        <form onSubmit={handleAddIncident} className="border-top pt-3">
+                          <h6 className="fw-bold mb-2">Signaler un incident</h6>
+                          <div className="row g-2">
+                            <div className="col-md-6">
+                              <input type="text" className="form-control" name="incident_titre" placeholder="Titre de l'incident" required />
+                            </div>
+                            <div className="col-md-3">
+                              <select className="form-select" name="incident_gravite">
+                                <option value="faible">Faible</option>
+                                <option value="moyenne">Moyenne</option>
+                                <option value="elevee">Élevée</option>
+                                <option value="critique">Critique</option>
+                              </select>
+                            </div>
+                            <div className="col-md-3">
+                              <button type="submit" className="btn btn-outline-secondary w-100">Signaler</button>
+                            </div>
                           </div>
-                          <div className="col-md-3">
-                            <select className="form-select" name="incident_gravite">
-                              <option value="faible">Faible</option>
-                              <option value="moyenne">Moyenne</option>
-                              <option value="elevee">Élevée</option>
-                              <option value="critique">Critique</option>
-                            </select>
-                          </div>
-                          <div className="col-md-3">
-                            <button type="submit" className="btn btn-outline-secondary w-100">Signaler</button>
-                          </div>
-                        </div>
-                      </form>
+                        </form>
+                      )}
                     </div>
                   )}
 
@@ -750,6 +765,11 @@ export function ChantiersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* QR Scanner Modal (pour scanner badges employés depuis un chantier) */}
+      {showScannerModal && selectedChantier && (
+        <QRScannerModal isOpen={showScannerModal} onClose={() => setShowScannerModal(false)} chantierId={selectedChantier.id} onPointageSuccess={() => { setShowScannerModal(false); loadChantiers(); }} />
       )}
 
       {/* Modal QR Pointage */}
