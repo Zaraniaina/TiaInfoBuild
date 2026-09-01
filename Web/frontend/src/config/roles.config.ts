@@ -13,6 +13,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/super-admin/logs',
     '/super-admin/parametres',
     '/dashboard',
+    '/pricing',
   ],
   admin_entreprise: [
     '/dashboard',
@@ -25,6 +26,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/alertes',
     '/historique-logins',
     '/settings',
+    '/pricing',
   ],
   directeur: [
     '/dashboard',
@@ -35,6 +37,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/materiels',
     '/stocks',
     '/alertes',
+    '/pricing',
   ],
   comptable: [
     '/dashboard',
@@ -43,6 +46,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/chantiers',
     '/rh',
     '/alertes',
+    '/pricing',
   ],
   chef_projet: [
     '/dashboard',
@@ -52,6 +56,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/stocks',
     '/finance',
     '/alertes',
+    '/pricing',
   ],
   chef_chantier: [
     '/dashboard',
@@ -61,24 +66,28 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/stocks',
     '/finance',
     '/alertes',
+    '/pricing',
   ],
   rh: [
     '/dashboard',
     '/rh',
     '/chantiers',
     '/alertes',
+    '/pricing',
   ],
   materiel: [
     '/dashboard',
     '/materiels',
     '/chantiers',
     '/alertes',
+    '/pricing',
   ],
   magasinier: [
     '/dashboard',
     '/stocks',
     '/chantiers',
     '/alertes',
+    '/pricing',
   ],
   commercial: [
     '/dashboard',
@@ -86,6 +95,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/chantiers',
     '/finance',
     '/alertes',
+    '/pricing',
   ],
   employe: [
     '/dashboard',
@@ -94,11 +104,13 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/materiels',
     '/stocks',
     '/alertes',
+    '/pricing',
   ],
   client: [
     '/dashboard',
     '/commercial',
     '/chantiers',
+    '/pricing',
   ],
 }
 

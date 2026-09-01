@@ -74,6 +74,14 @@ ADMIN_ENTREPRISE = {
 
 MOT_DE_PASSE_DEMO = "Admin123!"
 
+PLANS_DEFAUT = [
+    {"nom": "Essai Gratuit", "code": "essai", "description": "Accès complet 30 jours", "prix_mensuel": 0, "prix_annuel": 0, "utilisateurs_max": 2, "chantiers_max": 1, "stockage_go": 1, "duree_essai_jours": 30, "actif": 1},
+    {"nom": "Starter", "code": "starter", "description": "Pour les petites entreprises", "prix_mensuel": 15000, "prix_annuel": 150000, "utilisateurs_max": 5, "chantiers_max": 3, "stockage_go": 10, "duree_essai_jours": 30, "actif": 1},
+    {"nom": "Pro", "code": "pro", "description": "Le plus populaire", "prix_mensuel": 40000, "prix_annuel": 400000, "utilisateurs_max": 20, "chantiers_max": 10, "stockage_go": 50, "duree_essai_jours": 30, "actif": 1},
+    {"nom": "Business", "code": "business", "description": "Entreprises établies", "prix_mensuel": 100000, "prix_annuel": 1000000, "utilisateurs_max": 50, "chantiers_max": 25, "stockage_go": 200, "duree_essai_jours": 30, "actif": 1},
+    {"nom": "Enterprise", "code": "enterprise", "description": "Sur devis", "prix_mensuel": 0, "prix_annuel": 0, "utilisateurs_max": 999, "chantiers_max": 999, "stockage_go": 999, "duree_essai_jours": 30, "actif": 1},
+]
+
 
 async def seed():
     print("🌱 Démarrage du seed de la base de données...")
@@ -110,6 +118,16 @@ async def seed():
         entreprise_id = ent[0]
         print(f"    Entreprise ID: {entreprise_id}")
 
+        # 3. Seed des plans d'abonnement
+        print("📋 Création des plans d'abonnement...")
+        for plan in PLANS_DEFAUT:
+            await db.execute(text("""
+                INSERT IGNORE INTO plans (nom, code, description, prix_mensuel, prix_annuel,
+                    utilisateurs_max, chantiers_max, stockage_go, duree_essai_jours, actif)
+                VALUES (:nom, :code, :description, :prix_mensuel, :prix_annuel,
+                    :utilisateurs_max, :chantiers_max, :stockage_go, :duree_essai_jours, :actif)
+            """), plan)
+
         # 3. Créer le super admin (entreprise_id = NULL)
         print("👤 Création du super admin...")
         result = await db.execute(text(
@@ -137,6 +155,24 @@ async def seed():
             print(f"    Admin entreprise: {ADMIN_ENTREPRISE['email']} / {MOT_DE_PASSE_DEMO}")
         else:
             print(f"   ℹ  Admin entreprise déjà existant: {ADMIN_ENTREPRISE['email']}")
+
+        # 5. Créer un abonnement par défaut pour l'entreprise de test (plan Pro)
+        print("📅 Création de l'abonnement par défaut...")
+        result = await db.execute(text(
+            "SELECT id FROM plans WHERE code = :code LIMIT 1"
+        ), {"code": "pro"})
+        plan_row = result.fetchone()
+        if plan_row:
+            plan_id = plan_row[0]
+            result = await db.execute(text(
+                "SELECT id FROM subscriptions WHERE entreprise_id = :eid LIMIT 1"
+            ), {"eid": entreprise_id})
+            if not result.fetchone():
+                await db.execute(text("""
+                    INSERT INTO subscriptions (entreprise_id, plan_id, date_debut, date_fin, date_prochain_renouvellement, statut, periode)
+                    VALUES (:eid, :pid, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), DATE_ADD(NOW(), INTERVAL 30 DAY), 'actif', 'mensuel')
+                """), {"eid": entreprise_id, "pid": plan_id})
+                print(f"    Abonnement Pro créé pour l'entreprise ID {entreprise_id}")
 
         await db.commit()
 

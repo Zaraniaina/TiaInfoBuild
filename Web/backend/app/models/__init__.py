@@ -29,6 +29,8 @@ from app.models.membre_equipe import MembreEquipe
 from app.models.mouvement_stock import MouvementStock
 from app.models.paiement import Paiement
 from app.models.phase import Phase
+from app.models.plan import Plan
+from app.models.subscription import Subscription
 from app.models.pointage import Pointage
 from app.models.preference import Preference
 from app.models.rapport_financier import RapportFinancier
@@ -66,6 +68,8 @@ __all__ = [
     "MouvementStock",
     "Paiement",
     "Phase",
+    "Plan",
+    "Subscription",
     "Pointage",
     "Preference",
     "RapportFinancier",

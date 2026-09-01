@@ -52,7 +52,7 @@ export function RegisterPage() {
     resolver: zodResolver(registerSchema),
   })
 
-  const onSubmit = async (data: RegisterFormData) => {
+   const onSubmit = async (data: RegisterFormData) => {
     setError(null)
     setLoading(true)
     try {
@@ -63,7 +63,7 @@ export function RegisterPage() {
         message: 'Votre entreprise et votre compte administrateur ont été créés avec succès. Veuillez vous connecter.',
         duration: 5000,
       })
-      navigate('/login')
+      navigate('/pricing')
     } catch (err: unknown) {
       const msg = formatErrorMessage(err, 'Erreur lors de la création de l\'entreprise.')
       setError(msg)

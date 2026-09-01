@@ -23,6 +23,7 @@ import { SuperAdminFacturationPage } from '@/pages/super-admin/SuperAdminFactura
 import { SuperAdminLogsPage } from '@/pages/super-admin/SuperAdminLogsPage'
 import { SuperAdminParametresPage } from '@/pages/super-admin/SuperAdminParametresPage'
 import { ClientPage } from '@/pages/client/ClientPage'
+import { PricingPage } from '@/pages/pricing/PricingPage'
 
 function App() {
   const token = useAuthStore((s) => s.token)
@@ -36,6 +37,7 @@ function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
       <Route path="/" element={<ProtectedRoute />}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
@@ -49,6 +51,7 @@ function App() {
         <Route path="historique-logins" element={<HistoriqueLoginsPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="client" element={<ClientPage />} />
+        <Route path="pricing" element={<PricingPage />} />
         <Route path="super-admin">
           <Route index element={<SuperAdminDashboardPage />} />
           <Route path="entreprises" element={<SuperAdminEntreprisesPage />} />

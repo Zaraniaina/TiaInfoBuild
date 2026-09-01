@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
 import { useNavigate } from 'react-router-dom'
-import type { Entreprise } from '@/types'
+import { subscriptionsService } from '@/services/subscriptions.service'
+import type { Entreprise, Plan } from '@/types'
 
 export function SuperAdminEntreprisesPage() {
   const navigate = useNavigate()
   const [entreprises, setEntreprises] = useState<Entreprise[]>([])
+  const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
+  const [showPlanModal, setShowPlanModal] = useState(false)
+  const [selectedEntreprise, setSelectedEntreprise] = useState<Entreprise | null>(null)
+  const [selectedPlanId, setSelectedPlanId] = useState<number | ''>('')
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     nom: '',
@@ -32,8 +37,18 @@ export function SuperAdminEntreprisesPage() {
       .finally(() => setLoading(false))
   }
 
+  const fetchPlans = async () => {
+    try {
+      const data = await subscriptionsService.getAdminPlans()
+      setPlans(data)
+    } catch {
+      setPlans([])
+    }
+  }
+
   useEffect(() => {
     fetchEntreprises()
+    fetchPlans()
   }, [])
 
   const handleToggle = async (id: number) => {
@@ -60,18 +75,50 @@ export function SuperAdminEntreprisesPage() {
     }
   }
 
+  const openChangePlan = (entreprise: Entreprise) => {
+    setSelectedEntreprise(entreprise)
+    setSelectedPlanId('')
+    setShowPlanModal(true)
+  }
+
+  const handleChangePlan = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedEntreprise || selectedPlanId === '') return
+    setSubmitting(true)
+    try {
+      await subscriptionsService.createAdminSubscription({
+        entreprise_id: selectedEntreprise.id,
+        plan_id: Number(selectedPlanId),
+        periode: 'mensuel',
+        statut: 'actif',
+      })
+      setShowPlanModal(false)
+      setSelectedEntreprise(null)
+      setSelectedPlanId('')
+      fetchEntreprises()
+    } catch {
+      alert('Erreur lors du changement de plan.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const filtered = entreprises.filter(e =>
     e.nom.toLowerCase().includes(search.toLowerCase()) ||
     (e.email && e.email.toLowerCase().includes(search.toLowerCase()))
   )
 
   const getPlanBadge = (plan: string) => {
-    switch (plan.toLowerCase()) {
-      case 'premium': return 'bg-primary bg-opacity-10 text-primary border'
-      case 'pro': return 'bg-success bg-opacity-10 text-success border'
-      case 'enterprise': return 'bg-secondary bg-opacity-10 text-dark border'
-      default: return 'bg-light text-dark border'
+    const found = plans.find(p => p.code === plan.toLowerCase())
+    if (!found) {
+      switch (plan.toLowerCase()) {
+        case 'premium': return 'bg-primary bg-opacity-10 text-primary border'
+        case 'pro': return 'bg-success bg-opacity-10 text-success border'
+        case 'enterprise': return 'bg-secondary bg-opacity-10 text-dark border'
+        default: return 'bg-light text-dark border'
+      }
     }
+    return found.actif ? 'bg-success bg-opacity-10 text-success border' : 'bg-secondary bg-opacity-10 text-dark border'
   }
 
   return (
@@ -138,12 +185,17 @@ export function SuperAdminEntreprisesPage() {
                     </span>
                   </td>
                   <td className="text-end">
-                    <button
-                      className={`btn btn-sm ${e.actif ? 'btn-outline-danger' : 'btn-outline-success'} fw-semibold`}
-                      onClick={() => handleToggle(e.id)}
-                    >
-                      {e.actif ? 'Suspendre' : 'Réactiver'}
-                    </button>
+                    <div className="d-flex gap-1 justify-content-end">
+                      <button className="btn btn-sm btn-outline-secondary" onClick={() => openChangePlan(e)} title="Changer le plan">
+                        <i className="bi bi-credit-card"></i>
+                      </button>
+                      <button
+                        className={`btn btn-sm ${e.actif ? 'btn-outline-danger' : 'btn-outline-success'} fw-semibold`}
+                        onClick={() => handleToggle(e.id)}
+                      >
+                        {e.actif ? 'Suspendre' : 'Réactiver'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -315,6 +367,35 @@ export function SuperAdminEntreprisesPage() {
           </div>
         </div>
       )}
+
+      {showPlanModal && selectedEntreprise && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-md modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold">Changer le plan — {selectedEntreprise.nom}</h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setShowPlanModal(false)}></button>
+              </div>
+              <form onSubmit={handleChangePlan}>
+                <div className="modal-body">
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Nouveau Plan *</label>
+                    <select className="form-select" value={selectedPlanId} onChange={e => setSelectedPlanId(Number(e.target.value))}>
+                      <option value="">Sélectionner un plan</option>
+                      {plans.map(p => <option key={p.id} value={p.id}>{p.nom} — {p.prix_mensuel.toLocaleString()} Ar/mois</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="modal-footer bg-light">
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowPlanModal(false)} disabled={submitting}>Annuler</button>
+                  <button type="submit" className="btn btn-outline-secondary fw-bold" disabled={submitting}>{submitting ? 'Enregistrement...' : 'Changer le plan'}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {showPlanModal && <div className="modal-backdrop fade show" onClick={() => setShowPlanModal(false)}></div>}
     </div>
   )
 }

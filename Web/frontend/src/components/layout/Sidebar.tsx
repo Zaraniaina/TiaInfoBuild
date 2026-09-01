@@ -23,6 +23,7 @@ const MODULE_META: Record<string, { label: string; icon: string; section: string
   '/alertes': { label: 'Alertes Système', icon: 'bi-bell', section: 'Administration' },
   '/historique-logins': { label: 'Audit Connexions', icon: 'bi-clock-history', section: 'Administration' },
   '/settings': { label: 'Utilisateurs & Paramètres', icon: 'bi-gear', section: 'Administration' },
+  '/pricing': { label: 'Tarifs & Abonnement', icon: 'bi-tag', section: 'Administration' },
 }
 
 export function Sidebar() {

@@ -833,3 +833,43 @@ export interface DashboardChartsResponse {
   stock_par_categorie?: { labels: string[]; data: number[] };
   pipeline_commercial?: { labels: string[]; data: number[] };
 }
+
+// ============================================================
+// SUBSCRIPTIONS
+// ============================================================
+
+export interface Plan {
+  id: number;
+  nom: string;
+  code: string;
+  description?: string;
+  prix_mensuel: number;
+  prix_annuel: number;
+  utilisateurs_max: number;
+  chantiers_max: number;
+  stockage_go: number;
+  duree_essai_jours: number;
+  actif: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Subscription {
+  id: number;
+  entreprise_id: number;
+  plan_id: number;
+  date_debut?: string;
+  date_fin?: string;
+  date_prochain_renouvellement?: string;
+  statut: string;
+  mode_paiement?: string;
+  prix_paye?: number;
+  periode?: string;
+  is_deleted?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SubscriptionWithPlan extends Subscription {
+  plan?: Plan;
+}
