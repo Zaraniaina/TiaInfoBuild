@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import type { Devis, Facture, Client, Contrat, Paiement } from '@/types'
+import type { Devis, Facture, Client, Contrat, Paiement, LigneDevis } from '@/types'
 import { commercialService } from '@/services/commercial.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
+import { useToastStore } from '@/stores/toast.store'
 
 export function CommercialPage() {
   const { user } = useAuthStore()
@@ -33,6 +34,15 @@ export function CommercialPage() {
     montant_ttc: 0,
     statut: 'brouillon'
   })
+
+  // Lignes de devis (éléments éditables dans la modal)
+  // Chaque ligne peut être partielle avant création côté serveur
+  const [lines, setLines] = useState<Partial<LigneDevis>[]>([])
+  // Clients modal state
+  const [showClientModal, setShowClientModal] = useState(false)
+  const [clientForm, setClientForm] = useState<Partial<Client>>({ nom: '', email: '', telephone: '', adresse: '' })
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
+  const { addToast } = useToastStore()
 
   const loadData = async () => {
     setLoading(true)
@@ -78,13 +88,119 @@ export function CommercialPage() {
 
       if (selectedDevis) {
         await commercialService.updateDevis(selectedDevis.id, payload)
+        // gérer les lignes: créer / mettre à jour / supprimer
+        for (const l of lines) {
+          if (l._deleted) {
+            if (l.id) {
+              await commercialService.deleteLigneDevis(selectedDevis.id, l.id)
+            }
+            continue
+          }
+          const linePayload = {
+            description: l.description,
+            quantite: Number(l.quantite || 0),
+            prix_unitaire: Number(l.prix_unitaire || 0),
+            remise: Number(l.remise || 0),
+            taux_tva: Number(l.taux_tva || 0),
+            total_ht: Number(l.total_ht || 0),
+            total_ttc: Number(l.total_ttc || 0),
+            ordre: l.ordre || 0,
+            article_id: l.article_id || null,
+          }
+          if (l.id) {
+            await commercialService.updateLigneDevis(selectedDevis.id, l.id, linePayload)
+          } else {
+            await commercialService.createLigneDevis(selectedDevis.id, linePayload)
+          }
+        }
       } else {
-        await commercialService.createDevis(payload)
+        // inclure les lignes à la création
+        const payloadWithLines = { ...payload, lignes: lines.filter(l => !l._deleted).map(l => ({
+          description: l.description,
+          quantite: Number(l.quantite || 0),
+          prix_unitaire: Number(l.prix_unitaire || 0),
+          remise: Number(l.remise || 0),
+          taux_tva: Number(l.taux_tva || 0),
+          total_ht: Number(l.total_ht || 0),
+          total_ttc: Number(l.total_ttc || 0),
+          ordre: l.ordre || 0,
+          article_id: l.article_id || null,
+        })) }
+        await commercialService.createDevis(payloadWithLines)
       }
       setShowDevisModal(false)
       loadData()
     } catch {
       alert('Erreur lors de l\'enregistrement du devis.')
+    }
+  }
+
+  const addEmptyLine = () => {
+    setLines(prev => [...prev, { description: '', quantite: 1, prix_unitaire: 0, remise: 0, taux_tva: devisForm.tva || 20, total_ht: 0, total_ttc: 0, ordre: prev.length + 1 }])
+  }
+
+  const updateLineField = (index: number, field: keyof Partial<LigneDevis>, value: any) => {
+    setLines(prev => {
+      const copy = [...prev]
+      const l: Partial<LigneDevis> = { ...copy[index] }
+      ;(l as any)[field] = value
+      // recalc totals
+      const q = Number(l.quantite || 0)
+      const pu = Number(l.prix_unitaire || 0)
+      const remise = Number(l.remise || 0)
+      const tva = Number(l.taux_tva ?? devisForm.tva ?? 0)
+      l.total_ht = q * pu * (1 - remise / 100)
+      l.total_ttc = (l.total_ht || 0) * (1 + tva / 100)
+      copy[index] = l
+      return copy
+    })
+  }
+
+  const markLineDeleted = (index: number) => {
+    setLines(prev => {
+      const copy = [...prev]
+      const l = { ...copy[index] }
+      // if has id, mark as _deleted to call delete on save; else remove immediately
+      if (l.id) {
+        l._deleted = true
+        copy[index] = l
+        return copy
+      }
+      copy.splice(index, 1)
+      return copy
+    })
+  }
+
+  const handleSaveClient = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const result = await commercialService.createClient(clientForm)
+      // result contains { data, headers }
+      const headers = (result && (result as any).headers) || {}
+      const userId = headers['x-utilisateur-cree'] || headers['X-Utilisateur-Cree'] || headers['x-utilisateur-cree'.toLowerCase()]
+      const tempPwd = headers['x-utilisateur-temppwd'] || headers['X-Utilisateur-TempPwd'] || headers['x-utilisateur-temppwd'.toLowerCase()]
+      setShowClientModal(false)
+      await loadData()
+      if (userId) {
+        try {
+          const blob = await commercialService.downloadUtilisateurBonCreation(Number(userId), tempPwd)
+          const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
+          const link = document.createElement('a')
+          link.href = url
+          link.setAttribute('download', `bon-creation-${userId}.pdf`)
+          document.body.appendChild(link)
+          link.click()
+          link.remove()
+          window.URL.revokeObjectURL(url)
+          addToast({ type: 'success', title: 'Client créé', message: 'Bon de création téléchargé.' })
+        } catch (e) {
+          addToast({ type: 'warning', title: 'Client créé', message: 'Client créé mais impossible de télécharger le PDF.' })
+        }
+      } else {
+        addToast({ type: 'success', title: 'Client créé', message: 'Le client a été créé.' })
+      }
+    } catch (err) {
+      addToast({ type: 'error', title: 'Erreur', message: 'Impossible de créer le client.' })
     }
   }
 
@@ -184,9 +300,23 @@ export function CommercialPage() {
                        </span>
                      </td>
                      <td>
-                       <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedDevis(d); setDevisForm(d); setShowDevisModal(true); }}>
+                       <button className="btn btn-sm btn-outline-secondary me-2" onClick={() => { setSelectedDevis(d); setDevisForm(d); setShowDevisModal(true); }}>
                          <i className="bi bi-pencil"></i>
                        </button>
+                       {d.statut === 'accepte' && (
+                         <button className="btn btn-sm btn-outline-success" onClick={async () => {
+                           try {
+                             await commercialService.convertDevisToContrat(d.id)
+                             addToast({ type: 'success', title: 'Transformé', message: 'Le devis a été transformé en contrat.' })
+                             setActiveTab('contrats')
+                             loadData()
+                           } catch (e) {
+                             addToast({ type: 'error', title: 'Erreur', message: 'Impossible de transformer le devis.' })
+                           }
+                         }}>
+                           <i className="bi bi-file-earmark-check"></i>
+                         </button>
+                       )}
                      </td>
                   </tr>
                 ))}
@@ -311,6 +441,46 @@ export function CommercialPage() {
         </div>
       )}
 
+      {/* Modal Client Builder */}
+      {showClientModal && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-md modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold">{selectedClient ? 'Éditer le Client' : 'Créer un Client'}</h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setShowClientModal(false)}></button>
+              </div>
+              <form onSubmit={handleSaveClient}>
+                <div className="modal-body">
+                  <div className="row g-3">
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">Nom *</label>
+                      <input type="text" className="form-control" required value={clientForm.nom || ''} onChange={e => setClientForm({ ...clientForm, nom: e.target.value })} />
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">Email</label>
+                      <input type="email" className="form-control" value={clientForm.email || ''} onChange={e => setClientForm({ ...clientForm, email: e.target.value })} />
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">Téléphone</label>
+                      <input type="text" className="form-control" value={clientForm.telephone || ''} onChange={e => setClientForm({ ...clientForm, telephone: e.target.value })} />
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">Adresse</label>
+                      <input type="text" className="form-control" value={clientForm.adresse || ''} onChange={e => setClientForm({ ...clientForm, adresse: e.target.value })} />
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer bg-light">
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowClientModal(false)}>Annuler</button>
+                  <button type="submit" className="btn btn-outline-secondary fw-bold">Créer le client</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Devis Builder */}
       {showDevisModal && (
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -345,6 +515,52 @@ export function CommercialPage() {
                          {((Number(devisForm.montant_ht || 0)) * (1 + (Number(devisForm.tva || 20) / 100))).toLocaleString()} MGA
                        </h3>
                      </div>
+                      <div className="col-12 mt-3">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <h6 className="mb-0">Lignes de devis</h6>
+                          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={addEmptyLine}><i className="bi bi-plus-lg me-1"></i>Ajouter ligne</button>
+                        </div>
+                        <div className="table-responsive">
+                          <table className="table table-sm">
+                            <thead>
+                              <tr>
+                                <th>Description</th>
+                                <th style={{ width: '90px' }}>Quantité</th>
+                                <th style={{ width: '140px' }}>Prix Unitaire</th>
+                                <th style={{ width: '90px' }}>Remise %</th>
+                                <th style={{ width: '90px' }}>TVA %</th>
+                                <th style={{ width: '140px' }}>Total TTC</th>
+                                <th style={{ width: '60px' }}></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {lines.filter(l => !l._deleted).map((l, idx) => (
+                                <tr key={idx}>
+                                  <td>
+                                    <input className="form-control form-control-sm" value={l.description || ''} onChange={e => updateLineField(idx, 'description', e.target.value)} />
+                                  </td>
+                                  <td>
+                                    <input className="form-control form-control-sm" type="number" value={l.quantite || 0} onChange={e => updateLineField(idx, 'quantite', Number(e.target.value))} />
+                                  </td>
+                                  <td>
+                                    <input className="form-control form-control-sm" type="number" value={l.prix_unitaire || 0} onChange={e => updateLineField(idx, 'prix_unitaire', Number(e.target.value))} />
+                                  </td>
+                                  <td>
+                                    <input className="form-control form-control-sm" type="number" value={l.remise || 0} onChange={e => updateLineField(idx, 'remise', Number(e.target.value))} />
+                                  </td>
+                                  <td>
+                                    <input className="form-control form-control-sm" type="number" value={l.taux_tva || devisForm.tva || 20} onChange={e => updateLineField(idx, 'taux_tva', Number(e.target.value))} />
+                                  </td>
+                                  <td className="font-monospace">{Number(l.total_ttc || 0).toLocaleString()} MGA</td>
+                                  <td>
+                                    <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => markLineDeleted(idx)}><i className="bi bi-trash"></i></button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
                   </div>
                 </div>
                 <div className="modal-footer bg-light">

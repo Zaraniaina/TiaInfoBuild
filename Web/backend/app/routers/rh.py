@@ -37,6 +37,7 @@ from app.schemas.equipe import (
     MembreEquipeCreate,
 )
 from app.security import CurrentUserPayload, DbDep
+from app.core.permissions import Role, PERMISSION_MAP
 
 router = APIRouter()
 
@@ -358,7 +359,11 @@ async def scan_badge_pointage(
     obj_in: ScanBadgeRequest,
     db: DbDep,
 ):
-    _require_permission(payload, "rh:write")
+    # Autoriser si le rôle possède la permission `rh:write` ou si c'est un `admin_entreprise`
+    role_code = payload.get("role_code")
+    permissions = PERMISSION_MAP.get(role_code, [])
+    if "*" not in permissions and "rh:write" not in permissions and role_code != Role.ADMIN_ENTREPRISE:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission 'rh:write' requise")
     entreprise_id = payload.get("entreprise_id")
     user_id = payload.get("sub") or payload.get("id")
 

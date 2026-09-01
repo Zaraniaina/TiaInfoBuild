@@ -2,7 +2,7 @@
 from datetime import date, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +16,7 @@ from app.crud.facture import FactureCRUD
 from app.database import get_db
 from app.models.client import Client
 from app.models.devis import Devis
+from app.models.ligne_devis import LigneDevis
 from app.models.facture import Facture
 from app.models.contrat import Contrat
 from app.schemas.client import ClientCreate, ClientUpdate, ClientResponse, ClientList
@@ -25,6 +26,8 @@ from app.schemas.devis import (
     DevisResponse,
     DevisList,
     DevisStatutUpdate,
+    LigneDevisCreate,
+    LigneDevisResponse,
 )
 from app.schemas.facture import (
     FactureCreate,
@@ -36,6 +39,8 @@ from app.schemas.facture import (
 )
 from app.schemas.contrat import ContratCreate, ContratUpdate, ContratResponse, ContratList
 from app.security import CurrentUserPayload, DbDep
+from app.security import hash_password, generate_temp_password
+from app.models.utilisateur import Utilisateur
 
 router = APIRouter(tags=["commercial"])
 
@@ -95,12 +100,41 @@ async def create_client(
     payload: CurrentUserPayload,
     db: DbDep,
     data: ClientCreate,
+    response: Response,
 ):
     _require_permission(payload, "commercial:write")
     entreprise_id = _get_entreprise_id(payload)
     obj_in = data.model_dump()
     obj_in["entreprise_id"] = entreprise_id
-    return await client_crud.create(db, obj_in)
+    client = await client_crud.create(db, obj_in)
+
+    # Création automatique d'un compte utilisateur pour le client si email fourni
+    try:
+        if client and client.email:
+            temp_pwd = generate_temp_password()
+            user_obj = {
+                "entreprise_id": entreprise_id,
+                "email": client.email,
+                "nom": client.nom or "",
+                "prenom": client.prenom or "",
+                "mot_de_passe_hash": hash_password(temp_pwd),
+                "must_change_password": True,
+            }
+            user = Utilisateur(**user_obj)
+            db.add(user)
+            await db.flush()
+            await db.refresh(user)
+            # Exposer de façon temporaire l'id utilisateur et le mot de passe généré
+            # via des en-têtes HTTP (usage immédiat par l'UI/admin). Attention: ces en-têtes
+            # doivent être consommés immédiatement et ne sont pas conservés côté serveur.
+            response.headers["X-Utilisateur-Cree"] = str(user.id)
+            response.headers["X-Utilisateur-TempPwd"] = temp_pwd
+            print(f"Compte utilisateur créé pour le client {client.email} (utilisateur_id={user.id})")
+    except Exception as e:
+        # Ne pas bloquer la création du client si la création du compte échoue
+        print("Erreur création compte client automatique:", e)
+
+    return client
 
 
 @router.get("/clients/{id}", response_model=ClientResponse)
@@ -177,7 +211,55 @@ async def create_devis(
     obj_in["entreprise_id"] = entreprise_id
     if not obj_in.get("numero"):
         obj_in["numero"] = await generate_numero(db, "DEV", Devis, "numero")
-    return await devis_crud.create(db, obj_in)
+    devis = await devis_crud.create(db, obj_in)
+
+    # charger les lignes associées pour la réponse
+    result = await db.execute(
+        select(LigneDevis).where(LigneDevis.devis_id == devis.id, LigneDevis.is_deleted == False)
+    )
+    lignes = list(result.scalars().all())
+
+    # Construire une réponse sérialisable attendue par DevisResponse
+    return {
+        "id": devis.id,
+        "entreprise_id": devis.entreprise_id,
+        "client_id": devis.client_id,
+        "numero": devis.numero,
+        "objet": devis.objet,
+        "montant_ht": float(devis.montant_ht or 0),
+        "tva": float(devis.tva or 0),
+        "montant_ttc": float(devis.montant_ttc or 0),
+        "date_creation": devis.date_creation,
+        "date_validite": devis.date_validite,
+        "statut": devis.statut,
+        "conditions_paiement": devis.conditions_paiement,
+        "mode_paiement": devis.mode_paiement,
+        "notes": devis.notes,
+        "is_deleted": devis.is_deleted,
+        "created_at": devis.created_at,
+        "updated_at": devis.updated_at,
+        "lignes": [
+            {
+                "id": l.id,
+                "devis_id": l.devis_id,
+                "type": l.type,
+                "article_id": l.article_id,
+                "description": l.description,
+                "quantite": float(l.quantite or 0),
+                "unite": l.unite,
+                "prix_unitaire": float(l.prix_unitaire or 0),
+                "remise": float(l.remise or 0),
+                "taux_tva": float(l.taux_tva or 0),
+                "total_ht": float(l.total_ht or 0),
+                "total_ttc": float(l.total_ttc or 0),
+                "ordre": l.ordre,
+                "is_deleted": l.is_deleted,
+                "created_at": l.created_at,
+                "updated_at": l.updated_at,
+            }
+            for l in lignes
+        ],
+    }
 
 
 @router.get("/devis/{id}", response_model=DevisResponse)
@@ -190,7 +272,50 @@ async def get_devis(
     devis = await devis_crud.get(db, id)
     if not devis or devis.is_deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Devis non trouvé")
-    return devis
+    result = await db.execute(
+        select(LigneDevis).where(LigneDevis.devis_id == devis.id, LigneDevis.is_deleted == False)
+    )
+    lignes = list(result.scalars().all())
+    return {
+        "id": devis.id,
+        "entreprise_id": devis.entreprise_id,
+        "client_id": devis.client_id,
+        "numero": devis.numero,
+        "objet": devis.objet,
+        "montant_ht": float(devis.montant_ht or 0),
+        "tva": float(devis.tva or 0),
+        "montant_ttc": float(devis.montant_ttc or 0),
+        "date_creation": devis.date_creation,
+        "date_validite": devis.date_validite,
+        "statut": devis.statut,
+        "conditions_paiement": devis.conditions_paiement,
+        "mode_paiement": devis.mode_paiement,
+        "notes": devis.notes,
+        "is_deleted": devis.is_deleted,
+        "created_at": devis.created_at,
+        "updated_at": devis.updated_at,
+        "lignes": [
+            {
+                "id": l.id,
+                "devis_id": l.devis_id,
+                "type": l.type,
+                "article_id": l.article_id,
+                "description": l.description,
+                "quantite": float(l.quantite or 0),
+                "unite": l.unite,
+                "prix_unitaire": float(l.prix_unitaire or 0),
+                "remise": float(l.remise or 0),
+                "taux_tva": float(l.taux_tva or 0),
+                "total_ht": float(l.total_ht or 0),
+                "total_ttc": float(l.total_ttc or 0),
+                "ordre": l.ordre,
+                "is_deleted": l.is_deleted,
+                "created_at": l.created_at,
+                "updated_at": l.updated_at,
+            }
+            for l in lignes
+        ],
+    }
 
 
 @router.put("/devis/{id}", response_model=DevisResponse)
@@ -206,6 +331,117 @@ async def update_devis(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Devis non trouvé")
     obj_in = data.model_dump(exclude_unset=True)
     return await devis_crud.update(db, devis, obj_in)
+
+
+# ==================== LIGNES DEVIS ====================
+
+
+@router.post("/devis/{devis_id}/lignes", response_model=LigneDevisResponse, status_code=status.HTTP_201_CREATED)
+async def create_ligne_devis(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    devis_id: int,
+    data: LigneDevisCreate,
+):
+    _require_permission(payload, "commercial:write")
+    devis = await devis_crud.get(db, devis_id)
+    if not devis or devis.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Devis non trouvé")
+
+    obj_in = data.model_dump()
+    obj_in["devis_id"] = devis_id
+
+    # Calculs ligne
+    quantite = float(obj_in.get("quantite") or 0)
+    prix_unitaire = float(obj_in.get("prix_unitaire") or 0)
+    remise = float(obj_in.get("remise") or 0)
+    taux_tva = float(obj_in.get("taux_tva") or devis.tva or 0)
+
+    if not obj_in.get("total_ht"):
+        obj_in["total_ht"] = quantite * prix_unitaire * (1 - remise / 100)
+    if not obj_in.get("total_ttc"):
+        obj_in["total_ttc"] = float(obj_in["total_ht"]) * (1 + taux_tva / 100)
+
+    ligne = LigneDevis(**obj_in)
+    db.add(ligne)
+    await db.flush()
+    await db.refresh(ligne)
+
+    # Recalculer totaux du devis
+    result = await db.execute(select(LigneDevis).where(LigneDevis.devis_id == devis_id, LigneDevis.is_deleted == False))
+    lignes = list(result.scalars().all())
+    devis.montant_ht = sum(float(l.total_ht or 0) for l in lignes)
+    devis.montant_ttc = sum(float(l.total_ttc or 0) for l in lignes)
+    await db.flush()
+    await db.refresh(devis)
+
+    return ligne
+
+
+@router.put("/devis/{devis_id}/lignes/{ligne_id}", response_model=LigneDevisResponse)
+async def update_ligne_devis(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    devis_id: int,
+    ligne_id: int,
+    data: LigneDevisCreate,
+):
+    _require_permission(payload, "commercial:write")
+    ligne = await db.get(LigneDevis, ligne_id)
+    if not ligne or ligne.is_deleted or ligne.devis_id != devis_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ligne non trouvée")
+
+    obj_in = data.model_dump(exclude_unset=True)
+    for field, value in obj_in.items():
+        setattr(ligne, field, value)
+
+    # Recalculer totaux de la ligne si nécessaire
+    quantite = float(ligne.quantite or 0)
+    prix_unitaire = float(ligne.prix_unitaire or 0)
+    remise = float(ligne.remise or 0)
+    taux_tva = float(ligne.taux_tva or 0)
+    ligne.total_ht = quantite * prix_unitaire * (1 - remise / 100)
+    ligne.total_ttc = float(ligne.total_ht) * (1 + taux_tva / 100)
+
+    await db.flush()
+
+    # Recalculer totaux du devis
+    result = await db.execute(select(LigneDevis).where(LigneDevis.devis_id == devis_id, LigneDevis.is_deleted == False))
+    lignes = list(result.scalars().all())
+    devis = await devis_crud.get(db, devis_id)
+    devis.montant_ht = sum(float(l.total_ht or 0) for l in lignes)
+    devis.montant_ttc = sum(float(l.total_ttc or 0) for l in lignes)
+    await db.flush()
+    await db.refresh(ligne)
+    await db.refresh(devis)
+    return ligne
+
+
+@router.delete("/devis/{devis_id}/lignes/{ligne_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_ligne_devis(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    devis_id: int,
+    ligne_id: int,
+):
+    _require_permission(payload, "commercial:delete")
+    ligne = await db.get(LigneDevis, ligne_id)
+    if not ligne or ligne.is_deleted or ligne.devis_id != devis_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ligne non trouvée")
+
+    ligne.is_deleted = True
+    await db.flush()
+
+    # Recalculer totaux du devis
+    result = await db.execute(select(LigneDevis).where(LigneDevis.devis_id == devis_id, LigneDevis.is_deleted == False))
+    lignes = list(result.scalars().all())
+    devis = await devis_crud.get(db, devis_id)
+    if devis:
+        devis.montant_ht = sum(float(l.total_ht or 0) for l in lignes)
+        devis.montant_ttc = sum(float(l.total_ttc or 0) for l in lignes)
+        await db.flush()
+
+    return None
 
 
 @router.post("/devis/{id}/statut", response_model=DevisResponse)

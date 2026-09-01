@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { Client, Devis, Contrat, Facture, Paiement } from '@/types'
+import type { Client, Devis, Contrat, Facture, Paiement, LigneDevis } from '@/types'
 
 export const commercialService = {
   // Clients
@@ -10,6 +10,12 @@ export const commercialService = {
 
   async createClient(data: Partial<Client>) {
     const res = await api.post<Client>('/commercial/clients', data)
+    return { data: res.data, headers: res.headers }
+  },
+
+  async downloadUtilisateurBonCreation(utilisateurId: number, tempPassword?: string) {
+    const url = `/utilisateurs/${utilisateurId}/bon-de-creation${tempPassword ? `?temp_password=${encodeURIComponent(tempPassword)}` : ''}`
+    const res = await api.get(url, { responseType: 'blob' })
     return res.data
   },
 
@@ -29,13 +35,34 @@ export const commercialService = {
     return res.data
   },
 
+  async getDevisById(id: number) {
+    const res = await api.get<Devis>(`/commercial/devis/${id}`)
+    return res.data
+  },
+
+  // Lignes devis
+  async createLigneDevis(devisId: number, data: Partial<LigneDevis>) {
+    const res = await api.post<LigneDevis>(`/commercial/devis/${devisId}/lignes`, data)
+    return res.data
+  },
+
+  async updateLigneDevis(devisId: number, ligneId: number, data: Partial<LigneDevis>) {
+    const res = await api.put<LigneDevis>(`/commercial/devis/${devisId}/lignes/${ligneId}`, data)
+    return res.data
+  },
+
+  async deleteLigneDevis(devisId: number, ligneId: number) {
+    const res = await api.delete<void>(`/commercial/devis/${devisId}/lignes/${ligneId}`)
+    return res.data
+  },
+
   async updateDevis(id: number, data: Partial<Devis>) {
     const res = await api.put<Devis>(`/commercial/devis/${id}`, data)
     return res.data
   },
 
-  async convertDevisToFacture(devisId: number) {
-    const res = await api.post<Facture>(`/commercial/devis/${devisId}/transformer-facture`)
+  async convertDevisToContrat(devisId: number) {
+    const res = await api.post<Contrat>(`/commercial/devis/${devisId}/transformer-contrat`)
     return res.data
   },
 
