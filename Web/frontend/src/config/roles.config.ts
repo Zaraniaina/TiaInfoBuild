@@ -16,14 +16,10 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/pricing',
   ],
   admin_entreprise: [
+    // Restreint selon roles_tia_builds/01_admin_entreprise.md :
+    // accès uniquement à l'administration (utilisateurs, paramètres), KPI/dashboard,
+    // historique de connexion et page tarifs (pricing).
     '/dashboard',
-    '/chantiers',
-    '/finance',
-    '/rh',
-    '/materiels',
-    '/stocks',
-    '/commercial',
-    '/alertes',
     '/historique-logins',
     '/settings',
     '/pricing',
@@ -202,7 +198,51 @@ export interface RolePermissions {
 
 export function getRolePermissions(roleCode: string): RolePermissions {
   const role = roleCode || 'employe'
-  const isAdmin = ['super_admin', 'admin_entreprise'].includes(role)
+  // Pour `admin_entreprise` le périmètre est restreint (gestion utilisateurs, paramètres,
+  // abonnement, KPI/dashboard et audit). Nous refusons l'accès aux modules métier.
+  if (role === 'admin_entreprise') {
+    return {
+      // Chantiers & Phases
+      canCreateChantier: false,
+      canEditChantier: false,
+      canDeleteChantier: false,
+      canValidatePhase: false,
+
+      // RH & Pointages
+      canCreateEmploye: false,
+      canEditEmploye: false,
+      canDeleteEmploye: false,
+      canValidatePointage: false,
+      canScanQR: false,
+
+      // Finance & Dépenses
+      canCreateDepense: false,
+      canValidateDepense: false,
+      canExportFinance: false,
+
+      // Stocks & Inventaires
+      canCreateArticle: false,
+      canAddMouvementStock: false,
+      canDeleteArticle: false,
+
+      // Matériel & Parc
+      canCreateMateriel: false,
+      canAddMaintenance: false,
+      canAssignMateriel: false,
+
+      // Commercial & Devis
+      canCreateClient: false,
+      canCreateDevis: false,
+      canValidateDevis: false,
+      canAddPaiement: false,
+
+      // Administration & Système
+      canAccessSettings: true,
+      canManageUsers: true,
+      canViewAuditLogs: true,
+    }
+  }
+  const isAdmin = ['super_admin'].includes(role)
   const isDirecteur = role === 'directeur'
   const isChefProjet = role === 'chef_projet'
   const isChefChantier = role === 'chef_chantier'

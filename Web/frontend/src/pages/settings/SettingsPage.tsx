@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/services/api";
+import { subscriptionsService } from '@/services/subscriptions.service'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from "@/stores/auth.store";
 import { useToastStore } from "@/stores/toast.store";
 import { ROLE_NAMES } from "@/config/roles.config";
@@ -79,6 +81,7 @@ interface AlerteLog {
 
 export function SettingsPage() {
   const { user } = useAuthStore();
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<
     "utilisateurs" | "parametres" | "audit" | "profil"
   >("utilisateurs");
@@ -116,6 +119,8 @@ export function SettingsPage() {
     prefixe_contrat: "CTR",
   });
   const [entrepriseLoaded, setEntrepriseLoaded] = useState(false);
+  const [subscription, setSubscription] = useState<any | null>(null)
+  const [subLoading, setSubLoading] = useState(true)
 
   const [profilForm, setProfilForm] = useState({
     nom: user?.nom || "",
@@ -209,6 +214,10 @@ export function SettingsPage() {
   useEffect(() => {
     loadEntrepriseSettings();
     loadRoles();
+    subscriptionsService.getMySubscription()
+      .then(s => setSubscription(s))
+      .catch(() => setSubscription(null))
+      .finally(() => setSubLoading(false))
   }, []);
 
   useEffect(() => {
@@ -583,6 +592,25 @@ export function SettingsPage() {
 
       {activeTab === "parametres" &&
         (entrepriseLoaded ? (
+          <>
+          <div className="card border-0 shadow-sm mb-4 p-3">
+            <div className="d-flex justify-content-between align-items-center">
+              <div>
+                <div className="small text-muted">Abonnement</div>
+                <div className="fw-semibold">
+                  {subLoading ? 'Chargement...' : (subscription ? (subscription.plan?.nom || subscription.plan?.code || 'Formule') : 'Aucun abonnement actif')}
+                </div>
+                {!subLoading && subscription?.date_fin && (
+                  <div className="small text-muted">Valide jusqu'au {new Date(subscription.date_fin).toLocaleDateString()}</div>
+                )}
+              </div>
+              <div>
+                <button className="btn btn-outline-secondary" onClick={() => navigate('/pricing')}>
+                  Gérer l'abonnement
+                </button>
+              </div>
+            </div>
+          </div>
           <form onSubmit={handleSaveEntreprise}>
             <div className="row g-3 mb-4">
               <div className="col-md-6">

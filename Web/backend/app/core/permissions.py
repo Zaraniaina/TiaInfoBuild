@@ -49,7 +49,14 @@ ALL_PERMISSIONS: Final[list[str]] = [
 
 PERMISSION_MAP: Final[dict[str, list[str]]] = {
     Role.SUPER_ADMIN: ["*"],
-    Role.ADMIN_ENTREPRISE: ALL_PERMISSIONS,
+    # Restreint selon roles_tia_builds/01_admin_entreprise.md :
+    # accès uniquement à la lecture du dashboard et à la lecture/écriture
+    # des paramètres (gestion utilisateurs, settings, audit logs).
+    Role.ADMIN_ENTREPRISE: [
+        "dashboard:read",
+        "parametres:read",
+        "parametres:write",
+    ],
     Role.DIRECTEUR: [
         "dashboard:read",
         "chantiers:read",
