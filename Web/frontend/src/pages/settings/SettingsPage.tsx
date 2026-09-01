@@ -852,6 +852,7 @@ export function SettingsPage() {
               {saving ? "Enregistrement..." : "Enregistrer les paramètres"}
             </button>
           </form>
+          </>
         ) : (
         <div className="text-center py-5">
           <div className="spinner-border text-secondary" role="status"></div>
