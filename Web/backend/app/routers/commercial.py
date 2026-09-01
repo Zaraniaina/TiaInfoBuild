@@ -17,8 +17,10 @@ from app.database import get_db
 from app.models.client import Client
 from app.models.devis import Devis
 from app.models.ligne_devis import LigneDevis
+from app.models.ligne_facture import LigneFacture
 from app.models.facture import Facture
 from app.models.contrat import Contrat
+from app.models.paiement import Paiement
 from app.schemas.client import ClientCreate, ClientUpdate, ClientResponse, ClientList
 from app.schemas.devis import (
     DevisCreate,
@@ -36,6 +38,8 @@ from app.schemas.facture import (
     FactureList,
     PaiementCreate,
     PaiementResponse,
+    LigneFactureCreate,
+    LigneFactureResponse,
 )
 from app.schemas.contrat import ContratCreate, ContratUpdate, ContratResponse, ContratList
 from app.security import CurrentUserPayload, DbDep
@@ -75,6 +79,40 @@ def _get_entreprise_id(payload: CurrentUserPayload) -> int | None:
             detail="Entreprise ID manquant dans le token",
         )
     return entreprise_id
+
+
+async def _recalculer_facture(db: AsyncSession, facture_id: int) -> None:
+    result = await db.execute(select(Facture).where(Facture.id == facture_id, Facture.is_deleted == False))
+    facture = result.scalar_one_or_none()
+    if not facture:
+        return
+
+    lignes_result = await db.execute(select(LigneFacture).where(LigneFacture.facture_id == facture_id, LigneFacture.is_deleted == False))
+    lignes = list(lignes_result.scalars().all())
+    montant_ht = sum(float(l.total_ht or 0) for l in lignes)
+    taux_tva = float(facture.tva or 0)
+    montant_tva = montant_ht * taux_tva / 100
+    montant_ttc = montant_ht + montant_tva
+
+    paiements_result = await db.execute(select(Paiement).where(Paiement.facture_id == facture_id, Paiement.is_deleted == False))
+    paiements = list(paiements_result.scalars().all())
+    montant_paye = sum(float(p.montant or 0) for p in paiements)
+    reste_a_payer = montant_ttc - float(facture.montant_acompte_deduit or 0) - montant_paye
+
+    if montant_paye <= 0:
+        nouveau_statut = "emis"
+    elif montant_paye >= montant_ttc:
+        nouveau_statut = "payee"
+    else:
+        nouveau_statut = "partiellement_payee"
+
+    facture.montant_ht = montant_ht
+    facture.montant_tva = montant_tva
+    facture.montant_ttc = montant_ttc
+    facture.montant_paye = montant_paye
+    facture.reste_a_payer = reste_a_payer if reste_a_payer > 0 else 0
+    facture.statut = nouveau_statut
+    await db.flush()
 
 
 # ==================== CLIENTS ====================
@@ -625,11 +663,21 @@ async def create_facture(
 ):
     _require_permission(payload, "commercial:write")
     entreprise_id = _get_entreprise_id(payload)
-    obj_in = data.model_dump()
+    obj_in = data.model_dump(exclude={"lignes"})
     obj_in["entreprise_id"] = entreprise_id
     if not obj_in.get("numero"):
         obj_in["numero"] = await generate_numero(db, "FAC", Facture, "numero")
-    return await facture_crud.create(db, obj_in)
+    facture = await facture_crud.create(db, obj_in)
+
+    if data.lignes:
+        for ligne_data in data.lignes:
+            ligne_obj = LigneFacture(**ligne_data.model_dump(), facture_id=facture.id)
+            db.add(ligne_obj)
+        await db.flush()
+        await _recalculer_facture(db, facture.id)
+        await db.refresh(facture)
+
+    return facture
 
 
 @router.get("/factures/{id}", response_model=FactureResponse)
@@ -642,7 +690,51 @@ async def get_facture(
     facture = await facture_crud.get(db, id)
     if not facture or facture.is_deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Facture non trouvée")
-    return facture
+    lignes_result = await db.execute(select(LigneFacture).where(LigneFacture.facture_id == id, LigneFacture.is_deleted == False))
+    lignes = list(lignes_result.scalars().all())
+    paiements_result = await db.execute(select(Paiement).where(Paiement.facture_id == id, Paiement.is_deleted == False))
+    paiements = list(paiements_result.scalars().all())
+    return {
+        **facture.__dict__,
+        "lignes": [
+            {
+                "id": l.id,
+                "facture_id": l.facture_id,
+                "type": l.type,
+                "article_id": l.article_id,
+                "description": l.description,
+                "categorie": l.categorie,
+                "quantite": float(l.quantite or 0),
+                "unite": l.unite,
+                "prix_unitaire": float(l.prix_unitaire or 0),
+                "remise": float(l.remise or 0),
+                "taux_tva": float(l.taux_tva or 0),
+                "total_ht": float(l.total_ht or 0),
+                "total_ttc": float(l.total_ttc or 0),
+                "ordre": l.ordre,
+                "is_deleted": l.is_deleted,
+                "created_at": l.created_at,
+                "updated_at": l.updated_at,
+            }
+            for l in lignes
+        ],
+        "paiements": [
+            {
+                "id": p.id,
+                "facture_id": p.facture_id,
+                "montant": float(p.montant or 0),
+                "date_paiement": p.date_paiement,
+                "mode_paiement": p.mode_paiement,
+                "reference": p.reference,
+                "banque": p.banque,
+                "notes": p.notes,
+                "is_deleted": p.is_deleted,
+                "created_at": p.created_at,
+                "updated_at": p.updated_at,
+            }
+            for p in paiements
+        ],
+    }
 
 
 @router.put("/factures/{id}", response_model=FactureResponse)
@@ -699,16 +791,7 @@ async def create_paiement(
     await db.flush()
     await db.refresh(paiement)
 
-    facture = await facture_crud.get(db, data.facture_id)
-    if facture:
-        montant_paye = (facture.montant_paye or 0) + data.montant
-        facture.montant_paye = montant_paye
-        if facture.montant_ttc and montant_paye >= facture.montant_ttc:
-            facture.statut = "payee"
-        elif montant_paye > 0:
-            facture.statut = "partiellement_payee"
-        await db.flush()
-        await db.refresh(facture)
+    await _recalculer_facture(db, data.facture_id)
 
     return paiement
 
@@ -736,14 +819,7 @@ async def add_paiement_to_facture(
     await db.flush()
     await db.refresh(paiement)
 
-    montant_paye = (facture.montant_paye or 0) + data.montant
-    facture.montant_paye = montant_paye
-    if facture.montant_ttc and montant_paye >= facture.montant_ttc:
-        facture.statut = "payee"
-    elif montant_paye > 0:
-        facture.statut = "partiellement_payee"
-    await db.flush()
-    await db.refresh(facture)
+    await _recalculer_facture(db, id)
 
     return paiement
 
@@ -766,21 +842,134 @@ async def duplicate_facture(
         contrat_id=facture.contrat_id,
         numero=nouveau_numero,
         type=facture.type,
-        montant_ht=facture.montant_ht,
+        montant_ht=0,
         tva=facture.tva,
-        montant_ttc=facture.montant_ttc,
+        montant_tva=0,
+        montant_ttc=0,
+        montant_acompte_deduit=0,
+        montant_paye=0,
+        reste_a_payer=0,
         date_emission=date.today(),
         date_echeance=date.today(),
         statut="emis",
         conditions_paiement=facture.conditions_paiement,
         mode_paiement=facture.mode_paiement,
         notes=facture.notes,
-        montant_paye=0.0,
     )
     db.add(nouvelle_facture)
     await db.flush()
     await db.refresh(nouvelle_facture)
+
+    lignes_result = await db.execute(select(LigneFacture).where(LigneFacture.facture_id == id, LigneFacture.is_deleted == False))
+    anciennes_lignes = list(lignes_result.scalars().all())
+    for ancienne in anciennes_lignes:
+        nouvelle_ligne = LigneFacture(
+            facture_id=nouvelle_facture.id,
+            type=ancienne.type,
+            article_id=ancienne.article_id,
+            description=ancienne.description,
+            categorie=ancienne.categorie,
+            quantite=ancienne.quantite,
+            unite=ancienne.unite,
+            prix_unitaire=ancienne.prix_unitaire,
+            remise=ancienne.remise,
+            taux_tva=ancienne.taux_tva,
+            total_ht=ancienne.total_ht,
+            total_ttc=ancienne.total_ttc,
+            ordre=ancienne.ordre,
+        )
+        db.add(nouvelle_ligne)
+    await db.flush()
+    await _recalculer_facture(db, nouvelle_facture.id)
+    await db.refresh(nouvelle_facture)
     return nouvelle_facture
+
+
+# ==================== LIGNES FACTURE ====================
+
+
+@router.post("/factures/{facture_id}/lignes", response_model=LigneFactureResponse, status_code=status.HTTP_201_CREATED)
+async def create_ligne_facture(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    facture_id: int,
+    data: LigneFactureCreate,
+):
+    _require_permission(payload, "commercial:write")
+    facture = await facture_crud.get(db, facture_id)
+    if not facture or facture.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Facture non trouvée")
+
+    obj_in = data.model_dump()
+    obj_in["facture_id"] = facture_id
+
+    quantite = float(obj_in.get("quantite") or 0)
+    prix_unitaire = float(obj_in.get("prix_unitaire") or 0)
+    remise = float(obj_in.get("remise") or 0)
+    taux_tva = float(obj_in.get("taux_tva") or facture.tva or 0)
+
+    if not obj_in.get("total_ht"):
+        obj_in["total_ht"] = quantite * prix_unitaire * (1 - remise / 100)
+    if not obj_in.get("total_ttc"):
+        obj_in["total_ttc"] = float(obj_in["total_ht"]) * (1 + taux_tva / 100)
+
+    ligne = LigneFacture(**obj_in)
+    db.add(ligne)
+    await db.flush()
+    await db.refresh(ligne)
+
+    await _recalculer_facture(db, facture_id)
+
+    return ligne
+
+
+@router.put("/factures/{facture_id}/lignes/{ligne_id}", response_model=LigneFactureResponse)
+async def update_ligne_facture(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    facture_id: int,
+    ligne_id: int,
+    data: LigneFactureCreate,
+):
+    _require_permission(payload, "commercial:write")
+    ligne = await db.get(LigneFacture, ligne_id)
+    if not ligne or ligne.is_deleted or ligne.facture_id != facture_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ligne non trouvée")
+
+    obj_in = data.model_dump(exclude_unset=True)
+    for field, value in obj_in.items():
+        setattr(ligne, field, value)
+
+    quantite = float(ligne.quantite or 0)
+    prix_unitaire = float(ligne.prix_unitaire or 0)
+    remise = float(ligne.remise or 0)
+    taux_tva = float(ligne.taux_tva or 0)
+    ligne.total_ht = quantite * prix_unitaire * (1 - remise / 100)
+    ligne.total_ttc = float(ligne.total_ht) * (1 + taux_tva / 100)
+
+    await db.flush()
+    await _recalculer_facture(db, facture_id)
+    await db.refresh(ligne)
+    return ligne
+
+
+@router.delete("/factures/{facture_id}/lignes/{ligne_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_ligne_facture(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    facture_id: int,
+    ligne_id: int,
+):
+    _require_permission(payload, "commercial:delete")
+    ligne = await db.get(LigneFacture, ligne_id)
+    if not ligne or ligne.is_deleted or ligne.facture_id != facture_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ligne non trouvée")
+
+    ligne.is_deleted = True
+    await db.flush()
+    await _recalculer_facture(db, facture_id)
+
+    return None
 
 
 # ============================================================

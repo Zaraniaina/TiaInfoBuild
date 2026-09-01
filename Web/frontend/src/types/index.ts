@@ -344,7 +344,7 @@ export interface MouvementStock {
 // COMMERCIAL
 // ============================================================
 
-export type TypeClient = "particulier" | "entreprise" | "public";
+export type TypeClient = "particulier" | "entreprise" | "administration_publique" | "association" | "ong" | "promoteur_immobilier";
 export type StatutDevis =
   "brouillon" | "envoye" | "accepte" | "refuse" | "expire";
 export type StatutContrat = "en_cours" | "termine" | "resilié";
@@ -429,6 +429,7 @@ export interface LigneDevis {
   type: string;
   article_id?: number;
   description: string;
+  categorie?: string;
   quantite: number;
   unite?: string;
   prix_unitaire: number;
@@ -474,7 +475,11 @@ export interface Facture {
   lignes?: LigneFacture[];
   montant_ht: number;
   tva: number;
+  montant_tva: number;
   montant_ttc: number;
+  montant_acompte_deduit: number;
+  montant_paye: number;
+  reste_a_payer: number;
   date_creation: string;
   date_emission?: string;
   date_echeance?: string;
@@ -482,7 +487,6 @@ export interface Facture {
   conditions_paiement?: string;
   mode_paiement?: string;
   notes?: string;
-  montant_paye: number;
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
@@ -494,6 +498,7 @@ export interface LigneFacture {
   type: string;
   article_id?: number;
   description: string;
+  categorie?: string;
   quantite: number;
   unite?: string;
   prix_unitaire: number;

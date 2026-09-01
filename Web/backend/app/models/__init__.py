@@ -23,6 +23,7 @@ from app.models.historique_connexion import HistoriqueConnexion
 from app.models.historique_poste import HistoriquePoste
 from app.models.incident import Incident
 from app.models.ligne_devis import LigneDevis
+from app.models.ligne_facture import LigneFacture
 from app.models.maintenance import Maintenance
 from app.models.materiel import Materiel
 from app.models.membre_equipe import MembreEquipe
@@ -62,6 +63,7 @@ __all__ = [
     "HistoriquePoste",
     "Incident",
     "LigneDevis",
+    "LigneFacture",
     "Maintenance",
     "Materiel",
     "MembreEquipe",

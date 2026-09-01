@@ -322,15 +322,15 @@ async def ca_evolution_series(db: DbDep, entreprise_id: int, mois: int = 6):
     now = datetime.now()
     periods = _last_periods(now, mois)
     ca_q = (
-        select(extract('year', Facture.date_creation).label('y'),
-               extract('month', Facture.date_creation).label('mo'),
+        select(func.coalesce(extract('year', Facture.date_creation), 0).label('y'),
+               func.coalesce(extract('month', Facture.date_creation), 0).label('mo'),
                func.coalesce(func.sum(Facture.montant_ttc), 0).label('val'))
         .where(Facture.entreprise_id == entreprise_id,
                Facture.is_deleted == False)
     )
     dep_q = (
-        select(extract('year', Depense.date_depense).label('y'),
-               extract('month', Depense.date_depense).label('mo'),
+        select(func.coalesce(extract('year', Depense.date_depense), 0).label('y'),
+               func.coalesce(extract('month', Depense.date_depense), 0).label('mo'),
                func.coalesce(func.sum(Depense.montant), 0).label('val'))
         .where(Depense.entreprise_id == entreprise_id,
                Depense.is_deleted == False)

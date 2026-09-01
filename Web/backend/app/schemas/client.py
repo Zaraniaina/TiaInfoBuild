@@ -103,7 +103,7 @@ class ClientCreate(BaseModel):
     @field_validator("type")
     @classmethod
     def validate_type(cls, v: str | None) -> str | None:
-        allowed = {"particulier", "entreprise", "administration"}
+        allowed = {"particulier", "entreprise", "administration_publique", "association", "ong", "promoteur_immobilier"}
         if v is not None and v not in allowed:
             raise ValueError(f"Type client invalide. Valeurs autorisées: {allowed}")
         return v

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Devis, Facture, Client, Contrat, Paiement, LigneDevis } from '@/types'
+import type { Devis, Facture, Client, Contrat, Paiement, LigneDevis, LigneFacture } from '@/types'
 import { commercialService } from '@/services/commercial.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
@@ -35,9 +35,22 @@ export function CommercialPage() {
     statut: 'brouillon'
   })
 
+  const [selectedFacture, setSelectedFacture] = useState<Facture | null>(null)
+  const [factureForm, setFactureForm] = useState<Partial<Facture>>({
+    numero: '',
+    client_id: 1,
+    type: 'standard',
+    montant_ht: 0,
+    tva: 20,
+    montant_ttc: 0,
+    statut: 'emis'
+  })
+
   // Lignes de devis (éléments éditables dans la modal)
   // Chaque ligne peut être partielle avant création côté serveur
   const [lines, setLines] = useState<Partial<LigneDevis>[]>([])
+  const [factureLines, setFactureLines] = useState<Partial<LigneFacture>[]>([])
+
   // Clients modal state
   const [showClientModal, setShowClientModal] = useState(false)
   const [clientForm, setClientForm] = useState<Partial<Client>>({ nom: '', email: '', telephone: '', adresse: '' })
@@ -136,7 +149,7 @@ export function CommercialPage() {
   }
 
   const addEmptyLine = () => {
-    setLines(prev => [...prev, { description: '', quantite: 1, prix_unitaire: 0, remise: 0, taux_tva: devisForm.tva || 20, total_ht: 0, total_ttc: 0, ordre: prev.length + 1 }])
+    setLines(prev => [...prev, { description: '', categorie: 'materiaux', quantite: 1, prix_unitaire: 0, remise: 0, taux_tva: devisForm.tva || 20, total_ht: 0, total_ttc: 0, ordre: prev.length + 1 }])
   }
 
   const updateLineField = (index: number, field: keyof Partial<LigneDevis>, value: any) => {
@@ -144,7 +157,6 @@ export function CommercialPage() {
       const copy = [...prev]
       const l: Partial<LigneDevis> = { ...copy[index] }
       ;(l as any)[field] = value
-      // recalc totals
       const q = Number(l.quantite || 0)
       const pu = Number(l.prix_unitaire || 0)
       const remise = Number(l.remise || 0)
@@ -161,6 +173,96 @@ export function CommercialPage() {
       const copy = [...prev]
       const l = { ...copy[index] }
       // if has id, mark as _deleted to call delete on save; else remove immediately
+      if (l.id) {
+        l._deleted = true
+        copy[index] = l
+        return copy
+      }
+      copy.splice(index, 1)
+      return copy
+    })
+  }
+
+  const handleSaveFacture = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const ht = Number(factureForm.montant_ht || 0)
+      const tvaVal = Number(factureForm.tva || 20)
+      const ttc = ht + (ht * tvaVal / 100)
+      const payload = { ...factureForm, montant_ttc: ttc, lignes: factureLines.filter(l => !l._deleted).map(l => ({
+        description: l.description,
+        quantite: Number(l.quantite || 0),
+        prix_unitaire: Number(l.prix_unitaire || 0),
+        remise: Number(l.remise || 0),
+        taux_tva: Number(l.taux_tva || 0),
+        total_ht: Number(l.total_ht || 0),
+        total_ttc: Number(l.total_ttc || 0),
+        ordre: l.ordre || 0,
+        article_id: l.article_id || null,
+        categorie: l.categorie || null,
+      })) }
+
+      if (selectedFacture) {
+        await commercialService.updateFacture(selectedFacture.id, payload)
+        for (const l of factureLines) {
+          if (l._deleted) {
+            if (l.id) {
+              await commercialService.deleteLigneFacture(selectedFacture.id, l.id)
+            }
+            continue
+          }
+          const linePayload = {
+            description: l.description,
+            quantite: Number(l.quantite || 0),
+            prix_unitaire: Number(l.prix_unitaire || 0),
+            remise: Number(l.remise || 0),
+            taux_tva: Number(l.taux_tva || 0),
+            total_ht: Number(l.total_ht || 0),
+            total_ttc: Number(l.total_ttc || 0),
+            ordre: l.ordre || 0,
+            article_id: l.article_id || null,
+            categorie: l.categorie || null,
+          }
+          if (l.id) {
+            await commercialService.updateLigneFacture(selectedFacture.id, l.id, linePayload)
+          } else {
+            await commercialService.createLigneFacture(selectedFacture.id, linePayload)
+          }
+        }
+      } else {
+        await commercialService.createFacture(payload)
+      }
+      setShowFactureModal(false)
+      loadData()
+    } catch {
+      alert('Erreur lors de l\'enregistrement de la facture.')
+    }
+  }
+
+  const addEmptyFactureLine = () => {
+    setFactureLines(prev => [...prev, { description: '', categorie: 'materiaux', quantite: 1, prix_unitaire: 0, remise: 0, taux_tva: factureForm.tva || 20, total_ht: 0, total_ttc: 0, ordre: prev.length + 1 }])
+  }
+
+  const updateFactureLineField = (index: number, field: keyof Partial<LigneFacture>, value: any) => {
+    setFactureLines(prev => {
+      const copy = [...prev]
+      const l: Partial<LigneFacture> = { ...copy[index] }
+      ;(l as any)[field] = value
+      const q = Number(l.quantite || 0)
+      const pu = Number(l.prix_unitaire || 0)
+      const remise = Number(l.remise || 0)
+      const tva = Number(l.taux_tva ?? factureForm.tva ?? 0)
+      l.total_ht = q * pu * (1 - remise / 100)
+      l.total_ttc = (l.total_ht || 0) * (1 + tva / 100)
+      copy[index] = l
+      return copy
+    })
+  }
+
+  const markFactureLineDeleted = (index: number) => {
+    setFactureLines(prev => {
+      const copy = [...prev]
+      const l = { ...copy[index] }
       if (l.id) {
         l._deleted = true
         copy[index] = l
@@ -233,6 +335,16 @@ export function CommercialPage() {
           {activeTab === 'clients' && perms.canCreateClient && (
             <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedClient(null); setClientForm({ nom: '', email: '', telephone: '', adresse: '' }); setShowClientModal(true); }}>
               <i className="bi bi-person-plus me-2"></i>Nouveau Client
+            </button>
+          )}
+          {activeTab === 'factures' && perms.canCreateDevis && (
+            <button className="btn btn-outline-secondary fw-bold" onClick={() => {
+              setSelectedFacture(null)
+              setFactureForm({ numero: `FAC-2026-00${factures.length + 1}`, client_id: factures.length ? factures[0].client_id : 1, type: 'standard', montant_ht: 0, tva: 20, montant_ttc: 0, statut: 'emis' })
+              setFactureLines([])
+              setShowFactureModal(true)
+            }}>
+              <i className="bi bi-plus-lg me-2"></i>Nouvelle Facture
             </button>
           )}
         </div>
@@ -332,6 +444,8 @@ export function CommercialPage() {
                 <tr>
                   <th>N° Facture</th>
                   <th>Client</th>
+                  <th>Montant HT</th>
+                  <th>TVA</th>
                   <th>Montant TTC</th>
                   <th>Déjà Payé</th>
                   <th>Reste à Payer</th>
@@ -340,13 +454,19 @@ export function CommercialPage() {
               </thead>
               <tbody>
                 {factures.map(f => {
-                  const reste = (f.montant_ttc || 0) - (f.montant_paye || 0)
+                  const ht = f.montant_ht || 0
+                  const tva = f.montant_tva || 0
+                  const ttc = f.montant_ttc || 0
+                  const paye = f.montant_paye || 0
+                  const reste = f.reste_a_payer || (ttc - paye)
                   return (
                     <tr key={f.id}>
                       <td className="font-monospace fw-bold text-dark">{f.numero}</td>
                       <td className="fw-semibold">Client #{f.client_id}</td>
-                      <td className="font-monospace fw-bold">{f.montant_ttc?.toLocaleString()} MGA</td>
-                      <td className="font-monospace text-secondary">{f.montant_paye?.toLocaleString()} MGA</td>
+                      <td className="font-monospace">{ht.toLocaleString()} MGA</td>
+                      <td className="font-monospace text-secondary">{tva.toLocaleString()} MGA</td>
+                      <td className="font-monospace fw-bold">{ttc.toLocaleString()} MGA</td>
+                      <td className="font-monospace text-secondary">{paye.toLocaleString()} MGA</td>
                       <td className="font-monospace text-secondary fw-bold">{reste.toLocaleString()} MGA</td>
                       <td>
                         <span className={`badge ${f.statut === 'payee' ? 'bg-success bg-opacity-10 text-success border' : f.statut === 'partiellement_payee' ? 'bg-warning bg-opacity-10 text-dark border' : 'bg-danger bg-opacity-10 text-danger border'}`}>
@@ -481,91 +601,118 @@ export function CommercialPage() {
         </div>
       )}
 
-      {/* Modal Devis Builder */}
-      {showDevisModal && (
+      {/* Modal Facture Builder */}
+      {showFactureModal && (
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title fw-bold">{selectedDevis ? 'Éditer le Devis' : 'Créer un Devis'}</h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setShowDevisModal(false)}></button>
+                <h5 className="modal-title fw-bold">{selectedFacture ? 'Éditer la Facture' : 'Créer une Facture'}</h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setShowFactureModal(false)}></button>
               </div>
-              <form onSubmit={handleSaveDevis}>
+              <form onSubmit={handleSaveFacture}>
                 <div className="modal-body">
                   <div className="row g-3">
                     <div className="col-md-4">
-                      <label className="form-label fw-semibold">Numéro Devis *</label>
-                      <input type="text" className="form-control font-monospace" required value={devisForm.numero || ''} onChange={e => setDevisForm({ ...devisForm, numero: e.target.value })} />
+                      <label className="form-label fw-semibold">Numéro Facture *</label>
+                      <input type="text" className="form-control font-monospace" required value={factureForm.numero || ''} onChange={e => setFactureForm({ ...factureForm, numero: e.target.value })} />
                     </div>
-                    <div className="col-md-8">
-                      <label className="form-label fw-semibold">Objet du Devis *</label>
-                      <input type="text" className="form-control" required value={devisForm.objet || ''} onChange={e => setDevisForm({ ...devisForm, objet: e.target.value })} />
+                    <div className="col-md-4">
+                      <label className="form-label fw-semibold">Type</label>
+                      <select className="form-select" value={factureForm.type || 'standard'} onChange={e => setFactureForm({ ...factureForm, type: e.target.value })}>
+                        <option value="standard">Standard</option>
+                        <option value="acompte">Acompte</option>
+                        <option value="solde">Solde</option>
+                        <option value="avoir">Avoir</option>
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label fw-semibold">Statut</label>
+                      <select className="form-select" value={factureForm.statut || 'emis'} onChange={e => setFactureForm({ ...factureForm, statut: e.target.value })}>
+                        <option value="emis">Émise</option>
+                        <option value="envoye">Envoyée</option>
+                        <option value="payee">Payée</option>
+                        <option value="partiellement_payee">Partiellement payée</option>
+                        <option value="en_retard">En retard</option>
+                        <option value="annulee">Annulée</option>
+                      </select>
                     </div>
                     <div className="col-md-6">
                       <label className="form-label fw-semibold">Montant HT (MGA) *</label>
-                      <input type="number" className="form-control font-monospace fs-5" required value={devisForm.montant_ht || 0} onChange={e => setDevisForm({ ...devisForm, montant_ht: Number(e.target.value) })} />
+                      <input type="number" className="form-control font-monospace fs-5" required value={factureForm.montant_ht || 0} onChange={e => setFactureForm({ ...factureForm, montant_ht: Number(e.target.value) })} />
                     </div>
                     <div className="col-md-6">
                       <label className="form-label fw-semibold">TVA (%)</label>
-                      <input type="number" className="form-control font-monospace" value={devisForm.tva || 20} onChange={e => setDevisForm({ ...devisForm, tva: Number(e.target.value) })} />
+                      <input type="number" className="form-control font-monospace" value={factureForm.tva || 20} onChange={e => setFactureForm({ ...factureForm, tva: Number(e.target.value) })} />
                     </div>
-                     <div className="col-12 p-3 bg-light rounded text-center">
-                       <small className="text-muted d-block">Montant Calculé TTC (Estimation)</small>
-                       <h3 className="fw-bold text-secondary mb-0">
-                         {((Number(devisForm.montant_ht || 0)) * (1 + (Number(devisForm.tva || 20) / 100))).toLocaleString()} MGA
-                       </h3>
-                     </div>
-                      <div className="col-12 mt-3">
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <h6 className="mb-0">Lignes de devis</h6>
-                          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={addEmptyLine}><i className="bi bi-plus-lg me-1"></i>Ajouter ligne</button>
-                        </div>
-                        <div className="table-responsive">
-                          <table className="table table-sm">
-                            <thead>
-                              <tr>
-                                <th>Description</th>
-                                <th style={{ width: '90px' }}>Quantité</th>
-                                <th style={{ width: '140px' }}>Prix Unitaire</th>
-                                <th style={{ width: '90px' }}>Remise %</th>
-                                <th style={{ width: '90px' }}>TVA %</th>
-                                <th style={{ width: '140px' }}>Total TTC</th>
-                                <th style={{ width: '60px' }}></th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {lines.filter(l => !l._deleted).map((l, idx) => (
-                                <tr key={idx}>
-                                  <td>
-                                    <input className="form-control form-control-sm" value={l.description || ''} onChange={e => updateLineField(idx, 'description', e.target.value)} />
-                                  </td>
-                                  <td>
-                                    <input className="form-control form-control-sm" type="number" value={l.quantite || 0} onChange={e => updateLineField(idx, 'quantite', Number(e.target.value))} />
-                                  </td>
-                                  <td>
-                                    <input className="form-control form-control-sm" type="number" value={l.prix_unitaire || 0} onChange={e => updateLineField(idx, 'prix_unitaire', Number(e.target.value))} />
-                                  </td>
-                                  <td>
-                                    <input className="form-control form-control-sm" type="number" value={l.remise || 0} onChange={e => updateLineField(idx, 'remise', Number(e.target.value))} />
-                                  </td>
-                                  <td>
-                                    <input className="form-control form-control-sm" type="number" value={l.taux_tva || devisForm.tva || 20} onChange={e => updateLineField(idx, 'taux_tva', Number(e.target.value))} />
-                                  </td>
-                                  <td className="font-monospace">{Number(l.total_ttc || 0).toLocaleString()} MGA</td>
-                                  <td>
-                                    <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => markLineDeleted(idx)}><i className="bi bi-trash"></i></button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                    <div className="col-12 p-3 bg-light rounded text-center">
+                      <small className="text-muted d-block">Montant Calculé TTC</small>
+                      <h3 className="fw-bold text-secondary mb-0">
+                        {((Number(factureForm.montant_ht || 0)) * (1 + (Number(factureForm.tva || 20) / 100))).toLocaleString()} MGA
+                      </h3>
+                    </div>
+                    <div className="col-12 mt-3">
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <h6 className="mb-0">Lignes de facture</h6>
+                        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={addEmptyFactureLine}><i className="bi bi-plus-lg me-1"></i>Ajouter ligne</button>
                       </div>
+                      <div className="table-responsive">
+                        <table className="table table-sm">
+                          <thead>
+                            <tr>
+                              <th style={{ width: '160px' }}>Catégorie</th>
+                              <th>Description</th>
+                              <th style={{ width: '90px' }}>Quantité</th>
+                              <th style={{ width: '140px' }}>Prix Unitaire</th>
+                              <th style={{ width: '90px' }}>Remise %</th>
+                              <th style={{ width: '90px' }}>TVA %</th>
+                              <th style={{ width: '140px' }}>Total TTC</th>
+                              <th style={{ width: '60px' }}></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {factureLines.filter(l => !l._deleted).map((l, idx) => (
+                              <tr key={idx}>
+                                <td>
+                                  <select className="form-select form-select-sm" value={l.categorie || 'materiaux'} onChange={e => updateFactureLineField(idx, 'categorie', e.target.value)}>
+                                    <option value="materiaux">Matériaux</option>
+                                    <option value="main-d_œuvre">Main-d'œuvre</option>
+                                    <option value="materiel_et_engins">Matériel et engins</option>
+                                    <option value="prestations">Prestations</option>
+                                    <option value="sous_traitance">Sous-traitance</option>
+                                    <option value="autres_frais">Autres frais</option>
+                                  </select>
+                                </td>
+                                <td>
+                                  <input className="form-control form-control-sm" value={l.description || ''} onChange={e => updateFactureLineField(idx, 'description', e.target.value)} />
+                                </td>
+                                <td>
+                                  <input className="form-control form-control-sm" type="number" value={l.quantite || 0} onChange={e => updateFactureLineField(idx, 'quantite', Number(e.target.value))} />
+                                </td>
+                                <td>
+                                  <input className="form-control form-control-sm" type="number" value={l.prix_unitaire || 0} onChange={e => updateFactureLineField(idx, 'prix_unitaire', Number(e.target.value))} />
+                                </td>
+                                <td>
+                                  <input className="form-control form-control-sm" type="number" value={l.remise || 0} onChange={e => updateFactureLineField(idx, 'remise', Number(e.target.value))} />
+                                </td>
+                                <td>
+                                  <input className="form-control form-control-sm" type="number" value={l.taux_tva || factureForm.tva || 20} onChange={e => updateFactureLineField(idx, 'taux_tva', Number(e.target.value))} />
+                                </td>
+                                <td className="font-monospace">{Number(l.total_ttc || 0).toLocaleString()} MGA</td>
+                                <td>
+                                  <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => markFactureLineDeleted(idx)}><i className="bi bi-trash"></i></button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="modal-footer bg-light">
-                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowDevisModal(false)}>Annuler</button>
-                  <button type="submit" className="btn btn-outline-secondary fw-bold">Générer le devis</button>
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowFactureModal(false)}>Annuler</button>
+                  <button type="submit" className="btn btn-outline-secondary fw-bold">Générer la facture</button>
                 </div>
               </form>
             </div>

@@ -6,11 +6,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
-class LigneDevis(Base):
-    __tablename__ = "lignes_devis"
+class LigneFacture(Base):
+    __tablename__ = "lignes_factures"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    devis_id: Mapped[int] = mapped_column(ForeignKey("devis.id", ondelete="CASCADE"))
+    facture_id: Mapped[int] = mapped_column(ForeignKey("factures.id", ondelete="CASCADE"))
     type: Mapped[str] = mapped_column(String(20), server_default="article")
     article_id: Mapped[int | None] = mapped_column(ForeignKey("articles.id"))
     description: Mapped[str] = mapped_column(Text, nullable=False)
@@ -28,9 +28,9 @@ class LigneDevis(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (
-        Index("idx_lignes_devis_devis_id", "devis_id"),
-        Index("idx_lignes_devis_article_id", "article_id"),
+        Index("idx_lignes_factures_facture_id", "facture_id"),
+        Index("idx_lignes_factures_article_id", "article_id"),
     )
 
-    devis: Mapped["Devis"] = relationship("Devis", back_populates="lignes_devis", lazy="selectin")
-    article: Mapped["Article | None"] = relationship("Article", back_populates="lignes_devis", lazy="selectin")
+    facture: Mapped["Facture"] = relationship("Facture", back_populates="lignes_factures", lazy="selectin")
+    article: Mapped["Article | None"] = relationship("Article", lazy="selectin")

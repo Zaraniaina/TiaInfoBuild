@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { Client, Devis, Contrat, Facture, Paiement, LigneDevis } from '@/types'
+import type { Client, Devis, Contrat, Facture, Paiement, LigneDevis, LigneFacture } from '@/types'
 
 export const commercialService = {
   // Clients
@@ -80,6 +80,27 @@ export const commercialService = {
 
   async createFacture(data: Partial<Facture>) {
     const res = await api.post<Facture>('/commercial/factures', data)
+    return res.data
+  },
+
+  async getFactureById(id: number) {
+    const res = await api.get<Facture>(`/commercial/factures/${id}`)
+    return res.data
+  },
+
+  // Lignes facture
+  async createLigneFacture(factureId: number, data: Partial<LigneFacture>) {
+    const res = await api.post<LigneFacture>(`/commercial/factures/${factureId}/lignes`, data)
+    return res.data
+  },
+
+  async updateLigneFacture(factureId: number, ligneId: number, data: Partial<LigneFacture>) {
+    const res = await api.put<LigneFacture>(`/commercial/factures/${factureId}/lignes/${ligneId}`, data)
+    return res.data
+  },
+
+  async deleteLigneFacture(factureId: number, ligneId: number) {
+    const res = await api.delete<void>(`/commercial/factures/${factureId}/lignes/${ligneId}`)
     return res.data
   },
 
