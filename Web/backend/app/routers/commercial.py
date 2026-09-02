@@ -146,6 +146,8 @@ async def create_client(
     entreprise_id = _get_entreprise_id(payload)
     obj_in = data.model_dump()
     obj_in["entreprise_id"] = entreprise_id
+    if obj_in.get("adresses") is None:
+        obj_in["adresses"] = []
     client = await client_crud.create(db, obj_in)
 
     # Création automatique d'un compte utilisateur pour le client si email fourni

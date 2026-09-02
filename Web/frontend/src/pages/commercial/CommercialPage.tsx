@@ -31,7 +31,7 @@ export function CommercialPage() {
   const [selectedDevis, setSelectedDevis] = useState<Devis | null>(null)
   const [devisForm, setDevisForm] = useState<Partial<Devis>>({
     numero: 'DEV-2026-001',
-    client_id: 1,
+    client_id: undefined,
     objet: '',
     montant_ht: 0,
     tva: 20,
@@ -42,7 +42,7 @@ export function CommercialPage() {
   const [selectedFacture, setSelectedFacture] = useState<Facture | null>(null)
   const [factureForm, setFactureForm] = useState<Partial<Facture>>({
     numero: '',
-    client_id: 1,
+    client_id: undefined,
     type: 'standard',
     montant_ht: 0,
     tva: 20,
@@ -72,7 +72,7 @@ export function CommercialPage() {
   const [chantierForm, setChantierForm] = useState<Partial<Chantier>>({ nom: '', numero: '', statut: 'planification', budget_prevu: 0, marge_cible: 15, tva: 20, description: '' })
   const [selectedAvenant, setSelectedAvenant] = useState<Avenant | null>(null)
   const [showAvenantModal, setShowAvenantModal] = useState(false)
-  const [avenantForm, setAvenantForm] = useState<Partial<Avenant>>({ numero: '', description: '', impact_montant: 0, statut: 'propose' })
+  const [avenantForm, setAvenantForm] = useState<Partial<Avenant>>({ numero: '', description: '', impact_montant: 0, statut: 'propose', contrat_id: undefined })
   const { addToast } = useToastStore()
 
   const loadData = async () => {
@@ -363,11 +363,15 @@ export function CommercialPage() {
   const handleSaveAvenant = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      if (!avenantForm.contrat_id) {
+        addToast({ type: 'error', title: 'Erreur', message: 'Veuillez sélectionner un contrat.' })
+        return
+      }
       if (selectedAvenant) {
         await avenantsService.update(selectedAvenant.id, avenantForm)
         addToast({ type: 'success', title: 'Avenant mis à jour', message: 'L\'avenant a été modifié.' })
       } else {
-        await avenantsService.create(0, avenantForm)
+        await avenantsService.create(avenantForm.contrat_id, avenantForm)
         addToast({ type: 'success', title: 'Avenant créé', message: 'L\'avenant a été créé.' })
       }
       setShowAvenantModal(false)
@@ -380,6 +384,18 @@ export function CommercialPage() {
   const handleSavePaiement = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      const facture = factures.find(f => f.id === paiementForm.facture_id)
+      if (!facture) {
+        addToast({ type: 'error', title: 'Erreur', message: 'Veuillez sélectionner une facture.' })
+        return
+      }
+      const paye = facture.montant_paye || 0
+      const ttc = facture.montant_ttc || 0
+      const reste = (ttc - paye)
+      if (paiementForm.montant && paiementForm.montant > reste) {
+        addToast({ type: 'error', title: 'Erreur', message: `Le montant du paiement (${paiementForm.montant.toLocaleString()} MGA) dépasse le reste à payer (${reste.toLocaleString()} MGA).` })
+        return
+      }
       await commercialService.createPaiement(paiementForm)
       setShowPaiementModal(false)
       setPaiementForm({ facture_id: undefined, montant: 0, mode_paiement: 'virement', reference: '', notes: '' })
@@ -399,7 +415,7 @@ export function CommercialPage() {
             <p className="text-secondary mb-0">Gestion de la relation client, des devis, des contrats et du suivi des encaissements</p>
           </div>
           {activeTab === 'devis' && perms.canCreateDevis && (
-            <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedDevis(null); setDevisForm({ numero: `DEV-2026-00${devisList.length + 1}`, montant_ht: 0, tva: 20, statut: 'brouillon' }); setShowDevisModal(true); }}>
+            <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedDevis(null); setDevisForm({ numero: `DEV-2026-00${devisList.length + 1}`, client_id: undefined, montant_ht: 0, tva: 20, statut: 'brouillon' }); setShowDevisModal(true); }}>
               <i className="bi bi-plus-lg me-2"></i>Nouveau Devis
             </button>
           )}
@@ -411,7 +427,7 @@ export function CommercialPage() {
           {activeTab === 'factures' && perms.canCreateFacture && (
             <button className="btn btn-outline-secondary fw-bold" onClick={() => {
               setSelectedFacture(null)
-              setFactureForm({ numero: `FAC-2026-00${factures.length + 1}`, client_id: factures.length ? factures[0].client_id : 1, type: 'standard', montant_ht: 0, tva: 20, montant_ttc: 0, statut: 'emis' })
+              setFactureForm({ numero: `FAC-2026-00${factures.length + 1}`, client_id: undefined, type: 'standard', montant_ht: 0, tva: 20, montant_ttc: 0, statut: 'emis' })
               setFactureLines([])
               setShowFactureModal(true)
             }}>
@@ -429,7 +445,7 @@ export function CommercialPage() {
             </button>
           )}
           {activeTab === 'avenants' && perms.canCreateDevis && (
-            <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedAvenant(null); setAvenantForm({ numero: '', description: '', impact_montant: 0, statut: 'propose' }); setShowAvenantModal(true); }}>
+            <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedAvenant(null); setAvenantForm({ numero: '', description: '', impact_montant: 0, statut: 'propose', contrat_id: undefined }); setShowAvenantModal(true); }}>
               <i className="bi bi-plus-lg me-2"></i>Nouvel Avenant
             </button>
           )}
@@ -766,6 +782,128 @@ export function CommercialPage() {
         </div>
       )}
 
+      {/* Modal Devis Builder */}
+      {showDevisModal && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold">{selectedDevis ? 'Éditer le Devis' : 'Créer un Devis'}</h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setShowDevisModal(false)}></button>
+              </div>
+              <form onSubmit={handleSaveDevis}>
+                <div className="modal-body">
+                  <div className="row g-3">
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">Client *</label>
+                      <select className="form-select" required value={devisForm.client_id || ''} onChange={e => setDevisForm({ ...devisForm, client_id: Number(e.target.value) })}>
+                        <option value="">Sélectionner un client</option>
+                        {clients.map(c => (
+                          <option key={c.id} value={c.id}>{c.entreprise || `${c.nom} ${c.prenom}`}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label fw-semibold">Numéro Devis *</label>
+                      <input type="text" className="form-control font-monospace" required value={devisForm.numero || ''} onChange={e => setDevisForm({ ...devisForm, numero: e.target.value })} />
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label fw-semibold">Statut</label>
+                      <select className="form-select" value={devisForm.statut || 'brouillon'} onChange={e => setDevisForm({ ...devisForm, statut: e.target.value })}>
+                        <option value="brouillon">Brouillon</option>
+                        <option value="envoye">Envoyé</option>
+                        <option value="accepte">Accepté</option>
+                        <option value="refuse">Refusé</option>
+                        <option value="expire">Expiré</option>
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label fw-semibold">Objet</label>
+                      <input type="text" className="form-control" value={devisForm.objet || ''} onChange={e => setDevisForm({ ...devisForm, objet: e.target.value })} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Montant HT (MGA) *</label>
+                      <input type="number" className="form-control font-monospace fs-5" required value={devisForm.montant_ht || 0} onChange={e => setDevisForm({ ...devisForm, montant_ht: Number(e.target.value) })} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">TVA (%)</label>
+                      <input type="number" className="form-control font-monospace" value={devisForm.tva || 20} onChange={e => setDevisForm({ ...devisForm, tva: Number(e.target.value) })} />
+                    </div>
+                    <div className="col-12 p-3 bg-light rounded text-center">
+                      <small className="text-muted d-block">Montant Calculé TTC</small>
+                      <h3 className="fw-bold text-secondary mb-0">
+                        {((Number(devisForm.montant_ht || 0)) * (1 + (Number(devisForm.tva || 20) / 100))).toLocaleString()} MGA
+                      </h3>
+                    </div>
+                    <div className="col-12 mt-3">
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <h6 className="mb-0">Lignes de devis</h6>
+                        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={addEmptyLine}><i className="bi bi-plus-lg me-1"></i>Ajouter ligne</button>
+                      </div>
+                      <div className="table-responsive">
+                        <table className="table table-sm">
+                          <thead>
+                            <tr>
+                              <th style={{ width: '160px' }}>Catégorie</th>
+                              <th>Description</th>
+                              <th style={{ width: '90px' }}>Quantité</th>
+                              <th style={{ width: '140px' }}>Prix Unitaire</th>
+                              <th style={{ width: '90px' }}>Remise %</th>
+                              <th style={{ width: '90px' }}>TVA %</th>
+                              <th style={{ width: '140px' }}>Total TTC</th>
+                              <th style={{ width: '60px' }}></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {lines.filter(l => !l._deleted).map((l, idx) => (
+                              <tr key={idx}>
+                                <td>
+                                  <select className="form-select form-select-sm" value={l.categorie || 'materiaux'} onChange={e => updateLineField(idx, 'categorie', e.target.value)}>
+                                    <option value="materiaux">Matériaux</option>
+                                    <option value="main-d_œuvre">Main-d'œuvre</option>
+                                    <option value="materiel_et_engins">Matériel et engins</option>
+                                    <option value="prestations">Prestations</option>
+                                    <option value="sous_traitance">Sous-traitance</option>
+                                    <option value="autres_frais">Autres frais</option>
+                                  </select>
+                                </td>
+                                <td>
+                                  <input className="form-control form-control-sm" value={l.description || ''} onChange={e => updateLineField(idx, 'description', e.target.value)} />
+                                </td>
+                                <td>
+                                  <input className="form-control form-control-sm" type="number" value={l.quantite || 0} onChange={e => updateLineField(idx, 'quantite', Number(e.target.value))} />
+                                </td>
+                                <td>
+                                  <input className="form-control form-control-sm" type="number" value={l.prix_unitaire || 0} onChange={e => updateLineField(idx, 'prix_unitaire', Number(e.target.value))} />
+                                </td>
+                                <td>
+                                  <input className="form-control form-control-sm" type="number" value={l.remise || 0} onChange={e => updateLineField(idx, 'remise', Number(e.target.value))} />
+                                </td>
+                                <td>
+                                  <input className="form-control form-control-sm" type="number" value={l.taux_tva || devisForm.tva || 20} onChange={e => updateLineField(idx, 'taux_tva', Number(e.target.value))} />
+                                </td>
+                                <td className="font-monospace">{Number(l.total_ttc || 0).toLocaleString()} MGA</td>
+                                <td>
+                                  <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => markLineDeleted(idx)}><i className="bi bi-trash"></i></button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer bg-light">
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowDevisModal(false)}>Annuler</button>
+                  <button type="submit" className="btn btn-outline-secondary fw-bold">Générer le devis</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Client Builder */}
       {showClientModal && (
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -857,31 +995,40 @@ export function CommercialPage() {
               </div>
               <form onSubmit={handleSaveFacture}>
                 <div className="modal-body">
-                  <div className="row g-3">
-                    <div className="col-md-4">
-                      <label className="form-label fw-semibold">Numéro Facture *</label>
-                      <input type="text" className="form-control font-monospace" required value={factureForm.numero || ''} onChange={e => setFactureForm({ ...factureForm, numero: e.target.value })} />
-                    </div>
-                    <div className="col-md-4">
-                      <label className="form-label fw-semibold">Type</label>
-                      <select className="form-select" value={factureForm.type || 'standard'} onChange={e => setFactureForm({ ...factureForm, type: e.target.value })}>
-                        <option value="standard">Standard</option>
-                        <option value="acompte">Acompte</option>
-                        <option value="solde">Solde</option>
-                        <option value="avoir">Avoir</option>
-                      </select>
-                    </div>
-                    <div className="col-md-4">
-                      <label className="form-label fw-semibold">Statut</label>
-                      <select className="form-select" value={factureForm.statut || 'emis'} onChange={e => setFactureForm({ ...factureForm, statut: e.target.value })}>
-                        <option value="emis">Émise</option>
-                        <option value="envoye">Envoyée</option>
-                        <option value="payee">Payée</option>
-                        <option value="partiellement_payee">Partiellement payée</option>
-                        <option value="en_retard">En retard</option>
-                        <option value="annulee">Annulée</option>
-                      </select>
-                    </div>
+                <div className="row g-3">
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold">Client *</label>
+                    <select className="form-select" required value={factureForm.client_id || ''} onChange={e => setFactureForm({ ...factureForm, client_id: Number(e.target.value) })}>
+                      <option value="">Sélectionner un client</option>
+                      {clients.map(c => (
+                        <option key={c.id} value={c.id}>{c.entreprise || `${c.nom} ${c.prenom}`}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold">Numéro Facture *</label>
+                    <input type="text" className="form-control font-monospace" required value={factureForm.numero || ''} onChange={e => setFactureForm({ ...factureForm, numero: e.target.value })} />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold">Type</label>
+                    <select className="form-select" value={factureForm.type || 'standard'} onChange={e => setFactureForm({ ...factureForm, type: e.target.value })}>
+                      <option value="standard">Standard</option>
+                      <option value="acompte">Acompte</option>
+                      <option value="solde">Solde</option>
+                      <option value="avoir">Avoir</option>
+                    </select>
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold">Statut</label>
+                    <select className="form-select" value={factureForm.statut || 'emis'} onChange={e => setFactureForm({ ...factureForm, statut: e.target.value })}>
+                      <option value="emis">Émise</option>
+                      <option value="envoye">Envoyée</option>
+                      <option value="payee">Payée</option>
+                      <option value="partiellement_payee">Partiellement payée</option>
+                      <option value="en_retard">En retard</option>
+                      <option value="annulee">Annulée</option>
+                    </select>
+                  </div>
                     <div className="col-md-6">
                       <label className="form-label fw-semibold">Montant HT (MGA) *</label>
                       <input type="number" className="form-control font-monospace fs-5" required value={factureForm.montant_ht || 0} onChange={e => setFactureForm({ ...factureForm, montant_ht: Number(e.target.value) })} />
@@ -979,13 +1126,35 @@ export function CommercialPage() {
                   <div className="row g-3">
                     <div className="col-12">
                       <label className="form-label fw-semibold">Facture *</label>
-                      <select className="form-select" required value={paiementForm.facture_id || ''} onChange={e => setPaiementForm({ ...paiementForm, facture_id: Number(e.target.value) })}>
+                      <select className="form-select" required value={paiementForm.facture_id || ''} onChange={e => {
+                        const factureId = Number(e.target.value)
+                        setPaiementForm({ ...paiementForm, facture_id: factureId || undefined, montant: 0 })
+                      }}>
                         <option value="">Sélectionner une facture</option>
-                        {factures.map(f => (
-                          <option key={f.id} value={f.id}>{f.numero} — {f.client_id ? `Client #${f.client_id}` : ''}</option>
-                        ))}
+                        {factures.map(f => {
+                          const paye = f.montant_paye || 0
+                          const ttc = f.montant_ttc || 0
+                          const reste = (ttc - paye)
+                          return (
+                            <option key={f.id} value={f.id}>{f.numero} — Reste: {reste.toLocaleString()} MGA</option>
+                          )
+                        })}
                       </select>
                     </div>
+                    {paiementForm.facture_id && (() => {
+                      const facture = factures.find(f => f.id === paiementForm.facture_id)
+                      if (!facture) return null
+                      const paye = facture.montant_paye || 0
+                      const ttc = facture.montant_ttc || 0
+                      const reste = (ttc - paye)
+                      return (
+                        <div className="col-12">
+                          <div className="alert alert-info py-2 mb-0">
+                            <small>Montant TTC: <strong>{ttc.toLocaleString()} MGA</strong> | Déjà payé: <strong>{paye.toLocaleString()} MGA</strong> | Reste à payer: <strong>{reste.toLocaleString()} MGA</strong></small>
+                          </div>
+                        </div>
+                      )
+                    })()}
                     <div className="col-12">
                       <label className="form-label fw-semibold">Montant (MGA) *</label>
                       <input type="number" className="form-control" required min="0" step="0.01" value={paiementForm.montant || 0} onChange={e => setPaiementForm({ ...paiementForm, montant: Number(e.target.value) })} />
@@ -1050,6 +1219,15 @@ export function CommercialPage() {
                       </select>
                     </div>
                     <div className="col-12 col-sm-6">
+                      <label className="form-label fw-semibold">Contrat</label>
+                      <select className="form-select" value={chantierForm.contrat_id || ''} onChange={e => setChantierForm({ ...chantierForm, contrat_id: Number(e.target.value) || undefined })}>
+                        <option value="">Sélectionner un contrat</option>
+                        {contrats.map(ctr => (
+                          <option key={ctr.id} value={ctr.id}>{ctr.reference}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-12 col-sm-6">
                       <label className="form-label fw-semibold">Client</label>
                       <select className="form-select" value={chantierForm.client_id || ''} onChange={e => setChantierForm({ ...chantierForm, client_id: Number(e.target.value) || undefined })}>
                         <option value="">Sélectionner un client</option>
@@ -1092,11 +1270,20 @@ export function CommercialPage() {
               </div>
               <form onSubmit={handleSaveAvenant}>
                 <div className="modal-body">
-                  <div className="row g-3">
-                    <div className="col-12">
-                      <label className="form-label fw-semibold">N° Avenant *</label>
-                      <input type="text" className="form-control font-monospace" required value={avenantForm.numero || ''} onChange={e => setAvenantForm({ ...avenantForm, numero: e.target.value })} />
-                    </div>
+                <div className="row g-3">
+                  <div className="col-12">
+                    <label className="form-label fw-semibold">Contrat *</label>
+                    <select className="form-select" required value={avenantForm.contrat_id || ''} onChange={e => setAvenantForm({ ...avenantForm, contrat_id: Number(e.target.value) })}>
+                      <option value="">Sélectionner un contrat</option>
+                      {contrats.map(ctr => (
+                        <option key={ctr.id} value={ctr.id}>{ctr.reference}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label fw-semibold">N° Avenant *</label>
+                    <input type="text" className="form-control font-monospace" required value={avenantForm.numero || ''} onChange={e => setAvenantForm({ ...avenantForm, numero: e.target.value })} />
+                  </div>
                     <div className="col-12">
                       <label className="form-label fw-semibold">Description</label>
                       <textarea className="form-control" rows={2} value={avenantForm.description || ''} onChange={e => setAvenantForm({ ...avenantForm, description: e.target.value })}></textarea>
