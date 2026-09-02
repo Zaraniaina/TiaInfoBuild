@@ -123,7 +123,7 @@ async def create_utilisateur(payload: AdminCheck, db: DbSession, data: Utilisate
 
 @router.get("/{id}/bon-de-creation", response_class=Response)
 @router.get("/{id}/bon-de-creation/", response_class=Response)
-async def get_bon_creation(payload: AdminCheck, db: DbSession, id: int, temp_password: str | None = Query(default=None)):
+async def get_bon_creation(payload: AdminCheck, db: DbSession, id: int, temp_password: str | None = Query(default=None), login_url: str | None = Query(default=None)):
     """Génère un PDF 'Bon de création' contenant le login, le rôle de l'utilisateur,
     les rôles de l'entreprise et le mot de passe temporaire défini par l'administrateur.
 
@@ -139,10 +139,8 @@ async def get_bon_creation(payload: AdminCheck, db: DbSession, id: int, temp_pas
     if entreprise_id is not None and user.entreprise_id != entreprise_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
 
-    # Si aucun mot de passe n'est passé en paramètre, on conserve celui configuré
     pwd_display = temp_password if temp_password else "•••••••• (Défini lors de la création)"
 
-    # Rôles disponibles dans l'entreprise (hors super_admin)
     roles_result = await db.execute(select(Role).order_by(Role.id))
     entreprise_roles = [r for r in roles_result.scalars().all() if getattr(r, "code", None) != "super_admin"]
 
@@ -151,6 +149,7 @@ async def get_bon_creation(payload: AdminCheck, db: DbSession, id: int, temp_pas
         entreprise=user.entreprise,
         entreprise_roles=entreprise_roles,
         temp_password=pwd_display,
+        login_url=login_url,
     )
 
     return Response(
@@ -160,7 +159,7 @@ async def get_bon_creation(payload: AdminCheck, db: DbSession, id: int, temp_pas
     )
 
 
-def _render_bon_creation_pdf(user, entreprise, entreprise_roles, temp_password: str) -> bytes:
+def _render_bon_creation_pdf(user, entreprise, entreprise_roles, temp_password: str, login_url: str | None = None) -> bytes:
     """Rend le bon de création au format PDF avec fpdf2 (zéro dépendance lourde)."""
     from fpdf import FPDF
 
@@ -225,6 +224,15 @@ def _render_bon_creation_pdf(user, entreprise, entreprise_roles, temp_password: 
     pdf.set_font("Helvetica", "I", 8)
     pdf.set_text_color(120, 120, 120)
     pdf.cell(0, 5, "Ce mot de passe expire a la premiere connexion. Pensez a le modifier.", new_x="LMARGIN", new_y="NEXT", align="C")
+
+    if login_url:
+        pdf.ln(4)
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.set_text_color(16, 26, 48)
+        pdf.cell(0, 7, "Lien de connexion", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 10)
+        pdf.set_text_color(0, 0, 128)
+        pdf.multi_cell(0, 6, login_url)
 
     pdf.ln(4)
     pdf.set_font("Helvetica", "I", 8)

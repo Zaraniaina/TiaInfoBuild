@@ -94,7 +94,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/pricing',
   ],
   employe: [
-    // Pas d'accès au dashboard global pour l'ouvrier (accès mobile limité)
+    '/employe',
     '/chantiers',
     '/rh',
     '/materiels',

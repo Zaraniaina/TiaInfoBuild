@@ -6,6 +6,7 @@ import { RoleBadge } from './RoleBadge'
 import { ROLE_MODULES, ROLE_NAMES } from '@/config/roles.config'
 
 const MODULE_META: Record<string, { label: string; icon: string; section: string }> = {
+  '/employe': { label: 'Mon Espace Terrain', icon: 'bi-person-badge', section: 'Principal' },
   '/dashboard': { label: 'Tableau de bord', icon: 'bi-speedometer2', section: 'Principal' },
   '/super-admin': { label: 'Dashboard SaaS', icon: 'bi-shield-lock', section: 'Plateforme SaaS' },
   '/super-admin/entreprises': { label: 'Entreprises', icon: 'bi-building', section: 'Plateforme SaaS' },

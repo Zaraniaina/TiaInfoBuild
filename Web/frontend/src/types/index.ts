@@ -178,6 +178,7 @@ export interface Employe {
   email?: string;
   adresse?: string;
   statut: StatutEmploye;
+  code_qr_badge?: string;
   historique_postes?: HistoriquePoste[];
   is_deleted: boolean;
   created_at: string;

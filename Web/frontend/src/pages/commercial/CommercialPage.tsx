@@ -309,7 +309,7 @@ export function CommercialPage() {
       await loadData()
       if (userId) {
         try {
-          const blob = await commercialService.downloadUtilisateurBonCreation(Number(userId), tempPwd)
+          const blob = await commercialService.downloadUtilisateurBonCreation(Number(userId), tempPwd, `${window.location.origin}/client-login`)
           const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
           const link = document.createElement('a')
           link.href = url

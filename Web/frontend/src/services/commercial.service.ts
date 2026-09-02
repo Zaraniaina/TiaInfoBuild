@@ -13,8 +13,12 @@ export const commercialService = {
     return { data: res.data, headers: res.headers }
   },
 
-  async downloadUtilisateurBonCreation(utilisateurId: number, tempPassword?: string) {
-    const url = `/utilisateurs/${utilisateurId}/bon-de-creation${tempPassword ? `?temp_password=${encodeURIComponent(tempPassword)}` : ''}`
+  async downloadUtilisateurBonCreation(utilisateurId: number, tempPassword?: string, loginUrl?: string) {
+    const params = new URLSearchParams()
+    if (tempPassword) params.set('temp_password', tempPassword)
+    if (loginUrl) params.set('login_url', loginUrl)
+    const query = params.toString()
+    const url = `/utilisateurs/${utilisateurId}/bon-de-creation${query ? `?${query}` : ''}`
     const res = await api.get(url, { responseType: 'blob' })
     return res.data
   },

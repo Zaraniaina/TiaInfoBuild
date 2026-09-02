@@ -133,7 +133,6 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
         "alertes:read",
     ],
     Role.EMPLOYE: [
-        # Ouvrier / Employé de terrain : accès strictement limité à ses données
         "rh:read",
         "chantiers:read",
         "materiels:read",
