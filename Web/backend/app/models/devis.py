@@ -30,6 +30,7 @@ class Devis(Base):
     __table_args__ = (
         UniqueConstraint("numero", name="uq_devis_numero"),
         Index("idx_devis_entreprise_id", "entreprise_id"),
+        Index("idx_devis_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_devis_statut", "statut"),
     )
 

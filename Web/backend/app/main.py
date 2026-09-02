@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.database import engine
-from app.middleware import LoggingMiddleware, MultiTenantMiddleware
+from app.middleware import LoggingMiddleware, MultiTenantMiddleware, CacheControlMiddleware
 
 
 @asynccontextmanager
@@ -44,6 +44,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(MultiTenantMiddleware)
+app.add_middleware(CacheControlMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

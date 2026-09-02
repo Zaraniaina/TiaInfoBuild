@@ -42,3 +42,13 @@ class MultiTenantMiddleware(BaseHTTPMiddleware):
             except Exception:
                 pass
         return await call_next(request)
+
+
+class CacheControlMiddleware(BaseHTTPMiddleware):
+    """Ajoute des en-têtes de cache navigateur sur les réponses GET publiques."""
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        response = await call_next(request)
+        if request.method == "GET" and response.status_code < 400:
+            response.headers.setdefault("Cache-Control", "public, max-age=60, stale-while-revalidate=30")
+        return response

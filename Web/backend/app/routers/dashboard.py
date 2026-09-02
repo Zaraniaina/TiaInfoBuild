@@ -67,21 +67,25 @@ async def get_top_chantiers(
 @router.get("/charts")
 async def get_charts(payload: CurrentUserPayload, db: DbDep):
     """Aggrège toutes les séries de graphiques du dashboard à partir des données réelles."""
+    import asyncio
     _require_permission(payload, "dashboard:read")
     entreprise_id = payload.get("entreprise_id")
     if not entreprise_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Entreprise ID manquant")
-    charts = {
-        "ca_evolution": await ca_evolution_series(db, entreprise_id),
-        "connexions_par_jour": await connexions_par_jour_series(db, entreprise_id),
-        "depenses_par_poste": await depenses_par_poste_series(db, entreprise_id),
-        "top_chantiers": await top_chantiers_series(db, entreprise_id),
-        "presence_hebdo": await presence_hebdo_series(db, entreprise_id),
-        "effectif_par_poste": await effectif_par_poste_series(db, entreprise_id),
-        "parc_utilisation": await parc_utilisation_series(db, entreprise_id),
-        "stock_par_categorie": await stock_par_categorie_series(db, entreprise_id),
-        "pipeline_commercial": await pipeline_commercial_series(db, entreprise_id),
-    }
+    charts = dict(zip(
+        ["ca_evolution", "connexions_par_jour", "depenses_par_poste", "top_chantiers", "presence_hebdo", "effectif_par_poste", "parc_utilisation", "stock_par_categorie", "pipeline_commercial"],
+        await asyncio.gather(
+            ca_evolution_series(db, entreprise_id),
+            connexions_par_jour_series(db, entreprise_id),
+            depenses_par_poste_series(db, entreprise_id),
+            top_chantiers_series(db, entreprise_id),
+            presence_hebdo_series(db, entreprise_id),
+            effectif_par_poste_series(db, entreprise_id),
+            parc_utilisation_series(db, entreprise_id),
+            stock_par_categorie_series(db, entreprise_id),
+            pipeline_commercial_series(db, entreprise_id),
+        )
+    ))
     return charts
 
 

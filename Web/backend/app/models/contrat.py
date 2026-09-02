@@ -32,6 +32,7 @@ class Contrat(Base):
     __table_args__ = (
         UniqueConstraint("reference", name="uq_contrats_reference"),
         Index("idx_contrats_entreprise_id", "entreprise_id"),
+        Index("idx_contrats_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_contrats_client_id", "client_id"),
     )
 

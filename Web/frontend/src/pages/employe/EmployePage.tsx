@@ -226,8 +226,7 @@ export function EmployePage() {
       <QRScannerModal
         isOpen={showQRModal}
         onClose={() => setShowQRModal(false)}
-        onScan={handleQRScan}
-        title="Scanner le QR code de pointage"
+        onPointageSuccess={() => { loadData() }}
       />
 
       {showBadgeModal && (

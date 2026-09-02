@@ -32,6 +32,7 @@ class Employe(Base):
 
     __table_args__ = (
         Index("idx_employes_entreprise_id", "entreprise_id"),
+        Index("idx_employes_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_employes_nom_prenom", "nom", "prenom"),
     )
 

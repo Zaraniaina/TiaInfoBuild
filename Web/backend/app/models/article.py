@@ -34,6 +34,7 @@ class Article(Base):
     __table_args__ = (
         UniqueConstraint("reference", name="uq_articles_reference"),
         Index("idx_articles_entreprise_id", "entreprise_id"),
+        Index("idx_articles_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_articles_categorie", "categorie"),
     )
 

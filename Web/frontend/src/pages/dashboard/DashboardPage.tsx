@@ -2,6 +2,7 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useNavigate } from "react-router-dom";
 import { RoleBadge } from "@/components/layout/RoleBadge";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/services/api";
 import {
   SaasTenantsGrowthChart,
@@ -95,23 +96,22 @@ export function DashboardPage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const roleCode = user?.role_code || "employe";
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [charts, setCharts] = useState<DashboardChartsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [showBadgeModal, setShowBadgeModal] = useState(false);
 
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ["dashboard", "stats"],
+    queryFn: () => api.get("/dashboard/stats").then((res) => res.data),
+  })
+  const { data: charts, isLoading: chartsLoading } = useQuery({
+    queryKey: ["dashboard", "charts"],
+    queryFn: () => api.get("/dashboard/charts").then((res) => res.data),
+  })
+
   useEffect(() => {
-    api
-      .get("/dashboard/stats")
-      .then((res) => setStats(res.data))
-      .catch(() => setStats(null));
-    api
-      .get("/dashboard/charts")
-      .then((res) => setCharts(res.data))
-      .catch(() => setCharts(null))
-      .finally(() => setLoading(false));
-  }, []);
+    setLoading(statsLoading || chartsLoading)
+  }, [statsLoading, chartsLoading])
 
   const meta = ROLE_META[roleCode] || ROLE_META["employe"];
   const dashboardTitle = ROLE_DASHBOARD_TITLE[roleCode] || "Tableau de bord";

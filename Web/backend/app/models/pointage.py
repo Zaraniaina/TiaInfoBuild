@@ -33,6 +33,7 @@ class Pointage(Base):
         Index("idx_pointages_employe_id", "employe_id"),
         Index("idx_pointages_date_jour", "date_jour"),
         Index("idx_pointages_chantier_id", "chantier_id"),
+        Index("idx_pointages_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
     )
 
     entreprise: Mapped["Entreprise"] = relationship("Entreprise", back_populates="pointages", lazy="selectin")

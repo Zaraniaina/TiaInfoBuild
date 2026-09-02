@@ -29,6 +29,7 @@ class Depense(Base):
 
     __table_args__ = (
         Index("idx_depenses_entreprise_id", "entreprise_id"),
+        Index("idx_depenses_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_depenses_chantier_id", "chantier_id"),
         Index("idx_depenses_date_depense", "date_depense"),
     )

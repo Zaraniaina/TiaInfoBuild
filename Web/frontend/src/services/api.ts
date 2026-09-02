@@ -53,6 +53,9 @@ export async function performTokenRefresh(): Promise<string | null> {
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token || localStorage.getItem('access_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (config.method === 'get') {
+    config.headers['Cache-Control'] = 'public, max-age=60, stale-while-revalidate=30';
+  }
   return config;
 });
 

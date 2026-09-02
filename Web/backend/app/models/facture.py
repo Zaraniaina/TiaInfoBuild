@@ -35,6 +35,7 @@ class Facture(Base):
 
     __table_args__ = (
         Index("idx_factures_entreprise_id", "entreprise_id"),
+        Index("idx_factures_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_factures_client_id", "client_id"),
         Index("idx_factures_numero", "numero"),
     )

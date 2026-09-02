@@ -43,6 +43,7 @@ class Client(Base):
 
     __table_args__ = (
         Index("idx_clients_entreprise_id", "entreprise_id"),
+        Index("idx_clients_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_clients_commercial_id", "commercial_id"),
         Index("idx_clients_type", "type"),
     )

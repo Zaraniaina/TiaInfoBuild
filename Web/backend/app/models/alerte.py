@@ -25,6 +25,7 @@ class Alerte(Base):
 
     __table_args__ = (
         Index("idx_alertes_entreprise_id", "entreprise_id"),
+        Index("idx_alertes_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_alertes_statut", "statut"),
         Index("idx_alertes_lue", "lue"),
     )

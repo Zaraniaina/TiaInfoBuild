@@ -4,6 +4,7 @@ import { rhService } from '@/services/rh.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
 import { QRScannerModal } from '@/components/pointage/QRScannerModal'
+import { WorkerBadgeCard } from '@/components/pointage/WorkerBadgeCard'
 
 export function RhPage() {
   const { user } = useAuthStore()

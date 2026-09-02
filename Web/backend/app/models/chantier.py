@@ -34,6 +34,7 @@ class Chantier(Base):
 
     __table_args__ = (
         Index("idx_chantiers_entreprise_id", "entreprise_id"),
+        Index("idx_chantiers_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_chantiers_client_id", "client_id"),
         Index("idx_chantiers_chef_chantier_id", "chef_chantier_id"),
     )
