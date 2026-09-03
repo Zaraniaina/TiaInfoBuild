@@ -1,6 +1,6 @@
 """eleventh migration: add ligne categories and facture calculated fields
 
-Revision ID: 011_add_ligne_categories_and_facture_totals
+Revision ID: 011_ligne_categories_factures
 Revises: 010_add_subscriptions
 Create Date: 2026-09-01 10:30:00.000000
 """
@@ -10,7 +10,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "011_add_ligne_categories_and_facture_totals"
+revision: str = "011_ligne_categories_factures"
 down_revision: Union[str, None] = "010_add_subscriptions"
 branch_labels: Union[Sequence[str], None] = None
 depends_on: Union[Sequence[str], None] = None
@@ -28,9 +28,9 @@ def upgrade() -> None:
     op.create_table(
         "lignes_factures",
         sa.Column("id", sa.BigInteger, primary_key=True),
-        sa.Column("facture_id", sa.BigInteger, sa.ForeignKey("factures.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("facture_id", sa.BigInteger, nullable=False),
         sa.Column("type", sa.String(20), server_default="article"),
-        sa.Column("article_id", sa.BigInteger, sa.ForeignKey("articles.id"), nullable=True),
+        sa.Column("article_id", sa.BigInteger, nullable=True),
         sa.Column("description", sa.Text, nullable=False),
         sa.Column("categorie", sa.String(50), nullable=True),
         sa.Column("quantite", sa.Numeric(10, 2), server_default="0"),
@@ -48,8 +48,42 @@ def upgrade() -> None:
     op.create_index("idx_lignes_factures_facture_id", "lignes_factures", ["facture_id"])
     op.create_index("idx_lignes_factures_article_id", "lignes_factures", ["article_id"])
 
+    try:
+        with op.batch_alter_table("lignes_factures", schema=None) as batch_op:
+            batch_op.create_foreign_key(
+                "fk_lignes_factures_facture_id",
+                "factures",
+                ["facture_id"],
+                ["id"],
+                ondelete="CASCADE",
+            )
+    except Exception:
+        pass
+
+    try:
+        with op.batch_alter_table("lignes_factures", schema=None) as batch_op:
+            batch_op.create_foreign_key(
+                "fk_lignes_factures_article_id",
+                "articles",
+                ["article_id"],
+                ["id"],
+            )
+    except Exception:
+        pass
+
 
 def downgrade() -> None:
+    try:
+        with op.batch_alter_table("lignes_factures", schema=None) as batch_op:
+            batch_op.drop_constraint("fk_lignes_factures_article_id", type_="foreignkey")
+    except Exception:
+        pass
+    try:
+        with op.batch_alter_table("lignes_factures", schema=None) as batch_op:
+            batch_op.drop_constraint("fk_lignes_factures_facture_id", type_="foreignkey")
+    except Exception:
+        pass
+
     op.drop_index("idx_lignes_factures_article_id", table_name="lignes_factures")
     op.drop_index("idx_lignes_factures_facture_id", table_name="lignes_factures")
     op.drop_table("lignes_factures")

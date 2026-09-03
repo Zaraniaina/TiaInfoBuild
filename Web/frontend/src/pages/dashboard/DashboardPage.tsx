@@ -835,32 +835,41 @@ export function DashboardPage() {
   };
 
   const renderContent = () => {
+    if (statsLoading || chartsLoading) {
+      return (
+        <div className="d-flex justify-content-center align-items-center py-5">
+          <div className="spinner-border text-secondary" role="status"></div>
+        </div>
+      )
+    }
+
     switch (roleCode) {
       case "super_admin":
-        return renderSuperAdmin();
+        return renderSuperAdmin()
       case "admin_entreprise":
-        return renderAdminEntreprise();
+        return renderAdminEntreprise()
       case "directeur":
-        return renderDirecteur();
+        return renderDirecteur()
       case "comptable":
-        return renderComptable();
+        return renderComptable()
       case "chef_chantier":
-        return renderChefChantier();
+        return renderChefChantier()
       case "chef_projet":
-        return renderChefProjet();
+        return renderChefProjet()
       case "rh":
-        return renderRH();
+        return renderRH()
       case "materiel":
-        return renderMateriel();
+        return renderMateriel()
       case "magasinier":
-        return renderMagasinier();
+        return renderMagasinier()
       case "commercial":
-        return renderCommercial();
+        return renderCommercial()
       case "employe":
-        return renderEmploye();
+        return renderEmploye()
       default:
-        return renderEmploye();
+        return renderEmploye()
     }
+  }
   };
 
   return (

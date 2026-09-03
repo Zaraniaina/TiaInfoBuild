@@ -84,7 +84,7 @@ PLANS_DEFAUT = [
 
 
 async def seed():
-    print("🌱 Démarrage du seed de la base de données...")
+    print("[SEED] Démarrage du seed de la base de données...")
 
     async with AsyncSessionLocal() as db:
         # 1. Insérer les rôles (ignorer si déjà présents)
@@ -119,7 +119,7 @@ async def seed():
         print(f"    Entreprise ID: {entreprise_id}")
 
         # 3. Seed des plans d'abonnement
-        print("📋 Création des plans d'abonnement...")
+        print(" Creation des plans d'abonnement...")
         for plan in PLANS_DEFAUT:
             await db.execute(text("""
                 INSERT IGNORE INTO plans (nom, code, description, prix_mensuel, prix_annuel,
@@ -129,7 +129,7 @@ async def seed():
             """), plan)
 
         # 3. Créer le super admin (entreprise_id = NULL)
-        print("👤 Création du super admin...")
+        print(" Creation du super admin...")
         result = await db.execute(text(
             "SELECT id FROM utilisateurs WHERE email = :email LIMIT 1"
         ), {"email": SUPER_ADMIN["email"]})
@@ -140,10 +140,10 @@ async def seed():
             """), {**SUPER_ADMIN, "hash": hash_password(MOT_DE_PASSE_DEMO)})
             print(f"    Super admin: {SUPER_ADMIN['email']} / {MOT_DE_PASSE_DEMO}")
         else:
-            print(f"   ℹ  Super admin déjà existant: {SUPER_ADMIN['email']}")
+            print(f"    Super admin deja existant: {SUPER_ADMIN['email']}")
 
         # 4. Créer l'admin entreprise
-        print("👤 Création de l'admin entreprise...")
+        print(" Creation de l'admin entreprise...")
         result = await db.execute(text(
             "SELECT id FROM utilisateurs WHERE email = :email LIMIT 1"
         ), {"email": ADMIN_ENTREPRISE["email"]})
@@ -154,10 +154,10 @@ async def seed():
             """), {**ADMIN_ENTREPRISE, "hash": hash_password(MOT_DE_PASSE_DEMO), "entreprise_id": entreprise_id})
             print(f"    Admin entreprise: {ADMIN_ENTREPRISE['email']} / {MOT_DE_PASSE_DEMO}")
         else:
-            print(f"   ℹ  Admin entreprise déjà existant: {ADMIN_ENTREPRISE['email']}")
+            print(f"    Admin entreprise deja existant: {ADMIN_ENTREPRISE['email']}")
 
         # 5. Créer un abonnement par défaut pour l'entreprise de test (plan Pro)
-        print("📅 Création de l'abonnement par défaut...")
+        print(" Creation de l'abonnement par defaut...")
         result = await db.execute(text(
             "SELECT id FROM plans WHERE code = :code LIMIT 1"
         ), {"code": "pro"})

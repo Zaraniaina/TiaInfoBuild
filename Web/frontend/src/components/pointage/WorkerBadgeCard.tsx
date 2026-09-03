@@ -7,8 +7,14 @@ interface WorkerBadgeCardProps {
 }
 
 export const WorkerBadgeCard: React.FC<WorkerBadgeCardProps> = ({ employe, onPrint }) => {
-  const qrCodeValue = employe.code_qr_badge || `TIA-EMP-1-${employe.id || 0}-REF`
+  const qrCodeValue = typeof employe.code_qr_badge === 'string' ? employe.code_qr_badge : `TIA-EMP-1-${employe.id || 0}-REF`
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCodeValue)}`
+
+  const firstName = typeof employe.prenom === 'string' ? employe.prenom : ''
+  const lastName = typeof employe.nom === 'string' ? employe.nom : ''
+  const poste = typeof employe.poste === 'string' ? employe.poste : 'Ouvrier de Chantier'
+  const matricule = typeof employe.matricule === 'string' ? employe.matricule : `EMP-${employe.id}`
+  const contrat = typeof employe.type_contrat === 'string' ? employe.type_contrat : 'CDI'
 
   return (
     <div className="card border-0 shadow-sm rounded-4 overflow-hidden" style={{ maxWidth: '380px', margin: '0 auto', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', color: '#fff' }}>
@@ -27,7 +33,7 @@ export const WorkerBadgeCard: React.FC<WorkerBadgeCardProps> = ({ employe, onPri
           {employe.photo ? (
             <img
               src={employe.photo}
-              alt={employe.nom}
+              alt={lastName}
               className="rounded-circle border border-3 border-primary shadow"
               style={{ width: '88px', height: '88px', objectFit: 'cover' }}
             />
@@ -36,31 +42,31 @@ export const WorkerBadgeCard: React.FC<WorkerBadgeCardProps> = ({ employe, onPri
               className="rounded-circle border border-3 border-primary shadow d-flex align-items-center justify-content-center fw-bold fs-3 text-white bg-dark"
               style={{ width: '88px', height: '88px' }}
             >
-              {employe.prenom?.[0] || 'O'}{employe.nom?.[0] || 'U'}
+              {firstName.charAt(0) || 'O'}{lastName.charAt(0) || 'U'}
             </div>
           )}
           <span className="position-absolute bottom-0 end-0 bg-success border border-2 border-dark rounded-circle p-2" title="Statut Actif"></span>
         </div>
 
-        {/* Nom & Poste */}
-        <h5 className="fw-bold mb-1 text-white">{employe.prenom} {employe.nom}</h5>
-        <div className="badge bg-info text-dark fw-semibold mb-3 px-3 py-1 text-uppercase" style={{ fontSize: '0.75rem' }}>
-          {employe.poste || 'Ouvrier de Chantier'}
-        </div>
+         {/* Nom & Poste */}
+         <h5 className="fw-bold mb-1 text-white">{firstName} {lastName}</h5>
+         <div className="badge bg-info text-dark fw-semibold mb-3 px-3 py-1 text-uppercase" style={{ fontSize: '0.75rem' }}>
+           {poste}
+         </div>
 
-        {/* Matricule & ID */}
-        <div className="small text-muted mb-3 d-flex justify-content-center gap-3">
-          <span>Matricule: <strong className="text-light">{employe.matricule || `EMP-${employe.id}`}</strong></span>
-          <span>Contrat: <strong className="text-light">{employe.type_contrat || 'CDI'}</strong></span>
-        </div>
+         {/* Matricule & ID */}
+         <div className="small text-muted mb-3 d-flex justify-content-center gap-3">
+           <span>Matricule: <strong className="text-light">{matricule}</strong></span>
+           <span>Contrat: <strong className="text-light">{contrat}</strong></span>
+         </div>
 
         {/* QR Code Container */}
         <div className="p-3 rounded-3 d-inline-block shadow-sm mb-3" style={{ background: 'var(--tia-bg-surface)' }}>
-          <img
-            src={qrImageUrl}
-            alt={`Badge QR ${employe.nom}`}
-            style={{ width: '160px', height: '160px', display: 'block' }}
-          />
+           <img
+             src={qrImageUrl}
+             alt={`Badge QR ${lastName}`}
+             style={{ width: '160px', height: '160px', display: 'block' }}
+           />
         </div>
 
         <div className="text-muted" style={{ fontSize: '0.72rem' }}>

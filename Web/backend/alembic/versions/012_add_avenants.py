@@ -1,7 +1,7 @@
 """twelfth migration: add avenants table
 
 Revision ID: 012_add_avenants
-Revises: 011_add_ligne_categories_and_facture_totals
+Revises: 011_ligne_categories_factures
 Create Date: 2026-09-01 17:40:00.000000
 """
 from typing import Sequence, Union
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 
 revision: str = "012_add_avenants"
-down_revision: Union[str, None] = "011_add_ligne_categories_and_facture_totals"
+down_revision: Union[str, None] = "011_ligne_categories_factures"
 branch_labels: Union[Sequence[str], None] = None
 depends_on: Union[Sequence[str], None] = None
 

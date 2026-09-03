@@ -16,11 +16,16 @@ export function EmployePage() {
   const [consommations, setConsommations] = useState<MouvementStock[]>([])
   const [loading, setLoading] = useState(true)
   const [taches, setTaches] = useState<any[]>([])
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const loadData = async () => {
+    if (!user?.entreprise_id || !user?.id) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
+    setErrorMsg(null)
     try {
-      if (!user?.entreprise_id || !user?.id) return
       const [pointagesRes, materielsRes, consommationsRes] = await Promise.all([
         api.get<Pointage[]>('/rh/pointages', { params: { employe_id: user.id, entreprise_id: user.entreprise_id } }).catch(() => ({ data: [] })),
         api.get<Materiel[]>('/materiels/', { params: { entreprise_id: user.entreprise_id } }).catch(() => ({ data: [] })),
@@ -29,8 +34,8 @@ export function EmployePage() {
       setPointages(pointagesRes.data || [])
       setMateriels(materielsRes.data || [])
       setConsommations(consommationsRes.data || [])
-    } catch {
-      // noop
+    } catch (err) {
+      setErrorMsg('Impossible de charger vos données.')
     } finally {
       setLoading(false)
     }
@@ -38,7 +43,7 @@ export function EmployePage() {
 
   useEffect(() => {
     loadData()
-  }, [user])
+  }, [user?.id, user?.entreprise_id])
 
   const handleQRScan = async (qrToken: string) => {
     try {
@@ -102,6 +107,11 @@ export function EmployePage() {
       {loading ? (
         <div className="text-center py-5">
           <div className="spinner-border text-secondary" role="status"></div>
+        </div>
+      ) : errorMsg ? (
+        <div className="alert alert-danger d-flex align-items-center justify-content-between">
+          <span>{errorMsg}</span>
+          <button className="btn btn-outline-danger btn-sm" onClick={loadData}>Réessayer</button>
         </div>
       ) : (
         <div className="row g-4">
@@ -168,13 +178,13 @@ export function EmployePage() {
                           <th>Statut</th>
                         </tr>
                       </thead>
-                      <tbody>
+                        <tbody>
                         {pointages.slice(0, 10).map(p => (
                           <tr key={p.id}>
-                            <td>{p.date_pointage}</td>
-                            <td>{p.heure_entree || '—'}</td>
-                            <td>{p.heure_sortie || '—'}</td>
-                            <td><span className="badge bg-light text-dark border">{p.statut}</span></td>
+                            <td>{p.date_jour}</td>
+                            <td>{p.heure_debut || '—'}</td>
+                            <td>{p.heure_fin || '—'}</td>
+                            <td><span className="badge bg-light text-dark border">{p.type}</span></td>
                           </tr>
                         ))}
                       </tbody>

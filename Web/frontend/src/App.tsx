@@ -65,9 +65,9 @@ function App() {
         <Route path="alertes" element={<Suspense fallback={<PageFallback />}><AlertesPage /></Suspense>} />
         <Route path="historique-logins" element={<Suspense fallback={<PageFallback />}><HistoriqueLoginsPage /></Suspense>} />
         <Route path="settings" element={<Suspense fallback={<PageFallback />}><SettingsPage /></Suspense>} />
-      <Route path="client" element={<Suspense fallback={<PageFallback />}><ClientPage /></Suspense>} />
-      <Route path="employe" element={<Suspense fallback={<PageFallback />}><EmployePage /></Suspense>} />
-      <Route path="pricing" element={<Suspense fallback={<PageFallback />}><PricingPage /></Suspense>} />
+        <Route path="client" element={<Suspense fallback={<PageFallback />}><ClientPage /></Suspense>} />
+        <Route path="employe" element={<Suspense fallback={<PageFallback />}><EmployePage /></Suspense>} />
+        <Route path="pricing" element={<Suspense fallback={<PageFallback />}><PricingPage /></Suspense>} />
         <Route path="super-admin">
           <Route index element={<Suspense fallback={<PageFallback />}><SuperAdminDashboardPage /></Suspense>} />
           <Route path="entreprises" element={<Suspense fallback={<PageFallback />}><SuperAdminEntreprisesPage /></Suspense>} />
