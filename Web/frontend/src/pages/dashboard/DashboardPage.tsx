@@ -678,7 +678,7 @@ export function DashboardPage() {
   // 10. RESPONSABLE COMMERCIAL DASHBOARD
   const renderCommercial = () => {
     const pipelineTotal = (charts?.pipeline_commercial?.data ?? []).reduce(
-      (a, b) => a + b,
+      (a: number, b: number) => a + b,
       0,
     );
     const tauxConv = stats?.nb_devis
@@ -869,7 +869,6 @@ export function DashboardPage() {
       default:
         return renderEmploye()
     }
-  }
   };
 
   return (

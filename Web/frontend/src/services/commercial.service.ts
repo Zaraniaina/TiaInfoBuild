@@ -34,7 +34,7 @@ export const commercialService = {
     return res.data
   },
 
-  async createDevis(data: Partial<Devis>) {
+  async createDevis(data: Omit<Partial<Devis>, 'lignes'> & { lignes?: Partial<LigneDevis>[] }) {
     const res = await api.post<Devis>('/commercial/devis', data)
     return res.data
   },
@@ -87,8 +87,13 @@ export const commercialService = {
     return res.data
   },
 
-  async createFacture(data: Partial<Facture>) {
+  async createFacture(data: Omit<Partial<Facture>, 'lignes'> & { lignes?: Partial<LigneFacture>[] }) {
     const res = await api.post<Facture>('/commercial/factures', data)
+    return res.data
+  },
+
+  async updateFacture(id: number, data: Omit<Partial<Facture>, 'lignes'> & { lignes?: Partial<LigneFacture>[] }) {
+    const res = await api.put<Facture>(`/commercial/factures/${id}`, data)
     return res.data
   },
 

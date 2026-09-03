@@ -200,7 +200,7 @@ export function CaVsDepensesChart({
       x: { grid: { color: gridColor }, ticks: { color: textColor } },
       y: {
         grid: { color: gridColor },
-        ticks: { color: textColor, callback: (v: number) => fmtMga(v) },
+        ticks: { color: textColor, callback: (v: string | number) => fmtMga(Number(v)) },
       },
     },
   };
@@ -477,7 +477,7 @@ export function SalesPipelineChart({ labels = [], data = [] }: BaseProps) {
       x: { grid: { display: false }, ticks: { color: textColor } },
       y: {
         grid: { color: gridColor },
-        ticks: { color: textColor, callback: (v: number) => fmtMga(v) },
+        ticks: { color: textColor, callback: (v: string | number) => fmtMga(Number(v)) },
       },
     },
   };

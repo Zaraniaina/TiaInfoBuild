@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react'
-import type { Devis, Facture, Client, Contrat, Paiement, LigneDevis, LigneFacture, Chantier, Avenant } from '@/types'
+import type { Devis, Facture, Client, Contrat, Paiement, LigneDevis, LigneFacture, Chantier, Avenant, StatutDevis, TypeClient, TypeFacture, StatutFacture, StatutChantier } from '@/types'
 import { commercialService } from '@/services/commercial.service'
 import { chantiersService } from '@/services/chantiers.service'
+import { avenantsService } from '@/services/avenants.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
 import { useToastStore } from '@/stores/toast.store'
+
+type LigneDevisRow = Partial<LigneDevis> & { _deleted?: boolean }
+type LigneFactureRow = Partial<LigneFacture> & { _deleted?: boolean }
+type ChantierFormState = Partial<Chantier> & { contrat_id?: number }
 
 export function CommercialPage() {
   const { user } = useAuthStore()
@@ -60,8 +65,8 @@ export function CommercialPage() {
 
   // Lignes de devis (éléments éditables dans la modal)
   // Chaque ligne peut être partielle avant création côté serveur
-  const [lines, setLines] = useState<Partial<LigneDevis>[]>([])
-  const [factureLines, setFactureLines] = useState<Partial<LigneFacture>[]>([])
+  const [lines, setLines] = useState<LigneDevisRow[]>([])
+  const [factureLines, setFactureLines] = useState<LigneFactureRow[]>([])
 
   // Clients modal state
   const [showClientModal, setShowClientModal] = useState(false)
@@ -69,7 +74,7 @@ export function CommercialPage() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [selectedChantier, setSelectedChantier] = useState<Chantier | null>(null)
   const [showChantierModal, setShowChantierModal] = useState(false)
-  const [chantierForm, setChantierForm] = useState<Partial<Chantier>>({ nom: '', numero: '', statut: 'planification', budget_prevu: 0, marge_cible: 15, tva: 20, description: '' })
+  const [chantierForm, setChantierForm] = useState<ChantierFormState>({ nom: '', numero: '', statut: 'planification', budget_prevu: 0, marge_cible: 15, tva: 20, description: '' })
   const [selectedAvenant, setSelectedAvenant] = useState<Avenant | null>(null)
   const [showAvenantModal, setShowAvenantModal] = useState(false)
   const [avenantForm, setAvenantForm] = useState<Partial<Avenant>>({ numero: '', description: '', impact_montant: 0, statut: 'propose', contrat_id: undefined })
@@ -134,7 +139,7 @@ export function CommercialPage() {
             continue
           }
           const linePayload = {
-            description: l.description,
+            description: l.description ?? '',
             quantite: Number(l.quantite || 0),
             prix_unitaire: Number(l.prix_unitaire || 0),
             remise: Number(l.remise || 0),
@@ -142,7 +147,7 @@ export function CommercialPage() {
             total_ht: Number(l.total_ht || 0),
             total_ttc: Number(l.total_ttc || 0),
             ordre: l.ordre || 0,
-            article_id: l.article_id || null,
+            article_id: l.article_id || undefined,
           }
           if (l.id) {
             await commercialService.updateLigneDevis(selectedDevis.id, l.id, linePayload)
@@ -153,7 +158,7 @@ export function CommercialPage() {
       } else {
         // inclure les lignes à la création
         const payloadWithLines = { ...payload, lignes: lines.filter(l => !l._deleted).map(l => ({
-          description: l.description,
+          description: l.description ?? '',
           quantite: Number(l.quantite || 0),
           prix_unitaire: Number(l.prix_unitaire || 0),
           remise: Number(l.remise || 0),
@@ -161,7 +166,7 @@ export function CommercialPage() {
           total_ht: Number(l.total_ht || 0),
           total_ttc: Number(l.total_ttc || 0),
           ordre: l.ordre || 0,
-          article_id: l.article_id || null,
+          article_id: l.article_id || undefined,
         })) }
         await commercialService.createDevis(payloadWithLines)
       }
@@ -214,7 +219,7 @@ export function CommercialPage() {
       const tvaVal = Number(factureForm.tva || 20)
       const ttc = ht + (ht * tvaVal / 100)
       const payload = { ...factureForm, montant_ttc: ttc, lignes: factureLines.filter(l => !l._deleted).map(l => ({
-        description: l.description,
+        description: l.description ?? '',
         quantite: Number(l.quantite || 0),
         prix_unitaire: Number(l.prix_unitaire || 0),
         remise: Number(l.remise || 0),
@@ -222,8 +227,8 @@ export function CommercialPage() {
         total_ht: Number(l.total_ht || 0),
         total_ttc: Number(l.total_ttc || 0),
         ordre: l.ordre || 0,
-        article_id: l.article_id || null,
-        categorie: l.categorie || null,
+        article_id: l.article_id || undefined,
+        categorie: l.categorie || undefined,
       })) }
 
       if (selectedFacture) {
@@ -236,7 +241,7 @@ export function CommercialPage() {
             continue
           }
           const linePayload = {
-            description: l.description,
+            description: l.description ?? '',
             quantite: Number(l.quantite || 0),
             prix_unitaire: Number(l.prix_unitaire || 0),
             remise: Number(l.remise || 0),
@@ -244,8 +249,8 @@ export function CommercialPage() {
             total_ht: Number(l.total_ht || 0),
             total_ttc: Number(l.total_ttc || 0),
             ordre: l.ordre || 0,
-            article_id: l.article_id || null,
-            categorie: l.categorie || null,
+            article_id: l.article_id || undefined,
+            categorie: l.categorie || undefined,
           }
           if (l.id) {
             await commercialService.updateLigneFacture(selectedFacture.id, l.id, linePayload)
@@ -809,7 +814,7 @@ export function CommercialPage() {
                     </div>
                     <div className="col-md-4">
                       <label className="form-label fw-semibold">Statut</label>
-                      <select className="form-select" value={devisForm.statut || 'brouillon'} onChange={e => setDevisForm({ ...devisForm, statut: e.target.value })}>
+                      <select className="form-select" value={devisForm.statut || 'brouillon'} onChange={e => setDevisForm({ ...devisForm, statut: e.target.value as StatutDevis })}>
                         <option value="brouillon">Brouillon</option>
                         <option value="envoye">Envoyé</option>
                         <option value="accepte">Accepté</option>
@@ -918,7 +923,7 @@ export function CommercialPage() {
                   <div className="row g-3">
                     <div className="col-12">
                       <label className="form-label fw-semibold">Type de client *</label>
-                      <select className="form-select" required value={clientForm.type || 'particulier'} onChange={e => setClientForm({ ...clientForm, type: e.target.value })}>
+                      <select className="form-select" required value={clientForm.type || 'particulier'} onChange={e => setClientForm({ ...clientForm, type: e.target.value as TypeClient })}>
                         <option value="particulier">Particulier</option>
                         <option value="entreprise">Entreprise</option>
                         <option value="administration_publique">Administration publique</option>
@@ -1011,7 +1016,7 @@ export function CommercialPage() {
                   </div>
                   <div className="col-md-4">
                     <label className="form-label fw-semibold">Type</label>
-                    <select className="form-select" value={factureForm.type || 'standard'} onChange={e => setFactureForm({ ...factureForm, type: e.target.value })}>
+                    <select className="form-select" value={factureForm.type || 'standard'} onChange={e => setFactureForm({ ...factureForm, type: e.target.value as TypeFacture })}>
                       <option value="standard">Standard</option>
                       <option value="acompte">Acompte</option>
                       <option value="solde">Solde</option>
@@ -1020,7 +1025,7 @@ export function CommercialPage() {
                   </div>
                   <div className="col-md-4">
                     <label className="form-label fw-semibold">Statut</label>
-                    <select className="form-select" value={factureForm.statut || 'emis'} onChange={e => setFactureForm({ ...factureForm, statut: e.target.value })}>
+                    <select className="form-select" value={factureForm.statut || 'emis'} onChange={e => setFactureForm({ ...factureForm, statut: e.target.value as StatutFacture })}>
                       <option value="emis">Émise</option>
                       <option value="envoye">Envoyée</option>
                       <option value="payee">Payée</option>
@@ -1211,7 +1216,7 @@ export function CommercialPage() {
                     </div>
                     <div className="col-12 col-sm-6">
                       <label className="form-label fw-semibold">Statut</label>
-                      <select className="form-select" value={chantierForm.statut || 'planification'} onChange={e => setChantierForm({ ...chantierForm, statut: e.target.value })}>
+                      <select className="form-select" value={chantierForm.statut || 'planification'} onChange={e => setChantierForm({ ...chantierForm, statut: e.target.value as StatutChantier })}>
                         <option value="planification">Planification</option>
                         <option value="en_cours">En cours</option>
                         <option value="termine">Terminé</option>

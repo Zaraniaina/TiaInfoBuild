@@ -12,7 +12,7 @@ export interface Toast {
 
 interface ToastState {
   toasts: Toast[]
-  addToast: (toast: Omit<Toast, 'id'>) => void
+  addToast: (toast: Omit<Toast, 'id' | 'duration'> & { duration?: number }) => void
   removeToast: (id: string) => void
 }
 
@@ -22,7 +22,7 @@ export const useToastStore = create<ToastState>((set) => ({
     set((state) => ({
       toasts: [
         ...state.toasts,
-        { ...toast, id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}` },
+        { duration: 5000, ...toast, id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}` },
       ],
     })),
   removeToast: (id) =>
