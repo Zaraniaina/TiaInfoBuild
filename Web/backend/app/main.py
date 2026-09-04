@@ -1,6 +1,43 @@
 """TIA INFO BUILD - Backend FastAPI
 Point d'entrée principal: application, routers, middleware, CORS.
 """
+import fastapi.encoders as _encoders
+
+# Patch : évite la récursion infinie de jsonable_encoder sur les objets SQLAlchemy
+# (relations circulaires ex: Utilisateur.role <-> Role.utilisateurs).
+# On ne sérialise que les colonnes, pas les relations.
+# On patche AUSSI les modules qui ont déjà importé jsonable_encoder avant nous.
+_original_jsonable_encoder = _encoders.jsonable_encoder
+
+
+def _safe_jsonable_encoder(obj, **kwargs):
+    # Éviter la récursion sur les objets déjà visités via id()
+    seen = kwargs.pop("_seen", None)
+    if seen is None:
+        seen = set()
+
+    if hasattr(obj, "__table__"):
+        obj_id = id(obj)
+        if obj_id in seen:
+            return str(obj)  # référence circulaire -> représentation textuelle
+        seen.add(obj_id)
+        try:
+            return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
+        except Exception:
+            return str(obj)
+    if isinstance(obj, dict):
+        return {k: _safe_jsonable_encoder(v, _seen=seen) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_safe_jsonable_encoder(item, _seen=seen) for item in obj]
+    return _original_jsonable_encoder(obj, **kwargs)
+
+
+_encoders.jsonable_encoder = _safe_jsonable_encoder
+import sys as _sys
+for _m in list(_sys.modules.values()):
+    if getattr(_m, "jsonable_encoder", None) is _original_jsonable_encoder:
+        setattr(_m, "jsonable_encoder", _safe_jsonable_encoder)
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -11,7 +48,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.database import engine
-from app.middleware import LoggingMiddleware, MultiTenantMiddleware, CacheControlMiddleware
+from app.middleware import CacheControlMiddleware, LoggingMiddleware, MultiTenantMiddleware
 
 
 @asynccontextmanager

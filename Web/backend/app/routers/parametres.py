@@ -4,15 +4,16 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, status
 
 from app.core.permissions import PERMISSION_MAP, Role
+from app.core.serializers import model_to_dict
 from app.database import get_db
 from app.models.entreprise import Entreprise
+from app.models.historique_connexion import HistoriqueConnexion
+from app.models.preference import Preference
 from app.models.role import Role as RoleModel
 from app.models.utilisateur import Utilisateur
-from app.models.preference import Preference
-from app.models.historique_connexion import HistoriqueConnexion
 from app.schemas.entreprise import EntrepriseUpdate
-from app.schemas.utilisateur import UtilisateurUpdate
 from app.schemas.role import RoleResponse
+from app.schemas.utilisateur import UtilisateurUpdate
 from app.security import CurrentUserPayload, DbDep
 from sqlalchemy import select, func
 
@@ -44,7 +45,7 @@ async def get_entreprise(payload: CurrentUserPayload, db: DbDep):
     entreprise = result.scalar_one_or_none()
     if not entreprise:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entreprise non trouvée")
-    return {"entreprise": entreprise}
+    return {"entreprise": model_to_dict(entreprise)}
 
 
 @router.put("/entreprise")
@@ -62,7 +63,7 @@ async def update_entreprise(payload: CurrentUserPayload, db: DbDep, data: Entrep
         setattr(entreprise, field, value)
     await db.flush()
     await db.refresh(entreprise)
-    return {"entreprise": entreprise}
+    return {"entreprise": model_to_dict(entreprise)}
 
 
 @router.put("/facturation")
@@ -82,7 +83,7 @@ async def update_facturation(payload: CurrentUserPayload, db: DbDep, data: Entre
             setattr(entreprise, field, value)
     await db.flush()
     await db.refresh(entreprise)
-    return {"entreprise": entreprise}
+    return {"entreprise": model_to_dict(entreprise)}
 
 
 @router.get("/profile")

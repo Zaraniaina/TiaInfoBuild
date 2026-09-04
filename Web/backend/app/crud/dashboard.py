@@ -236,6 +236,15 @@ class DashboardCRUD:
 
         if role_code == "chef_chantier":
             chef_chantier_id = user_id
+            # Initialiser les variables pour eviter UnboundLocalError
+            nb_incidents = 0
+            incidents_non_resolus = 0
+            retard_jours = 0.0
+            consommation_stock = 0.0
+            ecart_stock = 0.0
+            nb_alertes_chantier = 0
+            taux_avancement_physique = 0.0
+            taux_avancement_financier = 0.0
 
             if chef_chantier_id:
                 mes_chantiers = select(Chantier.id).where(

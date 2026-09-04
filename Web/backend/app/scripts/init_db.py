@@ -25,14 +25,15 @@ ROLES_SYSTEME = [
     {"id": 1, "nom": "Super Administrateur", "code": "super_admin", "description": "Propriétaire plateforme SaaS", "is_system": True},
     {"id": 2, "nom": "Administrateur Entreprise", "code": "admin_entreprise", "description": "Gestion technique et sécurité tenant", "is_system": True},
     {"id": 3, "nom": "Direction Générale", "code": "directeur", "description": "Pilotage stratégique et validations DAF", "is_system": True},
-    {"id": 4, "nom": "Comptable / Financier", "code": "comptable", "description": "Gestion financière et trésorerie", "is_system": True},
+    {"id": 4, "nom": "Chef de Chantier", "code": "chef_chantier", "description": "Suivi terrain, pointage équipe et avancement", "is_system": True},
     {"id": 5, "nom": "Chef de Projet", "code": "chef_projet", "description": "Supervision multi-chantiers et arbitrage", "is_system": True},
-    {"id": 6, "nom": "Chef de Chantier", "code": "chef_chantier", "description": "Suivi terrain, pointage équipe et avancement", "is_system": True},
+    {"id": 6, "nom": "Comptable / Financier", "code": "comptable", "description": "Gestion financière et trésorerie", "is_system": True},
     {"id": 7, "nom": "Responsable RH", "code": "rh", "description": "Gestion des ressources humaines et paie", "is_system": True},
     {"id": 8, "nom": "Responsable Matériel", "code": "materiel", "description": "Gestion du parc engins et maintenance", "is_system": True},
     {"id": 9, "nom": "Magasinier", "code": "magasinier", "description": "Gestion des stocks et entrepôts", "is_system": True},
     {"id": 10, "nom": "Commercial", "code": "commercial", "description": "Gestion clients et rédaction des devis", "is_system": True},
     {"id": 11, "nom": "Employé / Ouvrier", "code": "employe", "description": "Exécution terrain, tâches et pointage", "is_system": True},
+    {"id": 12, "nom": "Client", "code": "client", "description": "Accès lecture devis/factures", "is_system": True},
 ]
 
 ENTREPRISE_TEST = {
@@ -142,7 +143,7 @@ async def seed():
         else:
             print(f"    Super admin deja existant: {SUPER_ADMIN['email']}")
 
-        # 4. Créer l'admin entreprise
+                # 4. Créer l'admin entreprise
         print(" Creation de l'admin entreprise...")
         result = await db.execute(text(
             "SELECT id FROM utilisateurs WHERE email = :email LIMIT 1"
@@ -155,6 +156,44 @@ async def seed():
             print(f"    Admin entreprise: {ADMIN_ENTREPRISE['email']} / {MOT_DE_PASSE_DEMO}")
         else:
             print(f"    Admin entreprise deja existant: {ADMIN_ENTREPRISE['email']}")
+
+        # 4b. Créer les comptes de test pour chaque rôle métier de l'entreprise
+        print(" Creation des comptes de test par role...")
+        TEST_ACCOUNTS = [
+            (3,  "directeur@btppro.mg",      "Direction",  "Jean",     "directeur"),
+            (6,  "comptable@btppro.mg",      "Comptable",  "Marie",    "comptable"),
+            (5,  "chefprojet@btppro.mg",     "ChefProjet", "Ahmed",    "chef_projet"),
+            (4,  "chefchantier@btppro.mg",   "ChefChantier","Bruno",   "chef_chantier"),
+            (7,  "rh@btppro.mg",             "RH",         "Claire",   "rh"),
+            (8,  "materiel@btppro.mg",       "Materiel",   "David",    "materiel"),
+            (9,  "magasinier@btppro.mg",     "Magasinier", "Elsa",     "magasinier"),
+            (10, "commercial@btppro.mg",     "Commercial", "Frank",    "commercial"),
+            (11, "employe@btppro.mg",        "Employe",    "Gerard",   "employe"),
+            (12, "client@btppro.mg",         "Client",     "Hugo",     "client"),
+        ]
+        for role_id, email, nom, prenom, code in TEST_ACCOUNTS:
+            result = await db.execute(text(
+                "SELECT id FROM utilisateurs WHERE email = :email LIMIT 1"
+            ), {"email": email})
+            if not result.fetchone():
+                await db.execute(text("""
+                    INSERT INTO utilisateurs (email, nom, prenom, mot_de_passe_hash, statut, must_change_password, role_id, entreprise_id)
+                    VALUES (:email, :nom, :prenom, :hash, :statut, :must_change_password, :role_id, :entreprise_id)
+                """), {
+                    "email": email, "nom": nom, "prenom": prenom,
+                    "hash": hash_password(MOT_DE_PASSE_DEMO),
+                    "statut": "actif", "must_change_password": False,
+                    "role_id": role_id, "entreprise_id": entreprise_id,
+                })
+                print(f"    Compte {code}: {email} / {MOT_DE_PASSE_DEMO}")
+            else:
+                print(f"    Compte {code} deja existant: {email}")
+
+        # 4c. Correction des role_id inverses (comptable/chef_chantier) pour les comptes existants
+        await db.execute(text("UPDATE utilisateurs SET role_id=6 WHERE email='comptable@btppro.mg' AND role_id=4"))
+        await db.execute(text("UPDATE utilisateurs SET role_id=4 WHERE email='chefchantier@btppro.mg' AND role_id=6"))
+        await db.commit()
+        print("    Role_id comptable/chef_corriges si necessaire")
 
         # 5. Créer un abonnement par défaut pour l'entreprise de test (plan Pro)
         print(" Creation de l'abonnement par defaut...")
