@@ -43,10 +43,18 @@ from app.schemas.facture import (
 )
 from app.schemas.contrat import ContratCreate, ContratUpdate, ContratResponse, ContratList
 from app.schemas.avenant import AvenantCreate, AvenantUpdate, AvenantResponse, AvenantList
+from app.schemas.demande_travaux import DemandeTravauxCreate, DemandeTravauxUpdate, DemandeTravauxResponse, DemandeTravauxList
+from app.schemas.projet import ProjetCreate, ProjetUpdate, ProjetResponse, ProjetList
+from app.schemas.metre import MetreCreate, MetreUpdate, MetreResponse, MetreList
+from app.schemas.situation_travaux import SituationTravauxCreate, SituationTravauxUpdate, SituationTravauxResponse, SituationTravauxList, LigneSituationCreate, LigneSituationResponse
 from app.security import CurrentUserPayload, DbDep
 from app.security import hash_password, generate_temp_password
 from app.models.utilisateur import Utilisateur
 from app.crud.avenant import AvenantCRUD
+from app.crud.demande_travaux import demande_travaux_crud
+from app.crud.projet import projet_crud
+from app.crud.metre import metre_crud
+from app.crud.situation_travaux import situation_travaux_crud, ligne_situation_crud
 
 router = APIRouter(tags=["commercial"])
 
@@ -1094,3 +1102,251 @@ async def valider_devis(
     await db.flush()
     await db.refresh(devis)
     return devis
+
+
+# ============================================================
+# DEMANDES DE TRAVAUX
+# ============================================================
+
+@router.get("/demandes", response_model=list[DemandeTravauxList])
+async def list_demandes(payload: CurrentUserPayload, db: DbDep, skip: int = 0, limit: int = 100):
+    _require_permission(payload, "commercial:read")
+    entreprise_id = _get_entreprise_id(payload)
+    return await demande_travaux_crud.get_by_entreprise(db, entreprise_id, skip=skip, limit=limit)
+
+
+@router.get("/demandes/{demande_id}", response_model=DemandeTravauxResponse)
+async def get_demande(payload: CurrentUserPayload, db: DbDep, demande_id: int):
+    _require_permission(payload, "commercial:read")
+    entreprise_id = _get_entreprise_id(payload)
+    demande = await demande_travaux_crud.get(db, demande_id)
+    if not demande or demande.is_deleted or demande.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demande non trouvée")
+    return demande
+
+
+@router.post("/demandes", response_model=DemandeTravauxResponse, status_code=status.HTTP_201_CREATED)
+async def create_demande(payload: CurrentUserPayload, db: DbDep, data: DemandeTravauxCreate):
+    _require_permission(payload, "commercial:write")
+    entreprise_id = _get_entreprise_id(payload)
+    obj_data = data.model_dump(exclude_unset=True)
+    obj_data["entreprise_id"] = entreprise_id
+    obj_data["numero"] = await demande_travaux_crud.generate_numero(db)
+    demande = await demande_travaux_crud.create(db, obj_data)
+    return demande
+
+
+@router.put("/demandes/{demande_id}", response_model=DemandeTravauxResponse)
+async def update_demande(payload: CurrentUserPayload, db: DbDep, demande_id: int, data: DemandeTravauxUpdate):
+    _require_permission(payload, "commercial:write")
+    entreprise_id = _get_entreprise_id(payload)
+    demande = await demande_travaux_crud.get(db, demande_id)
+    if not demande or demande.is_deleted or demande.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demande non trouvée")
+    updated = await demande_travaux_crud.update(db, demande, data.model_dump(exclude_unset=True))
+    return updated
+
+
+@router.delete("/demandes/{demande_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_demande(payload: CurrentUserPayload, db: DbDep, demande_id: int):
+    _require_permission(payload, "commercial:delete")
+    entreprise_id = _get_entreprise_id(payload)
+    demande = await demande_travaux_crud.get(db, demande_id)
+    if not demande or demande.is_deleted or demande.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demande non trouvée")
+    await demande_travaux_crud.delete(db, demande)
+    return None
+# ============================================================
+# PROJETS
+# ============================================================
+
+@router.get("/projets", response_model=list[ProjetList])
+async def list_projets(payload: CurrentUserPayload, db: DbDep, skip: int = 0, limit: int = 100):
+    _require_permission(payload, "commercial:read")
+    entreprise_id = _get_entreprise_id(payload)
+    return await projet_crud.get_by_entreprise(db, entreprise_id, skip=skip, limit=limit)
+
+
+@router.get("/projets/{projet_id}", response_model=ProjetResponse)
+async def get_projet(payload: CurrentUserPayload, db: DbDep, projet_id: int):
+    _require_permission(payload, "commercial:read")
+    entreprise_id = _get_entreprise_id(payload)
+    projet = await projet_crud.get(db, projet_id)
+    if not projet or projet.is_deleted or projet.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Projet non trouvé")
+    return projet
+
+
+@router.post("/projets", response_model=ProjetResponse, status_code=status.HTTP_201_CREATED)
+async def create_projet(payload: CurrentUserPayload, db: DbDep, data: ProjetCreate):
+    _require_permission(payload, "commercial:write")
+    entreprise_id = _get_entreprise_id(payload)
+    obj_data = data.model_dump(exclude_unset=True)
+    obj_data["entreprise_id"] = entreprise_id
+    obj_data["reference"] = await projet_crud.generate_reference(db)
+    projet = await projet_crud.create(db, obj_data)
+    return projet
+
+
+@router.put("/projets/{projet_id}", response_model=ProjetResponse)
+async def update_projet(payload: CurrentUserPayload, db: DbDep, projet_id: int, data: ProjetUpdate):
+    _require_permission(payload, "commercial:write")
+    entreprise_id = _get_entreprise_id(payload)
+    projet = await projet_crud.get(db, projet_id)
+    if not projet or projet.is_deleted or projet.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Projet non trouvé")
+    updated = await projet_crud.update(db, projet, data.model_dump(exclude_unset=True))
+    return updated
+
+
+@router.delete("/projets/{projet_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_projet(payload: CurrentUserPayload, db: DbDep, projet_id: int):
+    _require_permission(payload, "commercial:delete")
+    entreprise_id = _get_entreprise_id(payload)
+    projet = await projet_crud.get(db, projet_id)
+    if not projet or projet.is_deleted or projet.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Projet non trouvé")
+    await projet_crud.delete(db, projet)
+    return None
+
+# ============================================================
+# MÉTRÉS
+# ============================================================
+
+@router.get("/metres", response_model=list[MetreList])
+async def list_metres(payload: CurrentUserPayload, db: DbDep, skip: int = 0, limit: int = 100):
+    _require_permission(payload, "commercial:read")
+    entreprise_id = _get_entreprise_id(payload)
+    return await metre_crud.get_by_entreprise(db, entreprise_id, skip=skip, limit=limit)
+
+
+@router.get("/metres/{metre_id}", response_model=MetreResponse)
+async def get_metre(payload: CurrentUserPayload, db: DbDep, metre_id: int):
+    _require_permission(payload, "commercial:read")
+    entreprise_id = _get_entreprise_id(payload)
+    metre = await metre_crud.get(db, metre_id)
+    if not metre or metre.is_deleted or metre.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Métré non trouvé")
+    return metre
+
+
+@router.post("/metres", response_model=MetreResponse, status_code=status.HTTP_201_CREATED)
+async def create_metre(payload: CurrentUserPayload, db: DbDep, data: MetreCreate):
+    _require_permission(payload, "commercial:write")
+    entreprise_id = _get_entreprise_id(payload)
+    obj_data = data.model_dump(exclude_unset=True)
+    obj_data["entreprise_id"] = entreprise_id
+    metre = await metre_crud.create(db, obj_data)
+    return metre
+
+
+@router.put("/metres/{metre_id}", response_model=MetreResponse)
+async def update_metre(payload: CurrentUserPayload, db: DbDep, metre_id: int, data: MetreUpdate):
+    _require_permission(payload, "commercial:write")
+    entreprise_id = _get_entreprise_id(payload)
+    metre = await metre_crud.get(db, metre_id)
+    if not metre or metre.is_deleted or metre.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Métré non trouvé")
+    updated = await metre_crud.update(db, metre, data.model_dump(exclude_unset=True))
+    return updated
+
+
+@router.delete("/metres/{metre_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_metre(payload: CurrentUserPayload, db: DbDep, metre_id: int):
+    _require_permission(payload, "commercial:delete")
+    entreprise_id = _get_entreprise_id(payload)
+    metre = await metre_crud.get(db, metre_id)
+    if not metre or metre.is_deleted or metre.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Métré non trouvé")
+    await metre_crud.delete(db, metre)
+    return None
+
+# ============================================================
+# SITUATIONS DE TRAVAUX
+# ============================================================
+
+@router.get("/situations", response_model=list[SituationTravauxList])
+async def list_situations(payload: CurrentUserPayload, db: DbDep, skip: int = 0, limit: int = 100):
+    _require_permission(payload, "commercial:read")
+    entreprise_id = _get_entreprise_id(payload)
+    return await situation_travaux_crud.get_by_entreprise(db, entreprise_id, skip=skip, limit=limit)
+
+
+@router.get("/situations/{situation_id}", response_model=SituationTravauxResponse)
+async def get_situation(payload: CurrentUserPayload, db: DbDep, situation_id: int):
+    _require_permission(payload, "commercial:read")
+    entreprise_id = _get_entreprise_id(payload)
+    situation = await situation_travaux_crud.get(db, situation_id)
+    if not situation or situation.is_deleted or situation.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Situation non trouvée")
+    return situation
+
+
+@router.post("/situations", response_model=SituationTravauxResponse, status_code=status.HTTP_201_CREATED)
+async def create_situation(payload: CurrentUserPayload, db: DbDep, data: SituationTravauxCreate):
+    _require_permission(payload, "commercial:write")
+    entreprise_id = _get_entreprise_id(payload)
+    obj_data = data.model_dump(exclude_unset=True)
+    obj_data["entreprise_id"] = entreprise_id
+    obj_data["numero"] = await situation_travaux_crud.generate_numero(db)
+    situation = await situation_travaux_crud.create(db, obj_data)
+    return situation
+
+
+@router.put("/situations/{situation_id}", response_model=SituationTravauxResponse)
+async def update_situation(payload: CurrentUserPayload, db: DbDep, situation_id: int, data: SituationTravauxUpdate):
+    _require_permission(payload, "commercial:write")
+    entreprise_id = _get_entreprise_id(payload)
+    situation = await situation_travaux_crud.get(db, situation_id)
+    if not situation or situation.is_deleted or situation.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Situation non trouvée")
+    updated = await situation_travaux_crud.update(db, situation, data.model_dump(exclude_unset=True))
+    return updated
+
+
+@router.delete("/situations/{situation_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_situation(payload: CurrentUserPayload, db: DbDep, situation_id: int):
+    _require_permission(payload, "commercial:delete")
+    entreprise_id = _get_entreprise_id(payload)
+    situation = await situation_travaux_crud.get(db, situation_id)
+    if not situation or situation.is_deleted or situation.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Situation non trouvée")
+    await situation_travaux_crud.delete(db, situation)
+    return None
+
+
+# ============================================================
+# LIGNES DE SITUATION
+# ============================================================
+
+@router.get("/situations/{situation_id}/lignes", response_model=list[LigneSituationResponse])
+async def list_lignes_situation(payload: CurrentUserPayload, db: DbDep, situation_id: int):
+    _require_permission(payload, "commercial:read")
+    entreprise_id = _get_entreprise_id(payload)
+    situation = await situation_travaux_crud.get(db, situation_id)
+    if not situation or situation.is_deleted or situation.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Situation non trouvée")
+    return await ligne_situation_crud.get_by_situation(db, situation_id)
+
+
+@router.post("/situations/{situation_id}/lignes", response_model=LigneSituationResponse, status_code=status.HTTP_201_CREATED)
+async def create_ligne_situation(payload: CurrentUserPayload, db: DbDep, situation_id: int, data: LigneSituationCreate):
+    _require_permission(payload, "commercial:write")
+    entreprise_id = _get_entreprise_id(payload)
+    situation = await situation_travaux_crud.get(db, situation_id)
+    if not situation or situation.is_deleted or situation.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Situation non trouvée")
+    obj_data = data.model_dump(exclude_unset=True)
+    obj_data["situation_id"] = situation_id
+    ligne = await ligne_situation_crud.create(db, obj_data)
+    return ligne
+
+
+@router.delete("/situations/{situation_id}/lignes/{ligne_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_ligne_situation(payload: CurrentUserPayload, db: DbDep, situation_id: int, ligne_id: int):
+    _require_permission(payload, "commercial:delete")
+    ligne = await ligne_situation_crud.get(db, ligne_id)
+    if not ligne or ligne.is_deleted or ligne.situation_id != situation_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ligne non trouvée")
+    await ligne_situation_crud.delete(db, ligne)
+    return None

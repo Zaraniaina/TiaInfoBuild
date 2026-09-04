@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown: fermer le pool
     await engine.dispose()
-    print("🔌 Database disconnected")
+    print(" Database disconnected")
 
 
 app = FastAPI(

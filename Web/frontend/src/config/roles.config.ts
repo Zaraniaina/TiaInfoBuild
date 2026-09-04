@@ -195,6 +195,12 @@ export interface RolePermissions {
   canValidateDevis: boolean
   canAddPaiement: boolean
 
+  // Cycle commercial (Demandes, Projets, Métrés, Situations)
+  canCreateDemande: boolean
+  canCreateProjet: boolean
+  canCreateMetre: boolean
+  canCreateSituation: boolean
+
   // Administration & Système
   canAccessSettings: boolean
   canManageUsers: boolean
@@ -243,6 +249,12 @@ export function getRolePermissions(roleCode: string): RolePermissions {
       canCreateFacture: false,
       canValidateDevis: false,
       canAddPaiement: false,
+
+      // Cycle commercial (Demandes, Projets, Métrés, Situations)
+      canCreateDemande: false,
+      canCreateProjet: false,
+      canCreateMetre: false,
+      canCreateSituation: false,
 
       // Administration & Système
       canAccessSettings: true,
@@ -311,6 +323,12 @@ export function getRolePermissions(roleCode: string): RolePermissions {
     canCreateFacture: isAdmin || isCommercial,
     canValidateDevis: isAdmin || isDirecteur || isCommercial,
     canAddPaiement: isAdmin || isCommercial || isComptable,
+
+    // Cycle commercial
+    canCreateDemande: isAdmin || isCommercial,
+    canCreateProjet: isAdmin || isCommercial || isChefProjet,
+    canCreateMetre: isAdmin || isCommercial || isChefProjet || isChefChantier,
+    canCreateSituation: isAdmin || isCommercial || isChefProjet || isChefChantier,
 
     // Administration & Système
     canAccessSettings: isAdmin,

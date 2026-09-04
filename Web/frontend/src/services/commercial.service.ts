@@ -1,5 +1,27 @@
 import { api } from './api'
-import type { Client, Devis, Contrat, Facture, Paiement, LigneDevis, LigneFacture } from '@/types'
+import type {
+  Client,
+  Devis,
+  Contrat,
+  Facture,
+  Paiement,
+  LigneDevis,
+  LigneFacture,
+  DemandeTravaux,
+  DemandeTravauxCreate,
+  DemandeTravauxUpdate,
+  Projet,
+  ProjetCreate,
+  ProjetUpdate,
+  Metre,
+  MetreCreate,
+  MetreUpdate,
+  SituationTravaux,
+  SituationTravauxCreate,
+  SituationTravauxUpdate,
+  LigneSituation,
+  LigneSituationCreate,
+} from '@/types'
 
 export const commercialService = {
   // Clients
@@ -127,5 +149,135 @@ export const commercialService = {
   async createPaiement(data: Partial<Paiement>) {
     const res = await api.post<Paiement>('/commercial/paiements', data)
     return res.data
-  }
+  },
+
+  // ============================================================
+  // DEMANDES DE TRAVAUX
+  // ============================================================
+  async getDemandes(params?: { skip?: number; limit?: number }) {
+    const res = await api.get<DemandeTravaux[]>('/commercial/demandes', { params })
+    return res.data
+  },
+
+  async getDemandeById(id: number) {
+    const res = await api.get<DemandeTravaux>(`/commercial/demandes/${id}`)
+    return res.data
+  },
+
+  async createDemande(data: DemandeTravauxCreate) {
+    const res = await api.post<DemandeTravaux>('/commercial/demandes', data)
+    return res.data
+  },
+
+  async updateDemande(id: number, data: DemandeTravauxUpdate) {
+    const res = await api.put<DemandeTravaux>(`/commercial/demandes/${id}`, data)
+    return res.data
+  },
+
+  async deleteDemande(id: number) {
+    const res = await api.delete<void>(`/commercial/demandes/${id}`)
+    return res.data
+  },
+
+  // ============================================================
+  // PROJETS
+  // ============================================================
+  async getProjets(params?: { skip?: number; limit?: number }) {
+    const res = await api.get<Projet[]>('/commercial/projets', { params })
+    return res.data
+  },
+
+  async getProjetById(id: number) {
+    const res = await api.get<Projet>(`/commercial/projets/${id}`)
+    return res.data
+  },
+
+  async createProjet(data: ProjetCreate) {
+    const res = await api.post<Projet>('/commercial/projets', data)
+    return res.data
+  },
+
+  async updateProjet(id: number, data: ProjetUpdate) {
+    const res = await api.put<Projet>(`/commercial/projets/${id}`, data)
+    return res.data
+  },
+
+  async deleteProjet(id: number) {
+    const res = await api.delete<void>(`/commercial/projets/${id}`)
+    return res.data
+  },
+
+  // ============================================================
+  // MÉTRÉS
+  // ============================================================
+  async getMetres(params?: { skip?: number; limit?: number }) {
+    const res = await api.get<Metre[]>('/commercial/metres', { params })
+    return res.data
+  },
+
+  async getMetreById(id: number) {
+    const res = await api.get<Metre>(`/commercial/metres/${id}`)
+    return res.data
+  },
+
+  async createMetre(data: MetreCreate) {
+    const res = await api.post<Metre>('/commercial/metres', data)
+    return res.data
+  },
+
+  async updateMetre(id: number, data: MetreUpdate) {
+    const res = await api.put<Metre>(`/commercial/metres/${id}`, data)
+    return res.data
+  },
+
+  async deleteMetre(id: number) {
+    const res = await api.delete<void>(`/commercial/metres/${id}`)
+    return res.data
+  },
+
+  // ============================================================
+  // SITUATIONS DE TRAVAUX
+  // ============================================================
+  async getSituations(params?: { skip?: number; limit?: number }) {
+    const res = await api.get<SituationTravaux[]>('/commercial/situations', { params })
+    return res.data
+  },
+
+  async getSituationById(id: number) {
+    const res = await api.get<SituationTravaux>(`/commercial/situations/${id}`)
+    return res.data
+  },
+
+  async createSituation(data: SituationTravauxCreate) {
+    const res = await api.post<SituationTravaux>('/commercial/situations', data)
+    return res.data
+  },
+
+  async updateSituation(id: number, data: SituationTravauxUpdate) {
+    const res = await api.put<SituationTravaux>(`/commercial/situations/${id}`, data)
+    return res.data
+  },
+
+  async deleteSituation(id: number) {
+    const res = await api.delete<void>(`/commercial/situations/${id}`)
+    return res.data
+  },
+
+  // ============================================================
+  // LIGNES DE SITUATION
+  // ============================================================
+  async getLignesSituation(situationId: number) {
+    const res = await api.get<LigneSituation[]>(`/commercial/situations/${situationId}/lignes`)
+    return res.data
+  },
+
+  async createLigneSituation(situationId: number, data: LigneSituationCreate) {
+    const res = await api.post<LigneSituation>(`/commercial/situations/${situationId}/lignes`, data)
+    return res.data
+  },
+
+  async deleteLigneSituation(situationId: number, ligneId: number) {
+    const res = await api.delete<void>(`/commercial/situations/${situationId}/lignes/${ligneId}`)
+    return res.data
+  },
 }

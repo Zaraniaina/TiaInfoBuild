@@ -140,20 +140,6 @@ export function ClientLoginPage() {
               )}
             </button>
           </form>
-
-          <div className="auth-footer mt-4 text-center">
-            <p className="auth-footer-text">
-              Pas encore de compte ?{' '}
-              <Link to="/register" className="auth-link">
-                Créer mon entreprise <i className="bi bi-arrow-right-short"></i>
-              </Link>
-            </p>
-            <p className="auth-footer-text mt-2">
-              <Link to="/login" className="auth-link">
-                <i className="bi bi-arrow-left-short"></i>Retour à la connexion générale
-              </Link>
-            </p>
-          </div>
         </div>
       </div>
     </div>

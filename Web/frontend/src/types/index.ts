@@ -545,6 +545,260 @@ export interface Avenant {
 }
 
 // ============================================================
+// CYCLE COMMERCIAL — DEMANDES / PROJETS / MÉTRÉS / SITUATIONS
+// ============================================================
+
+export type StatutDemandeTravaux =
+  | "nouvelle"
+  | "en_etude"
+  | "traitee"
+  | "annulee";
+
+export type StatutProjet =
+  | "en_etude"
+  | "valide"
+  | "en_cours"
+  | "termine"
+  | "annule";
+
+export type StatutSituationTravaux =
+  | "brouillon"
+  | "soumise"
+  | "validee"
+  | "rejetee";
+
+export interface DemandeTravaux {
+  id: number;
+  entreprise_id?: number;
+  client_id?: number;
+  commercial_id?: number;
+  numero?: string;
+  objet: string;
+  type_projet?: string;
+  description?: string;
+  localisation?: string;
+  date_demande?: string;
+  date_souhaitee?: string;
+  documents_fournis?: string;
+  plans_disponibles?: boolean;
+  observations?: string;
+  statut?: StatutDemandeTravaux;
+  client_nom?: string;
+  is_deleted: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface DemandeTravauxCreate {
+  entreprise_id?: number;
+  client_id?: number;
+  commercial_id?: number;
+  objet: string;
+  type_projet?: string;
+  description?: string;
+  localisation?: string;
+  date_souhaitee?: string;
+  documents_fournis?: string;
+  plans_disponibles?: boolean;
+  observations?: string;
+  statut?: StatutDemandeTravaux;
+}
+
+export interface DemandeTravauxUpdate {
+  objet?: string;
+  type_projet?: string;
+  description?: string;
+  localisation?: string;
+  date_souhaitee?: string;
+  documents_fournis?: string;
+  plans_disponibles?: boolean;
+  observations?: string;
+  statut?: StatutDemandeTravaux;
+  client_id?: number;
+  commercial_id?: number;
+}
+
+export interface Projet {
+  id: number;
+  entreprise_id?: number;
+  client_id?: number;
+  demande_id?: number;
+  responsable_id?: number;
+  reference?: string;
+  nom: string;
+  type_projet?: string;
+  description?: string;
+  localisation?: string;
+  adresse?: string;
+  longueur?: number;
+  largeur?: number;
+  hauteur?: number;
+  surface?: number;
+  volume?: number;
+  nombre_niveaux?: number;
+  plans_documents?: string;
+  observations?: string;
+  statut?: StatutProjet;
+  client_nom?: string;
+  is_deleted: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProjetCreate {
+  entreprise_id?: number;
+  client_id?: number;
+  demande_id?: number;
+  responsable_id?: number;
+  nom: string;
+  type_projet?: string;
+  description?: string;
+  localisation?: string;
+  adresse?: string;
+  longueur?: number;
+  largeur?: number;
+  hauteur?: number;
+  surface?: number;
+  volume?: number;
+  nombre_niveaux?: number;
+  plans_documents?: string;
+  observations?: string;
+  statut?: StatutProjet;
+}
+
+export interface ProjetUpdate {
+  nom?: string;
+  type_projet?: string;
+  description?: string;
+  localisation?: string;
+  adresse?: string;
+  longueur?: number;
+  largeur?: number;
+  hauteur?: number;
+  surface?: number;
+  volume?: number;
+  nombre_niveaux?: number;
+  plans_documents?: string;
+  observations?: string;
+  statut?: StatutProjet;
+  client_id?: number;
+  responsable_id?: number;
+}
+
+export interface Metre {
+  id: number;
+  entreprise_id?: number;
+  projet_id?: number;
+  ouvrage: string;
+  designation?: string;
+  formule?: string;
+  dimensions?: string;
+  unite?: string;
+  quantite?: number;
+  observations?: string;
+  document_reference?: string;
+  ordre?: number;
+  projet_reference?: string;
+  is_deleted: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MetreCreate {
+  entreprise_id?: number;
+  projet_id?: number;
+  ouvrage: string;
+  designation?: string;
+  formule?: string;
+  dimensions?: string;
+  unite?: string;
+  quantite?: number;
+  observations?: string;
+  document_reference?: string;
+  ordre?: number;
+}
+
+export interface MetreUpdate {
+  ouvrage?: string;
+  designation?: string;
+  formule?: string;
+  dimensions?: string;
+  unite?: string;
+  quantite?: number;
+  observations?: string;
+  document_reference?: string;
+  ordre?: number;
+}
+
+export interface SituationTravaux {
+  id: number;
+  entreprise_id?: number;
+  chantier_id?: number;
+  contrat_id?: number;
+  numero?: string;
+  periode?: string;
+  date_etablissement?: string;
+  avancement?: number;
+  montant?: number;
+  observations?: string;
+  statut?: StatutSituationTravaux;
+  chantier_nom?: string;
+  is_deleted: boolean;
+  created_at?: string;
+  updated_at?: string;
+  lignes?: LigneSituation[];
+}
+
+export interface SituationTravauxCreate {
+  entreprise_id?: number;
+  chantier_id?: number;
+  contrat_id?: number;
+  periode?: string;
+  date_etablissement?: string;
+  avancement?: number;
+  montant?: number;
+  observations?: string;
+  statut?: StatutSituationTravaux;
+}
+
+export interface SituationTravauxUpdate {
+  periode?: string;
+  date_etablissement?: string;
+  avancement?: number;
+  montant?: number;
+  observations?: string;
+  statut?: StatutSituationTravaux;
+  chantier_id?: number;
+  contrat_id?: number;
+}
+
+export interface LigneSituation {
+  id: number;
+  situation_id?: number;
+  ouvrage: string;
+  quantite_periode?: number;
+  quantite_cumulee?: number;
+  unite?: string;
+  prix_unitaire?: number;
+  montant?: number;
+  observations?: string;
+  is_deleted: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface LigneSituationCreate {
+  situation_id?: number;
+  ouvrage: string;
+  quantite_periode?: number;
+  quantite_cumulee?: number;
+  unite?: string;
+  prix_unitaire?: number;
+  montant?: number;
+  observations?: string;
+}
+
+// ============================================================
 // FINANCE
 // ============================================================
 

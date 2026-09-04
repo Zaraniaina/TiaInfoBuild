@@ -48,6 +48,16 @@ Web/
 └── frontend/          # React + Vite
 ```
 
+## Module Commercial — Cycle Complet BTP
+
+```
+CLIENT → DEMANDE → PROJET → MÉTRÉ → DEVIS → CONTRAT → CHANTIER → SITUATION → FACTURE → PAIEMENT
+```
+
+Entités : Client, DemandeTravaux, Projet, Metre, Devis, Contrat, Avenant, Chantier, SituationTravaux, Facture, Paiement
+
+**Frontend** : 4 onglets ajoutés à la page `/commercial` (Demandes, Projets, Métrés, Situations) avec CRUD complet, filtres, barres d'avancement et gestion des lignes d'ouvrage. Permissions RBAC : `canCreateDemande/Projet/Metre/Situation`.
+
 ## Correctifs récents
 
 - **Permissions admin_entreprise** : Accès complet aux modules métier
@@ -55,3 +65,5 @@ Web/
 - **Récursion JSON** : Patch jsonable_encoder renforcé
 - **Seed** : 12 comptes de test créés automatiquement
 - **Rôle client** : Ajouté (12 rôles total)
+- **Module commercial** : Ajout des entités Demande, Projet, Métré, Situation avec routes CRUD complètes
+- **Frontend commercial** : Interfaces des 4 nouvelles entités (types, service API, onglets, modals) intégrées à CommercialPage

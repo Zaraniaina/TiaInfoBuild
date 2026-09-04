@@ -180,6 +180,66 @@ curl.exe http://localhost:8000/api/super-admin/entreprises
 
 ---
 
+## Module Commercial — Cycle Complet
+
+Le module commercial gère le cycle client BTP complet :
+
+```
+CLIENT → DEMANDE → PROJET → MÉTRÉ → DEVIS → CONTRAT → CHANTIER → SITUATION → FACTURE → PAIEMENT
+```
+
+### Routes API
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| GET/POST | `/api/commercial/demandes` | Lister/Créer demandes de travaux |
+| GET/PUT/DELETE | `/api/commercial/demandes/{id}` | Détail/Modifier/Supprimer demande |
+| GET/POST | `/api/commercial/projets` | Lister/Créer projets |
+| GET/PUT/DELETE | `/api/commercial/projets/{id}` | Détail/Modifier/Supprimer projet |
+| GET/POST | `/api/commercial/metres` | Lister/Créer métrés |
+| GET/PUT/DELETE | `/api/commercial/metres/{id}` | Détail/Modifier/Supprimer métré |
+| GET/POST | `/api/commercial/situations` | Lister/Créer situations de travaux |
+| GET/PUT/DELETE | `/api/commercial/situations/{id}` | Détail/Modifier/Supprimer situation |
+| GET/POST | `/api/commercial/situations/{id}/lignes` | Lister/Créer lignes de situation |
+| DELETE | `/api/commercial/situations/{id}/lignes/{ligne_id}` | Supprimer ligne de situation |
+
+### Seed données de test
+
+Après `init_db.py`, les données suivantes sont créées :
+- 1 demande de travaux (DEM-00001)
+- 1 projet (PRJ-00001)
+- 5 lignes de métré (terrassement, fondation, murs, charpente, couverture)
+- 1 situation de travaux (SIT-00001, 35% avancement)
+
+### Interfaces Frontend (page `/commercial`)
+
+La page **Commercial & Facturation** (`Web/frontend/src/pages/commercial/`) expose 4 nouveaux onglets :
+
+| Onglet | Composant | Fonctionnalités |
+|--------|-----------|-----------------|
+| **Demandes** | `DemandeTravauxTab.tsx` | Tableau filtrable (recherche + statut), modal création/édition (client, type, dates, plans), badges de statut |
+| **Projets** | `ProjetsTab.tsx` | Tableau + modal (client, demande liée, dimensions L/l/H, surface, volume, niveaux) |
+| **Métrés** | `MetresTab.tsx` | Tableau filtrable par projet + modal (ouvrage, formule de calcul, unité, quantité, ordre) |
+| **Situations** | `SituationsTab.tsx` | Tableau avec barre d'avancement + modal situation (chantier, contrat, montant) + **modal détail des lignes d'ouvrage** (ajout/suppression, montant auto Qté × PU) |
+
+Fichiers support :
+- `src/types/index.ts` : types `DemandeTravaux`, `Projet`, `Metre`, `SituationTravaux`, `LigneSituation` (+ Create/Update)
+- `src/services/commercial.service.ts` : 18 méthodes CRUD alignées sur les routes backend
+- `src/config/roles.config.ts` : permissions `canCreateDemande/Projet/Metre/Situation` (RBAC 12 rôles)
+
+Répartition des permissions de création :
+
+| Permission | Rôles autorisés |
+|------------|-----------------|
+| `canCreateDemande` | super_admin, commercial |
+| `canCreateProjet` | super_admin, commercial, chef_projet |
+| `canCreateMetre` | super_admin, commercial, chef_projet, chef_chantier |
+| `canCreateSituation` | super_admin, commercial, chef_projet, chef_chantier |
+
+Les autres rôles (directeur, comptable, client…) ont un accès **lecture seule** sur ces onglets.
+
+---
+
 ## Notes de version & Correctifs appliqués
 
 - **Seed automatique** : Le script `app/scripts/init_db.py` crée maintenant les 12 comptes de test automatiquement (rôles + utilisateurs). Mot de passe universel : `Admin123!`.

@@ -53,3 +53,4 @@ class Chantier(Base):
     rapports_financiers: Mapped[list["RapportFinancier"]] = relationship("RapportFinancier", back_populates="chantier", lazy="selectin")
     contrats: Mapped[list["Contrat"]] = relationship("Contrat", back_populates="chantier", lazy="selectin")
     mouvements_stock: Mapped[list["MouvementStock"]] = relationship("MouvementStock", back_populates="chantier", lazy="selectin")
+    situations: Mapped[list["SituationTravaux"]] = relationship("SituationTravaux", back_populates="chantier", lazy="selectin")

@@ -12,6 +12,7 @@ from app.models.chantier import Chantier
 from app.models.client import Client
 from app.models.client_adresse import ClientAdresse
 from app.models.contrat import Contrat
+from app.models.demande_travaux import DemandeTravaux
 from app.models.depense import Depense
 from app.models.devis import Devis
 from app.models.employe import Employe
@@ -28,10 +29,13 @@ from app.models.ligne_facture import LigneFacture
 from app.models.maintenance import Maintenance
 from app.models.materiel import Materiel
 from app.models.membre_equipe import MembreEquipe
+from app.models.metre import Metre
 from app.models.mouvement_stock import MouvementStock
 from app.models.paiement import Paiement
 from app.models.phase import Phase
 from app.models.plan import Plan
+from app.models.projet import Projet
+from app.models.situation_travaux import SituationTravaux, LigneSituation
 from app.models.subscription import Subscription
 from app.models.pointage import Pointage
 from app.models.preference import Preference
@@ -53,6 +57,7 @@ __all__ = [
     "Client",
     "ClientAdresse",
     "Contrat",
+    "DemandeTravaux",
     "Depense",
     "Devis",
     "Employe",
@@ -66,13 +71,17 @@ __all__ = [
     "Incident",
     "LigneDevis",
     "LigneFacture",
+    "LigneSituation",
     "Maintenance",
     "Materiel",
     "MembreEquipe",
+    "Metre",
     "MouvementStock",
     "Paiement",
     "Phase",
     "Plan",
+    "Projet",
+    "SituationTravaux",
     "Subscription",
     "Pointage",
     "Preference",

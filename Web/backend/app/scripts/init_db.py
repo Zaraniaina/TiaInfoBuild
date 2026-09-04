@@ -195,6 +195,55 @@ async def seed():
         await db.commit()
         print("    Role_id comptable/chef_corriges si necessaire")
 
+        # 4d. Seed données module commercial (demandes, projets, métrés, situations)
+        print("    Seed donnees module commercial...")
+        result = await db.execute(text("SELECT id FROM clients WHERE entreprise_id = :eid LIMIT 1"), {"eid": entreprise_id})
+        client_row = result.fetchone()
+        client_id = client_row[0] if client_row else None
+
+        if client_id:
+            # Vérifier si des demandes existent déjà
+            result = await db.execute(text("SELECT COUNT(*) FROM demandes_travaux WHERE entreprise_id = :eid"), {"eid": entreprise_id})
+            if result.fetchone()[0] == 0:
+                # Créer une demande de travaux
+                await db.execute(text("""
+                    INSERT INTO demandes_travaux (entreprise_id, client_id, numero, objet, type_projet, description, localisation, statut)
+                    VALUES (:eid, :cid, 'DEM-00001', 'Construction maison R+1', 'construction', 'Construction d''une maison rez-de-chaussée + 1 étage', 'Antananarivo, Anosy', 'en_etude')
+                """), {"eid": entreprise_id, "cid": client_id})
+                print("      Demande DEM-00001 creee")
+
+                # Créer un projet
+                await db.execute(text("""
+                    INSERT INTO projets (entreprise_id, client_id, reference, nom, type_projet, description, localisation, surface, statut)
+                    VALUES (:eid, :cid, 'PRJ-00001', 'Projet Maison Anosy', 'construction', 'Construction maison R+1, 150m2', 'Antananarivo, Anosy', 150, 'en_etude')
+                """), {"eid": entreprise_id, "cid": client_id})
+                print("      Projet PRJ-00001 cree")
+
+                # Créer des métrés
+                metres_data = [
+                    ('Terrassement général', 'm3', 100),
+                    ('Béton de fondation', 'm3', 25),
+                    ('Élévation des murs', 'm2', 250),
+                    ('Charpente bois', 'm2', 150),
+                    ('Couverture tôles', 'm2', 160),
+                ]
+                for i, (ouvrage, unite, quantite) in enumerate(metres_data):
+                    await db.execute(text("""
+                        INSERT INTO metres (entreprise_id, ouvrage, unite, quantite, ordre)
+                        VALUES (:eid, :ouvrage, :unite, :quantite, :ordre)
+                    """), {"eid": entreprise_id, "ouvrage": ouvrage, "unite": unite, "quantite": quantite, "ordre": i})
+                print(f"      {len(metres_data)} lignes de metre creees")
+
+                # Créer une situation de travaux
+                await db.execute(text("""
+                    INSERT INTO situations_travaux (entreprise_id, numero, periode, avancement, montant, statut)
+                    VALUES (:eid, 'SIT-00001', 'Janvier 2026', 35.00, 15000000, 'validee')
+                """), {"eid": entreprise_id})
+                print("      Situation SIT-00001 creee")
+
+        await db.commit()
+        print("    Seed commercial termine")
+
         # 5. Créer un abonnement par défaut pour l'entreprise de test (plan Pro)
         print(" Creation de l'abonnement par defaut...")
         result = await db.execute(text(

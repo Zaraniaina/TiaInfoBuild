@@ -6,6 +6,10 @@ import { avenantsService } from '@/services/avenants.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
 import { useToastStore } from '@/stores/toast.store'
+import { DemandeTravauxTab } from './DemandeTravauxTab'
+import { ProjetsTab } from './ProjetsTab'
+import { MetresTab } from './MetresTab'
+import { SituationsTab } from './SituationsTab'
 
 type LigneDevisRow = Partial<LigneDevis> & { _deleted?: boolean }
 type LigneFactureRow = Partial<LigneFacture> & { _deleted?: boolean }
@@ -15,7 +19,7 @@ export function CommercialPage() {
   const { user } = useAuthStore()
   const perms = getRolePermissions(user?.role_code || '')
 
-  const [activeTab, setActiveTab] = useState<'devis' | 'factures' | 'clients' | 'contrats' | 'paiements' | 'chantiers' | 'avenants'>('devis')
+  const [activeTab, setActiveTab] = useState<'devis' | 'factures' | 'clients' | 'contrats' | 'paiements' | 'chantiers' | 'avenants' | 'demandes' | 'projets' | 'metres' | 'situations'>('devis')
 
   const [devisList, setDevisList] = useState<Devis[]>([])
   const [factures, setFactures] = useState<Facture[]>([])
@@ -417,7 +421,7 @@ export function CommercialPage() {
         <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
           <div>
             <h2 className="mb-1 text-secondary"><i className="bi bi-cart me-2"></i>Commercial & Facturation</h2>
-            <p className="text-secondary mb-0">Gestion de la relation client, des devis, des contrats et du suivi des encaissements</p>
+            <p className="text-secondary mb-0">Gestion du cycle client complet : demandes, projets, métrés, devis, contrats, situations et suivi des encaissements</p>
           </div>
           {activeTab === 'devis' && perms.canCreateDevis && (
             <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedDevis(null); setDevisForm({ numero: `DEV-2026-00${devisList.length + 1}`, client_id: undefined, montant_ht: 0, tva: 20, statut: 'brouillon' }); setShowDevisModal(true); }}>
@@ -452,6 +456,26 @@ export function CommercialPage() {
           {activeTab === 'avenants' && perms.canCreateDevis && (
             <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedAvenant(null); setAvenantForm({ numero: '', description: '', impact_montant: 0, statut: 'propose', contrat_id: undefined }); setShowAvenantModal(true); }}>
               <i className="bi bi-plus-lg me-2"></i>Nouvel Avenant
+            </button>
+          )}
+          {activeTab === 'demandes' && perms.canCreateDemande && (
+            <button className="btn btn-outline-secondary fw-bold" onClick={() => document.getElementById('btn-nouvelle-demande')?.click()}>
+              <i className="bi bi-plus-lg me-2"></i>Nouvelle Demande
+            </button>
+          )}
+          {activeTab === 'projets' && perms.canCreateProjet && (
+            <button className="btn btn-outline-secondary fw-bold" onClick={() => document.getElementById('btn-nouveau-projet')?.click()}>
+              <i className="bi bi-plus-lg me-2"></i>Nouveau Projet
+            </button>
+          )}
+          {activeTab === 'metres' && perms.canCreateMetre && (
+            <button className="btn btn-outline-secondary fw-bold" onClick={() => document.getElementById('btn-nouveau-metre')?.click()}>
+              <i className="bi bi-plus-lg me-2"></i>Nouveau Métré
+            </button>
+          )}
+          {activeTab === 'situations' && perms.canCreateSituation && (
+            <button className="btn btn-outline-secondary fw-bold" onClick={() => document.getElementById('btn-nouvelle-situation')?.click()}>
+              <i className="bi bi-plus-lg me-2"></i>Nouvelle Situation
             </button>
           )}
         </div>
@@ -491,6 +515,26 @@ export function CommercialPage() {
         <li className="nav-item">
           <button className={`nav-link ${activeTab === 'avenants' ? 'active' : ''}`} onClick={() => setActiveTab('avenants')}>
             <i className="bi bi-file-earmark-plus me-2"></i>Avenants
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'demandes' ? 'active' : ''}`} onClick={() => setActiveTab('demandes')}>
+            <i className="bi bi-inbox me-2"></i>Demandes
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'projets' ? 'active' : ''}`} onClick={() => setActiveTab('projets')}>
+            <i className="bi bi-briefcase me-2"></i>Projets
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'metres' ? 'active' : ''}`} onClick={() => setActiveTab('metres')}>
+            <i className="bi bi-rulers me-2"></i>Métrés
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'situations' ? 'active' : ''}`} onClick={() => setActiveTab('situations')}>
+            <i className="bi bi-clipboard2-data me-2"></i>Situations
           </button>
         </li>
       </ul>
@@ -758,6 +802,14 @@ export function CommercialPage() {
             </table>
           </div>
         </div>
+      ) : activeTab === 'demandes' ? (
+        <DemandeTravauxTab />
+      ) : activeTab === 'projets' ? (
+        <ProjetsTab />
+      ) : activeTab === 'metres' ? (
+        <MetresTab />
+      ) : activeTab === 'situations' ? (
+        <SituationsTab />
       ) : (
         <div className="card border-0 shadow-sm">
           <div className="table-responsive">

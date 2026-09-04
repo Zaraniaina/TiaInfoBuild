@@ -12,6 +12,7 @@ class Devis(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     entreprise_id: Mapped[int] = mapped_column(ForeignKey("entreprises.id", ondelete="CASCADE"))
     client_id: Mapped[int] = mapped_column(ForeignKey("clients.id", ondelete="CASCADE"))
+    projet_id: Mapped[int | None] = mapped_column(ForeignKey("projets.id", ondelete="SET NULL"))
     numero: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     objet: Mapped[str | None] = mapped_column(Text)
     montant_ht: Mapped[float] = mapped_column(Numeric(12, 2), server_default="0")
@@ -36,5 +37,6 @@ class Devis(Base):
 
     entreprise: Mapped["Entreprise"] = relationship("Entreprise", back_populates="devis", lazy="selectin")
     client: Mapped["Client"] = relationship("Client", back_populates="devis", lazy="selectin")
+    projet: Mapped["Projet | None"] = relationship("Projet", back_populates="devis", lazy="selectin")
     lignes_devis: Mapped[list["LigneDevis"]] = relationship("LigneDevis", back_populates="devis", lazy="selectin")
     contrat: Mapped["Contrat | None"] = relationship("Contrat", back_populates="devis", lazy="selectin")
