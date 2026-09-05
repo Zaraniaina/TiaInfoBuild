@@ -1,9 +1,9 @@
 [OK] Login commercial -> HTTP 200 (attendu 200) 
     role: super_admin
-[OK] GET /demandes -> HTTP 200 (attendu 200) (2 items)
-[OK] POST /demandes -> HTTP 201 (attendu 201) numero=DEM-00003
+[OK] GET /demandes -> HTTP 200 (attendu 200) (0 items)
+[OK] POST /demandes -> HTTP 201 (attendu 201) numero=DEM-00001
 [OK] PUT /demandes/{id} -> HTTP 200 (attendu 200) statut=en_etude
-[OK] POST /projets -> HTTP 201 (attendu 201) ref=PRJ-00003
+[OK] POST /projets -> HTTP 201 (attendu 201) ref=PRJ-00001
 [OK] POST /metres (1) -> HTTP 201 (attendu 201) 
 [OK] POST /metres (2) -> HTTP 201 (attendu 201) 
 [OK] PUT /metres/{id} -> HTTP 200 (attendu 200) quantite=135.0
@@ -16,9 +16,9 @@
 [OK] GET /projets/{id} -> HTTP 200 (attendu 200) 
 [OK] GET /metres/{id} -> HTTP 200 (attendu 200) 
 [OK] GET /situations/{id} -> HTTP 200 (attendu 200) 
-[OK] GET /demandes final -> HTTP 200 (attendu 200) (3 demandes)
-[OK] GET /projets final -> HTTP 200 (attendu 200) (3 projets)
-[OK] GET /metres final -> HTTP 200 (attendu 200) (6 metres)
+[OK] GET /demandes final -> HTTP 200 (attendu 200) (1 demandes)
+[OK] GET /projets final -> HTTP 200 (attendu 200) (1 projets)
+[OK] GET /metres final -> HTTP 200 (attendu 200) (2 metres)
 [OK] GET /situations final -> HTTP 200 (attendu 200) (1 situations)
 [OK] DELETE situation -> HTTP 204 (attendu 204) 
 [OK] DELETE metre 2 -> HTTP 204 (attendu 204) 

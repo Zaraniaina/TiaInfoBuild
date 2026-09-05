@@ -1,0 +1,9 @@
+=== TABLES MANQUANTES ===
+(aucune)
+
+=== COLONNES MANQUANTES ===
+pointages.methode_pointage (VARCHAR(50))
+pointages.scanne_par_id (BIGINT)
+pointages.latitude (NUMERIC(10, 8))
+pointages.longitude (NUMERIC(11, 8))
+pointages.statut_validation (VARCHAR(20))

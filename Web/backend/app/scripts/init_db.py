@@ -168,6 +168,7 @@ async def seed():
             (8,  "materiel@btppro.mg",       "Materiel",   "David",    "materiel"),
             (9,  "magasinier@btppro.mg",     "Magasinier", "Elsa",     "magasinier"),
             (10, "commercial@btppro.mg",     "Commercial", "Frank",    "commercial"),
+            (11, "ouvrier@btppro.mg",        "Ouvrier",    "Gilbert",  "employe"),
             (11, "employe@btppro.mg",        "Employe",    "Gerard",   "employe"),
             (12, "client@btppro.mg",         "Client",     "Hugo",     "client"),
         ]
@@ -200,6 +201,17 @@ async def seed():
         result = await db.execute(text("SELECT id FROM clients WHERE entreprise_id = :eid LIMIT 1"), {"eid": entreprise_id})
         client_row = result.fetchone()
         client_id = client_row[0] if client_row else None
+
+        # Créer la fiche client de démo si absente (nécessaire au seed commercial
+        # et pour rattacher le compte utilisateur client@btppro.mg à des données)
+        if not client_id:
+            await db.execute(text("""
+                INSERT INTO clients (entreprise_id, type, civilite, nom, prenom, email, telephone, adresse, ville)
+                VALUES (:eid, 'particulier', 'M', 'RAKOTO', 'Jean', 'client@btppro.mg', '034 00 000 01', 'Lot II M 45, Ivandry', 'Antananarivo')
+            """), {"eid": entreprise_id})
+            result = await db.execute(text("SELECT id FROM clients WHERE entreprise_id = :eid LIMIT 1"), {"eid": entreprise_id})
+            client_id = result.fetchone()[0]
+            print(f"      Fiche client demo creee (ID {client_id}, client@btppro.mg)")
 
         if client_id:
             # Vérifier si des demandes existent déjà

@@ -62,10 +62,49 @@ async def lifespan(app: FastAPI):
         print(" Database connection OK")
     except Exception as exc:
         print(f" Database connection failed: {exc}")
+    # Startup: detecter la derive de schema (modeles vs base) avant qu'elle ne
+    # casse le login ou d'autres endpoints en production (erreur 1054 / 500).
+    try:
+        await _verifier_derive_schema()
+    except Exception as exc:
+        print(f" Schema drift check failed: {exc}")
     yield
     # Shutdown: fermer le pool
     await engine.dispose()
     print(" Database disconnected")
+
+
+async def _verifier_derive_schema():
+    """Compare les modeles SQLAlchemy au schema MySQL reel et journalise les ecarts."""
+    from sqlalchemy import inspect
+    import app.models  # noqa: F401 (enregistre tous les modeles dans Base.metadata)
+    from app.database import Base
+
+    def _compare(sync_conn):
+        insp = inspect(sync_conn)
+        db_tables = set(insp.get_table_names())
+        missing_tables = []
+        missing_cols = []
+        for table_name, table in Base.metadata.tables.items():
+            if table_name not in db_tables:
+                missing_tables.append(table_name)
+                continue
+            cols = {c["name"] for c in insp.get_columns(table_name)}
+            for col in table.columns:
+                if col.name not in cols:
+                    missing_cols.append(f"{table_name}.{col.name}")
+        return missing_tables, missing_cols
+
+    async with engine.connect() as conn:
+        missing_tables, missing_cols = await conn.run_sync(_compare)
+
+    if missing_tables or missing_cols:
+        print(" ATTENTION: derive de schema detectee (modeles vs base de donnees).")
+        print("   Tables manquantes :" + (", ".join(missing_tables) or " aucune"))
+        print("   Colonnes manquantes :" + (", ".join(missing_cols) or " aucune"))
+        print("   -> Executer: alembic upgrade head  (ou python compare_schema.py pour le rapport complet)")
+    else:
+        print(" Schema OK: aucun ecart entre les modeles et la base de donnees")
 
 
 app = FastAPI(
