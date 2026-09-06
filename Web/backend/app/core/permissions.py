@@ -56,16 +56,10 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
     # Restreint selon roles_tia_builds/01_admin_entreprise.md :
     # accès uniquement à la lecture du dashboard et à la lecture/écriture
     # des paramètres (gestion utilisateurs, settings, audit logs).
-        Role.ADMIN_ENTREPRISE: [
+    # Aucun accès aux modules métier (Finance, Chantiers, RH, Matériel,
+    # Stocks, Commercial) — périmètre strictement administratif.
+    Role.ADMIN_ENTREPRISE: [
         "dashboard:read",
-        # Accès lecture/écriture à tous les modules métier (voir matrice RBAC analyse)
-        "chantiers:read", "chantiers:write", "chantiers:delete",
-        "rh:read", "rh:write", "rh:delete",
-        "stocks:read", "stocks:write", "stocks:delete",
-        "commercial:read", "commercial:write", "commercial:delete",
-        "finance:read", "finance:write", "finance:delete",
-        "materiels:read", "materiels:write", "materiels:delete",
-        "alertes:read", "alertes:write",
         "parametres:read", "parametres:write",
         # gestion abonnement / offre du tenant
         "subscriptions:read",
@@ -150,9 +144,9 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
         "pointage:write", "taches:write", "consommation:write",
     ],
     Role.CLIENT: [
-        "dashboard:read",
         # Espace Client : uniquement les donnees de sa propre fiche (router dedie).
-        # PAS d'acces commercial:read / chantiers:read (donnees internes de l'entreprise).
+        # PAS d'acces commercial:read / chantiers:read / dashboard:read
+        # (donnees internes de l'entreprise / stats globales).
         "espace_client:read", "espace_client:write",
     ],
 }

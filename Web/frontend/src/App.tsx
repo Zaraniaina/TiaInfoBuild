@@ -26,7 +26,22 @@ const SuperAdminAbonnementsPage = lazy(() => import('@/pages/super-admin/SuperAd
 const SuperAdminFacturationPage = lazy(() => import('@/pages/super-admin/SuperAdminFacturationPage').then((m) => ({ default: m.SuperAdminFacturationPage })))
 const SuperAdminLogsPage = lazy(() => import('@/pages/super-admin/SuperAdminLogsPage').then((m) => ({ default: m.SuperAdminLogsPage })))
 const SuperAdminParametresPage = lazy(() => import('@/pages/super-admin/SuperAdminParametresPage').then((m) => ({ default: m.SuperAdminParametresPage })))
-const ClientPage = lazy(() => import('@/pages/client/ClientPage').then((m) => ({ default: m.ClientPage })))
+const ClientLayout = lazy(() => import('@/pages/client/ClientLayout').then((m) => ({ default: m.ClientLayout })))
+const ClientDashboard = lazy(() => import('@/pages/client/ClientDashboard').then((m) => ({ default: m.ClientDashboard })))
+const ClientProfil = lazy(() => import('@/pages/client/ClientProfil').then((m) => ({ default: m.ClientProfil })))
+const ClientDemandesPage = lazy(() => import('@/pages/client/ClientDemandesPage').then((m) => ({ default: m.ClientDemandesPage })))
+const ClientProjetsPage = lazy(() => import('@/pages/client/ClientProjetsPage').then((m) => ({ default: m.ClientProjetsPage })))
+const ClientDevisPage = lazy(() => import('@/pages/client/ClientDevisPage').then((m) => ({ default: m.ClientDevisPage })))
+const ClientContratsPage = lazy(() => import('@/pages/client/ClientContratsPage').then((m) => ({ default: m.ClientContratsPage })))
+const ClientAvenantsPage = lazy(() => import('@/pages/client/ClientAvenantsPage').then((m) => ({ default: m.ClientAvenantsPage })))
+const ClientChantiersPage = lazy(() => import('@/pages/client/ClientChantiersPage').then((m) => ({ default: m.ClientChantiersPage })))
+const ClientAvancementPage = lazy(() => import('@/pages/client/ClientAvancementPage').then((m) => ({ default: m.ClientAvancementPage })))
+const ClientSituationsPage = lazy(() => import('@/pages/client/ClientSituationsPage').then((m) => ({ default: m.ClientSituationsPage })))
+const ClientFacturesPage = lazy(() => import('@/pages/client/ClientFacturesPage').then((m) => ({ default: m.ClientFacturesPage })))
+const ClientPaiementsPage = lazy(() => import('@/pages/client/ClientPaiementsPage').then((m) => ({ default: m.ClientPaiementsPage })))
+const ClientDocumentsPage = lazy(() => import('@/pages/client/ClientDocumentsPage').then((m) => ({ default: m.ClientDocumentsPage })))
+const ClientNotificationsPage = lazy(() => import('@/pages/client/ClientNotificationsPage').then((m) => ({ default: m.ClientNotificationsPage })))
+const ClientParametresPage = lazy(() => import('@/pages/client/ClientParametresPage').then((m) => ({ default: m.ClientParametresPage })))
 const EmployePage = lazy(() => import('@/pages/employe/EmployePage').then((m) => ({ default: m.EmployePage })))
 
 function PageFallback() {
@@ -65,7 +80,23 @@ function App() {
         <Route path="alertes" element={<Suspense fallback={<PageFallback />}><AlertesPage /></Suspense>} />
         <Route path="historique-logins" element={<Suspense fallback={<PageFallback />}><HistoriqueLoginsPage /></Suspense>} />
         <Route path="settings" element={<Suspense fallback={<PageFallback />}><SettingsPage /></Suspense>} />
-        <Route path="client" element={<Suspense fallback={<PageFallback />}><ClientPage /></Suspense>} />
+        <Route path="client" element={<Suspense fallback={<PageFallback />}><ClientLayout /></Suspense>}>
+          <Route index element={<Suspense fallback={<PageFallback />}><ClientDashboard /></Suspense>} />
+          <Route path="profil" element={<Suspense fallback={<PageFallback />}><ClientProfil /></Suspense>} />
+          <Route path="demandes" element={<Suspense fallback={<PageFallback />}><ClientDemandesPage /></Suspense>} />
+          <Route path="projets" element={<Suspense fallback={<PageFallback />}><ClientProjetsPage /></Suspense>} />
+          <Route path="devis" element={<Suspense fallback={<PageFallback />}><ClientDevisPage /></Suspense>} />
+          <Route path="contrats" element={<Suspense fallback={<PageFallback />}><ClientContratsPage /></Suspense>} />
+          <Route path="avenants" element={<Suspense fallback={<PageFallback />}><ClientAvenantsPage /></Suspense>} />
+          <Route path="chantiers" element={<Suspense fallback={<PageFallback />}><ClientChantiersPage /></Suspense>} />
+          <Route path="avancement" element={<Suspense fallback={<PageFallback />}><ClientAvancementPage /></Suspense>} />
+          <Route path="situations" element={<Suspense fallback={<PageFallback />}><ClientSituationsPage /></Suspense>} />
+          <Route path="factures" element={<Suspense fallback={<PageFallback />}><ClientFacturesPage /></Suspense>} />
+          <Route path="paiements" element={<Suspense fallback={<PageFallback />}><ClientPaiementsPage /></Suspense>} />
+          <Route path="documents" element={<Suspense fallback={<PageFallback />}><ClientDocumentsPage /></Suspense>} />
+          <Route path="notifications" element={<Suspense fallback={<PageFallback />}><ClientNotificationsPage /></Suspense>} />
+          <Route path="parametres" element={<Suspense fallback={<PageFallback />}><ClientParametresPage /></Suspense>} />
+        </Route>
         <Route path="employe" element={<Suspense fallback={<PageFallback />}><EmployePage /></Suspense>} />
         <Route path="pricing" element={<Suspense fallback={<PageFallback />}><PricingPage /></Suspense>} />
         <Route path="super-admin">

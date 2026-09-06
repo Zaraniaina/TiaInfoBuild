@@ -1,6 +1,6 @@
-import { api } from './api'
+﻿import { api } from './api'
 
-export interface ClientDashboard {
+export interface DashboardData {
   demandes: { nouvelles: number; en_cours: number; traitees: number }
   projets: number
   devis: { en_attente: number; acceptes: number; refuses: number }
@@ -17,7 +17,7 @@ export interface ClientDashboard {
   }[]
 }
 
-export interface ClientProfil {
+export interface ProfilData {
   id: number
   nom: string
   prenom: string
@@ -105,15 +105,10 @@ export interface Avenant {
 }
 
 export interface Chantier {
-  id: number
   nom: string
-  projet_id?: number
-  localisation?: string
-  date_debut?: string
-  date_fin_prevue?: string
-  avancement?: number
-  statut: string
-  responsable?: string
+  adresse?: string
+  statut?: string
+  [k: string]: any
 }
 
 export interface Facture {
@@ -171,19 +166,19 @@ export interface Preferences {
 }
 
 export const espaceClientService = {
-  getDashboard: async (): Promise<ClientDashboard> => {
+  getDashboard: async (): Promise<DashboardData> => {
     const { data } = await api.get('/espace-client/dashboard')
     return data
   },
 
-  getProfil: async (): Promise<ClientProfil> => {
+  getProfil: async (): Promise<ProfilData> => {
     const { data } = await api.get('/espace-client/profil')
     return data
   },
 
-  updateProfil: async (profil: Partial<ClientProfil>): Promise<ClientProfil> => {
+  updateProfil: async (profil: Partial<ProfilData>): Promise<ProfilData> => {
     const { data } = await api.put('/espace-client/profil', profil)
-    return data
+    return data.client || data
   },
 
   changePassword: async (oldPassword: string, newPassword: string): Promise<void> => {
@@ -195,17 +190,17 @@ export const espaceClientService = {
 
   getDemandes: async (): Promise<DemandeTravaux[]> => {
     const { data } = await api.get('/espace-client/demandes')
-    return data
+    return data.items || []
   },
 
   getDemande: async (id: number): Promise<DemandeTravaux> => {
     const { data } = await api.get(`/espace-client/demandes/${id}`)
-    return data
+    return data.demande || data
   },
 
   getProjets: async (): Promise<Projet[]> => {
     const { data } = await api.get('/espace-client/projets')
-    return data
+    return data.items || []
   },
 
   getProjet: async (id: number): Promise<Projet> => {
@@ -215,12 +210,12 @@ export const espaceClientService = {
 
   getDevis: async (): Promise<Devis[]> => {
     const { data } = await api.get('/espace-client/devis')
-    return data
+    return data.items || []
   },
 
   getDevisDetail: async (id: number): Promise<{ devis: Devis; lignes: LigneDevis[] }> => {
     const { data } = await api.get(`/espace-client/devis/${id}`)
-    return data
+    return { devis: data.devis || data, lignes: data.lignes || [] }
   },
 
   repondreDevis: async (id: number, action: 'accepter' | 'refuser', motif?: string): Promise<Devis> => {
@@ -228,17 +223,17 @@ export const espaceClientService = {
       action,
       motif_reponse: motif,
     })
-    return data
+    return data.devis || data
   },
 
   getContrats: async (): Promise<Contrat[]> => {
     const { data } = await api.get('/espace-client/contrats')
-    return data
+    return data.items || []
   },
 
   getContrat: async (id: number): Promise<Contrat> => {
     const { data } = await api.get(`/espace-client/contrats/${id}`)
-    return data
+    return data.contrat || data
   },
 
   getAvenants: async (contratId?: number): Promise<Avenant[]> => {
@@ -246,27 +241,27 @@ export const espaceClientService = {
       ? `/espace-client/avenants?contrat_id=${contratId}`
       : '/espace-client/avenants'
     const { data } = await api.get(url)
-    return data
+    return data.items || []
   },
 
-  getChantiers: async (): Promise<Chantier[]> => {
+  getChantiers: async (): Promise<any[]> => {
     const { data } = await api.get('/espace-client/chantiers')
-    return data
+    return data.items || []
   },
 
-  getChantier: async (id: number): Promise<Chantier> => {
+  getChantier: async (id: number): Promise<any> => {
     const { data } = await api.get(`/espace-client/chantiers/${id}`)
     return data
   },
 
   getAvancements: async (): Promise<any[]> => {
     const { data } = await api.get('/espace-client/avancements')
-    return data
+    return data.items || []
   },
 
   getSituations: async (): Promise<any[]> => {
     const { data } = await api.get('/espace-client/situations')
-    return data
+    return data.items || []
   },
 
   getSituation: async (id: number): Promise<any> => {
@@ -276,27 +271,27 @@ export const espaceClientService = {
 
   getFactures: async (): Promise<Facture[]> => {
     const { data } = await api.get('/espace-client/factures')
-    return data
+    return data.items || []
   },
 
-  getFacture: async (id: number): Promise<Facture> => {
+  getFacture: async (id: number): Promise<any> => {
     const { data } = await api.get(`/espace-client/factures/${id}`)
     return data
   },
 
-  getPaiements: async (): Promise<Paiement[]> => {
+  getPaiements: async (): Promise<any> => {
     const { data } = await api.get('/espace-client/paiements')
     return data
   },
 
   getDocuments: async (): Promise<Document[]> => {
     const { data } = await api.get('/espace-client/documents')
-    return data
+    return data.items || []
   },
 
   getNotifications: async (): Promise<Notification[]> => {
     const { data } = await api.get('/espace-client/notifications')
-    return data
+    return data.items || []
   },
 
   marquerNotificationLue: async (id: number): Promise<void> => {
@@ -305,11 +300,15 @@ export const espaceClientService = {
 
   getPreferences: async (): Promise<Preferences> => {
     const { data } = await api.get('/espace-client/preferences')
-    return data
+    return { notifications_email: data.notif_email, langue: data.langue }
   },
 
   updatePreferences: async (prefs: Preferences): Promise<Preferences> => {
-    const { data } = await api.put('/espace-client/preferences', prefs)
-    return data
+    const { data } = await api.put('/espace-client/preferences', {
+      notif_email: prefs.notifications_email,
+      langue: prefs.langue,
+    })
+    return { notifications_email: data.notif_email, langue: data.langue }
   },
 }
+

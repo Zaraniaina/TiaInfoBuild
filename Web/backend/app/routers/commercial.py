@@ -50,14 +50,44 @@ from app.schemas.situation_travaux import SituationTravauxCreate, SituationTrava
 from app.security import CurrentUserPayload, DbDep
 from app.security import hash_password, generate_temp_password
 from app.models.utilisateur import Utilisateur
+from app.models.chantier import Chantier
 from app.models.role import Role
 from app.crud.avenant import AvenantCRUD
 from app.crud.demande_travaux import demande_travaux_crud
 from app.crud.projet import projet_crud
 from app.crud.metre import metre_crud
 from app.crud.situation_travaux import situation_travaux_crud, ligne_situation_crud
+from app.models.notification import Notification
 
 router = APIRouter(tags=["commercial"])
+
+
+async def _notifier_client(
+    db: AsyncSession,
+    entreprise_id: int | None,
+    client_id: int | None,
+    type_notif: str,
+    titre: str,
+    message: str,
+    entite_type: str | None = None,
+    entite_id: int | None = None,
+) -> None:
+    """Cree une notification pour le client (Espace Client). Ignore silencieusement si pas de client rattache."""
+    if not client_id:
+        return
+    db.add(
+        Notification(
+            entreprise_id=entreprise_id,
+            client_id=client_id,
+            type=type_notif,
+            titre=titre,
+            message=message,
+            entite_type=entite_type,
+            entite_id=entite_id,
+            canal="application",
+        )
+    )
+    await db.flush()
 
 _permission_map = None
 
@@ -268,6 +298,16 @@ async def create_devis(
     if not obj_in.get("numero"):
         obj_in["numero"] = await generate_numero(db, "DEV", Devis, "numero")
     devis = await devis_crud.create(db, obj_in)
+    await _notifier_client(
+        db,
+        entreprise_id,
+        devis.client_id,
+        "nouveau_devis",
+        "Nouveau devis disponible",
+        f"Votre devis {devis.numero} est disponible.",
+        entite_type="devis",
+        entite_id=devis.id,
+    )
 
     # charger les lignes associées pour la réponse
     result = await db.execute(
@@ -386,7 +426,20 @@ async def update_devis(
     if not devis or devis.is_deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Devis non trouvé")
     obj_in = data.model_dump(exclude_unset=True)
-    return await devis_crud.update(db, devis, obj_in)
+    statut_precedent = devis.statut
+    devis_maj = await devis_crud.update(db, devis, obj_in)
+    if statut_precedent != "envoye" and devis_maj.statut == "envoye":
+        await _notifier_client(
+            db,
+            devis_maj.entreprise_id,
+            devis_maj.client_id,
+            "nouveau_devis",
+            "Nouveau devis disponible",
+            f"Votre devis {devis_maj.numero} est disponible et attend votre reponse.",
+            entite_type="devis",
+            entite_id=devis_maj.id,
+        )
+    return devis_maj
 
 
 # ==================== LIGNES DEVIS ====================
@@ -514,6 +567,17 @@ async def update_devis_statut(
     devis.statut = data.statut
     await db.flush()
     await db.refresh(devis)
+    if data.statut == "envoye":
+        await _notifier_client(
+            db,
+            devis.entreprise_id,
+            devis.client_id,
+            "nouveau_devis",
+            "Nouveau devis disponible",
+            f"Votre devis {devis.numero} est disponible et attend votre reponse.",
+            entite_type="devis",
+            entite_id=devis.id,
+        )
     return devis
 
 
@@ -558,6 +622,16 @@ async def transformer_devis_en_contrat(
     db.add(contrat)
     await db.flush()
     await db.refresh(contrat)
+    await _notifier_client(
+        db,
+        devis.entreprise_id,
+        devis.client_id,
+        "nouveau_contrat",
+        "Nouveau contrat disponible",
+        f"Votre contrat {contrat.reference} est disponible.",
+        entite_type="contrat",
+        entite_id=contrat.id,
+    )
     return contrat
 
 
@@ -596,6 +670,16 @@ async def create_contrat(
     db.add(contrat)
     await db.flush()
     await db.refresh(contrat)
+    await _notifier_client(
+        db,
+        entreprise_id,
+        contrat.client_id,
+        "nouveau_contrat",
+        "Nouveau contrat disponible",
+        f"Votre contrat {contrat.reference} est disponible.",
+        entite_type="contrat",
+        entite_id=contrat.id,
+    )
     return contrat
 
 
@@ -784,6 +868,17 @@ async def create_facture(
         await _recalculer_facture(db, facture.id)
         await db.refresh(facture)
 
+    await _notifier_client(
+        db,
+        entreprise_id,
+        facture.client_id,
+        "nouvelle_facture",
+        "Nouvelle facture disponible",
+        f"La facture {facture.numero} est disponible.",
+        entite_type="facture",
+        entite_id=facture.id,
+    )
+
     return facture
 
 
@@ -899,6 +994,18 @@ async def create_paiement(
     await db.refresh(paiement)
 
     await _recalculer_facture(db, data.facture_id)
+    facture_liee = await facture_crud.get(db, data.facture_id)
+    if facture_liee:
+        await _notifier_client(
+            db,
+            entreprise_id,
+            facture_liee.client_id,
+            "paiement_enregistre",
+            "Paiement enregistre",
+            f"Un paiement de {float(paiement.montant or 0):,.0f} Ar a ete enregistre sur la facture {facture_liee.numero}.",
+            entite_type="paiement",
+            entite_id=paiement.id,
+        )
 
     return paiement
 
@@ -927,6 +1034,16 @@ async def add_paiement_to_facture(
     await db.refresh(paiement)
 
     await _recalculer_facture(db, id)
+    await _notifier_client(
+        db,
+        entreprise_id,
+        facture.client_id,
+        "paiement_enregistre",
+        "Paiement enregistre",
+        f"Un paiement de {float(paiement.montant or 0):,.0f} Ar a ete enregistre sur la facture {facture.numero}.",
+        entite_type="paiement",
+        entite_id=paiement.id,
+    )
 
     return paiement
 
@@ -1296,6 +1413,22 @@ async def create_situation(payload: CurrentUserPayload, db: DbDep, data: Situati
     obj_data["entreprise_id"] = entreprise_id
     obj_data["numero"] = await situation_travaux_crud.generate_numero(db)
     situation = await situation_travaux_crud.create(db, obj_data)
+    # Notifier le client rattache au chantier de la situation
+    if situation.chantier_id:
+        chantier_lie = (await db.execute(
+            select(Chantier).where(Chantier.id == situation.chantier_id)
+        )).scalar_one_or_none()
+        if chantier_lie:
+            await _notifier_client(
+                db,
+                entreprise_id,
+                chantier_lie.client_id,
+                "nouvelle_situation",
+                "Nouvelle situation de travaux",
+                f"La situation {situation.numero} est disponible.",
+                entite_type="situation",
+                entite_id=situation.id,
+            )
     return situation
 
 
