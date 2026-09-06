@@ -21,6 +21,7 @@ class Utilisateur(Base):
     date_creation: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     derniere_connexion: Mapped[datetime | None] = mapped_column(DateTime)
     must_change_password: Mapped[bool] = mapped_column(Boolean, server_default="0")
+    client_id: Mapped[int | None] = mapped_column(ForeignKey("clients.id", ondelete="SET NULL"))
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -29,6 +30,7 @@ class Utilisateur(Base):
         UniqueConstraint("email", name="uq_utilisateurs_email"),
         Index("idx_utilisateurs_entreprise_id", "entreprise_id"),
         Index("idx_utilisateurs_role_id", "role_id"),
+        Index("idx_utilisateurs_client_id", "client_id"),
     )
 
     entreprise: Mapped["Entreprise | None"] = relationship("Entreprise", back_populates="utilisateurs", lazy="selectin")
@@ -37,7 +39,8 @@ class Utilisateur(Base):
     historique_connexions: Mapped[list["HistoriqueConnexion"]] = relationship("HistoriqueConnexion", back_populates="utilisateur", lazy="selectin")
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship("RefreshToken", back_populates="utilisateur", lazy="selectin")
     chantiers: Mapped[list["Chantier"]] = relationship("Chantier", back_populates="chef_chantier", lazy="selectin")
-    clients: Mapped[list["Client"]] = relationship("Client", back_populates="commercial", lazy="selectin")
+    clients: Mapped[list["Client"]] = relationship("Client", back_populates="commercial", foreign_keys="Client.commercial_id", lazy="selectin")
+    client: Mapped["Client | None"] = relationship("Client", back_populates="utilisateur", foreign_keys=[client_id], lazy="selectin", uselist=False)
     incidents: Mapped[list["Incident"]] = relationship("Incident", back_populates="declare_par_user", lazy="selectin")
     depenses_validees: Mapped[list["Depense"]] = relationship("Depense", back_populates="valide_par", lazy="selectin")
 

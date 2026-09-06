@@ -47,6 +47,7 @@ ALL_PERMISSIONS: Final[list[str]] = [
     # Permissions fines pour les workflows terrain et abonnement
     "pointage:write", "taches:write", "consommation:write",
     "subscriptions:read", "subscriptions:write",
+    "espace_client:read", "espace_client:write",
     "super_admin:read", "super_admin:write",
 ]
 
@@ -150,7 +151,8 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
     ],
     Role.CLIENT: [
         "dashboard:read",
-        "commercial:read",
-        "chantiers:read",
+        # Espace Client : uniquement les donnees de sa propre fiche (router dedie).
+        # PAS d'acces commercial:read / chantiers:read (donnees internes de l'entreprise).
+        "espace_client:read", "espace_client:write",
     ],
 }

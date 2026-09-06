@@ -15,6 +15,7 @@ from app.models.contrat import Contrat
 from app.models.demande_travaux import DemandeTravaux
 from app.models.depense import Depense
 from app.models.devis import Devis
+from app.models.document import Document
 from app.models.employe import Employe
 from app.models.entreprise import Entreprise
 from app.models.equipe import Equipe
@@ -31,6 +32,7 @@ from app.models.materiel import Materiel
 from app.models.membre_equipe import MembreEquipe
 from app.models.metre import Metre
 from app.models.mouvement_stock import MouvementStock
+from app.models.notification import Notification
 from app.models.paiement import Paiement
 from app.models.phase import Phase
 from app.models.plan import Plan
@@ -60,6 +62,7 @@ __all__ = [
     "DemandeTravaux",
     "Depense",
     "Devis",
+    "Document",
     "Employe",
     "Entreprise",
     "Equipe",
@@ -77,6 +80,7 @@ __all__ = [
     "MembreEquipe",
     "Metre",
     "MouvementStock",
+    "Notification",
     "Paiement",
     "Phase",
     "Plan",

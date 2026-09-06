@@ -50,6 +50,7 @@ from app.schemas.situation_travaux import SituationTravauxCreate, SituationTrava
 from app.security import CurrentUserPayload, DbDep
 from app.security import hash_password, generate_temp_password
 from app.models.utilisateur import Utilisateur
+from app.models.role import Role
 from app.crud.avenant import AvenantCRUD
 from app.crud.demande_travaux import demande_travaux_crud
 from app.crud.projet import projet_crud
@@ -162,6 +163,9 @@ async def create_client(
     try:
         if client and client.email:
             temp_pwd = generate_temp_password()
+            role_client = (await db.execute(
+                select(Role).where(Role.code == "client")
+            )).scalar_one_or_none()
             user_obj = {
                 "entreprise_id": entreprise_id,
                 "email": client.email,
@@ -169,6 +173,8 @@ async def create_client(
                 "prenom": client.prenom or "",
                 "mot_de_passe_hash": hash_password(temp_pwd),
                 "must_change_password": True,
+                "role_id": role_client.id if role_client else None,
+                "client_id": client.id,
             }
             user = Utilisateur(**user_obj)
             db.add(user)

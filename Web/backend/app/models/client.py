@@ -49,7 +49,8 @@ class Client(Base):
     )
 
     entreprise_rel: Mapped["Entreprise"] = relationship("Entreprise", back_populates="clients", lazy="selectin")
-    commercial: Mapped["Utilisateur | None"] = relationship("Utilisateur", back_populates="clients", lazy="selectin")
+    commercial: Mapped["Utilisateur | None"] = relationship("Utilisateur", back_populates="clients", foreign_keys=[commercial_id], lazy="selectin")
+    utilisateur: Mapped["Utilisateur | None"] = relationship("Utilisateur", back_populates="client", foreign_keys="Utilisateur.client_id", lazy="selectin", uselist=False)
     adresses: Mapped[list["ClientAdresse"]] = relationship("ClientAdresse", back_populates="client", lazy="selectin")
     demandes: Mapped[list["DemandeTravaux"]] = relationship("DemandeTravaux", back_populates="client", lazy="selectin")
     devis: Mapped[list["Devis"]] = relationship("Devis", back_populates="client", lazy="selectin")

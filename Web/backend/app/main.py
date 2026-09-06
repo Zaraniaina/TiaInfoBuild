@@ -1,13 +1,28 @@
 """TIA INFO BUILD - Backend FastAPI
 Point d'entrée principal: application, routers, middleware, CORS.
 """
+from datetime import datetime, date
+from decimal import Decimal
+
 import fastapi.encoders as _encoders
 
 # Patch : évite la récursion infinie de jsonable_encoder sur les objets SQLAlchemy
 # (relations circulaires ex: Utilisateur.role <-> Role.utilisateurs).
 # On ne sérialise que les colonnes, pas les relations.
+# On convertit datetime/date/Decimal en types JSON-sérialisables.
 # On patche AUSSI les modules qui ont déjà importé jsonable_encoder avant nous.
 _original_jsonable_encoder = _encoders.jsonable_encoder
+
+
+def _valeur_json(v):
+    """Convertit une valeur en type JSON-sérialisable."""
+    if isinstance(v, datetime):
+        return v.isoformat()
+    if isinstance(v, date):
+        return v.isoformat()
+    if isinstance(v, Decimal):
+        return float(v)
+    return v
 
 
 def _safe_jsonable_encoder(obj, **kwargs):
@@ -22,13 +37,15 @@ def _safe_jsonable_encoder(obj, **kwargs):
             return str(obj)  # référence circulaire -> représentation textuelle
         seen.add(obj_id)
         try:
-            return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
+            return {c.name: _valeur_json(getattr(obj, c.name)) for c in obj.__table__.columns}
         except Exception:
             return str(obj)
     if isinstance(obj, dict):
         return {k: _safe_jsonable_encoder(v, _seen=seen) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
         return [_safe_jsonable_encoder(item, _seen=seen) for item in obj]
+    if isinstance(obj, (datetime, date, Decimal)):
+        return _valeur_json(obj)
     return _original_jsonable_encoder(obj, **kwargs)
 
 
@@ -146,7 +163,7 @@ async def root():
 
 
 # Inclusion des routers
-from app.routers import auth, super_admin, chantiers, rh, stocks, commercial, finance, materiels, alertes, dashboard, parametres, sync, utilisateurs, preferences, subscriptions
+from app.routers import auth, super_admin, chantiers, rh, stocks, commercial, finance, materiels, alertes, dashboard, parametres, sync, utilisateurs, preferences, subscriptions, espace_client
 
 api_prefix = "/api"
 
@@ -165,6 +182,7 @@ app.include_router(parametres.router, prefix=f"{api_prefix}/parametres", tags=["
 app.include_router(preferences.router, prefix=f"{api_prefix}/preferences", tags=["preferences"])
 app.include_router(sync.router, prefix=f"{api_prefix}/sync", tags=["sync"])
 app.include_router(subscriptions.router, prefix=f"{api_prefix}/subscriptions", tags=["subscriptions"])
+app.include_router(espace_client.router, prefix=f"{api_prefix}/espace-client", tags=["espace-client"])
 
 
 # --- Handlers d'exceptions globaux ---

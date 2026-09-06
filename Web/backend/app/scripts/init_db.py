@@ -213,6 +213,12 @@ async def seed():
             client_id = result.fetchone()[0]
             print(f"      Fiche client demo creee (ID {client_id}, client@btppro.mg)")
 
+        # Lier le compte utilisateur client@btppro.mg a sa fiche client (Espace Client)
+        await db.execute(text(
+            "UPDATE utilisateurs u JOIN clients c ON c.email = u.email "
+            "SET u.client_id = c.id WHERE u.email = 'client@btppro.mg' AND u.client_id IS NULL"
+        ))
+
         if client_id:
             # Vérifier si des demandes existent déjà
             result = await db.execute(text("SELECT COUNT(*) FROM demandes_travaux WHERE entreprise_id = :eid"), {"eid": entreprise_id})
