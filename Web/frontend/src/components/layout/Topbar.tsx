@@ -214,7 +214,7 @@ export function Topbar() {
   }
 
   const cycleTheme = async () => {
-    const next = theme === 'light' ? 'dark' : theme === 'dark' ? 'auto' : 'light'
+    const next = theme === 'light' ? 'dark' : 'light'
     setTheme(next)
     try {
       await settingsService.updatePreferences({ theme: next })
@@ -223,8 +223,8 @@ export function Topbar() {
     }
   }
 
-  const themeIcon = theme === 'light' ? 'bi-sun' : theme === 'dark' ? 'bi-moon' : 'bi-laptop'
-  const themeLabel = theme === 'light' ? 'Thème clair' : theme === 'dark' ? 'Thème sombre' : 'Thème auto (système)'
+  const themeIcon = theme === 'light' ? 'bi-sun' : 'bi-moon'
+  const themeLabel = theme === 'light' ? 'Thème clair' : 'Thème sombre'
 
   return (
     <header className="topbar">

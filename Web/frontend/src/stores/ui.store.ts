@@ -3,19 +3,19 @@ import { settingsService } from '@/services/settings.service';
 
 interface UIState {
   sidebarOpen: boolean;
-  theme: 'light' | 'dark' | 'auto';
+  theme: 'light' | 'dark';
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
-  setTheme: (theme: 'light' | 'dark' | 'auto') => void;
+  setTheme: (theme: 'light' | 'dark') => void;
   hydrateThemeFromBackend: () => Promise<void>;
 }
 
-const getInitialTheme = (): 'light' | 'dark' | 'auto' => {
+const getInitialTheme = (): 'light' | 'dark' => {
   if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('tia-theme') as 'light' | 'dark' | 'auto' | null;
-    if (stored) return stored;
+    const stored = localStorage.getItem('tia-theme');
+    if (stored === 'light' || stored === 'dark') return stored;
   }
-  return 'auto';
+  return 'light';
 };
 
 export const useUIStore = create<UIState>((set) => ({
@@ -30,9 +30,9 @@ export const useUIStore = create<UIState>((set) => ({
   hydrateThemeFromBackend: async () => {
     try {
       const data = await settingsService.getPreferences();
-      if (data?.theme && ['light', 'dark', 'auto'].includes(data.theme)) {
+      if (data?.theme && ['light', 'dark'].includes(data.theme)) {
         localStorage.setItem('tia-theme', data.theme);
-        set({ theme: data.theme as 'light' | 'dark' | 'auto' });
+        set({ theme: data.theme as 'light' | 'dark' });
       }
     } catch {
       // keep local value
