@@ -147,7 +147,7 @@ export function PricingPage() {
                 <div className={`card border-0 shadow-sm h-100 position-relative ${isPro ? 'border-primary border-2' : ''}`}>
                   {isPro && (
                     <div className="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary">
-                      ⭐ Plus populaire
+                      <i className="bi bi-star-fill"></i> Plus populaire
                     </div>
                   )}
                   <div className="card-body d-flex flex-column p-4">

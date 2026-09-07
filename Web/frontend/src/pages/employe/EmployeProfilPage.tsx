@@ -53,7 +53,7 @@ export function EmployeProfilPage() {
               <div className="col-md-6"><label className="text-muted small">Email</label><div className="fw-semibold">{profil.email}</div></div>
               <div className="col-md-6"><label className="text-muted small">Téléphone</label><div className="fw-semibold">{profil.telephone || '-'}</div></div>
               {profil.date_embauche && <div className="col-md-6"><label className="text-muted small">Date d'embauche</label><div className="fw-semibold">{profil.date_embauche}</div></div>}
-              <div className="col-12"><button className="btn btn-primary btn-sm" onClick={() => setEdit(true)}>✏️ Modifier</button></div>
+              <div className="col-12"><button className="btn btn-primary btn-sm" onClick={() => setEdit(true)}><i className="bi bi-pencil"></i> Modifier</button></div>
             </div>
           ) : (
             <form onSubmit={sauvegarder}>
@@ -63,7 +63,7 @@ export function EmployeProfilPage() {
                 <div className="col-md-6"><label className="form-label small">Email</label><input type="email" className="form-control form-control-sm" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
                 <div className="col-md-6"><label className="form-label small">Téléphone</label><input className="form-control form-control-sm" value={telephone} onChange={(e) => setTelephone(e.target.value)} /></div>
                 <div className="col-12 d-flex gap-2">
-                  <button type="submit" className="btn btn-success btn-sm" disabled={saving}>{saving ? 'Enregistrement...' : '💾 Enregistrer'}</button>
+                  <button type="submit" className="btn btn-success btn-sm" disabled={saving}>{saving ? 'Enregistrement...' : 'Enregistrer'}</button>
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEdit(false)}>Annuler</button>
                 </div>
               </div>
@@ -75,7 +75,7 @@ export function EmployeProfilPage() {
       {/* Badge QR */}
       <div className="card border-0 shadow-sm mt-3">
         <div className="card-body">
-          <h6>🎫 Mon badge QR</h6>
+          <h6><i className="bi bi-person-badge"></i> Mon badge QR</h6>
           {profil.badge_qr ? (
             <div className="text-center">
               <div className="border rounded p-3 d-inline-block bg-white">
@@ -84,7 +84,7 @@ export function EmployeProfilPage() {
                 <div className="text-muted small">{profil.matricule}</div>
                 <div className="text-muted small">{profil.poste}</div>
                 <div className="mt-2" style={{ width: 120, height: 120, margin: '0 auto', background: '#f8f9fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem' }}>
-                  📱
+                  <i className="bi bi-qr-code"></i>
                 </div>
                 <div className="small text-muted mt-1">QR: {profil.badge_qr}</div>
               </div>

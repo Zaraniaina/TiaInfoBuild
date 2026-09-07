@@ -35,9 +35,9 @@ export function EmployePresencePage() {
 
       <div className="d-flex gap-2 mb-3 flex-wrap">
         <button className="btn btn-success" onClick={() => pointer('entree')}>🟢 Entrée</button>
-        <button className="btn btn-warning" onClick={() => pointer('debut_pause')}>☕ Début pause</button>
+        <button className="btn btn-warning" onClick={() => pointer('debut_pause')}><i className="bi bi-pause-fill"></i> Debut pause</button>
         <button className="btn btn-info" onClick={() => pointer('fin_pause')}><i className="bi bi-play-fill"></i> Fin pause</button>
-        <button className="btn btn-danger" onClick={() => pointer('sortie')}>🔴 Sortie</button>
+        <button className="btn btn-danger" onClick={() => pointer('sortie')}><i className="bi bi-stop-circle"></i> Sortie</button>
       </div>
 
       {presences.length === 0 ? <div className="text-muted">Aucun enregistrement aujourd'hui</div> : (

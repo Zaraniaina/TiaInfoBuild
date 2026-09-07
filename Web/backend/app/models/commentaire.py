@@ -26,5 +26,5 @@ class Commentaire(Base):
         Index("idx_commentaires_objet", "objet_type", "objet_id"),
     )
 
-    employe: Mapped["Employe | None"] = relationship("Employe", back_populates="commentaires", lazy="selectin")
-    chantier: Mapped["Chantier | None"] = relationship("Chantier", back_populates="commentaires", lazy="selectin")
+    employe: Mapped["Employe | None"] = relationship("Employe", back_populates="commentaires")
+    chantier: Mapped["Chantier | None"] = relationship("Chantier", back_populates="commentaires")

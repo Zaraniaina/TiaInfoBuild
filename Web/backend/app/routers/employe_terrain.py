@@ -638,7 +638,7 @@ async def get_mes_pointages(payload: CurrentUserPayload, db: DbDep):
         select(Pointage).where(
             Pointage.employe_id == eid,
             Pointage.is_deleted == False,
-        ).order_by(Pointage.date.desc(), Pointage.heure.desc())
+        ).order_by(Pointage.date_jour.desc(), Pointage.heure_debut.desc())
     )).scalars().all()
     return {"items": pointages}
 

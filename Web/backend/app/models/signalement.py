@@ -29,5 +29,5 @@ class Signalement(Base):
         Index("idx_signalements_chantier_id", "chantier_id"),
     )
 
-    employe: Mapped["Employe | None"] = relationship("Employe", back_populates="signalements", lazy="selectin")
-    chantier: Mapped["Chantier | None"] = relationship("Chantier", back_populates="signalements", lazy="selectin")
+    employe: Mapped["Employe | None"] = relationship("Employe", back_populates="signalements")
+    chantier: Mapped["Chantier | None"] = relationship("Chantier", back_populates="signalements")

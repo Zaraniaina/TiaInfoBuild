@@ -48,9 +48,9 @@ class Employe(Base):
     historique_postes: Mapped[list["HistoriquePoste"]] = relationship("HistoriquePoste", back_populates="employe", lazy="selectin")
 
     # Espace terrain : taches, travaux, rapports, photos, signalements, commentaires
-    taches: Mapped[list["Tache"]] = relationship("Tache", back_populates="employe", lazy="selectin")
-    travaux_realises: Mapped[list["TravailRealise"]] = relationship("TravailRealise", back_populates="employe", lazy="selectin")
-    rapports_journaliers: Mapped[list["RapportJournalier"]] = relationship("RapportJournalier", back_populates="employe", lazy="selectin")
-    photos: Mapped[list["PhotoChantier"]] = relationship("PhotoChantier", back_populates="employe", lazy="selectin")
-    signalements: Mapped[list["Signalement"]] = relationship("Signalement", back_populates="employe", lazy="selectin")
-    commentaires: Mapped[list["Commentaire"]] = relationship("Commentaire", back_populates="employe", lazy="selectin")
+    taches: Mapped[list["Tache"]] = relationship("Tache", back_populates="employe")
+    travaux_realises: Mapped[list["TravailRealise"]] = relationship("TravailRealise", back_populates="employe")
+    rapports_journaliers: Mapped[list["RapportJournalier"]] = relationship("RapportJournalier", back_populates="employe")
+    photos: Mapped[list["PhotoChantier"]] = relationship("PhotoChantier", back_populates="employe")
+    signalements: Mapped[list["Signalement"]] = relationship("Signalement", back_populates="employe")
+    commentaires: Mapped[list["Commentaire"]] = relationship("Commentaire", back_populates="employe")

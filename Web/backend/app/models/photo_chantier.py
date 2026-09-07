@@ -28,5 +28,5 @@ class PhotoChantier(Base):
         Index("idx_photos_chantier_chantier_id", "chantier_id"),
     )
 
-    employe: Mapped["Employe | None"] = relationship("Employe", back_populates="photos", lazy="selectin")
-    chantier: Mapped["Chantier | None"] = relationship("Chantier", back_populates="photos", lazy="selectin")
+    employe: Mapped["Employe | None"] = relationship("Employe", back_populates="photos")
+    chantier: Mapped["Chantier | None"] = relationship("Chantier", back_populates="photos")

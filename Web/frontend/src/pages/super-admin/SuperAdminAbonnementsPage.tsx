@@ -136,7 +136,7 @@ export function SuperAdminAbonnementsPage() {
               <div key={plan.id} className="col-md-6 col-lg-4">
                 <div className={`card border-0 shadow-sm h-100 ${plan.code === 'pro' ? 'border-primary border-2' : ''}`}>
                   {plan.code === 'pro' && (
-                    <div className="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary">⭐ Plus populaire</div>
+                    <div className="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary"><i className="bi bi-star-fill"></i> Plus populaire</div>
                   )}
                   <div className="card-body d-flex flex-column">
                     <div className="d-flex justify-content-between align-items-start mb-2">

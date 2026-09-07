@@ -33,5 +33,5 @@ class RapportJournalier(Base):
         Index("idx_rapports_journaliers_chantier_id", "chantier_id"),
     )
 
-    employe: Mapped["Employe | None"] = relationship("Employe", back_populates="rapports_journaliers", lazy="selectin")
-    chantier: Mapped["Chantier | None"] = relationship("Chantier", back_populates="rapports_journaliers", lazy="selectin")
+    employe: Mapped["Employe | None"] = relationship("Employe", back_populates="rapports_journaliers")
+    chantier: Mapped["Chantier | None"] = relationship("Chantier", back_populates="rapports_journaliers")

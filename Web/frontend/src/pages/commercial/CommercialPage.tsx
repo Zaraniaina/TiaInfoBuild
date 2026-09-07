@@ -724,7 +724,7 @@ export function CommercialPage() {
                     <td className="font-monospace fw-bold text-dark">{ctr.reference}</td>
                     <td>{ctr.objet}</td>
                      <td className="font-monospace fw-bold text-secondary">{ctr.montant?.toLocaleString()} MGA</td>
-                     <td className="small text-muted">{ctr.date_debut} → {ctr.date_fin}</td>
+                     <td className="small text-muted">{ctr.date_debut} <i className="bi bi-arrow-right"></i> {ctr.date_fin}</td>
                      <td><span className="badge bg-success bg-opacity-10 text-success border">{ctr.statut}</span></td>
                   </tr>
                 ))}

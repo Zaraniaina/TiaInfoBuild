@@ -329,7 +329,7 @@ export function ChantiersPage() {
                     <td className="fw-bold text-secondary">{c.id}</td>
                     <td className="fw-semibold text-dark">{c.nom}</td>
                     <td className="font-monospace small">{c.numero}</td>
-                    <td className="font-monospace small text-muted">{c.date_debut || '—'} → {c.date_fin_prevue || '—'}</td>
+                    <td className="font-monospace small text-muted">{c.date_debut || '-'} <i className="bi bi-arrow-right"></i> {c.date_fin_prevue || '-'}</td>
                     <td className="d-none d-lg-table-cell">{c.budget_prevu?.toLocaleString()} MGA</td>
                     <td className="d-none d-lg-table-cell text-secondary fw-semibold">{c.budget_reel?.toLocaleString()} MGA</td>
                     <td>{getStatutBadge(c.statut)}</td>

@@ -31,6 +31,6 @@ class TravailRealise(Base):
         Index("idx_travaux_realises_chantier_id", "chantier_id"),
     )
 
-    employe: Mapped["Employe | None"] = relationship("Employe", back_populates="travaux_realises", lazy="selectin")
-    chantier: Mapped["Chantier | None"] = relationship("Chantier", back_populates="travaux_realises", lazy="selectin")
-    tache: Mapped["Tache | None"] = relationship("Tache", back_populates="travaux_realises", lazy="selectin")
+    employe: Mapped["Employe | None"] = relationship("Employe", back_populates="travaux_realises")
+    chantier: Mapped["Chantier | None"] = relationship("Chantier", back_populates="travaux_realises")
+    tache: Mapped["Tache | None"] = relationship("Tache", back_populates="travaux_realises")

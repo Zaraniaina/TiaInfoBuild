@@ -30,14 +30,14 @@ export function EmployeBadgePage() {
 
   return (
     <div className="container-fluid py-3">
-      <h5 className="mb-3">🎫 Mon Badge QR</h5>
+      <h5 className="mb-3"><i className="bi bi-person-badge"></i> Mon Badge QR</h5>
 
       <div className="card border-0 shadow-sm mb-3">
         <div className="card-body text-center">
           <div className="bg-white border rounded p-3 d-inline-block mb-3">
             <div style={{ width: 120, height: 120, background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>
               <div className="text-center">
-                <div style={{ fontSize: 32 }}>📱</div>
+                <div style={{ fontSize: 32 }}><i className="bi bi-qr-code"></i></div>
                 <div>QR Code</div>
                 <div className="text-muted">{badge.code_qr}</div>
               </div>
