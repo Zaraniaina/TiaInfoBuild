@@ -552,10 +552,10 @@ export function SettingsPage() {
                       </span>
                     </td>
                     <td className="d-none d-md-table-cell text-muted">
-                      {u.telephone || "—"}
+                      {u.telephone || "-"}
                     </td>
                     <td className="text-muted">
-                      {u.derniere_connexion || "—"}
+                      {u.derniere_connexion || "-"}
                     </td>
                     <td className="text-end">
                       <div className="d-flex gap-1 justify-content-end">
@@ -764,7 +764,7 @@ export function SettingsPage() {
                   }
                 >
                   <option value="MGA">MGA (Ariary)</option>
-                  <option value="EUR">EUR (€)</option>
+                  <option value="EUR">EUR</option>
                   <option value="USD">USD ($)</option>
                 </select>
               </div>
@@ -901,7 +901,7 @@ export function SettingsPage() {
                     <td className="font-monospace">
                       {l.ip_address || "127.0.0.1"}
                     </td>
-                    <td className="small text-muted">{l.user_agent || "—"}</td>
+                    <td className="small text-muted">{l.user_agent || "-"}</td>
                     <td>
                       <span
                         className={`badge ${l.reussi ? "bg-success bg-opacity-10 text-success border" : "bg-danger bg-opacity-10 text-danger border"}`}

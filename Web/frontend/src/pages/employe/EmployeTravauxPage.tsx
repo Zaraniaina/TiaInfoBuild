@@ -52,7 +52,7 @@ export function EmployeTravauxPage() {
               <div className="col-md-3"><input className="form-control form-control-sm" placeholder="Ouvrage" value={ouvrage} onChange={(e) => setOuvrage(e.target.value)} /></div>
               <div className="col-md-3"><input className="form-control form-control-sm" placeholder="Travail réalisé" value={travail} onChange={(e) => setTravail(e.target.value)} required /></div>
               <div className="col-md-2"><input type="number" className="form-control form-control-sm" placeholder="Quantité" value={quantite || ''} onChange={(e) => setQuantite(+e.target.value)} /></div>
-              <div className="col-md-2"><input className="form-control form-control-sm" placeholder="Unité (m³, h, ...)" value={unite} onChange={(e) => setUnite(e.target.value)} /></div>
+              <div className="col-md-2"><input className="form-control form-control-sm" placeholder="Unité (m3, h, ...)" value={unite} onChange={(e) => setUnite(e.target.value)} /></div>
               <div className="col-md-2"><input type="number" step="0.5" className="form-control form-control-sm" placeholder="Durée (h)" value={duree || ''} onChange={(e) => setDuree(+e.target.value)} /></div>
               <div className="col-12"><textarea className="form-control form-control-sm" placeholder="Observations" value={observations} onChange={(e) => setObservations(e.target.value)} rows={2} /></div>
               <div className="col-12"><button type="submit" className="btn btn-primary btn-sm">Enregistrer</button></div>

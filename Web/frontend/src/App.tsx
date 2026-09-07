@@ -1,4 +1,4 @@
-﻿import { useEffect, lazy, Suspense } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { scheduleTokenRefresh, cancelTokenRefresh } from '@/services/api'

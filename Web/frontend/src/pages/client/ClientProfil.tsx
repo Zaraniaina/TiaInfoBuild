@@ -1,4 +1,4 @@
-﻿import { espaceClientService, ProfilData } from '@/services/espaceClient.service'
+import { espaceClientService, ProfilData } from '@/services/espaceClient.service'
 import { PageHeader, EtatChargement } from './shared'
 import { useEffect, useState } from 'react'
 

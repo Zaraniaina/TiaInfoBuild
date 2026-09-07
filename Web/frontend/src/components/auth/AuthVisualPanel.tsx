@@ -21,7 +21,7 @@ export function AuthVisualPanel({
   eyebrow = 'Pilotage BTP',
   stats = [],
   highlightedWord,
-  copyright = '© 2026 TIA INFO BUILD — Madagascar',
+  copyright = '(c) 2026 TIA INFO BUILD - Madagascar',
 }: AuthVisualPanelProps) {
   const [mousePos, setMousePos] = useState({ x: -500, y: -500 })
   const panelRef = useRef<HTMLDivElement>(null)

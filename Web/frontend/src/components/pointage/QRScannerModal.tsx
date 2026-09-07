@@ -161,7 +161,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                      </div>
                      <div>
                        <div className="fw-bold" style={{ color: 'var(--tia-text-primary)' }}>{String(lastScanned.employe.prenom || '')} {String(lastScanned.employe.nom || '')}</div>
-                       <small className="text-muted" style={{ fontSize: '0.75rem' }}>{String(lastScanned.employe.poste || '')} — Mat: {String(lastScanned.employe.matricule || 'N/A')}</small>
+                       <small className="text-muted" style={{ fontSize: '0.75rem' }}>{String(lastScanned.employe.poste || '')} - Mat: {String(lastScanned.employe.matricule || 'N/A')}</small>
                      </div>
                    </div>
                    <span className={`badge ${lastScanned.status === 'entree_enregistree' ? 'bg-success' : 'bg-warning text-dark'}`}>

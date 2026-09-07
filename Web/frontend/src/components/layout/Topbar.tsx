@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUIStore } from '@/stores/ui.store'
@@ -251,7 +251,7 @@ export function Topbar() {
           <span className="theme-indicator" aria-hidden="true"></span>
         </button>
 
-        {/* Notifications — dropdown React */}
+        {/* Notifications - dropdown React */}
         {canViewAlertes && (
         <div className="topbar-notifications" ref={notifMenuRef} style={{ position: 'relative' }}>
           <button
@@ -282,7 +282,7 @@ export function Topbar() {
         </div>
         )}
 
-        {/* Menu utilisateur — dropdown React */}
+        {/* Menu utilisateur - dropdown React */}
         <div className="topbar-user" ref={userMenuRef} style={{ position: 'relative' }}>
           <button
             className="btn btn-link user-btn"

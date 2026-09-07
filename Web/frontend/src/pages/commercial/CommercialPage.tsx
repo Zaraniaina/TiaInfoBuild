@@ -550,7 +550,7 @@ export function CommercialPage() {
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
-                  <th>N° Devis</th>
+                  <th>No Devis</th>
                   <th>Client</th>
                   <th>Objet</th>
                   <th>Montant HT</th>
@@ -642,7 +642,7 @@ export function CommercialPage() {
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
-                  <th>N° Facture</th>
+                  <th>No Facture</th>
                   <th>Client</th>
                   <th>Montant HT</th>
                   <th>TVA</th>
@@ -697,8 +697,8 @@ export function CommercialPage() {
                        <span className="badge bg-primary bg-opacity-10 text-primary border">Client BTP</span>
                     </div>
                     <p className="text-muted small mb-1"><i className="bi bi-person me-2"></i>Contact: {c.nom} {c.prenom}</p>
-                    <p className="text-muted small mb-1"><i className="bi bi-envelope me-2"></i>{c.email || '—'}</p>
-                    <p className="text-muted small mb-0"><i className="bi bi-telephone me-2"></i>{c.telephone || '—'}</p>
+                    <p className="text-muted small mb-1"><i className="bi bi-envelope me-2"></i>{c.email || '-'}</p>
+                    <p className="text-muted small mb-0"><i className="bi bi-telephone me-2"></i>{c.telephone || '-'}</p>
                   </div>
                 </div>
               </div>
@@ -738,7 +738,7 @@ export function CommercialPage() {
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
-                  <th>N° Chantier</th>
+                  <th>No Chantier</th>
                   <th>Nom</th>
                   <th>Client</th>
                   <th>Statut</th>
@@ -753,7 +753,7 @@ export function CommercialPage() {
                   <tr key={c.id}>
                     <td className="font-monospace fw-bold text-dark">{c.numero}</td>
                     <td className="fw-semibold">{c.nom}</td>
-                    <td>{c.client_id ? `Client #${c.client_id}` : '—'}</td>
+                    <td>{c.client_id ? `Client #${c.client_id}` : '-'}</td>
                     <td>
                       <span className={`badge ${c.statut === 'en_cours' ? 'bg-success bg-opacity-10 text-success border' : c.statut === 'termine' ? 'bg-light text-dark border' : 'bg-warning bg-opacity-10 text-dark border'}`}>
                         {c.statut}
@@ -761,8 +761,8 @@ export function CommercialPage() {
                     </td>
                     <td className="font-monospace">{c.budget_prevu?.toLocaleString()} MGA</td>
                     <td className="font-monospace text-secondary">{c.budget_reel?.toLocaleString()} MGA</td>
-                    <td className="small text-muted">{c.date_debut || '—'}</td>
-                    <td className="small text-muted">{c.date_fin_prevue || '—'}</td>
+                    <td className="small text-muted">{c.date_debut || '-'}</td>
+                    <td className="small text-muted">{c.date_fin_prevue || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -775,7 +775,7 @@ export function CommercialPage() {
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
-                  <th>N° Avenant</th>
+                  <th>No Avenant</th>
                   <th>Contrat</th>
                   <th>Description</th>
                   <th>Impact Montant</th>
@@ -788,9 +788,9 @@ export function CommercialPage() {
                   <tr key={a.id}>
                     <td className="font-monospace fw-bold text-dark">{a.numero}</td>
                     <td className="fw-semibold">Contrat #{a.contrat_id}</td>
-                    <td>{a.description || '—'}</td>
+                    <td>{a.description || '-'}</td>
                     <td className="font-monospace">{a.impact_montant?.toLocaleString()} MGA</td>
-                    <td className="small text-muted">{a.date_signature || '—'}</td>
+                    <td className="small text-muted">{a.date_signature || '-'}</td>
                     <td>
                       <span className={`badge ${a.statut === 'signe' ? 'bg-success bg-opacity-10 text-success border' : 'bg-warning bg-opacity-10 text-dark border'}`}>
                         {a.statut}
@@ -830,7 +830,7 @@ export function CommercialPage() {
                     <td>{p.date_paiement}</td>
                     <td className="font-monospace fw-bold text-secondary">+{p.montant?.toLocaleString()} MGA</td>
                     <td><span className="badge bg-light text-dark border">{p.mode_paiement}</span></td>
-                    <td className="font-monospace small text-muted">{p.reference || '—'}</td>
+                    <td className="font-monospace small text-muted">{p.reference || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -917,7 +917,7 @@ export function CommercialPage() {
                                 <td>
                                   <select className="form-select form-select-sm" value={l.categorie || 'materiaux'} onChange={e => updateLineField(idx, 'categorie', e.target.value)}>
                                     <option value="materiaux">Matériaux</option>
-                                    <option value="main-d_œuvre">Main-d'œuvre</option>
+                                    <option value="main-d_oeuvre">Main-d'oeuvre</option>
                                     <option value="materiel_et_engins">Matériel et engins</option>
                                     <option value="prestations">Prestations</option>
                                     <option value="sous_traitance">Sous-traitance</option>
@@ -987,7 +987,7 @@ export function CommercialPage() {
                     <div className="col-12 col-sm-6">
                       <label className="form-label fw-semibold">Civilité</label>
                       <select className="form-select" value={clientForm.civilite || ''} onChange={e => setClientForm({ ...clientForm, civilite: e.target.value })}>
-                        <option value="">—</option>
+                        <option value="">-</option>
                         <option value="M">M.</option>
                         <option value="Mme">Mme</option>
                         <option value="Mx">Mx</option>
@@ -1010,7 +1010,7 @@ export function CommercialPage() {
                       <input type="text" className="form-control" value={clientForm.siret || ''} onChange={e => setClientForm({ ...clientForm, siret: e.target.value })} />
                     </div>
                     <div className="col-12 col-sm-6">
-                      <label className="form-label fw-semibold">N° TVA</label>
+                      <label className="form-label fw-semibold">No TVA</label>
                       <input type="text" className="form-control" value={clientForm.numero_tva || ''} onChange={e => setClientForm({ ...clientForm, numero_tva: e.target.value })} />
                     </div>
                     <div className="col-12">
@@ -1125,7 +1125,7 @@ export function CommercialPage() {
                                 <td>
                                   <select className="form-select form-select-sm" value={l.categorie || 'materiaux'} onChange={e => updateFactureLineField(idx, 'categorie', e.target.value)}>
                                     <option value="materiaux">Matériaux</option>
-                                    <option value="main-d_œuvre">Main-d'œuvre</option>
+                                    <option value="main-d_oeuvre">Main-d'oeuvre</option>
                                     <option value="materiel_et_engins">Matériel et engins</option>
                                     <option value="prestations">Prestations</option>
                                     <option value="sous_traitance">Sous-traitance</option>
@@ -1193,7 +1193,7 @@ export function CommercialPage() {
                           const ttc = f.montant_ttc || 0
                           const reste = (ttc - paye)
                           return (
-                            <option key={f.id} value={f.id}>{f.numero} — Reste: {reste.toLocaleString()} MGA</option>
+                            <option key={f.id} value={f.id}>{f.numero} - Reste: {reste.toLocaleString()} MGA</option>
                           )
                         })}
                       </select>
@@ -1338,7 +1338,7 @@ export function CommercialPage() {
                     </select>
                   </div>
                   <div className="col-12">
-                    <label className="form-label fw-semibold">N° Avenant *</label>
+                    <label className="form-label fw-semibold">No Avenant *</label>
                     <input type="text" className="form-control font-monospace" required value={avenantForm.numero || ''} onChange={e => setAvenantForm({ ...avenantForm, numero: e.target.value })} />
                   </div>
                     <div className="col-12">

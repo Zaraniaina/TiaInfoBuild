@@ -42,7 +42,7 @@ export function EmployeTachesPage() {
                   {t.ouvrage && <span className="text-muted ms-2 small">({t.ouvrage})</span>}
                   <div className="text-muted small">
                     {t.date_prevue && `Prévue : ${t.date_prevue}`}
-                    {t.chantier_id && ` — Chantier #${t.chantier_id}`}
+                    {t.chantier_id && ` - Chantier #${t.chantier_id}`}
                   </div>
                   {t.description && <div className="small mt-1 text-secondary">{t.description}</div>}
                 </div>

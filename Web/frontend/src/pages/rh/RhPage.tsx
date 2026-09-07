@@ -251,7 +251,7 @@ export function RhPage() {
                         <td>{emp.poste}</td>
                         <td className="d-none d-md-table-cell"><span className="badge bg-light text-dark border">{emp.type_contrat}</span></td>
                         <td className="d-none d-lg-table-cell fw-bold">{emp.salaire_base?.toLocaleString()} MGA</td>
-                        <td className="d-none d-lg-table-cell small">{emp.date_embauche || '—'}</td>
+                        <td className="d-none d-lg-table-cell small">{emp.date_embauche || '-'}</td>
                         <td>
                           <span className={`badge ${emp.statut === 'actif' ? 'badge-actif' : 'badge-inactif'}`}>
                             {emp.statut}
@@ -314,7 +314,7 @@ export function RhPage() {
                     <tr key={pt.id}>
                       <td className="fw-semibold">
                         <div>Employé #{pt.employe_id}</div>
-                        <small className="text-muted">Chantier #1 — Anosy</small>
+                        <small className="text-muted">Chantier #1 - Anosy</small>
                       </td>
                       <td>
                            <span className="badge bg-light text-dark border">
@@ -346,7 +346,7 @@ export function RhPage() {
                     <h5 className="fw-bold mb-0 text-dark">{eq.nom}</h5>
                     <span className="badge bg-success bg-opacity-10 text-success">Active</span>
                   </div>
-                  <p className="text-muted small mb-0"><i className="bi bi-person-badge me-2"></i>Chef d'équipe ID: {eq.chef_equipe_id || '—'}</p>
+                  <p className="text-muted small mb-0"><i className="bi bi-person-badge me-2"></i>Chef d'équipe ID: {eq.chef_equipe_id || '-'}</p>
                 </div>
               </div>
             </div>
@@ -374,7 +374,7 @@ export function RhPage() {
                     <td>{hs.date_hs}</td>
                       <td><span className="badge bg-light text-dark border font-monospace">{hs.nb_heures}h</span></td>
                       <td>+{hs.taux_majoration}%</td>
-                      <td>{hs.motif || '—'}</td>
+                      <td>{hs.motif || '-'}</td>
                       <td>
                         <span className={`badge ${hs.statut === 'validee' ? 'bg-success bg-opacity-10 text-success border' : hs.statut === 'refusee' ? 'bg-danger bg-opacity-10 text-danger border' : 'bg-warning bg-opacity-10 text-dark border'}`}>
                           {hs.statut}
@@ -462,7 +462,7 @@ export function RhPage() {
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title fw-bold">Changement de Poste — {selectedEmploye.nom} {selectedEmploye.prenom}</h5>
+                <h5 className="modal-title fw-bold">Changement de Poste - {selectedEmploye.nom} {selectedEmploye.prenom}</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowChangementPosteModal(false)}></button>
               </div>
               <form onSubmit={handleChangePosteSubmit}>

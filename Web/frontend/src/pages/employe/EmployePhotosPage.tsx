@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { employeTerrainService } from '@/services/employeTerrain.service'
 import type { PhotoChantier } from '@/types'
 
@@ -38,7 +38,7 @@ export function EmployePhotosPage() {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h5 className="mb-0"> Mes photos</h5>
         <button className="btn btn-success btn-sm" onClick={() => setShowForm(!showForm)}>
-          {showForm ? 'âœ• Fermer' : '+ Ajouter une photo'}
+          {showForm ? 'Fermer' : '+ Ajouter une photo'}
         </button>
       </div>
 
@@ -60,7 +60,7 @@ export function EmployePhotosPage() {
         </form>
       )}
 
-      {photos.length === 0 ? <div className="text-muted">Aucune photo envoyÃ©e</div> : (
+      {photos.length === 0 ? <div className="text-muted">Aucune photo envoyée</div> : (
         <div className="row g-2">
           {photos.map((p) => (
             <div key={p.id} className="col-6 col-md-4 col-lg-3">
@@ -69,12 +69,12 @@ export function EmployePhotosPage() {
                   <img src={p.fichier_url} alt={p.description} className="card-img-top" style={{ height: 120, objectFit: 'cover' }} />
                 ) : (
                   <div className="bg-light d-flex align-items-center justify-content-center" style={{ height: 120 }}>
-                    <span className="text-muted">ðŸ“·</span>
+                    <span className="text-muted"><i className="bi bi-camera"></i></span>
                   </div>
                 )}
                 <div className="card-body p-2">
                   <div className="small">{p.description || 'Sans description'}</div>
-                  {p.zone && <div className="text-muted small">ðŸ“ {p.zone}</div>}
+                  {p.zone && <div className="text-muted small"><i className="bi bi-geo-alt"></i> {p.zone}</div>}
                   <div className="text-muted small">{p.date_photo || p.created_at?.slice(0, 10)}</div>
                 </div>
               </div>

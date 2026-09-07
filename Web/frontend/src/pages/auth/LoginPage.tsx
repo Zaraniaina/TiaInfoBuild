@@ -43,7 +43,7 @@ export function LoginPage() {
       <AuthVisualPanel
         eyebrow="Pilotage BTP"
         title="Un seul tableau de bord pour tous vos chantiers."
-        subtitle="Chantiers, ressources humaines, matériels, stocks et finances — pilotés depuis un espace unique, accessible du bureau au terrain."
+        subtitle="Chantiers, ressources humaines, matériels, stocks et finances - pilotés depuis un espace unique, accessible du bureau au terrain."
         highlightedWord="chantiers."
         stats={[
           { value: '100%', label: 'Suivi temps réel', icon: 'bi-activity' },
@@ -99,7 +99,7 @@ export function LoginPage() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   className="form-control auth-input"
-                  placeholder="••••••••"
+                  placeholder="********"
                   {...register('password')}
                 />
                 <button
@@ -145,7 +145,7 @@ export function LoginPage() {
 
           <div className="auth-footer mt-4 text-center">
             <p className="auth-footer-text">
-              Pas encore d’entreprise ?{' '}
+              Pas encore d'entreprise ?{' '}
               <Link to="/register" className="auth-link">
                 Créer mon entreprise <i className="bi bi-arrow-right-short"></i>
               </Link>

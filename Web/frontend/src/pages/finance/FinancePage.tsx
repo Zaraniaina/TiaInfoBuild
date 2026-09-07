@@ -315,7 +315,7 @@ export function FinancePage() {
                 {clientOutstanding.map((c, idx) => (
                   <tr key={idx}>
                     <td className="fw-semibold">{c.nom}</td>
-                    <td className="text-muted">{c.entreprise || '—'}</td>
+                    <td className="text-muted">{c.entreprise || '-'}</td>
                     <td className="font-monospace text-secondary fw-bold">{c.encours_actuel.toLocaleString()} MGA</td>
                     <td className="font-monospace text-muted">{c.encours_max.toLocaleString()} MGA</td>
                     <td className="font-monospace fw-bold text-secondary">{c.depassement.toLocaleString()} MGA</td>
@@ -387,7 +387,7 @@ export function FinancePage() {
                     <select className="form-select" value={form.categorie} onChange={e => setForm({ ...form, categorie: e.target.value })}>
                       <option value="transport">Transport</option>
                       <option value="materiaux">Matériaux</option>
-                      <option value="main_oeuvre">Main d'œuvre</option>
+                      <option value="main_oeuvre">Main d'oeuvre</option>
                       <option value="divers">Divers</option>
                     </select>
                   </div>

@@ -36,7 +36,7 @@ export function ClientPage() {
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
           <h2 className="mb-1 fw-bold text-secondary"><i className="bi bi-person-badge me-2"></i>Espace Client</h2>
-          <p className="text-secondary mb-0">Bienvenue, <strong>{user?.prenom} {user?.nom}</strong> — Suivi de vos projets et factures</p>
+          <p className="text-secondary mb-0">Bienvenue, <strong>{user?.prenom} {user?.nom}</strong> - Suivi de vos projets et factures</p>
         </div>
       </div>
 

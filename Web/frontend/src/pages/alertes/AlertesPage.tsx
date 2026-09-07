@@ -13,7 +13,7 @@ export function AlertesPage() {
       setAlertes(data)
     } catch {
       setAlertes([
-        { id: 1, entreprise_id: 1, type_entite: 'stock', niveau_gravite: 'critique', titre: 'Rupture de Stock', message: 'Le stock de Fer à béton Ø12 est inférieur au niveau minimum (12 / 30).', lue: false, statut: 'non_lue', is_deleted: false, created_at: '2026-08-18 09:30', updated_at: '' },
+        { id: 1, entreprise_id: 1, type_entite: 'stock', niveau_gravite: 'critique', titre: 'Rupture de Stock', message: 'Le stock de Fer à béton diam 12 est inférieur au niveau minimum (12 / 30).', lue: false, statut: 'non_lue', is_deleted: false, created_at: '2026-08-18 09:30', updated_at: '' },
         { id: 2, entreprise_id: 1, type_entite: 'facture', niveau_gravite: 'elevee', titre: 'Facture en retard', message: 'La facture FAC-2026-001 de la Société SODIAT est en retard de paiement (5 jours).', lue: false, statut: 'non_lue', is_deleted: false, created_at: '2026-08-17 14:00', updated_at: '' }
       ])
     } finally {

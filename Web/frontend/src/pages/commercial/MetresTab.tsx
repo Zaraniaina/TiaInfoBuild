@@ -18,7 +18,7 @@ const EMPTY_FORM: MetreCreate = {
   ordre: 0,
 }
 
-const UNITES = ['ml', 'm²', 'm³', 'kg', 't', 'L', 'u', 'forfait']
+const UNITES = ['ml', 'm2', 'm3', 'kg', 't', 'L', 'u', 'forfait']
 
 export function MetresTab() {
   const { user } = useAuthStore()
@@ -179,13 +179,13 @@ return (
                 {filtered.map((m) => (
                   <tr key={m.id}>
                     <td className="fw-semibold">{m.ouvrage}</td>
-                    <td>{m.designation || '—'}</td>
-                    <td>{m.projet_reference || '—'}</td>
+                    <td>{m.designation || '-'}</td>
+                    <td>{m.projet_reference || '-'}</td>
                     <td>
-                      <span className="badge bg-light text-dark font-monospace">{m.formule || '—'}</span>
+                      <span className="badge bg-light text-dark font-monospace">{m.formule || '-'}</span>
                     </td>
                     <td className="text-center">
-                      <span className="badge bg-secondary">{m.unite || '—'}</span>
+                      <span className="badge bg-secondary">{m.unite || '-'}</span>
                     </td>
                     <td className="text-end fw-semibold">{m.quantite?.toLocaleString('fr-FR') ?? '0'}</td>
                     <td className="text-end">
@@ -224,7 +224,7 @@ return (
                     <div className="col-md-6">
                       <label className="form-label">Projet</label>
                       <select className="form-select" value={form.projet_id ?? ''} onChange={(e) => setForm({ ...form, projet_id: e.target.value ? Number(e.target.value) : undefined })}>
-                        <option value="">— Aucun —</option>
+                        <option value="">- Aucun -</option>
                         {projets.map((p) => (
                           <option key={p.id} value={p.id}>{p.reference || p.nom}</option>
                         ))}

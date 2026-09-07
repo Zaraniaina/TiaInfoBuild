@@ -54,7 +54,7 @@ export function SuperAdminFacturationPage() {
                     <td className="font-monospace">{item.montant?.toLocaleString()} MGA</td>
                     <td>{getStatutBadge(item.statut)}</td>
                     <td className="text-muted">{item.date_echeance}</td>
-                    <td className="text-muted">{item.date_paiement || '—'}</td>
+                    <td className="text-muted">{item.date_paiement || '-'}</td>
                     <td><span className="badge bg-light text-dark border">{item.moyen}</span></td>
                   </tr>
                 ))}

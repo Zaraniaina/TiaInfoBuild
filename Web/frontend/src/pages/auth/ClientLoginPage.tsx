@@ -42,7 +42,7 @@ export function ClientLoginPage() {
       <AuthVisualPanel
         eyebrow="Espace Client"
         title="Suivez vos projets en temps réel."
-        subtitle="Accédez à vos devis, contrats et factures — un espace dédié pour chaque client TIA INFO BUILD."
+        subtitle="Accédez à vos devis, contrats et factures - un espace dédié pour chaque client TIA INFO BUILD."
         highlightedWord="client."
         stats={[
           { value: '100%', label: 'Suivi projet', icon: 'bi-graph-up' },
@@ -97,7 +97,7 @@ export function ClientLoginPage() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   className="form-control auth-input"
-                  placeholder="••••••••"
+                  placeholder="********"
                   {...register('password')}
                 />
                 <button

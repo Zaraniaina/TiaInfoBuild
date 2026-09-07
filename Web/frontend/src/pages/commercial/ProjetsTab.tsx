@@ -205,12 +205,12 @@ return (
                   <tr key={p.id}>
                     <td className="fw-semibold">{p.reference || `#${p.id}`}</td>
                     <td>{p.nom}</td>
-                    <td>{p.client_nom || '—'}</td>
+                    <td>{p.client_nom || '-'}</td>
                     <td>
-                      <span className="badge bg-light text-dark border">{p.type_projet || '—'}</span>
+                      <span className="badge bg-light text-dark border">{p.type_projet || '-'}</span>
                     </td>
-                    <td>{p.surface ? `${p.surface} m²` : '—'}</td>
-                    <td>{p.localisation || '—'}</td>
+                    <td>{p.surface ? `${p.surface} m2` : '-'}</td>
+                    <td>{p.localisation || '-'}</td>
                     <td>
                       <span className={`badge ${STATUT_BADGE[p.statut || 'en_etude']}`}>
                         {(p.statut || 'en_etude').replace('_', ' ')}
@@ -252,7 +252,7 @@ return (
                     <div className="col-md-6">
                       <label className="form-label">Client *</label>
                       <select className="form-select" value={form.client_id ?? ''} onChange={(e) => setForm({ ...form, client_id: e.target.value ? Number(e.target.value) : undefined })} required>
-                        <option value="">— Sélectionner —</option>
+                        <option value="">- Sélectionner -</option>
                         {clients.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.entreprise || `${c.prenom || ''} ${c.nom}`.trim()}
@@ -263,9 +263,9 @@ return (
                     <div className="col-md-6">
                       <label className="form-label">Demande liée</label>
                       <select className="form-select" value={form.demande_id ?? ''} onChange={(e) => setForm({ ...form, demande_id: e.target.value ? Number(e.target.value) : undefined })}>
-                        <option value="">— Aucune —</option>
+                        <option value="">- Aucune -</option>
                         {demandes.filter((d) => d.statut !== 'annulee').map((d) => (
-                          <option key={d.id} value={d.id}>{d.numero || `#${d.id}`} — {d.objet}</option>
+                          <option key={d.id} value={d.id}>{d.numero || `#${d.id}`} - {d.objet}</option>
                         ))}
                       </select>
                     </div>
@@ -314,9 +314,9 @@ return (
                       </div>
                       <div className="input-group input-group-sm mb-2">
                         <span className="input-group-text">Surface</span>
-                        <input type="number" step="0.01" className="form-control" placeholder="m²" value={form.surface ?? ''} onChange={(e) => setForm({ ...form, surface: e.target.value ? Number(e.target.value) : undefined })} />
+                        <input type="number" step="0.01" className="form-control" placeholder="m2" value={form.surface ?? ''} onChange={(e) => setForm({ ...form, surface: e.target.value ? Number(e.target.value) : undefined })} />
                         <span className="input-group-text">Volume</span>
-                        <input type="number" step="0.01" className="form-control" placeholder="m³" value={form.volume ?? ''} onChange={(e) => setForm({ ...form, volume: e.target.value ? Number(e.target.value) : undefined })} />
+                        <input type="number" step="0.01" className="form-control" placeholder="m3" value={form.volume ?? ''} onChange={(e) => setForm({ ...form, volume: e.target.value ? Number(e.target.value) : undefined })} />
                         <span className="input-group-text">Niveaux</span>
                         <input type="number" className="form-control" placeholder="nb" value={form.nombre_niveaux ?? ''} onChange={(e) => setForm({ ...form, nombre_niveaux: e.target.value ? Number(e.target.value) : undefined })} />
                       </div>

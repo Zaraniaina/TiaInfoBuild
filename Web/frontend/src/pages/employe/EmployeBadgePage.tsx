@@ -63,7 +63,7 @@ export function EmployeBadgePage() {
                   <td>{p.date_jour}</td>
                                     <td>{p.heure_debut || p.heure_fin || '-'}</td>
                   <td>{p.type}</td>
-                  <td>{p.methode_pointage || '—'}</td>
+                  <td>{p.methode_pointage || '-'}</td>
                 </tr>
               ))}
             </tbody>

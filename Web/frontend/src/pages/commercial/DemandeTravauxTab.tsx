@@ -171,7 +171,7 @@ return (
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
-                  <th>N°</th>
+                  <th>No </th>
                   <th>Client</th>
                   <th>Objet</th>
                   <th>Type</th>
@@ -188,13 +188,13 @@ return (
                 {filtered.map((d) => (
                   <tr key={d.id}>
                     <td className="fw-semibold">{d.numero || `#${d.id}`}</td>
-                    <td>{d.client_nom || '—'}</td>
+                    <td>{d.client_nom || '-'}</td>
                     <td>{d.objet}</td>
                     <td>
-                      <span className="badge bg-light text-dark border">{d.type_projet || '—'}</span>
+                      <span className="badge bg-light text-dark border">{d.type_projet || '-'}</span>
                     </td>
-                    <td>{d.localisation || '—'}</td>
-                    <td>{d.date_souhaitee ? new Date(d.date_souhaitee).toLocaleDateString('fr-FR') : '—'}</td>
+                    <td>{d.localisation || '-'}</td>
+                    <td>{d.date_souhaitee ? new Date(d.date_souhaitee).toLocaleDateString('fr-FR') : '-'}</td>
                     <td>
                       <span className={`badge ${STATUT_BADGE[d.statut || 'nouvelle']}`}>
                         {(d.statut || 'nouvelle').replace('_', ' ')}
@@ -236,7 +236,7 @@ return (
                     <div className="col-md-6">
                       <label className="form-label">Client *</label>
                       <select className="form-select" value={form.client_id ?? ''} onChange={(e) => setForm({ ...form, client_id: e.target.value ? Number(e.target.value) : undefined })} required>
-                        <option value="">— Sélectionner —</option>
+                        <option value="">- Sélectionner -</option>
                         {clients.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.entreprise || `${c.prenom || ''} ${c.nom}`.trim()}

@@ -196,8 +196,8 @@ export function SuperAdminAbonnementsPage() {
                           {sub.statut}
                         </span>
                       </td>
-                      <td className="small">{sub.date_debut ? new Date(sub.date_debut).toLocaleDateString() : '—'}</td>
-                      <td className="small">{sub.date_fin ? new Date(sub.date_fin).toLocaleDateString() : '—'}</td>
+                      <td className="small">{sub.date_debut ? new Date(sub.date_debut).toLocaleDateString() : '-'}</td>
+                      <td className="small">{sub.date_fin ? new Date(sub.date_fin).toLocaleDateString() : '-'}</td>
                       <td>
                         <button className="btn btn-sm btn-outline-secondary" onClick={() => handleCancelSub(sub)}>Annuler</button>
                       </td>

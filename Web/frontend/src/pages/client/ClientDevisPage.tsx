@@ -1,4 +1,4 @@
-﻿import { espaceClientService, Devis, LigneDevis } from '@/services/espaceClient.service'
+import { espaceClientService, Devis, LigneDevis } from '@/services/espaceClient.service'
 import {
   PageHeader, StatutBadge, DetailModal, useListePage,
   EtatChargement, EtatErreur, Vide, fmtDate, fmtMontant,

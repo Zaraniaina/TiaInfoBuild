@@ -1,4 +1,4 @@
-﻿import { api } from './api'
+import { api } from './api'
 
 export interface DashboardData {
   client?: { id: number; nom: string; prenom: string }

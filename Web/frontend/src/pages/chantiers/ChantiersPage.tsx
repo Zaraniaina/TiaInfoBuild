@@ -672,13 +672,13 @@ export function ChantiersPage() {
                   {activeDetailTab === 'general' && (
                     <div className="row g-3">
                       <div className="col-md-6">
-                        <p><strong>Description:</strong> {selectedChantier.description || '—'}</p>
+                        <p><strong>Description:</strong> {selectedChantier.description || '-'}</p>
                         <p><strong>Statut:</strong> {getStatutBadge(selectedChantier.statut)}</p>
                         <p><strong>Localisation:</strong> {selectedChantier.adresse || 'Antananarivo'}</p>
                       </div>
                       <div className="col-md-6">
-                        <p><strong>Date début:</strong> {selectedChantier.date_debut || '—'}</p>
-                        <p><strong>Date fin prévue:</strong> {selectedChantier.date_fin_prevue || '—'}</p>
+                        <p><strong>Date début:</strong> {selectedChantier.date_debut || '-'}</p>
+                        <p><strong>Date fin prévue:</strong> {selectedChantier.date_fin_prevue || '-'}</p>
                         <p><strong>Marge cible:</strong> {selectedChantier.marge_cible}%</p>
                       </div>
                     </div>

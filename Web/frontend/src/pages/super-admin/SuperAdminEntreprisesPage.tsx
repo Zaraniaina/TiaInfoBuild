@@ -166,10 +166,10 @@ export function SuperAdminEntreprisesPage() {
                 <tr key={e.id}>
                   <td>
                     <div className="fw-semibold">{e.nom}</div>
-                    <small className="text-muted">ID: #{e.id} | Créé le {e.date_creation || '—'}</small>
+                    <small className="text-muted">ID: #{e.id} | Créé le {e.date_creation || '-'}</small>
                   </td>
                   <td>
-                    <div><i className="bi bi-envelope me-1 text-muted"></i>{e.email || '—'}</div>
+                    <div><i className="bi bi-envelope me-1 text-muted"></i>{e.email || '-'}</div>
                     {e.telephone && <small className="text-muted"><i className="bi bi-telephone me-1"></i>{e.telephone}</small>}
                   </td>
                   <td>
@@ -288,7 +288,7 @@ export function SuperAdminEntreprisesPage() {
                         onChange={e => setFormData({ ...formData, devise: e.target.value })}
                       >
                         <option value="MGA">MGA (Ariary)</option>
-                        <option value="EUR">EUR (€)</option>
+                        <option value="EUR">EUR</option>
                         <option value="USD">USD ($)</option>
                       </select>
                     </div>
@@ -373,7 +373,7 @@ export function SuperAdminEntreprisesPage() {
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title fw-bold">Changer le plan — {selectedEntreprise.nom}</h5>
+                <h5 className="modal-title fw-bold">Changer le plan - {selectedEntreprise.nom}</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowPlanModal(false)}></button>
               </div>
               <form onSubmit={handleChangePlan}>
@@ -382,7 +382,7 @@ export function SuperAdminEntreprisesPage() {
                     <label className="form-label fw-semibold">Nouveau Plan *</label>
                     <select className="form-select" value={selectedPlanId} onChange={e => setSelectedPlanId(Number(e.target.value))}>
                       <option value="">Sélectionner un plan</option>
-                      {plans.map(p => <option key={p.id} value={p.id}>{p.nom} — {p.prix_mensuel.toLocaleString()} Ar/mois</option>)}
+                      {plans.map(p => <option key={p.id} value={p.id}>{p.nom} - {p.prix_mensuel.toLocaleString()} Ar/mois</option>)}
                     </select>
                   </div>
                 </div>

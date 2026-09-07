@@ -1,4 +1,4 @@
-﻿import { espaceClientService, Preferences } from '@/services/espaceClient.service'
+import { espaceClientService, Preferences } from '@/services/espaceClient.service'
 import { PageHeader, EtatChargement } from './shared'
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/stores/auth.store'

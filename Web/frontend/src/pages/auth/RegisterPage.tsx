@@ -241,7 +241,7 @@ export function RegisterPage() {
                       id="password"
                       type={showPassword ? 'text' : 'password'}
                       className="form-control auth-input"
-                      placeholder="••••••••"
+                      placeholder="********"
                       {...registerField('password')}
                     />
                     <button
@@ -267,7 +267,7 @@ export function RegisterPage() {
                       id="password_confirm"
                       type={showConfirmPassword ? 'text' : 'password'}
                       className="form-control auth-input"
-                      placeholder="••••••••"
+                      placeholder="********"
                       {...registerField('password_confirm')}
                     />
                     <button

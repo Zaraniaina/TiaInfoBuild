@@ -546,7 +546,7 @@ export interface Avenant {
 }
 
 // ============================================================
-// CYCLE COMMERCIAL — DEMANDES / PROJETS / MÉTRÉS / SITUATIONS
+// CYCLE COMMERCIAL - DEMANDES / PROJETS / MÉTRÉS / SITUATIONS
 // ============================================================
 
 export type StatutDemandeTravaux =

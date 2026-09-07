@@ -386,7 +386,7 @@ export function DashboardPage() {
           {renderKpi(
             "Dépenses du Mois",
             `${depensesMois.toLocaleString()} MGA`,
-            "Matériaux, main d'œuvre, engins",
+            "Matériaux, main d'oeuvre, engins",
             "text-danger",
           )}
           {renderKpi(
@@ -467,7 +467,7 @@ export function DashboardPage() {
   const renderChefChantier = () => {
     const avancementPhysique = stats?.taux_avancement_physique ?? 0;
     const nbIncidents = stats?.incidents_non_resolus ?? 0;
-    const chantierPrincipal = stats?.rentabilite_chantiers?.[0]?.nom ?? "—";
+    const chantierPrincipal = stats?.rentabilite_chantiers?.[0]?.nom ?? "-";
     const nbEmployes = stats?.nb_employes ?? 0;
     const presencePct = stats?.attendance_rate ?? 0;
     const consommation = stats?.consommation_stock ?? 0;
@@ -481,7 +481,7 @@ export function DashboardPage() {
           <div>
             <strong>Mon Chantier : {chantierPrincipal}</strong>
             <div className="small mb-0">
-              Avancement physique: {avancementPhysique.toFixed(1)}% — Retard: +
+              Avancement physique: {avancementPhysique.toFixed(1)}% - Retard: +
               {retardJours.toFixed(1)} jour(s)
             </div>
           </div>
@@ -884,7 +884,7 @@ export function DashboardPage() {
             <strong>
               {user?.prenom} {user?.nom}
             </strong>{" "}
-            — {meta.greeting}
+            - {meta.greeting}
           </p>
         </div>
         <div className="d-flex align-items-center gap-2">

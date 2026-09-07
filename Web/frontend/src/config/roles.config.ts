@@ -1,5 +1,5 @@
 /* =========================================================================
-   TIA INFO BUILD — Configuration des Rôles & Permissions (RBAC)
+   TIA INFO BUILD - Configuration des Rôles & Permissions (RBAC)
    Aligné à 100% sur le référentiel roles_tia_builds (11 Rôles Principaux & Sous-rôles).
    ========================================================================= */
 
@@ -159,7 +159,7 @@ export const SUB_ROLES: Record<string, string[]> = {
   materiel: ['Responsable Matériel / Parc', 'Technicien Maintenance', "Chauffeur / Conducteur d'Engin"],
   magasinier: ['Responsable Stocks / Approvisionnement', 'Magasinier Entrepôt', 'Livreur / Chauffeur Logistique'],
   commercial: ['Responsable Commercial', "Chargé d'Affaires", 'Assistant Commercial / ADV'],
-  employe: ['Ouvrier Qualifié', 'Manœuvre', "Conducteur d'Engin", 'Apprenti / Stagiaire'],
+  employe: ['Ouvrier Qualifié', 'Manoeuvre', "Conducteur d'Engin", 'Apprenti / Stagiaire'],
   client: ['Client Maître d\'Ouvrage', 'Représentant Client'],
 }
 

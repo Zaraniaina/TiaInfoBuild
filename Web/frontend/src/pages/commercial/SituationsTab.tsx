@@ -249,7 +249,7 @@ const handleSaveLigne = async (e: React.FormEvent) => {
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
-                  <th>N°</th>
+                  <th>No </th>
                   <th>Période</th>
                   <th>Chantier</th>
                   <th style={{ width: 180 }}>Avancement</th>
@@ -265,8 +265,8 @@ const handleSaveLigne = async (e: React.FormEvent) => {
                 {filtered.map((s) => (
                   <tr key={s.id}>
                     <td className="fw-semibold">{s.numero || `#${s.id}`}</td>
-                    <td>{s.periode || '—'}</td>
-                    <td>{s.chantier_nom || '—'}</td>
+                    <td>{s.periode || '-'}</td>
+                    <td>{s.chantier_nom || '-'}</td>
                     <td>
                       <div className="d-flex align-items-center gap-2">
                         <div className="progress flex-grow-1" style={{ height: 8 }}>
@@ -320,7 +320,7 @@ const handleSaveLigne = async (e: React.FormEvent) => {
                     <div className="col-md-6">
                       <label className="form-label">Chantier</label>
                       <select className="form-select" value={form.chantier_id ?? ''} onChange={(e) => setForm({ ...form, chantier_id: e.target.value ? Number(e.target.value) : undefined })}>
-                        <option value="">— Aucun —</option>
+                        <option value="">- Aucun -</option>
                         {chantiers.map((c) => (
                           <option key={c.id} value={c.id}>{c.nom}</option>
                         ))}
@@ -329,7 +329,7 @@ const handleSaveLigne = async (e: React.FormEvent) => {
                     <div className="col-md-6">
                       <label className="form-label">Contrat associé</label>
                       <select className="form-select" value={form.contrat_id ?? ''} onChange={(e) => setForm({ ...form, contrat_id: e.target.value ? Number(e.target.value) : undefined })}>
-                        <option value="">— Aucun —</option>
+                        <option value="">- Aucun -</option>
                         {contrats.map((co) => (
                           <option key={co.id} value={co.id}>{co.reference}</option>
                         ))}
@@ -383,7 +383,7 @@ const handleSaveLigne = async (e: React.FormEvent) => {
               <div className="modal-header">
                 <h5 className="modal-title">
                   <i className="bi bi-list-check me-2"></i>
-                  Détail de la situation {linesSituation.numero || ''}{linesSituation.periode ? ` — ${linesSituation.periode}` : ''}
+                  Détail de la situation {linesSituation.numero || ''}{linesSituation.periode ? ` - ${linesSituation.periode}` : ''}
                 </h5>
                 <button type="button" className="btn-close" onClick={() => setShowLines(false)}></button>
               </div>
@@ -427,7 +427,7 @@ const handleSaveLigne = async (e: React.FormEvent) => {
                             <td className="fw-semibold">{l.ouvrage}</td>
                             <td className="text-end">{l.quantite_periode?.toLocaleString('fr-FR') ?? '0'}</td>
                             <td className="text-end">{l.quantite_cumulee?.toLocaleString('fr-FR') ?? '0'}</td>
-                            <td className="text-center"><span className="badge bg-secondary">{l.unite || '—'}</span></td>
+                            <td className="text-center"><span className="badge bg-secondary">{l.unite || '-'}</span></td>
                             <td className="text-end">{(l.prix_unitaire ?? 0).toLocaleString('fr-FR')}</td>
                             <td className="text-end fw-semibold">{(l.montant ?? 0).toLocaleString('fr-FR')} MGA</td>
                             <td className="text-end">
@@ -486,7 +486,7 @@ const handleSaveLigne = async (e: React.FormEvent) => {
                     </div>
                     <div className="col-md-6">
                       <label className="form-label">Unité</label>
-                      <input type="text" className="form-control" value={ligneForm.unite || 'ml'} onChange={(e) => setLigneForm({ ...ligneForm, unite: e.target.value })} placeholder="ml, m², m³..." />
+                      <input type="text" className="form-control" value={ligneForm.unite || 'ml'} onChange={(e) => setLigneForm({ ...ligneForm, unite: e.target.value })} placeholder="ml, m2, m3..." />
                     </div>
                     <div className="col-md-6">
                       <label className="form-label">Prix unitaire</label>
