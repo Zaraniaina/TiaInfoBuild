@@ -163,7 +163,7 @@ async def root():
 
 
 # Inclusion des routers
-from app.routers import auth, super_admin, chantiers, rh, stocks, commercial, finance, materiels, alertes, dashboard, parametres, sync, utilisateurs, preferences, subscriptions, espace_client
+from app.routers import auth, super_admin, chantiers, rh, stocks, commercial, finance, materiels, alertes, dashboard, parametres, sync, utilisateurs, preferences, subscriptions, espace_client, employe_terrain
 
 api_prefix = "/api"
 
@@ -183,6 +183,7 @@ app.include_router(preferences.router, prefix=f"{api_prefix}/preferences", tags=
 app.include_router(sync.router, prefix=f"{api_prefix}/sync", tags=["sync"])
 app.include_router(subscriptions.router, prefix=f"{api_prefix}/subscriptions", tags=["subscriptions"])
 app.include_router(espace_client.router, prefix=f"{api_prefix}/espace-client", tags=["espace-client"])
+app.include_router(employe_terrain.router, prefix=f"{api_prefix}/employe-terrain", tags=["employe-terrain"])
 
 
 # --- Handlers d'exceptions globaux ---

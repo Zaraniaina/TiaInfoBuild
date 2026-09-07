@@ -11,6 +11,7 @@ from app.models.avenant import Avenant
 from app.models.chantier import Chantier
 from app.models.client import Client
 from app.models.client_adresse import ClientAdresse
+from app.models.commentaire import Commentaire
 from app.models.contrat import Contrat
 from app.models.demande_travaux import DemandeTravaux
 from app.models.depense import Depense
@@ -35,6 +36,7 @@ from app.models.mouvement_stock import MouvementStock
 from app.models.notification import Notification
 from app.models.paiement import Paiement
 from app.models.phase import Phase
+from app.models.photo_chantier import PhotoChantier
 from app.models.plan import Plan
 from app.models.projet import Projet
 from app.models.situation_travaux import SituationTravaux, LigneSituation
@@ -42,9 +44,13 @@ from app.models.subscription import Subscription
 from app.models.pointage import Pointage
 from app.models.preference import Preference
 from app.models.rapport_financier import RapportFinancier
+from app.models.rapport_journalier import RapportJournalier
 from app.models.refresh_token import RefreshToken
 from app.models.role import Role
+from app.models.signalement import Signalement
 from app.models.sync_queue import SyncQueue
+from app.models.tache import Tache
+from app.models.travail_realise import TravailRealise
 from app.models.utilisateur import Utilisateur
 
 __all__ = [
@@ -58,6 +64,7 @@ __all__ = [
     "Chantier",
     "Client",
     "ClientAdresse",
+    "Commentaire",
     "Contrat",
     "DemandeTravaux",
     "Depense",
@@ -83,6 +90,7 @@ __all__ = [
     "Notification",
     "Paiement",
     "Phase",
+    "PhotoChantier",
     "Plan",
     "Projet",
     "SituationTravaux",
@@ -90,8 +98,12 @@ __all__ = [
     "Pointage",
     "Preference",
     "RapportFinancier",
+    "RapportJournalier",
     "RefreshToken",
     "Role",
+    "Signalement",
     "SyncQueue",
+    "Tache",
+    "TravailRealise",
     "Utilisateur",
 ]

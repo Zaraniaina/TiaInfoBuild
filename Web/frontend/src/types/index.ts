@@ -248,6 +248,7 @@ export interface Pointage {
   type: TypePointage;
   notes?: string;
   is_deleted: boolean;
+  methode_pointage?: string;
   created_at: string;
   updated_at: string;
 }
@@ -1149,3 +1150,142 @@ export interface Subscription {
 export interface SubscriptionWithPlan extends Subscription {
   plan?: Plan;
 }
+
+// ESPACE EMPLOYÉ TERRAIN (supplément)
+export type StatutTache = "a_faire" | "en_cours" | "terminee" | "bloquee" | "annulee";
+export type PrioriteTache = "basse" | "normale" | "haute" | "urgente";
+export type PrioriteSignalement = "faible" | "normale" | "haute" | "urgente";
+export type TypeSignalement =
+  | "incident" | "securite" | "materiel" | "materiau"
+  | "travaux" | "plan_document" | "acces_chantier" | "meteo" | "autre";
+
+export interface TacheTerrain {
+  id: number;
+  chantier_id?: number;
+  employe_id?: number;
+  ouvrage?: string;
+  titre: string;
+  description?: string;
+  date_prevue?: string;
+  date_debut?: string;
+  date_fin?: string;
+  priorite: PrioriteTache;
+  statut: StatutTache;
+  avancement_pct: number;
+  created_at: string;
+}
+
+export interface ChantierTerrain {
+  id: number;
+  numero?: string;
+  nom: string;
+  adresse?: string;
+  chef_chantier_id?: number;
+  date_debut?: string;
+  date_fin_prevue?: string;
+  statut: string;
+  description?: string;
+}
+
+export interface TravailRealise {
+  id: number;
+  chantier_id?: number;
+  employe_id?: number;
+  tache_id?: number;
+  date_travail?: string;
+  ouvrage?: string;
+  travail: string;
+  quantite: number;
+  unite?: string;
+  duree_heures: number;
+  observations?: string;
+  created_at: string;
+}
+
+export interface RapportJournalier {
+  id: number;
+  chantier_id?: number;
+  date_rapport?: string;
+  travaux_realises?: string;
+  quantites?: string;
+  personnel_present?: string;
+  materiel_utilise?: string;
+  materiaux_utilises?: string;
+  incidents?: string;
+  difficultes?: string;
+  observations?: string;
+  nb_photos: number;
+  quantites_realises?: string;
+  statut?: string;
+  created_at: string;
+}
+
+export interface PhotoChantier {
+  id: number;
+  chantier_id?: number;
+  fichier_url: string;
+  description?: string;
+  zone?: string;
+  date_photo?: string;
+  created_at: string;
+}
+
+export interface Signalement {
+  id: number;
+  chantier_id?: number;
+  type: TypeSignalement;
+  description?: string;
+  zone?: string;
+  priorite: PrioriteSignalement;
+  statut: string;
+  photo_url?: string;
+  created_at: string;
+}
+
+export interface DashboardTerrain {
+  employe: { id: number; nom: string; prenom?: string; poste?: string };
+  chantier_actuel: { id: number; nom: string; adresse?: string; statut: string } | null;
+  nb_chantiers: number;
+  taches_du_jour: { total: number; terminees: number; restantes: number };
+  presence: {
+    date: string;
+    heure_entree: string | null;
+    heure_sortie: string | null;
+    pause_debut: string | null;
+    pause_fin: string | null;
+        heures_total: number;
+  };
+}
+
+export interface NotificationTerrain {
+  id: number;
+  titre: string;
+  message: string;
+  type: string;
+  lu: boolean;
+  created_at: string;
+}
+
+export interface Document {
+  id: number;
+  titre: string;
+  nom?: string;
+  categorie: string;
+  fichier_url: string;
+  created_at: string;
+  description?: string;
+}
+
+export interface ProfilTerrain {
+  nom: string;
+  prenom?: string;
+  matricule?: string;
+  poste?: string;
+  telephone?: string;
+  email?: string;
+  date_embauche?: string;
+  statut?: string;
+  photo_url?: string;
+  badge_qr?: string;
+}
+

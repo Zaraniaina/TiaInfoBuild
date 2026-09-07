@@ -48,6 +48,7 @@ ALL_PERMISSIONS: Final[list[str]] = [
     "pointage:write", "taches:write", "consommation:write",
     "subscriptions:read", "subscriptions:write",
     "espace_client:read", "espace_client:write",
+    "employe_terrain:read", "employe_terrain:write",
     "super_admin:read", "super_admin:write",
 ]
 
@@ -142,6 +143,8 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
         "alertes:read",
         # actions limitées au niveau individuel : pointage, tâches, consommation
         "pointage:write", "taches:write", "consommation:write",
+        # espace employe terrain : consultation + declarations
+        "employe_terrain:read", "employe_terrain:write",
     ],
     Role.CLIENT: [
         # Espace Client : uniquement les donnees de sa propre fiche (router dedie).

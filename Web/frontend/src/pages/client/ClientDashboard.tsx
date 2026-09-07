@@ -43,14 +43,15 @@ export function ClientDashboard() {
 
   if (!data) return null
 
-  const etatsCycle = ['demande', 'projet', 'devis', 'contrat', 'chantier', 'avancement', 'facturation', 'paiement']
+  const etatsCycle = ['Demande', 'Projet', 'Devis', 'Contrat', 'Chantier', 'Avancement', 'Facturation', 'Paiement']
 
   return (
     <div className="container-fluid py-4">
       <div className="row mb-4">
         <div className="col">
           <h4 className="fw-bold text-primary mb-0">
-            <i className="bi bi-speedometer2 me-2"></i>Tableau de bord
+            <i className="bi bi-speedometer2 me-2"></i>
+            Bonjour, {data.client?.prenom || ''} {data.client?.nom || ''}
           </h4>
           <p className="text-muted mt-1 mb-0">Vue d'ensemble de vos projets et demandes</p>
         </div>
@@ -142,41 +143,33 @@ export function ClientDashboard() {
             </h5>
           </div>
           <div className="card-body">
-            {data.projets_progression.map((projet: any) => {
-              const etapeIdx = etatsCycle.indexOf(projet.etape_courante)
-              return (
-                <div key={projet.projet_id} className="mb-3">
-                  <div className="d-flex justify-content-between align-items-center mb-1">
-                    <div>
-                      <span className="fw-semibold">{projet.reference}</span>
-                      <span className="text-muted ms-2">{projet.nom}</span>
-                    </div>
-                    <span className="badge bg-primary">{projet.etat.replace('_', ' ')}</span>
+            {data.projets_progression.map((projet: any) => (
+              <div key={projet.projet_id} className="mb-3">
+                <div className="d-flex justify-content-between align-items-center mb-1">
+                  <div>
+                    <span className="fw-semibold">{projet.reference}</span>
+                    <span className="text-muted ms-2">{projet.nom}</span>
                   </div>
-                  <div className="progress" style={{ height: '24px' }}>
-                    {etatsCycle.map((etape, idx) => {
-                      const isPast = idx < etapeIdx
-                      const isCurrent = idx === etapeIdx
-                      let bgClass = 'bg-secondary'
-                      if (isPast) bgClass = 'bg-success'
-                      if (isCurrent) bgClass = 'bg-warning'
-                      return (
-                        <div
-                          key={etape}
-                          className={`progress-bar ${bgClass}`}
-                          role="progressbar"
-                          style={{ width: `${100 / etatsCycle.length}%` }}
-                          title={etape.replace('_', ' ')}
-                        >
-                          {isPast && <i className="bi bi-check"></i>}
-                          {isCurrent && <i className="bi bi-arrow-right"></i>}
-                        </div>
-                      )
-                    })}
-                  </div>
+                  <span className="badge bg-primary">{(projet.statut || '').replace(/_/g, ' ')}</span>
                 </div>
-              )
-            })}
+                <div className="progress" style={{ height: '24px' }}>
+                  {etatsCycle.map((etape: string) => {
+                    const atteinte = !!projet.etapes[etape]
+                    return (
+                      <div
+                        key={etape}
+                        className={`progress-bar ${atteinte ? 'bg-success' : 'bg-secondary bg-opacity-25'}`}
+                        role="progressbar"
+                        style={{ width: `${100 / etatsCycle.length}%` }}
+                        title={`${etape} : ${atteinte ? 'atteinte' : 'a venir'}`}
+                      >
+                        {atteinte && <i className="bi bi-check"></i>}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

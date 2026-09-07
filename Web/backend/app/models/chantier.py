@@ -54,3 +54,11 @@ class Chantier(Base):
     contrats: Mapped[list["Contrat"]] = relationship("Contrat", back_populates="chantier", lazy="selectin")
     mouvements_stock: Mapped[list["MouvementStock"]] = relationship("MouvementStock", back_populates="chantier", lazy="selectin")
     situations: Mapped[list["SituationTravaux"]] = relationship("SituationTravaux", back_populates="chantier", lazy="selectin")
+
+    # Espace terrain : taches, travaux, rapports, photos, signalements, commentaires
+    taches: Mapped[list["Tache"]] = relationship("Tache", back_populates="chantier", lazy="selectin")
+    travaux_realises: Mapped[list["TravailRealise"]] = relationship("TravailRealise", back_populates="chantier", lazy="selectin")
+    rapports_journaliers: Mapped[list["RapportJournalier"]] = relationship("RapportJournalier", back_populates="chantier", lazy="selectin")
+    photos: Mapped[list["PhotoChantier"]] = relationship("PhotoChantier", back_populates="chantier", lazy="selectin")
+    signalements: Mapped[list["Signalement"]] = relationship("Signalement", back_populates="chantier", lazy="selectin")
+    commentaires: Mapped[list["Commentaire"]] = relationship("Commentaire", back_populates="chantier", lazy="selectin")

@@ -1,6 +1,7 @@
 ﻿import { api } from './api'
 
 export interface DashboardData {
+  client?: { id: number; nom: string; prenom: string }
   demandes: { nouvelles: number; en_cours: number; traitees: number }
   projets: number
   devis: { en_attente: number; acceptes: number; refuses: number }
@@ -12,8 +13,8 @@ export interface DashboardData {
     projet_id: number
     reference: string
     nom: string
-    etape_courante: string
-    etat: string
+    statut: string
+    etapes: Record<string, boolean>
   }[]
 }
 
@@ -168,7 +169,37 @@ export interface Preferences {
 export const espaceClientService = {
   getDashboard: async (): Promise<DashboardData> => {
     const { data } = await api.get('/espace-client/dashboard')
-    return data
+    // Normalise la structure backend { client, compteurs, projets[] } vers le format frontend
+    const c = data.compteurs || {}
+    return {
+      client: data.client,
+      demandes: {
+        nouvelles: c.demandes?.nouvelles ?? 0,
+        en_cours: c.demandes?.en_cours ?? 0,
+        traitees: c.demandes?.traitees ?? 0,
+      },
+      projets: c.projets ?? 0,
+      devis: {
+        en_attente: c.devis?.en_attente ?? 0,
+        acceptes: c.devis?.acceptes ?? 0,
+        refuses: c.devis?.refuses ?? 0,
+      },
+      contrats: { actifs: c.contrats?.actifs ?? 0, termines: c.contrats?.termines ?? 0 },
+      chantiers: { en_cours: c.chantiers?.en_cours ?? 0, termines: c.chantiers?.termines ?? 0 },
+      factures: {
+        a_payer: c.factures?.a_payer ?? 0,
+        partielles: c.factures?.partiellement_payees ?? 0,
+        payees: c.factures?.payees ?? 0,
+      },
+      montant_restant: c.montant_restant_a_payer ?? 0,
+      projets_progression: (data.projets || []).map((p: any) => ({
+        projet_id: p.id,
+        reference: p.reference,
+        nom: p.nom,
+        statut: p.statut,
+        etapes: p.etapes || {},
+      })),
+    }
   },
 
   getProfil: async (): Promise<ProfilData> => {

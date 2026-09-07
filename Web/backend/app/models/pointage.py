@@ -16,6 +16,8 @@ class Pointage(Base):
     date_jour: Mapped[datetime] = mapped_column(Date, nullable=False)
     heure_debut: Mapped[datetime | None] = mapped_column(Time)
     heure_fin: Mapped[datetime | None] = mapped_column(Time)
+    heure_pause_debut: Mapped[datetime | None] = mapped_column(Time)
+    heure_pause_fin: Mapped[datetime | None] = mapped_column(Time)
     heures_total: Mapped[float] = mapped_column(Numeric(4, 2), server_default="0")
     type: Mapped[str] = mapped_column(String(20), server_default="present")
     methode_pointage: Mapped[str] = mapped_column(String(50), server_default="manuel")

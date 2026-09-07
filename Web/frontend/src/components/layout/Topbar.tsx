@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUIStore } from '@/stores/ui.store'
 import { useToastStore } from '@/stores/toast.store'
 import { settingsService } from '@/services/settings.service'
 import { api } from '@/services/api'
+import { ROLE_MODULES } from '@/config/roles.config'
 import { formatErrorMessage } from '@/utils/errorMessage'
 
 export function Topbar() {
@@ -64,11 +65,16 @@ export function Topbar() {
     hydrateThemeFromBackend()
   }, [hydrateThemeFromBackend])
 
+  // Les alertes internes sont reservees aux roles ayant le module /alertes
+  // (le client et admin_entreprise n'y ont pas droit : pas d'appel, pas de 403).
+  const canViewAlertes = (ROLE_MODULES[user?.role_code || ''] || []).includes('/alertes')
+
   useEffect(() => {
+    if (!canViewAlertes) return
     api.get('/alertes?non_lues=1&size=5').then(res => {
       setNotifications(res.data.items || [])
     }).catch(() => {})
-  }, [])
+  }, [canViewAlertes])
 
   useEffect(() => {
     if (user) {
@@ -246,6 +252,7 @@ export function Topbar() {
         </button>
 
         {/* Notifications — dropdown React */}
+        {canViewAlertes && (
         <div className="topbar-notifications" ref={notifMenuRef} style={{ position: 'relative' }}>
           <button
             className="btn btn-link notification-btn"
@@ -273,6 +280,7 @@ export function Topbar() {
             </div>
           )}
         </div>
+        )}
 
         {/* Menu utilisateur — dropdown React */}
         <div className="topbar-user" ref={userMenuRef} style={{ position: 'relative' }}>

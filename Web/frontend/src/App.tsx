@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from 'react'
+﻿import { useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { scheduleTokenRefresh, cancelTokenRefresh } from '@/services/api'
@@ -27,7 +27,22 @@ const SuperAdminFacturationPage = lazy(() => import('@/pages/super-admin/SuperAd
 const SuperAdminLogsPage = lazy(() => import('@/pages/super-admin/SuperAdminLogsPage').then((m) => ({ default: m.SuperAdminLogsPage })))
 const SuperAdminParametresPage = lazy(() => import('@/pages/super-admin/SuperAdminParametresPage').then((m) => ({ default: m.SuperAdminParametresPage })))
 const ClientLayout = lazy(() => import('@/pages/client/ClientLayout').then((m) => ({ default: m.ClientLayout })))
+const EmployeLayout = lazy(() => import('@/pages/employe/EmployeLayout').then((m) => ({ default: m.EmployeLayout })))
+const EmployeDashboard = lazy(() => import('@/pages/employe/EmployePage').then((m) => ({ default: m.EmployePage })))
+const EmployeProfil = lazy(() => import('@/pages/employe/EmployeProfilPage').then((m) => ({ default: m.EmployeProfilPage })))
+const EmployeChantiers = lazy(() => import('@/pages/employe/EmployeChantiersPage').then((m) => ({ default: m.EmployeChantiersPage })))
+const EmployeTaches = lazy(() => import('@/pages/employe/EmployeTachesPage').then((m) => ({ default: m.EmployeTachesPage })))
+const EmployeTravaux = lazy(() => import('@/pages/employe/EmployeTravauxPage').then((m) => ({ default: m.EmployeTravauxPage })))
+const EmployeRapports = lazy(() => import('@/pages/employe/EmployeRapportsPage').then((m) => ({ default: m.EmployeRapportsPage })))
+const EmployePhotos = lazy(() => import('@/pages/employe/EmployePhotosPage').then((m) => ({ default: m.EmployePhotosPage })))
+const EmployeSignalements = lazy(() => import('@/pages/employe/EmployeSignalementsPage').then((m) => ({ default: m.EmployeSignalementsPage })))
+const EmployeNotificationsPage = lazy(() => import('@/pages/employe/EmployeNotificationsPage').then((m) => ({ default: m.EmployeNotificationsPage })))
+const EmployeDocuments = lazy(() => import('@/pages/employe/EmployeDocumentsPage').then((m) => ({ default: m.EmployeDocumentsPage })))
+const EmployePlanning = lazy(() => import('@/pages/employe/EmployePlanningPage').then((m) => ({ default: m.EmployePlanningPage })))
+const EmployeBadge = lazy(() => import('@/pages/employe/EmployeBadgePage').then((m) => ({ default: m.EmployeBadgePage })))
+
 const ClientDashboard = lazy(() => import('@/pages/client/ClientDashboard').then((m) => ({ default: m.ClientDashboard })))
+
 const ClientProfil = lazy(() => import('@/pages/client/ClientProfil').then((m) => ({ default: m.ClientProfil })))
 const ClientDemandesPage = lazy(() => import('@/pages/client/ClientDemandesPage').then((m) => ({ default: m.ClientDemandesPage })))
 const ClientProjetsPage = lazy(() => import('@/pages/client/ClientProjetsPage').then((m) => ({ default: m.ClientProjetsPage })))
@@ -42,7 +57,7 @@ const ClientPaiementsPage = lazy(() => import('@/pages/client/ClientPaiementsPag
 const ClientDocumentsPage = lazy(() => import('@/pages/client/ClientDocumentsPage').then((m) => ({ default: m.ClientDocumentsPage })))
 const ClientNotificationsPage = lazy(() => import('@/pages/client/ClientNotificationsPage').then((m) => ({ default: m.ClientNotificationsPage })))
 const ClientParametresPage = lazy(() => import('@/pages/client/ClientParametresPage').then((m) => ({ default: m.ClientParametresPage })))
-const EmployePage = lazy(() => import('@/pages/employe/EmployePage').then((m) => ({ default: m.EmployePage })))
+
 
 function PageFallback() {
   return (
@@ -97,7 +112,21 @@ function App() {
           <Route path="notifications" element={<Suspense fallback={<PageFallback />}><ClientNotificationsPage /></Suspense>} />
           <Route path="parametres" element={<Suspense fallback={<PageFallback />}><ClientParametresPage /></Suspense>} />
         </Route>
-        <Route path="employe" element={<Suspense fallback={<PageFallback />}><EmployePage /></Suspense>} />
+        <Route path="employe" element={<Suspense fallback={<PageFallback />}><EmployeLayout /></Suspense>}>
+          <Route index element={<Suspense fallback={<PageFallback />}><EmployeDashboard /></Suspense>} />
+          <Route path="profil" element={<Suspense fallback={<PageFallback />}><EmployeProfil /></Suspense>} />
+          <Route path="chantiers" element={<Suspense fallback={<PageFallback />}><EmployeChantiers /></Suspense>} />
+          <Route path="taches" element={<Suspense fallback={<PageFallback />}><EmployeTaches /></Suspense>} />
+          <Route path="travaux" element={<Suspense fallback={<PageFallback />}><EmployeTravaux /></Suspense>} />
+          <Route path="rapports" element={<Suspense fallback={<PageFallback />}><EmployeRapports /></Suspense>} />
+          <Route path="photos" element={<Suspense fallback={<PageFallback />}><EmployePhotos /></Suspense>} />
+          <Route path="signalements" element={<Suspense fallback={<PageFallback />}><EmployeSignalements /></Suspense>} />
+                    <Route path="notifications" element={<Suspense fallback={<PageFallback />}><EmployeNotificationsPage /></Suspense>} />
+          <Route path="planning" element={<Suspense fallback={<PageFallback />}><EmployePlanning /></Suspense>} />
+          <Route path="documents" element={<Suspense fallback={<PageFallback />}><EmployeDocuments /></Suspense>} />
+          <Route path="badge" element={<Suspense fallback={<PageFallback />}><EmployeBadge /></Suspense>} />
+
+        </Route>
         <Route path="pricing" element={<Suspense fallback={<PageFallback />}><PricingPage /></Suspense>} />
         <Route path="super-admin">
           <Route index element={<Suspense fallback={<PageFallback />}><SuperAdminDashboardPage /></Suspense>} />

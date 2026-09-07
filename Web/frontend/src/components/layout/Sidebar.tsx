@@ -7,6 +7,18 @@ import { ROLE_MODULES, ROLE_NAMES } from '@/config/roles.config'
 
 const MODULE_META: Record<string, { label: string; icon: string; section: string }> = {
   '/employe': { label: 'Mon Espace Terrain', icon: 'bi-person-badge', section: 'Principal' },
+  '/employe/profil': { label: 'Mon profil', icon: 'bi-person', section: 'Espace Terrain' },
+  '/employe/chantiers': { label: 'Mes chantiers', icon: 'bi-building', section: 'Espace Terrain' },
+  '/employe/taches': { label: 'Mes tâches', icon: 'bi-list-check', section: 'Espace Terrain' },
+  '/employe/travaux': { label: 'Travaux réalisés', icon: 'bi-hammer', section: 'Espace Terrain' },
+  '/employe/rapports': { label: 'Rapports journaliers', icon: 'bi-file-text', section: 'Espace Terrain' },
+  '/employe/photos': { label: 'Photos', icon: 'bi-camera', section: 'Espace Terrain' },
+  '/employe/signalements': { label: 'Signalements', icon: 'bi-exclamation-triangle', section: 'Espace Terrain' },
+  '/employe/notifications': { label: 'Notifications', icon: 'bi-bell', section: 'Espace Terrain' },
+  '/employe/planning': { label: 'Mon planning', icon: 'bi-calendar', section: 'Espace Terrain' },
+    '/employe/documents': { label: 'Documents', icon: 'bi-folder', section: 'Espace Terrain' },
+  '/employe/badge': { label: 'Mon badge QR', icon: 'bi-qr-code', section: 'Espace Terrain' },
+
   '/dashboard': { label: 'Tableau de bord', icon: 'bi-speedometer2', section: 'Principal' },
   '/super-admin': { label: 'Dashboard SaaS', icon: 'bi-shield-lock', section: 'Plateforme SaaS' },
   '/super-admin/entreprises': { label: 'Entreprises', icon: 'bi-building', section: 'Plateforme SaaS' },

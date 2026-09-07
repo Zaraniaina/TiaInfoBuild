@@ -196,7 +196,86 @@ async def seed():
         await db.commit()
         print("    Role_id comptable/chef_corriges si necessaire")
 
-        # 4d. Seed données module commercial (demandes, projets, métrés, situations)
+        # 4c-bis. Fiches employes de demo (badge QR / pointage des comptes employe,
+        # rattachees aux comptes utilisateurs par email)
+        print("    Seed fiches employes demo...")
+        EMPLOYES_DEMO = [
+            ("ouvrier@btppro.mg", "Ouvrier", "Gilbert", "Ouvrier polyvalent"),
+            ("employe@btppro.mg", "Employe", "Gerard", "Employe de terrain"),
+        ]
+        for email_e, nom_e, prenom_e, poste_e in EMPLOYES_DEMO:
+            result = await db.execute(text(
+                "SELECT id FROM employes WHERE email = :email AND is_deleted = 0 LIMIT 1"
+            ), {"email": email_e})
+            if not result.fetchone():
+                await db.execute(text("""
+                    INSERT INTO employes (entreprise_id, nom, prenom, poste, email, statut)
+                    VALUES (:eid, :nom, :prenom, :poste, :email, 'actif')
+                """), {"eid": entreprise_id, "nom": nom_e, "prenom": prenom_e, "poste": poste_e, "email": email_e})
+                print(f"      Fiche employe creee: {email_e}")
+            else:
+                print(f"      Fiche employe deja existante: {email_e}")
+        await db.commit()
+
+        # 4c-ter. Seed espace employe terrain : chantier demo, affectations, tâches
+        print("    Seed espace employe terrain...")
+        # Chantier demo si aucun existant
+        r = await db.execute(text(
+            "SELECT id FROM chantiers WHERE entreprise_id = :eid AND is_deleted = 0 LIMIT 1"
+        ), {"eid": entreprise_id})
+        chantier_demo_id = r.fetchone()
+        if not chantier_demo_id:
+            await db.execute(text("""
+                INSERT INTO chantiers (entreprise_id, numero, nom, adresse, ville, date_debut, statut, description)
+                VALUES (:eid, 'CHANT-2026-001', 'Chantier Demo Anosy', 'Anosy, Antananarivo', 'Antananarivo', CURDATE(), 'en_cours', 'Chantier de demonstration Espace Employe Terrain')
+            """), {"eid": entreprise_id})
+            r = await db.execute(text(
+                "SELECT id FROM chantiers WHERE entreprise_id = :eid AND is_deleted = 0 LIMIT 1"
+            ), {"eid": entreprise_id})
+            chantier_demo_id = r.fetchone()
+            print(f"      Chantier demo cree (ID {chantier_demo_id[0]})")
+        if chantier_demo_id:
+            chantier_id_demo = chantier_demo_id[0]
+            # Affectations des employes demo au chantier
+            for email_e in ("ouvrier@btppro.mg", "employe@btppro.mg"):
+                r = await db.execute(text(
+                    "SELECT id FROM employes WHERE email = :email AND is_deleted = 0 LIMIT 1"
+                ), {"email": email_e})
+                row_emp = r.fetchone()
+                if row_emp:
+                    rid = row_emp[0]
+                    r = await db.execute(text(
+                        "SELECT id FROM affectation_chantiers WHERE employe_id = :emp AND chantier_id = :ch AND is_deleted = 0 LIMIT 1"
+                    ), {"emp": rid, "ch": chantier_id_demo})
+                    if not r.fetchone():
+                        await db.execute(text("""
+                            INSERT INTO affectation_chantiers (employe_id, chantier_id, date_debut, role)
+                            VALUES (:emp, :ch, CURDATE(), 'Ouvrier')
+                        """), {"emp": rid, "ch": chantier_id_demo})
+                        print(f"      Affectation creee: {email_e} -> chantier {chantier_id_demo}")
+            # Taches de demo
+            r = await db.execute(text(
+                "SELECT id FROM employes WHERE email = 'ouvrier@btppro.mg' AND is_deleted = 0 LIMIT 1"
+            ), {})
+            emp_ow = r.fetchone()
+            if emp_ow:
+                r = await db.execute(text(
+                    "SELECT id FROM taches WHERE employe_id = :emp AND is_deleted = 0 LIMIT 1"
+                ), {"emp": emp_ow[0]})
+                if not r.fetchone():
+                    for t in [
+                        ("Coffrage dalle", "Gros oeuvre", "Realiser le coffrage de la dalle zone A", "normale"),
+                        ("Ferralage", "Gros oeuvre", "Ferralier les semelles zone A", "haute"),
+                    ]:
+                        await db.execute(text("""
+                            INSERT INTO taches (entreprise_id, chantier_id, employe_id, ouvrage, titre, description, date_prevue, priorite, statut)
+                            VALUES (:eid, :ch, :emp, :ouvrage, :titre, :desc, CURDATE(), :prio, 'a_faire')
+                        """), {
+                            "eid": entreprise_id, "ch": chantier_id_demo, "emp": emp_ow[0],
+                            "ouvrage": t[1], "titre": t[0], "desc": t[2], "prio": t[3],
+                        })
+                    print("      Taches demo creees")
+        await db.commit()
         print("    Seed donnees module commercial...")
         result = await db.execute(text("SELECT id FROM clients WHERE entreprise_id = :eid LIMIT 1"), {"eid": entreprise_id})
         client_row = result.fetchone()
