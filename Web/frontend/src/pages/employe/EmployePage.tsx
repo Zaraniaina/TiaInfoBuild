@@ -27,7 +27,7 @@ export function EmployePage() {
 
       <div className="card border-0 shadow-sm mb-3">
         <div className="card-body">
-          <h6 className="text-muted mb-2">📍 Chantier actuel</h6>
+          <h6 className="text-muted mb-2"><i className="bi bi-geo-alt"></i> Chantier actuel</h6>
           {dash.chantier_actuel ? (
             <div>
               <strong>{dash.chantier_actuel.nom}</strong>
@@ -77,7 +77,7 @@ export function EmployePage() {
 
       <div className="card border-0 shadow-sm mb-3">
         <div className="card-body">
-          <h6 className="mb-2">⏱️ Mon activité aujourd'hui</h6>
+          <h6 className="mb-2"><i className="bi bi-stopwatch"></i> Mon activité aujourd'hui</h6>
           <div className="row text-center g-2">
             <div className="col"><small className="text-muted d-block">Entrée</small><strong>{p.heure_entree || '--:--'}</strong></div>
             <div className="col"><small className="text-muted d-block">Pause début</small><strong>{p.pause_debut || '--:--'}</strong></div>
@@ -91,11 +91,11 @@ export function EmployePage() {
         <div className="card-body">
           <h6 className="mb-2">Actions rapides</h6>
           <div className="d-flex flex-wrap gap-2">
-            <Link to="/employe/rapports" className="btn btn-primary btn-sm">📝 Rapport</Link>
-            <Link to="/employe/travaux" className="btn btn-success btn-sm">📊 Travail</Link>
-            <Link to="/employe/photos" className="btn btn-info btn-sm text-white">📷 Photo</Link>
-            <Link to="/employe/signalements" className="btn btn-warning btn-sm">⚠️ Signaler</Link>
-            <Link to="/employe/profil" className="btn btn-secondary btn-sm">👤 Mon profil</Link>
+            <Link to="/employe/rapports" className="btn btn-primary btn-sm"><i className="bi bi-file-earmark-text"></i> Rapport</Link>
+            <Link to="/employe/travaux" className="btn btn-success btn-sm"><i className="bi bi-bar-chart"></i> Travail</Link>
+            <Link to="/employe/photos" className="btn btn-info btn-sm text-white"><i className="bi bi-camera"></i> Photo</Link>
+            <Link to="/employe/signalements" className="btn btn-warning btn-sm"><i className="bi bi-exclamation-triangle"></i> Signaler</Link>
+            <Link to="/employe/profil" className="btn btn-secondary btn-sm"><i className="bi bi-person"></i> Mon profil</Link>
           </div>
         </div>
       </div>

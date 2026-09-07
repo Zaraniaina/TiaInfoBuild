@@ -31,7 +31,7 @@ export function EmployeNotificationsPage() {
 
   return (
     <div className="container-fluid py-3">
-      <h5 className="mb-3">🔔 Notifications {nonLues > 0 && <span className="badge bg-danger ms-1">{nonLues}</span>}</h5>
+      <h5 className="mb-3"><i className="bi bi-bell"></i> Notifications {nonLues > 0 && <span className="badge bg-danger ms-1">{nonLues}</span>}</h5>
       {items.length === 0 ? <div className="text-muted">Aucune notification</div> : (
         <div className="list-group">
           {items.map((n) => (

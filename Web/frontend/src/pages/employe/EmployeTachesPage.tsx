@@ -31,7 +31,7 @@ export function EmployeTachesPage() {
 
   return (
     <div className="container-fluid py-3">
-      <h5 className="mb-3">📋 Mes tâches</h5>
+      <h5 className="mb-3"><i className="bi bi-clipboard-check"></i> Mes tâches</h5>
       {items.length === 0 ? <div className="text-muted">Aucune tâche assignée</div> : (
         <div className="list-group">
           {items.map((t) => (
@@ -55,16 +55,16 @@ export function EmployeTachesPage() {
               {t.statut !== 'terminee' && t.statut !== 'annulee' && (
                 <div className="mt-2 d-flex gap-1 flex-wrap">
                   {t.statut === 'a_faire' && (
-                    <button className="btn btn-sm btn-primary" onClick={() => changerStatut(t, 'en_cours')}>▶️ Commencer</button>
+                    <button className="btn btn-sm btn-primary" onClick={() => changerStatut(t, 'en_cours')}><i className="bi bi-play-fill"></i> Commencer</button>
                   )}
                   {t.statut === 'en_cours' && (
-                    <button className="btn btn-sm btn-success" onClick={() => changerStatut(t, 'terminee')}>✅ Terminer</button>
+                    <button className="btn btn-sm btn-success" onClick={() => changerStatut(t, 'terminee')}><i className="bi bi-check-lg"></i> Terminer</button>
                   )}
                   {t.statut !== 'bloquee' && (
-                    <button className="btn btn-sm btn-warning" onClick={() => changerStatut(t, 'bloquee')}>🚫 Bloquer</button>
+                    <button className="btn btn-sm btn-warning" onClick={() => changerStatut(t, 'bloquee')}><i className="bi bi-slash-circle"></i> Bloquer</button>
                   )}
                   {t.statut === 'bloquee' && (
-                    <button className="btn btn-sm btn-primary" onClick={() => changerStatut(t, 'en_cours')}>▶️ Reprendre</button>
+                    <button className="btn btn-sm btn-primary" onClick={() => changerStatut(t, 'en_cours')}><i className="bi bi-play-fill"></i> Reprendre</button>
                   )}
                 </div>
               )}

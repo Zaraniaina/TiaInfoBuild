@@ -25,7 +25,7 @@ export function EmployeDocumentsPage() {
 
   return (
     <div className="container-fluid py-3">
-      <h5 className="mb-3">📁 Documents</h5>
+      <h5 className="mb-3"><i className="bi bi-folder"></i> Documents</h5>
       {documents.length === 0 ? <div className="text-muted">Aucun document disponible</div> : (
         <div className="list-group">
           {documents.map((d) => (

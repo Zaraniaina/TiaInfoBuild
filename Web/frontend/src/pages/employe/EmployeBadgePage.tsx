@@ -52,7 +52,7 @@ export function EmployeBadgePage() {
         </div>
       </div>
 
-      <h6 className="mb-2">⏱️ Historique des pointages</h6>
+      <h6 className="mb-2"><i className="bi bi-stopwatch"></i> Historique des pointages</h6>
       {pointages.length === 0 ? <div className="text-muted">Aucun pointage enregistré</div> : (
         <div className="table-responsive">
           <table className="table table-sm">

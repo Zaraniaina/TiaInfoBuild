@@ -4,8 +4,8 @@ import type { Signalement, TypeSignalement, PrioriteSignalement } from '@/types'
 
 const TYPES: TypeSignalement[] = ['incident', 'securite', 'materiel', 'materiau', 'travaux', 'plan_document', 'acces_chantier', 'meteo', 'autre']
 const TYPES_LABEL: Record<string, string> = {
-  incident: '⚠️ Incident', securite: '🦺 Sécurité', materiel: '🔧 Matériel', materiau: '📦 Matériau',
-  travaux: '🏗️ Travaux', plan_document: '📐 Plan/document', acces_chantier: '🚧 Accès', meteo: '🌧️ Météo', autre: 'Autre',
+  incident: '<i className="bi bi-exclamation-triangle"></i> Incident', securite: '<i className="bi bi-shield-check"></i> Sécurité', materiel: '<i className="bi bi-wrench"></i> Matériel', materiau: '<i className="bi bi-box"></i> Matériau',
+  travaux: '<i className="bi bi-building"></i> Travaux', plan_document: '<i className="bi bi-rulers"></i> Plan/document', acces_chantier: '<i className="bi bi-cone-striped"></i> Accès', meteo: '<i className="bi bi-cloud-rain"></i> Météo', autre: 'Autre',
 }
 const prioriteBadge: Record<string, string> = { basse: 'secondary', normale: 'info', haute: 'warning', urgente: 'danger' }
 const statutBadge: Record<string, string> = { ouvert: 'warning', en_cours: 'primary', resolu: 'success', ferme: 'dark' }
@@ -45,9 +45,9 @@ export function EmployeSignalementsPage() {
   return (
     <div className="container-fluid py-3">
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h5 className="mb-0">⚠️ Signalements</h5>
+        <h5 className="mb-0"><i className="bi bi-exclamation-triangle"></i> Signalements</h5>
         <button className="btn btn-danger btn-sm" onClick={() => setShowForm(!showForm)}>
-          {showForm ? '✕ Fermer' : '+ Signaler un problème'}
+          {showForm ? '<i className="bi bi-x"></i> Fermer' : '+ Signaler un problème'}
         </button>
       </div>
 
@@ -83,7 +83,7 @@ export function EmployeSignalementsPage() {
                   <strong>{TYPES_LABEL[s.type] || s.type}</strong>
                   <div className="text-muted small">{s.created_at?.slice(0, 10)} {s.created_at?.slice(11, 16)}</div>
                   <div className="small mt-1">{s.description}</div>
-                  {s.zone && <div className="text-muted small">📍 {s.zone}</div>}
+                  {s.zone && <div className="text-muted small"><i className="bi bi-geo-alt"></i> {s.zone}</div>}
                 </div>
                 <div className="text-end">
                   <span className={`badge ${prioriteBadge[s.priorite] || 'bg-secondary'} d-block mb-1`}>{s.priorite}</span>

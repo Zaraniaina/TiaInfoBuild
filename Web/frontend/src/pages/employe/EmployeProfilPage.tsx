@@ -41,7 +41,7 @@ export function EmployeProfilPage() {
 
   return (
     <div className="container-fluid py-3">
-      <h5 className="mb-3">👤 Mon profil</h5>
+      <h5 className="mb-3"><i className="bi bi-person"></i> Mon profil</h5>
       <div className="card border-0 shadow-sm">
         <div className="card-body">
           {!edit ? (

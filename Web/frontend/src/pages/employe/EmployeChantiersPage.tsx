@@ -23,7 +23,7 @@ export function EmployeChantiersPage() {
 
   return (
     <div className="container-fluid py-3">
-      <h5 className="mb-3">🚧 Mes chantiers</h5>
+      <h5 className="mb-3"><i className="bi bi-cone-striped"></i> Mes chantiers</h5>
       {items.length === 0 ? <div className="text-muted">Aucun chantier affecté</div> : (
         <div className="row g-2">
           {items.map((c) => (
@@ -37,7 +37,7 @@ export function EmployeChantiersPage() {
                     </div>
                     <span className={`badge ${statutBadge[c.statut] || 'bg-secondary'}`}>{c.statut}</span>
                   </div>
-                  {c.adresse && <div className="text-muted small mt-1">📍 {c.adresse}</div>}
+                  {c.adresse && <div className="text-muted small mt-1"><i className="bi bi-geo-alt"></i> {c.adresse}</div>}
                   {c.date_debut && <div className="text-muted small">Début : {c.date_debut}</div>}
                   {c.date_fin_prevue && <div className="text-muted small">Fin prévue : {c.date_fin_prevue}</div>}
                 </div>
