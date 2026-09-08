@@ -13,7 +13,6 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/super-admin/logs',
     '/super-admin/parametres',
     '/dashboard',
-    '/pricing',
   ],
   admin_entreprise: [
     // Restreint selon roles_tia_builds/01_admin_entreprise.md :

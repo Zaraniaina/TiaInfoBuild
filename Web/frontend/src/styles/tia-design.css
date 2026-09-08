@@ -785,6 +785,27 @@ h1, h2, h3, h4, h5, h6, .font-display {
 }
 
 /* --- Tableaux & Overflow --- */
+/* En-tete de tableau (barre de recherche + boutons d'action) */
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--tia-border);
+  background-color: var(--tia-bg-raised);
+}
+
+.table-header .input-group {
+  flex: 1 1 240px;
+  max-width: 400px;
+}
+
+.table-header > * {
+  margin: 0;
+}
+
 .table-responsive {
   width: 100%;
   overflow-x: auto;

@@ -127,7 +127,14 @@ export function PricingPage() {
   }
 
   return (
-    <div className="py-5">
+    <div className="py-5 position-relative">
+      <button
+        type="button"
+        className="btn-close position-absolute top-0 end-0 m-3"
+        aria-label="Fermer et revenir a la page precedente"
+        title="Retour a la page precedente"
+        onClick={() => navigate(-1)}
+      ></button>
       <div className="text-center mb-5">
         <h1 className="fw-bold mb-2">Nos Formules d'Abonnement</h1>
         <p className="text-muted">Choisissez la formule adaptée à la taille de votre entreprise. Paiement Mobile Money disponible.</p>

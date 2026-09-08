@@ -1111,7 +1111,7 @@ export function SettingsPage() {
                 <div className="modal-footer border-0 pt-0">
                   <button
                     type="button"
-                     className="btn btn-outline-secondary"
+                    className="btn btn-outline-secondary"
                     onClick={() => setShowUserModal(false)}
                     disabled={saving}
                   >
@@ -1119,7 +1119,7 @@ export function SettingsPage() {
                   </button>
                     <button
                       type="submit"
-                      className="btn btn-outline-secondary fw-bold"
+                      className="btn btn-primary fw-bold"
                       disabled={saving}
                     >
                     {saving
