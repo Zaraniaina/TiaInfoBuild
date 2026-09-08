@@ -20,6 +20,10 @@ from app.schemas.utilisateur import UtilisateurCreate, UtilisateurUpdate, Utilis
 # depuis la base pour ne pas dépendre de l'ordre d'insertion des rôles.
 MAX_ADMIN_ENTREPRISE = 2
 
+CurrentUser = Annotated[dict[str, Any], Depends(get_current_active_user)]
+DbSession = Annotated[AsyncSession, Depends(get_db)]
+AdminCheck = Annotated[dict[str, Any], Depends(require_permission("parametres:write"))]
+
 
 async def _resolve_admin_role_id(db: DbSession) -> int | None:
     """Retourne l'id réel du rôle admin_entreprise (ou None s'il n'existe pas encore)."""
@@ -30,9 +34,6 @@ async def _resolve_admin_role_id(db: DbSession) -> int | None:
 
 
 router = APIRouter(tags=["utilisateurs"])
-CurrentUser = Annotated[dict[str, Any], Depends(get_current_active_user)]
-DbSession = Annotated[AsyncSession, Depends(get_db)]
-AdminCheck = Annotated[dict[str, Any], Depends(require_permission("parametres:write"))]
 
 
 @router.get("", response_model=dict)
