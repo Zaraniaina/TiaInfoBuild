@@ -961,13 +961,61 @@ export function CommercialPage() {
         </div>
       )}
 
-      {/* Modal Client Builder */}
-      {showClientModal && (
+            {/* Modal Client Builder */}
+      {showClientModal && (() => {
+        const champDef = (label: string, nom: string, valeur: string, requis = false, type: 'text' | 'email' | 'select' = 'text') => (
+          <div className="col-12 col-sm-6">
+            <label className="form-label fw-semibold">{label}{requis && ' *'}</label>
+            {type === 'select' ? (
+              <select className="form-select" value={valeur} onChange={e => setClientForm({ ...clientForm, [nom]: e.target.value })}>
+                <option value="">-</option>
+                <option value="M">M.</option>
+                <option value="Mme">Mme</option>
+                <option value="Mx">Mx</option>
+              </select>
+            ) : (
+              <input type={type} className="form-control" required={requis} value={valeur} onChange={e => setClientForm({ ...clientForm, [nom]: e.target.value })} />
+            )}
+          </div>
+        )
+        const champComplet = (label: string, nom: string, valeur: string, requis = false, type: 'text' | 'email' | 'select' = 'text') => (
+          <div className="col-12">
+            <label className="form-label fw-semibold">{label}{requis && ' *'}</label>
+            {type === 'select' ? (
+              <select className="form-select" value={valeur} onChange={e => setClientForm({ ...clientForm, [nom]: e.target.value })}>
+                <option value="">-</option>
+                <option value="M">M.</option>
+                <option value="Mme">Mme</option>
+                <option value="Mx">Mx</option>
+              </select>
+            ) : (
+              <input type={type} className="form-control" required={requis} value={valeur} onChange={e => setClientForm({ ...clientForm, [nom]: e.target.value })} />
+            )}
+          </div>
+        )
+        const tc = clientForm.type || 'particulier'
+        const champsCommun = [
+          ...(tc === 'particulier' ? [
+            champDef('Civilité', 'civilite', clientForm.civilite || '', false, 'select'),
+            champDef('Nom', 'nom', clientForm.nom || '', true),
+            champDef('Prénom', 'prenom', clientForm.prenom || ''),
+          ] : [
+            champDef('Raison sociale', 'entreprise', clientForm.entreprise || '', true),
+          ]),
+          champComplet('Email', 'email', clientForm.email || '', true, 'email'),
+          champDef('Téléphone', 'telephone', clientForm.telephone || ''),
+          champDef('Portable', 'portable', clientForm.portable || ''),
+          champComplet('Adresse', 'adresse', clientForm.adresse || ''),
+        ]
+        const champsEntreprise = ['entreprise', 'administration_publique', 'association', 'ong', 'promoteur_immobilier'].includes(tc)
+          ? [champDef('SIRET', 'siret', clientForm.siret || ''), champDef('No TVA', 'numero_tva', clientForm.numero_tva || '')]
+          : []
+        return (
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title fw-bold">{selectedClient ? 'Éditer le Client' : 'Créer un Client'}</h5>
+                <h5 className="modal-title fw-bold">{selectedClient ? 'Editer le Client' : 'Creer un Client'}</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowClientModal(false)}></button>
               </div>
               <form onSubmit={handleSaveClient}>
@@ -984,63 +1032,19 @@ export function CommercialPage() {
                         <option value="promoteur_immobilier">Promoteur immobilier</option>
                       </select>
                     </div>
-                    <div className="col-12 col-sm-6">
-                      <label className="form-label fw-semibold">Civilité</label>
-                      <select className="form-select" value={clientForm.civilite || ''} onChange={e => setClientForm({ ...clientForm, civilite: e.target.value })}>
-                        <option value="">-</option>
-                        <option value="M">M.</option>
-                        <option value="Mme">Mme</option>
-                        <option value="Mx">Mx</option>
-                      </select>
-                    </div>
-                    <div className="col-12 col-sm-6">
-                      <label className="form-label fw-semibold">Nom *</label>
-                      <input type="text" className="form-control" required value={clientForm.nom || ''} onChange={e => setClientForm({ ...clientForm, nom: e.target.value })} />
-                    </div>
-                    <div className="col-12 col-sm-6">
-                      <label className="form-label fw-semibold">Prénom</label>
-                      <input type="text" className="form-control" value={clientForm.prenom || ''} onChange={e => setClientForm({ ...clientForm, prenom: e.target.value })} />
-                    </div>
-                    <div className="col-12 col-sm-6">
-                      <label className="form-label fw-semibold">Entreprise / Raison sociale</label>
-                      <input type="text" className="form-control" value={clientForm.entreprise || ''} onChange={e => setClientForm({ ...clientForm, entreprise: e.target.value })} />
-                    </div>
-                    <div className="col-12 col-sm-6">
-                      <label className="form-label fw-semibold">SIRET</label>
-                      <input type="text" className="form-control" value={clientForm.siret || ''} onChange={e => setClientForm({ ...clientForm, siret: e.target.value })} />
-                    </div>
-                    <div className="col-12 col-sm-6">
-                      <label className="form-label fw-semibold">No TVA</label>
-                      <input type="text" className="form-control" value={clientForm.numero_tva || ''} onChange={e => setClientForm({ ...clientForm, numero_tva: e.target.value })} />
-                    </div>
-                    <div className="col-12">
-                      <label className="form-label fw-semibold">Email</label>
-                      <input type="email" className="form-control" value={clientForm.email || ''} onChange={e => setClientForm({ ...clientForm, email: e.target.value })} />
-                    </div>
-                    <div className="col-12 col-sm-6">
-                      <label className="form-label fw-semibold">Téléphone</label>
-                      <input type="text" className="form-control" value={clientForm.telephone || ''} onChange={e => setClientForm({ ...clientForm, telephone: e.target.value })} />
-                    </div>
-                    <div className="col-12 col-sm-6">
-                      <label className="form-label fw-semibold">Portable</label>
-                      <input type="text" className="form-control" value={clientForm.portable || ''} onChange={e => setClientForm({ ...clientForm, portable: e.target.value })} />
-                    </div>
-                    <div className="col-12">
-                      <label className="form-label fw-semibold">Adresse</label>
-                      <input type="text" className="form-control" value={clientForm.adresse || ''} onChange={e => setClientForm({ ...clientForm, adresse: e.target.value })} />
-                    </div>
+                    {champsCommun}
+                    {champsEntreprise}
                   </div>
                 </div>
                 <div className="modal-footer bg-light">
                   <button type="button" className="btn btn-outline-secondary" onClick={() => setShowClientModal(false)}>Annuler</button>
-                  <button type="submit" className="btn btn-outline-secondary fw-bold">Créer le client</button>
+                  <button type="submit" className="btn btn-outline-secondary fw-bold">Creer le client</button>
                 </div>
               </form>
             </div>
           </div>
-        </div>
-      )}
-
+          </div>
+        )})()})
       {/* Modal Facture Builder */}
       {showFactureModal && (
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>

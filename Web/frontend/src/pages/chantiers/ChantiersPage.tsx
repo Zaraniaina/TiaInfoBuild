@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Chantier } from '@/types'
-import { chantiersService } from '@/services/chantiers.service'
+import { chantiersService, type ProjetTransformable } from '@/services/chantiers.service'
 import { QRScannerModal } from '@/components/pointage/QRScannerModal'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
@@ -22,6 +22,9 @@ export function ChantiersPage() {
   const [showQRModal, setShowQRModal] = useState(false)
   const [qrData, setQrData] = useState<{ qr_token: string; chantier_nom: string; date_validite: string } | null>(null)
   const [showScannerModal, setShowScannerModal] = useState(false)
+  const [showTransformModal, setShowTransformModal] = useState(false)
+  const [projetsTransformables, setProjetsTransformables] = useState<ProjetTransformable[]>([])
+  const [transformLoading, setTransformLoading] = useState(false)
   const [activeTabModal, setActiveTabModal] = useState<'infos' | 'budget' | 'phases' | 'incidents' | 'ressources'>('infos')
   const [activeDetailTab, setActiveDetailTab] = useState<'general' | 'phases' | 'incidents' | 'budget'>('general')
 
@@ -51,6 +54,30 @@ export function ChantiersPage() {
   useEffect(() => {
     loadChantiers()
   }, [searchTerm, statutFilter])
+
+  const openTransformModal = async () => {
+    setShowTransformModal(true)
+    try {
+      const data = await chantiersService.getProjetsTransformables()
+      setProjetsTransformables(data)
+    } catch {
+      setProjetsTransformables([])
+    }
+  }
+
+  const handleTransform = async (projetId: number) => {
+    setTransformLoading(true)
+    try {
+      await chantiersService.transformerProjet(projetId)
+      setShowTransformModal(false)
+      alert('Chantier créé avec succès depuis le projet.')
+      loadChantiers()
+    } catch (e) {
+      alert('Erreur lors de la création du chantier.')
+    } finally {
+      setTransformLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (showDetailModal && selectedChantier) {
@@ -158,6 +185,11 @@ export function ChantiersPage() {
           {perms.canCreateChantier && (
             <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedChantier(null); setFormData({}); setShowModal(true); }}>
               <i className="bi bi-plus-lg me-1"></i>Nouveau chantier
+            </button>
+          )}
+          {perms.canCreateChantier && (
+            <button className="btn btn-outline-primary fw-bold ms-2" onClick={openTransformModal}>
+              <i className="bi bi-arrow-repeat me-1"></i>Transformer un projet en chantier
             </button>
           )}
         </div>
@@ -798,6 +830,53 @@ export function ChantiersPage() {
           </div>
         </div>
       )}
+
+      {showTransformModal && (
+        <div className="modal fade show" style={{ display: 'block' }} tabIndex={-1} role="dialog" aria-modal="true">
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content border-0 shadow">
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold"><i className="bi bi-arrow-repeat me-2"></i>Transformer un projet en chantier</h5>
+                <button type="button" className="btn-close" onClick={() => setShowTransformModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <p className="text-muted small mb-3">
+                  Crée un chantier depuis un projet avec un contrat actif. Le chantier reprend le nom, le client et le montant contractuel du projet.
+                </p>
+                {projetsTransformables.length === 0 ? (
+                  <div className="alert alert-info mb-0">Aucun projet contractualisé en attente de chantier.</div>
+                ) : (
+                  <table className="table table-hover align-middle">
+                    <thead>
+                      <tr><th>Réf. projet</th><th>Nom</th><th>Client</th><th>Contrat</th><th>Montant</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                      {projetsTransformables.map(pj => (
+                        <tr key={pj.projet_id}>
+                          <td className="font-monospace small">{pj.reference || '-'}</td>
+                          <td>{pj.nom || '-'}</td>
+                          <td>{pj.client_id || '-'}</td>
+                          <td className="font-monospace small">{pj.contrat_reference || '-'}</td>
+                          <td>{pj.montant_contrat ? pj.montant_contrat.toLocaleString('fr-FR') : 0} Ar</td>
+                          <td>
+                            <button className="btn btn-sm btn-primary" disabled={transformLoading} onClick={() => handleTransform(pj.projet_id)}>
+                              {transformLoading ? 'Création...' : 'Créer le chantier'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-outline-secondary" onClick={() => setShowTransformModal(false)}>Fermer</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {showTransformModal && <div className="modal-backdrop fade show" onClick={() => setShowTransformModal(false)}></div>}
     </div>
   )
 }

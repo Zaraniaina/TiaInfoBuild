@@ -236,6 +236,19 @@ async def seed():
             print(f"      Chantier demo cree (ID {chantier_demo_id[0]})")
         if chantier_demo_id:
             chantier_id_demo = chantier_demo_id[0]
+            # Lien demo projet -> chantier (workflow transformation) si un projet demo existe
+            r = await db.execute(text(
+                "SELECT id FROM projets WHERE entreprise_id = :eid AND is_deleted = 0 LIMIT 1"
+            ), {"eid": entreprise_id})
+            row_proj = r.fetchone()
+            if row_proj:
+                r = await db.execute(text(
+                    "UPDATE chantiers SET projet_id = :pid WHERE id = :cid AND projet_id IS NULL"
+                ), {"pid": row_proj[0], "cid": chantier_id_demo})
+                # Lier les devis existants au projet demo pour le workflow transformation
+                await db.execute(text(
+                    "UPDATE devis SET projet_id = :pid WHERE entreprise_id = :eid AND projet_id IS NULL AND is_deleted = 0 LIMIT 1"
+                ), {"pid": row_proj[0], "eid": entreprise_id})
             # Affectations des employes demo au chantier
             for email_e in ("ouvrier@btppro.mg", "employe@btppro.mg"):
                 r = await db.execute(text(

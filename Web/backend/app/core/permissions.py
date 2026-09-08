@@ -36,7 +36,7 @@ ROLE_NAMES: Final[dict[str, str]] = {
 
 ALL_PERMISSIONS: Final[list[str]] = [
     "dashboard:read",
-    "chantiers:read", "chantiers:write", "chantiers:delete",
+    "chantiers:read", "chantiers:write", "chantiers:delete", "chantiers:create",
     "rh:read", "rh:write", "rh:delete",
     "stocks:read", "stocks:write", "stocks:delete",
     "commercial:read", "commercial:write", "commercial:delete",
@@ -89,7 +89,7 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
     ],
     Role.CHEF_PROJET: [
         "dashboard:read",
-        "chantiers:read", "chantiers:write",
+        "chantiers:read", "chantiers:write", "chantiers:create",
         "rh:read", "rh:write",
         "materiels:read", "materiels:write",
         "stocks:read",

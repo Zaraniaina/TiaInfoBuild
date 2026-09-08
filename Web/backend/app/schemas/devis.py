@@ -109,6 +109,7 @@ class DevisCreate(BaseModel):
 
     entreprise_id: int | None = None
     client_id: int = Field(..., ge=1)
+    projet_id: int | None = Field(default=None, ge=1)
     numero: str | None = Field(default=None, max_length=50)
     objet: str | None = None
     montant_ht: float | None = Field(default=0.0)

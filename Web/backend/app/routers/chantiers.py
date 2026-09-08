@@ -15,6 +15,9 @@ from app.models.chantier import Chantier
 from app.models.phase import Phase
 from app.models.incident import Incident
 from app.models.affectation_chantier import AffectationChantier
+from app.models.projet import Projet
+from app.models.devis import Devis
+from app.models.contrat import Contrat
 from app.schemas.chantier import (
     ChantierCreate,
     ChantierUpdate,
@@ -117,6 +120,140 @@ async def create_chantier(
         data["chef_chantier_id"] = user.id
     crud = ChantierCRUD()
     chantier = await crud.create(db, data)
+    await db.refresh(chantier)
+    return ChantierResponse.model_validate(chantier)
+
+
+@router.get("/projets-transformables")
+async def list_projets_transformables(
+    payload: CurrentUserPayload,
+    db: DbDep,
+):
+    """Projets disposant d'un contrat actif et pas encore transformes en chantier."""
+    _require_permission(payload, "chantiers:create")
+    entreprise_id = payload.get("entreprise_id")
+
+    query = (
+        select(Projet, Contrat)
+        .join(Devis, Devis.projet_id == Projet.id)
+        .join(Contrat, Contrat.devis_id == Devis.id)
+        .where(
+            Projet.is_deleted == False,
+            Contrat.is_deleted == False,
+            Contrat.statut.notin_(["annule", "resilie"]),
+        )
+    )
+    if entreprise_id is not None:
+        query = query.where(Projet.entreprise_id == entreprise_id)
+    rows = (await db.execute(query.order_by(Projet.id.desc()))).all()
+
+    transformes = (
+        await db.execute(
+            select(Chantier.projet_id).where(
+                Chantier.projet_id.isnot(None),
+                Chantier.is_deleted == False,
+            )
+        )
+    ).scalars().all()
+    exclus = set(transformes)
+
+    items = []
+    for projet, contrat in rows:
+        if projet.id in exclus:
+            continue
+        items.append({
+            "projet_id": projet.id,
+            "reference": projet.reference,
+            "nom": projet.nom,
+            "client_id": projet.client_id,
+            "localisation": projet.localisation,
+            "montant_contrat": float(contrat.montant) if contrat.montant is not None else 0.0,
+            "contrat_reference": contrat.reference,
+        })
+    return {"items": items, "total": len(items)}
+
+
+@router.post("/from-projet/{projet_id}", response_model=ChantierResponse, status_code=status.HTTP_201_CREATED)
+async def create_chantier_from_projet(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    projet_id: int,
+):
+    """Ouvre un chantier a partir d'un projet contractualise (contrat actif)."""
+    _require_permission(payload, "chantiers:create")
+    entreprise_id = payload.get("entreprise_id")
+
+    projet = (
+        await db.execute(
+            select(Projet).where(Projet.id == projet_id, Projet.is_deleted == False)
+        )
+    ).scalar_one_or_none()
+    if not projet:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Projet non trouvé")
+    if entreprise_id is not None and projet.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    contrat = (
+        await db.execute(
+            select(Contrat)
+            .join(Devis, Contrat.devis_id == Devis.id)
+            .where(
+                Devis.projet_id == projet_id,
+                Contrat.is_deleted == False,
+                Contrat.statut.notin_(["annule", "resilie"]),
+            )
+            .order_by(Contrat.id.desc())
+        )
+    ).scalars().first()
+    if not contrat:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Aucun contrat actif lie a ce projet. Le devis doit d'abord etre accepte puis transforme en contrat.",
+        )
+
+    existant = (
+        await db.execute(
+            select(Chantier).where(
+                Chantier.projet_id == projet_id,
+                Chantier.is_deleted == False,
+            )
+        )
+    ).scalar_one_or_none()
+    if existant:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Un chantier ({existant.numero or existant.nom}) est deja lie a ce projet",
+        )
+
+    # Numero auto : CHANT-<annee>-<seq> unique
+    annee = datetime.now().year
+    seq = 1
+    while True:
+        numero = f"CHANT-{annee}-{seq:04d}"
+        prise = (
+            await db.execute(select(Chantier).where(Chantier.numero == numero))
+        ).scalar_one_or_none()
+        if not prise:
+            break
+        seq += 1
+        if seq > 9999:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Impossible de generer un numero de chantier")
+
+    montant = float(contrat.montant) if contrat.montant is not None else 0.0
+    chantier = Chantier(
+        entreprise_id=projet.entreprise_id or entreprise_id,
+        client_id=projet.client_id,
+        projet_id=projet.id,
+        numero=numero,
+        nom=projet.nom,
+        adresse=projet.adresse,
+        budget_prevu=montant,
+        budget_previsionnel=montant,
+        statut="planification",
+        description=f"Chantier issu du projet {projet.reference or projet.id} (contrat {contrat.reference})",
+    )
+    db.add(chantier)
+    await db.flush()
     await db.refresh(chantier)
     return ChantierResponse.model_validate(chantier)
 

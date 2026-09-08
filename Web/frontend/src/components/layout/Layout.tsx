@@ -26,8 +26,10 @@ export function Layout() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+    const canViewAbonnement = user?.role_code === 'admin_entreprise' || user?.role_code === 'super_admin'
+
   useEffect(() => {
-    if (user?.entreprise_id) {
+    if (canViewAbonnement && user?.entreprise_id) {
       subscriptionsService.getMySubscription()
         .then(setSubscription)
         .catch(() => setSubscription(null))
@@ -35,7 +37,7 @@ export function Layout() {
     } else {
       setSubLoading(false)
     }
-  }, [user?.entreprise_id])
+  }, [canViewAbonnement, user?.entreprise_id])
 
   const isExpiringSoon = subscription?.date_prochain_renouvellement
     ? new Date(subscription.date_prochain_renouvellement) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)

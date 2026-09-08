@@ -114,6 +114,7 @@ class ChantierResponse(BaseModel):
     entreprise_id: int | None = None
     client_id: int | None = None
     chef_chantier_id: int | None = None
+    projet_id: int | None = None
     numero: str | None = None
     nom: str
     adresse: str | None = None
@@ -146,6 +147,7 @@ class ChantierList(BaseModel):
     entreprise_id: int | None = None
     client_id: int | None = None
     chef_chantier_id: int | None = None
+    projet_id: int | None = None
     numero: str | None = None
     nom: str
     ville: str | None = None
