@@ -26,12 +26,16 @@ class Employe(Base):
     adresse: Mapped[str | None] = mapped_column(Text)
     statut: Mapped[str] = mapped_column(String(20), server_default="actif")
     code_qr_badge: Mapped[str | None] = mapped_column(String(100), unique=True)
+    badge_statut: Mapped[str] = mapped_column(String(20), server_default="actif")
+    badge_date_creation: Mapped[datetime | None] = mapped_column(DateTime)
+    badge_date_desactivation: Mapped[datetime | None] = mapped_column(DateTime)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (
         Index("idx_employes_entreprise_id", "entreprise_id"),
+        Index("idx_employes_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_employes_nom_prenom", "nom", "prenom"),
     )
 
@@ -42,3 +46,11 @@ class Employe(Base):
     pointages: Mapped[list["Pointage"]] = relationship("Pointage", back_populates="employe", lazy="selectin")
     heures_supplementaires: Mapped[list["HeureSupplementaire"]] = relationship("HeureSupplementaire", back_populates="employe", lazy="selectin")
     historique_postes: Mapped[list["HistoriquePoste"]] = relationship("HistoriquePoste", back_populates="employe", lazy="selectin")
+
+    # Espace terrain : taches, travaux, rapports, photos, signalements, commentaires
+    taches: Mapped[list["Tache"]] = relationship("Tache", back_populates="employe")
+    travaux_realises: Mapped[list["TravailRealise"]] = relationship("TravailRealise", back_populates="employe")
+    rapports_journaliers: Mapped[list["RapportJournalier"]] = relationship("RapportJournalier", back_populates="employe")
+    photos: Mapped[list["PhotoChantier"]] = relationship("PhotoChantier", back_populates="employe")
+    signalements: Mapped[list["Signalement"]] = relationship("Signalement", back_populates="employe")
+    commentaires: Mapped[list["Commentaire"]] = relationship("Commentaire", back_populates="employe")

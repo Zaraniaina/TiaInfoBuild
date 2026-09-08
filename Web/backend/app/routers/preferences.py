@@ -39,8 +39,9 @@ class PreferenceResponse(BaseModel):
 
 
 def _to_response(pref: Preference) -> PreferenceResponse:
+    theme = pref.theme if pref.theme in ("light", "dark") else "light"
     return PreferenceResponse(
-        theme=pref.theme or "auto",
+        theme=theme,
         langue=pref.langue or "fr",
         date_format=pref.date_format or "DD/MM/YYYY",
         devise=pref.devise or "MGA",
@@ -63,7 +64,7 @@ async def get_my_preferences(payload: CurrentUserPayload, db: DbDep):
     if not pref:
         pref = Preference(
             user_id=int(user_id),
-            theme="auto",
+            theme="light",
             langue="fr",
             date_format="DD/MM/YYYY",
             devise="MGA",
@@ -95,7 +96,7 @@ async def update_my_preferences(payload: CurrentUserPayload, db: DbDep, data: Pr
     update_data = data.model_dump(exclude_unset=True)
     if "theme" in update_data:
         theme = update_data["theme"]
-        if theme not in ("light", "dark", "auto"):
+        if theme not in ("light", "dark"):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Theme invalide")
         pref.theme = theme
 

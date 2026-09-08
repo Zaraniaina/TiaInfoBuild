@@ -1,19 +1,19 @@
-# 🚀 Guide de démarrage Web — TIA INFO BUILD (XAMPP MySQL & 11 Rôles RBAC)
+﻿# Guide de démarrage Web — TIA INFO BUILD (XAMPP MySQL & 12 Rôles RBAC)
 
-Guide complet pour installer, initialiser la base de données MySQL via XAMPP, exécuter les 11 rôles de la spécification `roles_tia_builds/`, et démarrer l'application Web (Backend FastAPI + Frontend React).
+Guide complet pour installer, initialiser la base de données MySQL via XAMPP, exécuter les 12 rôles de la spécification `roles_tia_builds/`, et démarrer l'application Web (Backend FastAPI + Frontend React).
 
 ---
 
-## 🏗️ Architecture & Spécifications Clés
+## Architecture & Spécifications Clés
 
 1. **Clés Primaires & Étrangères Longues (`BIGINT`)** :
-   - L'ensemble des 35 tables de la base de données (`schema.sql` & modèles SQLAlchemy `app/models/*.py`) utilisent des identifiants `BIGINT` (BigInteger en Python/SQL) pour supporter la haute volumétrie multi-tenant.
+   - L'ensemble des 35 tables de la base de données (`schema.sql` & modèles SQLAlchemy `app/models/*.py`) utilisent des identifiants `BIGINT` (BigInteger en Python/S) pour supporter la haute volumétrie multi-tenant.
    - Migration Alembic : `007_convert_ids_to_bigint.py`.
 
 2. **Référentiel des 12 Rôles Utilisateurs (`roles_tia_builds/`)** :
     - Application du contrôle d'accès basé sur les rôles (RBAC) avec **interfaces et tableaux de bord dédiés** pour chacun des 12 profils :
      1. **Super Administrateur SaaS** (`super_admin`) : Back-office SaaS, gestion des abonnements tenants, Mobile Money billing.
-     2. **Administrateur d'Entreprise** (`admin_entreprise`) : Gestion technique, rôles, sécurité, audit des logs de connexion.
+     2. **Administrateur d'Entreprise** (`admin_entreprise`) : Gestion technique, rôles, sécurité, audit des logs de connexion, **gestion abonnement tenant**.
      3. **Direction Générale / DAF** (`directeur`) : Pilotage P&L consolidé, marges réelles, validation des budgets & devis > 50M MGA.
      4. **Comptable / Responsable Financier** (`comptable`) : Saisie dépenses, calcul des marges automatiques, facturation et impayés.
      5. **Chef de Projet / Directeur Technique** (`chef_projet`) : Supervision multi-chantiers, arbitrage des ressources inter-chantiers.
@@ -23,6 +23,7 @@ Guide complet pour installer, initialiser la base de données MySQL via XAMPP, e
      9. **Magasinier / Stocks** (`magasinier`) : Mouvements de stock, alertes stock minimum/rupture, fournisseurs.
      10. **Responsable Commercial** (`commercial`) : Devis avec calcul de marge théorique, conversion devis ➔ contrat, suivi facturation.
      11. **Ouvrier / Employé Terrain** (`employe`) : **Scan mobile du QR Code pointage site**, checklist des tâches du jour.
+     12. **Client** (`client`) : Accès lecture devis/factures, suivi chantiers.
 
 3. **Politique de Pointage Anti-Fraude (`11_politique_pointage.md`)** :
    - Endpoint API : `POST /api/rh/pointages/qr-checkin`
@@ -30,7 +31,7 @@ Guide complet pour installer, initialiser la base de données MySQL via XAMPP, e
 
 ---
 
-## 📋 Prérequis
+## Prérequis
 
 1. **XAMPP** (avec le service **MySQL** démarré)
 2. **Python 3.11+**
@@ -38,7 +39,7 @@ Guide complet pour installer, initialiser la base de données MySQL via XAMPP, e
 
 ---
 
-## 🗄️ Étape 1 : Base de données MySQL (XAMPP)
+## Étape 1 : Base de données MySQL (XAMPP)
 
 1. Ouvrir **XAMPP Control Panel**.
 2. Cliquer sur **Start** en face du service **MySQL**.
@@ -47,7 +48,7 @@ Guide complet pour installer, initialiser la base de données MySQL via XAMPP, e
 
 ---
 
-## ⚙️ Étape 2 : Backend FastAPI
+## Étape 2 : Backend FastAPI
 
 ### Démarrage rapide (Windows PowerShell)
 
@@ -60,7 +61,7 @@ Ce script lance automatiquement :
 - Backend sur http://localhost:8000
 - Frontend sur http://localhost:5173
 
-### Démarrage manuel (Windows PowerShell — système insensible à la casse)
+### Démarrage manuel (Windows PowerShell)
 
 ```powershell
 cd Web/backend
@@ -73,19 +74,16 @@ pip install -r requirements.txt
 # Appliquer les migrations Alembic
 alembic upgrade head
 
-# Initialiser la base avec les rôles et comptes de démo
+# Peupler la base avec les rôles et comptes de test
 python app/scripts/init_db.py
 
-# Lancer le serveur
+# Démarrer le serveur
 uvicorn app.main:app --reload --port 8000
 ```
 
-- **API Documentation Swagger** : [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Health Check** : [http://localhost:8000/health](http://localhost:8000/health)
-
 ---
 
-## 💻 Étape 3 : Frontend React (Vite)
+## Étape 3 : Frontend React
 
 ```powershell
 cd Web/frontend
@@ -93,33 +91,34 @@ cd Web/frontend
 # Installer les dépendances (une seule fois)
 npm install
 
-# Lancer le serveur de dev
+# Démarrer le serveur de développement
 npm run dev
 ```
 
-- **Application Web** : [http://localhost:5173](http://localhost:5173)
+---
+
+## Comptes de test (créés automatiquement par le seed)
+
+Après avoir lancé `python app/scripts/init_db.py`, les comptes suivants sont disponibles (mot de passe : `Admin123!`) :
+
+| Rôle | Email | Permissions principales |
+|------|-------|------------------------|
+| **Super Admin SaaS** | `admin@tia.mg` | Back-office SaaS, gestion tenants |
+| **Admin Entreprise** | `demo@btppro.mg` | Tous modules métier, paramètres, abonnement |
+| **Direction Générale** | `directeur@btppro.mg` | Dashboard, chantiers, finance, commercial, rh, matériels, stocks, alertes |
+| **Comptable** | `comptable@btppro.mg` | Finance, commercial, chantiers, rh, alertes |
+| **Chef de Projet** | `chefprojet@btppro.mg` | Chantiers, rh, matériels, stocks, finance, alertes |
+| **Chef de Chantier** | `chefchantier@btppro.mg` | Chantiers, rh, matériels, stocks, finance, alertes, pointage |
+| **Responsable RH** | `rh@btppro.mg` | RH, chantiers, alertes, pointage |
+| **Responsable Matériel** | `materiel@btppro.mg` | Matériels, chantiers, alertes |
+| **Magasinier** | `magasinier@btppro.mg` | Stocks, chantiers, alertes, pointage |
+| **Commercial** | `commercial@btppro.mg` | Commercial, chantiers, finance, alertes |
+| **Ouvrier / Terrain** | `employe@btppro.mg` | RH, chantiers, matériels, stocks, alertes, pointage |
+| **Client** | `client@btppro.mg` | Dashboard, commercial, chantiers |
 
 ---
 
-## 🔑 Comptes de Connexion Démo (11 Rôles)
-
-| Rôle | Email | Mot de passe | Espace & Interface Dédiée |
-|---|---|---|---|
-| **Super Admin SaaS** | `admin@tia.mg` | `Admin123!` | Dashboard Back-office SaaS & Tenants |
-| **Admin Entreprise** | `demo@btppro.mg` | `Admin123!` | Paramètres & Audit Comptes |
-| **Direction Générale** | `directeur@btppro.mg` | `Admin123!` | Pilotage P&L, Marges & Validations |
-| **Comptable** | `comptable@btppro.mg` | `Admin123!` | Dépenses, Bilan Financier & Impayés |
-| **Chef de Projet** | `chefprojet@btppro.mg` | `Admin123!` | Supervision Multi-Chantiers |
-| **Chef de Chantier** | `chefchantier@btppro.mg` | `Admin123!` | **Générateur QR Pointage**, Avancement % |
-| **Responsable RH** | `rh@btppro.mg` | `Admin123!` | Validation Pointages QR/GPS & Salariés |
-| **Responsable Matériel** | `materiel@btppro.mg` | `Admin123!` | Engins, Maintenances & Affectations |
-| **Magasinier** | `magasinier@btppro.mg` | `Admin123!` | Stock Mini, Entrées/Sorties Dépôt |
-| **Commercial** | `commercial@btppro.mg` | `Admin123!` | Devis, Contrats & Pipeline Clients |
-| **Ouvrier / Terrain** | `ouvrier@btppro.mg` | `Admin123!` | **Scan QR Pointage**, Tâches du Jour |
-
----
-
-## 🧪 Tests rapides
+## Tests rapides
 
 ### Vérifier que le backend répond
 
@@ -129,6 +128,17 @@ curl.exe http://localhost:8000/health
 
 # Lister les routes disponibles (OpenAPI)
 curl.exe http://localhost:8000/openapi.json | .\env\Scripts\python.exe -c "import sys,json; d=json.load(sys.stdin); print('\n'.join(d.get('paths', {}).keys()))"
+```
+
+### Tester la connexion et les routes protégées
+
+```powershell
+# Login admin_entreprise
+curl.exe -X POST http://localhost:8000/api/auth/login -H "Content-Type: application/json" -d "{\"email\":\"demo@btppro.mg\",\"password\":\"Admin123!\"}"
+
+# Utiliser le token pour accéder aux routes protégées
+curl.exe http://localhost:8000/api/auth/me -H "Authorization: Bearer <TOKEN>"
+curl.exe http://localhost:8000/api/dashboard/stats -H "Authorization: Bearer <TOKEN>"
 ```
 
 ### Tester la création d'un utilisateur par l'admin entreprise
@@ -157,12 +167,12 @@ curl.exe http://localhost:8000/openapi.json | .\env\Scripts\python.exe -c "impor
 # Toutes les routes doivent retourner 401 (authentification requise) et non 404
 curl.exe http://localhost:8000/api/utilisateurs/
 curl.exe http://localhost:8000/api/parametres/entreprise
-curl.exe http://localhost:8000/api/super-admin/stats
+curl.exe http://localhost:8000/api/super-admin/entreprises
 ```
 
 ---
 
-## 🔄 Synchronisation Desktop ↔ Web
+## Synchronisation Desktop ↔ Web
 
 - **Push (Desktop ➔ Web)** : `POST /api/sync/import-sqlite`
 - **Pull (Web ➔ Desktop)** : `GET /api/sync/export`
@@ -170,19 +180,85 @@ curl.exe http://localhost:8000/api/super-admin/stats
 
 ---
 
-## 📝 Notes de version & Correctifs appliqués
+## Module Commercial — Cycle Complet
 
+Le module commercial gère le cycle client BTP complet :
+
+```
+CLIENT → DEMANDE → PROJET → MÉTRÉ → DEVIS → CONTRAT → CHANTIER → SITUATION → FACTURE → PAIEMENT
+```
+
+### Routes API
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| GET/POST | `/api/commercial/demandes` | Lister/Créer demandes de travaux |
+| GET/PUT/DELETE | `/api/commercial/demandes/{id}` | Détail/Modifier/Supprimer demande |
+| GET/POST | `/api/commercial/projets` | Lister/Créer projets |
+| GET/PUT/DELETE | `/api/commercial/projets/{id}` | Détail/Modifier/Supprimer projet |
+| GET/POST | `/api/commercial/metres` | Lister/Créer métrés |
+| GET/PUT/DELETE | `/api/commercial/metres/{id}` | Détail/Modifier/Supprimer métré |
+| GET/POST | `/api/commercial/situations` | Lister/Créer situations de travaux |
+| GET/PUT/DELETE | `/api/commercial/situations/{id}` | Détail/Modifier/Supprimer situation |
+| GET/POST | `/api/commercial/situations/{id}/lignes` | Lister/Créer lignes de situation |
+| DELETE | `/api/commercial/situations/{id}/lignes/{ligne_id}` | Supprimer ligne de situation |
+
+### Seed données de test
+
+Après `init_db.py`, les données suivantes sont créées :
+- 1 demande de travaux (DEM-00001)
+- 1 projet (PRJ-00001)
+- 5 lignes de métré (terrassement, fondation, murs, charpente, couverture)
+- 1 situation de travaux (SIT-00001, 35% avancement)
+
+### Interfaces Frontend (page `/commercial`)
+
+La page **Commercial & Facturation** (`Web/frontend/src/pages/commercial/`) expose 4 nouveaux onglets :
+
+| Onglet | Composant | Fonctionnalités |
+|--------|-----------|-----------------|
+| **Demandes** | `DemandeTravauxTab.tsx` | Tableau filtrable (recherche + statut), modal création/édition (client, type, dates, plans), badges de statut |
+| **Projets** | `ProjetsTab.tsx` | Tableau + modal (client, demande liée, dimensions L/l/H, surface, volume, niveaux) |
+| **Métrés** | `MetresTab.tsx` | Tableau filtrable par projet + modal (ouvrage, formule de calcul, unité, quantité, ordre) |
+| **Situations** | `SituationsTab.tsx` | Tableau avec barre d'avancement + modal situation (chantier, contrat, montant) + **modal détail des lignes d'ouvrage** (ajout/suppression, montant auto Qté × PU) |
+
+Fichiers support :
+- `src/types/index.ts` : types `DemandeTravaux`, `Projet`, `Metre`, `SituationTravaux`, `LigneSituation` (+ Create/Update)
+- `src/services/commercial.service.ts` : 18 méthodes CRUD alignées sur les routes backend
+- `src/config/roles.config.ts` : permissions `canCreateDemande/Projet/Metre/Situation` (RBAC 12 rôles)
+
+Répartition des permissions de création :
+
+| Permission | Rôles autorisés |
+|------------|-----------------|
+| `canCreateDemande` | super_admin, commercial |
+| `canCreateProjet` | super_admin, commercial, chef_projet |
+| `canCreateMetre` | super_admin, commercial, chef_projet, chef_chantier |
+| `canCreateSituation` | super_admin, commercial, chef_projet, chef_chantier |
+
+Les autres rôles (directeur, comptable, client…) ont un accès **lecture seule** sur ces onglets.
+
+---
+
+## Notes de version & Correctifs appliqués
+
+- **Seed automatique** : Le script `app/scripts/init_db.py` crée maintenant les 12 comptes de test automatiquement (rôles + utilisateurs). Mot de passe universel : `Admin123!`.
+- **Correctif permissions admin_entreprise** : Ajout des permissions `chantiers:read/write/delete`, `rh:read/write/delete`, `stocks:read/write/delete`, `commercial:read/write/delete`, `finance:read/write/delete`, `materiels:read/write/delete`, `alertes:read/write` pour le rôle `admin_entreprise` (provoquait un 403 sur plusieurs modules).
+- **Correctif 500 chef_chantier** : Initialisation des variables `nb_incidents`, `incidents_non_resolus`, `retard_jours`, `consommation_stock`, `ecart_stock`, `nb_alertes_chantier`, `taux_avancement_physique`, `taux_avancement_financier` dans `app/crud/dashboard.py` pour éviter `UnboundLocalError`.
+- **Correctif récursion JSON** : Renforcement du patch `jsonable_encoder` dans `app/main.py` pour gérer les objets SQLAlchemy imbriqués dans des dicts/listes (protection anti-boucle via `_seen` set).
+- **Correctif seed roles** : Alignement des `role_id` dans le seed sur les IDs réels de la base (id=4=chef_chantier, id=6=comptable) et ajout du rôle `client` (id=12).
 - **Correctif routes 404** : Les routers FastAPI avaient des préfixes en double (`/api` dans `main.py` + `/utilisateurs` dans le router). Tous les préfixes internes des routers ont été supprimés pour éviter les chemins du type `/api/utilisateurs/utilisateurs/`.
 - **Correctif création utilisateurs** : Ajout de la vérification d'email existant (409), de la validation explicite des rôles (400), et de l'affichage des erreurs détaillées côté frontend.
 - **Schémas de réponse** : Ajout de `role_code` dans `UtilisateurResponse` et `UtilisateurList` pour l'affichage correct des rôles dans le frontend.
 
 ---
 
-## 🛠️ Dépannage
+## Dépannage
 
 - Port 8000 occupé : changer `APP_PORT` dans `Web/backend/.env`
 - Port 5173 occupé : changer le port dans `Web/frontend/vite.config.ts`
 - Erreur DB : vérifier que MySQL est démarré et que la base existe
 - CORS : vérifier `CORS_ORIGINS` dans `Web/backend/.env`
 - 404 sur les routes : vérifier que le backend a bien redémarré après les modifications des préfixes de routes
-
+- 500 sur `/dashboard/stats` : vérifier que le patch `jsonable_encoder` est appliqué (redémarrer le serveur)
+- 403 sur les modules : vérifier les permissions dans `app/core/permissions.py`

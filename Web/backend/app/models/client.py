@@ -43,13 +43,16 @@ class Client(Base):
 
     __table_args__ = (
         Index("idx_clients_entreprise_id", "entreprise_id"),
+        Index("idx_clients_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_clients_commercial_id", "commercial_id"),
         Index("idx_clients_type", "type"),
     )
 
     entreprise_rel: Mapped["Entreprise"] = relationship("Entreprise", back_populates="clients", lazy="selectin")
-    commercial: Mapped["Utilisateur | None"] = relationship("Utilisateur", back_populates="clients", lazy="selectin")
+    commercial: Mapped["Utilisateur | None"] = relationship("Utilisateur", back_populates="clients", foreign_keys=[commercial_id], lazy="selectin")
+    utilisateur: Mapped["Utilisateur | None"] = relationship("Utilisateur", back_populates="client", foreign_keys="Utilisateur.client_id", lazy="selectin", uselist=False)
     adresses: Mapped[list["ClientAdresse"]] = relationship("ClientAdresse", back_populates="client", lazy="selectin")
+    demandes: Mapped[list["DemandeTravaux"]] = relationship("DemandeTravaux", back_populates="client", lazy="selectin")
     devis: Mapped[list["Devis"]] = relationship("Devis", back_populates="client", lazy="selectin")
     factures: Mapped[list["Facture"]] = relationship("Facture", back_populates="client", lazy="selectin")
     contrats: Mapped[list["Contrat"]] = relationship("Contrat", back_populates="client", lazy="selectin")

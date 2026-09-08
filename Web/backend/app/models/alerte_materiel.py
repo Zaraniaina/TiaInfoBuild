@@ -22,6 +22,7 @@ class AlerteMateriel(Base):
 
     __table_args__ = (
         Index("idx_alertes_materiel_entreprise_id", "entreprise_id"),
+        Index("idx_alertes_materiel_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_alertes_materiel_materiel_id", "materiel_id"),
     )
 

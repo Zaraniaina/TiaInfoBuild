@@ -14,11 +14,25 @@ if (-not $mysqlActive) {
     Write-Host " MySQL detecte sur le port 3306." -ForegroundColor Green
 }
 
-# 2. Démarrer Backend FastAPI
+# 2. Appliquer les migrations Alembic (garde-fou : synchro du schema MySQL avec
+#    les modèles SQLAlchemy pour eviter les erreurs 500 au login apres une mise a jour du code)
+Write-Host " Application des migrations Alembic (alembic upgrade head)..." -ForegroundColor Green
+Push-Location "$PSScriptRoot\backend"
+try {
+    if (Test-Path 'env\Scripts\Activate.ps1') { .\env\Scripts\Activate.ps1 }
+    alembic upgrade head
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host " ATTENTION : echec de la migration Alembic. Verifier le schema avec compare_schema.py." -ForegroundColor Yellow
+    }
+} finally {
+    Pop-Location
+}
+
+# 3. Démarrer Backend FastAPI
 Write-Host " Lancement du Backend FastAPI (Port 8000)..." -ForegroundColor Green
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot\backend'; if (Test-Path 'env\Scripts\Activate.ps1') { .\env\Scripts\Activate.ps1 }; uvicorn app.main:app --reload --port 8000"
 
-# 3. Attendre 2 secondes puis démarrer Frontend React
+# 4. Attendre 2 secondes puis démarrer Frontend React
 Start-Sleep -Seconds 2
 Write-Host " Lancement du Frontend React (Port 5173)..." -ForegroundColor Green
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot\frontend'; npm run dev"

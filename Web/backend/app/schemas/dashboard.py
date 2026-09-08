@@ -169,6 +169,8 @@ class SuperAdminStatsResponse(BaseModel):
     revenu_mensuel: float | None = None
     incidents_critiques: int | None = None
     demandes_support: int | None = None
+    factures_en_retard: int | None = None
+    total_paiements: int | None = None
 
 
 class PlatformSettingsResponse(BaseModel):

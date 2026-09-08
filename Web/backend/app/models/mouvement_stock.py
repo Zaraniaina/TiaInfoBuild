@@ -25,6 +25,7 @@ class MouvementStock(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (
+        Index("idx_mouvements_stock_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_mouvements_stock_article_id", "article_id"),
         Index("idx_mouvements_stock_date_mouvement", "date_mouvement"),
     )

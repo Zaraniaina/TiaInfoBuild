@@ -6,6 +6,19 @@ import { RoleBadge } from './RoleBadge'
 import { ROLE_MODULES, ROLE_NAMES } from '@/config/roles.config'
 
 const MODULE_META: Record<string, { label: string; icon: string; section: string }> = {
+  '/employe': { label: 'Mon Espace Terrain', icon: 'bi-person-badge', section: 'Principal' },
+  '/employe/profil': { label: 'Mon profil', icon: 'bi-person', section: 'Espace Terrain' },
+  '/employe/chantiers': { label: 'Mes chantiers', icon: 'bi-building', section: 'Espace Terrain' },
+  '/employe/taches': { label: 'Mes tâches', icon: 'bi-list-check', section: 'Espace Terrain' },
+  '/employe/travaux': { label: 'Travaux réalisés', icon: 'bi-hammer', section: 'Espace Terrain' },
+  '/employe/rapports': { label: 'Rapports journaliers', icon: 'bi-file-text', section: 'Espace Terrain' },
+  '/employe/photos': { label: 'Photos', icon: 'bi-camera', section: 'Espace Terrain' },
+  '/employe/signalements': { label: 'Signalements', icon: 'bi-exclamation-triangle', section: 'Espace Terrain' },
+  '/employe/notifications': { label: 'Notifications', icon: 'bi-bell', section: 'Espace Terrain' },
+  '/employe/planning': { label: 'Mon planning', icon: 'bi-calendar', section: 'Espace Terrain' },
+    '/employe/documents': { label: 'Documents', icon: 'bi-folder', section: 'Espace Terrain' },
+  '/employe/badge': { label: 'Mon badge QR', icon: 'bi-qr-code', section: 'Espace Terrain' },
+
   '/dashboard': { label: 'Tableau de bord', icon: 'bi-speedometer2', section: 'Principal' },
   '/super-admin': { label: 'Dashboard SaaS', icon: 'bi-shield-lock', section: 'Plateforme SaaS' },
   '/super-admin/entreprises': { label: 'Entreprises', icon: 'bi-building', section: 'Plateforme SaaS' },
@@ -23,6 +36,22 @@ const MODULE_META: Record<string, { label: string; icon: string; section: string
   '/alertes': { label: 'Alertes Système', icon: 'bi-bell', section: 'Administration' },
   '/historique-logins': { label: 'Audit Connexions', icon: 'bi-clock-history', section: 'Administration' },
   '/settings': { label: 'Utilisateurs & Paramètres', icon: 'bi-gear', section: 'Administration' },
+  '/pricing': { label: 'Tarifs & Abonnement', icon: 'bi-tag', section: 'Administration' },
+  '/client': { label: 'Tableau de bord', icon: 'bi-speedometer2', section: 'Espace Client' },
+  '/client/profil': { label: 'Mon profil', icon: 'bi-person', section: 'Espace Client' },
+  '/client/demandes': { label: 'Mes demandes', icon: 'bi-envelope', section: 'Espace Client' },
+  '/client/projets': { label: 'Mes projets', icon: 'bi-building', section: 'Espace Client' },
+  '/client/devis': { label: 'Mes devis', icon: 'bi-file-earmark-text', section: 'Espace Client' },
+  '/client/contrats': { label: 'Mes contrats', icon: 'bi-file-earmark-check', section: 'Espace Client' },
+  '/client/avenants': { label: 'Mes avenants', icon: 'bi-file-earmark-plus', section: 'Espace Client' },
+  '/client/chantiers': { label: 'Mes chantiers', icon: 'bi-hammer', section: 'Espace Client' },
+  '/client/avancement': { label: 'Avancement travaux', icon: 'bi-bar-chart', section: 'Espace Client' },
+  '/client/situations': { label: 'Situations travaux', icon: 'bi-clipboard-data', section: 'Espace Client' },
+  '/client/factures': { label: 'Mes factures', icon: 'bi-receipt', section: 'Espace Client' },
+  '/client/paiements': { label: 'Mes paiements', icon: 'bi-credit-card', section: 'Espace Client' },
+  '/client/documents': { label: 'Mes documents', icon: 'bi-folder', section: 'Espace Client' },
+  '/client/notifications': { label: 'Notifications', icon: 'bi-bell', section: 'Espace Client' },
+  '/client/parametres': { label: 'Paramètres', icon: 'bi-gear', section: 'Espace Client' },
 }
 
 export function Sidebar() {

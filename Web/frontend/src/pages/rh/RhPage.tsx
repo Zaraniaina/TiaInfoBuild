@@ -4,6 +4,7 @@ import { rhService } from '@/services/rh.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
 import { QRScannerModal } from '@/components/pointage/QRScannerModal'
+import { WorkerBadgeCard } from '@/components/pointage/WorkerBadgeCard'
 
 export function RhPage() {
   const { user } = useAuthStore()
@@ -116,26 +117,26 @@ export function RhPage() {
   return (
     <div className="container-fluid py-4">
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <h2 className="mb-1"><i className="bi bi-people me-2 text-primary"></i>Ressources Humaines</h2>
-          <p className="text-secondary mb-0">Gestion du personnel, des pointages, des équipes et des heures supplémentaires</p>
-        </div>
-        {activeTab === 'employes' && (
-          <div className="d-flex gap-2">
-            {perms.canScanQR && (
-              <button className="btn btn-outline-info fw-bold" onClick={() => setShowScannerModal(true)}>
-                <i className="bi bi-qr-code-scan me-2"></i>Scanner Pointage
-              </button>
-            )}
-            {perms.canCreateEmploye && (
-              <button className="btn btn-primary fw-bold" onClick={() => { setSelectedEmploye(null); setEmployeForm({ type_contrat: 'CDI', statut: 'actif', salaire_base: 0 }); setShowEmployeModal(true); }}>
-                <i className="bi bi-person-plus me-2"></i>Nouvel employé
-              </button>
-            )}
+        <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+          <div>
+            <h2 className="mb-1 text-secondary"><i className="bi bi-people me-2"></i>Ressources Humaines</h2>
+            <p className="text-secondary mb-0">Gestion du personnel, des pointages, des équipes et des heures supplémentaires</p>
           </div>
-        )}
-      </div>
+          {activeTab === 'employes' && (
+            <div className="d-flex gap-2">
+                {perms.canGenerateQR && (
+                  <button className="btn btn-outline-secondary fw-bold" onClick={() => setShowScannerModal(true)}>
+                    <i className="bi bi-qr-code-scan me-2"></i>Scanner Pointage
+                  </button>
+                )}
+              {perms.canCreateEmploye && (
+                <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedEmploye(null); setEmployeForm({ type_contrat: 'CDI', statut: 'actif', salaire_base: 0 }); setShowEmployeModal(true); }}>
+                  <i className="bi bi-person-plus me-2"></i>Nouvel employé
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
       {/* Main Tabs */}
       <ul className="nav nav-pills mb-4 p-2 rounded shadow-sm">
@@ -164,7 +165,7 @@ export function RhPage() {
       {/* Tab Content */}
       {loading ? (
         <div className="text-center py-5">
-          <div className="spinner-border text-primary" role="status"></div>
+          <div className="spinner-border text-secondary" role="status"></div>
         </div>
       ) : activeTab === 'employes' ? (
         <div>
@@ -236,9 +237,9 @@ export function RhPage() {
                         <i className="bi bi-person-x display-6 d-block mb-3"></i>
                         Aucun employé trouvé
                         <div className="mt-3">
-                          <button className="btn btn-primary btn-sm" onClick={() => { setSelectedEmploye(null); setEmployeForm({ type_contrat: 'CDI', statut: 'actif', salaire_base: 0 }); setShowEmployeModal(true); }}>
-                            <i className="bi bi-person-plus me-1"></i>Nouvel employé
-                          </button>
+                         <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedEmploye(null); setEmployeForm({ type_contrat: 'CDI', statut: 'actif', salaire_base: 0 }); setShowEmployeModal(true); }}>
+                           <i className="bi bi-person-plus me-1"></i>Nouvel employé
+                         </button>
                         </div>
                       </td>
                     </tr>
@@ -250,34 +251,22 @@ export function RhPage() {
                         <td>{emp.poste}</td>
                         <td className="d-none d-md-table-cell"><span className="badge bg-light text-dark border">{emp.type_contrat}</span></td>
                         <td className="d-none d-lg-table-cell fw-bold">{emp.salaire_base?.toLocaleString()} MGA</td>
-                        <td className="d-none d-lg-table-cell small">{emp.date_embauche || '—'}</td>
+                        <td className="d-none d-lg-table-cell small">{emp.date_embauche || '-'}</td>
                         <td>
                           <span className={`badge ${emp.statut === 'actif' ? 'badge-actif' : 'badge-inactif'}`}>
                             {emp.statut}
                           </span>
                         </td>
                         <td>
-                          <button
-                            className="btn btn-sm btn-outline-info me-1"
-                            title="Voir le Badge QR Code"
-                            onClick={() => { setSelectedBadgeEmploye(emp); setShowBadgeModal(true); }}
-                          >
-                            <i className="bi bi-qr-code"></i>
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-primary me-1"
-                            title="Changer de poste / Carrière"
-                            onClick={() => { setSelectedEmploye(emp); setPosteForm({ nouveau_poste: emp.poste || '', nouveau_salaire: emp.salaire_base || 0, date_effet: new Date().toISOString().split('T')[0], motif: '' }); setShowChangementPosteModal(true); }}
-                          >
-                            <i className="bi bi-briefcase"></i>
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-secondary"
-                            title="Éditer"
-                            onClick={() => { setSelectedEmploye(emp); setEmployeForm(emp); setShowEmployeModal(true); }}
-                          >
-                            <i className="bi bi-pencil"></i>
-                          </button>
+                         <button className="btn btn-sm btn-outline-secondary btn-sm" onClick={() => { setSelectedBadgeEmploye(emp); setShowBadgeModal(true); }}>
+                           <i className="bi bi-qr-code"></i>
+                         </button>
+                         <button className="btn btn-sm btn-outline-secondary me-1" onClick={() => { setSelectedEmploye(emp); setPosteForm({ nouveau_poste: emp.poste || '', nouveau_salaire: emp.salaire_base || 0, date_effet: new Date().toISOString().split('T')[0], motif: '' }); setShowChangementPosteModal(true); }}>
+                           <i className="bi bi-briefcase"></i>
+                         </button>
+                         <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedEmploye(emp); setEmployeForm(emp); setShowEmployeModal(true); }}>
+                           <i className="bi bi-pencil"></i>
+                         </button>
                         </td>
                       </tr>
                     ))
@@ -295,10 +284,10 @@ export function RhPage() {
               <p className="text-muted small mb-0">Pointages QR Code, Auto-déclarations GPS & Régularisations (Politique transverse v2.0)</p>
             </div>
             <div className="d-flex gap-2">
-              <button className="btn btn-outline-primary fw-bold" onClick={() => alert('Génération du QR Code Chantier du Jour:\n\nCode: CHT-QR-2026-0822\nValide pour: Chantier Anosy\nHeure: ' + new Date().toLocaleTimeString())}>
+              <button className="btn btn-outline-secondary fw-bold" onClick={() => alert('Génération du QR Code Chantier du Jour:\n\nCode: CHT-QR-2026-0822\nValide pour: Chantier Anosy\nHeure: ' + new Date().toLocaleTimeString())}>
                 <i className="bi bi-qr-code me-2"></i>Générer QR Code Chantier
               </button>
-              <button className="btn btn-success fw-bold" onClick={() => alert('Pointage Enregistré avec Succès !\n\nMode: Scan QR Code Site\nHeure: ' + new Date().toLocaleTimeString() + '\nStatut: En attente validation RH')}>
+              <button className="btn btn-outline-secondary fw-bold" onClick={() => alert('Pointage Enregistré avec Succès !\n\nMode: Scan QR Code Site\nHeure: ' + new Date().toLocaleTimeString() + '\nStatut: En attente validation RH')}>
                 <i className="bi bi-qr-code-scan me-2"></i>Simuler Scan Ouvrier
               </button>
             </div>
@@ -325,16 +314,16 @@ export function RhPage() {
                     <tr key={pt.id}>
                       <td className="fw-semibold">
                         <div>Employé #{pt.employe_id}</div>
-                        <small className="text-muted">Chantier #1 — Anosy</small>
+                        <small className="text-muted">Chantier #1 - Anosy</small>
                       </td>
                       <td>
-                        <span className="badge bg-light text-dark border">
-                          <i className="bi bi-qr-code-scan me-1 text-primary"></i>QR Code Site
-                        </span>
+                           <span className="badge bg-light text-dark border">
+                             <i className="bi bi-qr-code-scan me-1 text-muted"></i>QR Code Site
+                           </span>
                       </td>
                       <td>{pt.date_jour}</td>
-                      <td><span className="badge bg-primary px-3 py-2">{pt.heures_total}h</span></td>
-                      <td><span className="badge bg-success px-3 py-2 text-capitalize">{pt.type}</span></td>
+                       <td><span className="badge bg-primary bg-opacity-10 text-primary border">{pt.heures_total}h</span></td>
+                       <td><span className="badge bg-success bg-opacity-10 text-success border text-capitalize">{pt.type}</span></td>
                       <td className="text-end">
                         <button className="btn btn-sm btn-outline-success me-1" onClick={() => alert('Pointage validé par RH !')}>
                           <i className="bi bi-check-lg"></i> Validé
@@ -357,7 +346,7 @@ export function RhPage() {
                     <h5 className="fw-bold mb-0 text-dark">{eq.nom}</h5>
                     <span className="badge bg-success bg-opacity-10 text-success">Active</span>
                   </div>
-                  <p className="text-muted small mb-0"><i className="bi bi-person-badge me-2"></i>Chef d'équipe ID: {eq.chef_equipe_id || '—'}</p>
+                  <p className="text-muted small mb-0"><i className="bi bi-person-badge me-2"></i>Chef d'équipe ID: {eq.chef_equipe_id || '-'}</p>
                 </div>
               </div>
             </div>
@@ -383,26 +372,26 @@ export function RhPage() {
                   <tr key={hs.id}>
                     <td className="fw-semibold">Employé #{hs.employe_id}</td>
                     <td>{hs.date_hs}</td>
-                    <td><span className="badge bg-warning text-dark font-monospace">{hs.nb_heures}h</span></td>
-                    <td>+{hs.taux_majoration}%</td>
-                    <td>{hs.motif || '—'}</td>
-                    <td>
-                      <span className={`badge ${hs.statut === 'validee' ? 'bg-success' : hs.statut === 'refusee' ? 'bg-danger' : 'bg-warning text-dark'}`}>
-                        {hs.statut}
-                      </span>
-                    </td>
-                    <td>
-                      {hs.statut === 'en_attente' && (
-                        <div className="btn-group btn-group-sm">
-                          <button className="btn btn-success" onClick={() => rhService.validateHeureSup(hs.id, 'validee').then(loadData)}>
-                            Approuver
-                          </button>
-                          <button className="btn btn-danger" onClick={() => rhService.validateHeureSup(hs.id, 'refusee').then(loadData)}>
-                            Rejeter
-                          </button>
-                        </div>
-                      )}
-                    </td>
+                      <td><span className="badge bg-light text-dark border font-monospace">{hs.nb_heures}h</span></td>
+                      <td>+{hs.taux_majoration}%</td>
+                      <td>{hs.motif || '-'}</td>
+                      <td>
+                        <span className={`badge ${hs.statut === 'validee' ? 'bg-success bg-opacity-10 text-success border' : hs.statut === 'refusee' ? 'bg-danger bg-opacity-10 text-danger border' : 'bg-warning bg-opacity-10 text-dark border'}`}>
+                          {hs.statut}
+                        </span>
+                      </td>
+                      <td>
+                        {hs.statut === 'en_attente' && (
+                          <div className="btn-group btn-group-sm">
+                            <button className="btn btn-outline-secondary" onClick={() => rhService.validateHeureSup(hs.id, 'validee').then(loadData)}>
+                              Approuver
+                            </button>
+                            <button className="btn btn-outline-secondary" onClick={() => rhService.validateHeureSup(hs.id, 'refusee').then(loadData)}>
+                              Rejeter
+                            </button>
+                          </div>
+                        )}
+                      </td>
                   </tr>
                 ))}
               </tbody>
@@ -458,8 +447,8 @@ export function RhPage() {
                   </div>
                 </div>
                 <div className="modal-footer bg-light">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowEmployeModal(false)}>Annuler</button>
-                  <button type="submit" className="btn btn-primary fw-bold">Enregistrer</button>
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowEmployeModal(false)}>Annuler</button>
+                  <button type="submit" className="btn btn-outline-secondary fw-bold">Enregistrer</button>
                 </div>
               </form>
             </div>
@@ -473,7 +462,7 @@ export function RhPage() {
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title fw-bold">Changement de Poste — {selectedEmploye.nom} {selectedEmploye.prenom}</h5>
+                <h5 className="modal-title fw-bold">Changement de Poste - {selectedEmploye.nom} {selectedEmploye.prenom}</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowChangementPosteModal(false)}></button>
               </div>
               <form onSubmit={handleChangePosteSubmit}>
@@ -496,8 +485,8 @@ export function RhPage() {
                   </div>
                 </div>
                 <div className="modal-footer bg-light">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowChangementPosteModal(false)}>Annuler</button>
-                  <button type="submit" className="btn btn-dark fw-bold">Valider le changement</button>
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowChangementPosteModal(false)}>Annuler</button>
+                  <button type="submit" className="btn btn-outline-secondary fw-bold">Valider le changement</button>
                 </div>
               </form>
             </div>

@@ -18,6 +18,7 @@ class LigneDevisCreate(BaseModel):
     type: str | None = Field(default="article", max_length=20)
     article_id: int | None = None
     description: str = Field(..., min_length=1)
+    categorie: str | None = Field(default=None, max_length=50)
     quantite: float | None = Field(default=0.0)
     unite: str | None = None
     prix_unitaire: float | None = Field(default=0.0)
@@ -26,6 +27,22 @@ class LigneDevisCreate(BaseModel):
     total_ht: float | None = Field(default=0.0)
     total_ttc: float | None = Field(default=0.0)
     ordre: int | None = Field(default=0)
+
+    @field_validator("categorie")
+    @classmethod
+    def validate_categorie(cls, v: str | None) -> str | None:
+        if v is not None:
+            allowed = {
+                "materiaux",
+                "main-d_œuvre",
+                "materiel_et_engins",
+                "prestations",
+                "sous_traitance",
+                "autres_frais",
+            }
+            if v not in allowed:
+                raise ValueError(f"Catégorie invalide. Valeurs autorisées: {allowed}")
+        return v
 
     @field_validator("quantite")
     @classmethod
@@ -59,6 +76,7 @@ class LigneDevisResponse(BaseModel):
     type: str | None = None
     article_id: int | None = None
     description: str
+    categorie: str | None = None
     quantite: float | None = None
     unite: str | None = None
     prix_unitaire: float | None = None
@@ -91,6 +109,7 @@ class DevisCreate(BaseModel):
 
     entreprise_id: int | None = None
     client_id: int = Field(..., ge=1)
+    projet_id: int | None = Field(default=None, ge=1)
     numero: str | None = Field(default=None, max_length=50)
     objet: str | None = None
     montant_ht: float | None = Field(default=0.0)

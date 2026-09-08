@@ -96,7 +96,7 @@ export function LoginForm() {
                 id="password"
                 type="password"
                 className="form-control"
-                placeholder="••••••••"
+                placeholder="********"
                 {...register('password')}
               />
             </div>
@@ -122,7 +122,7 @@ export function LoginForm() {
 
           <div className="text-center">
             <small className="text-muted">
-              © 2026 TIA Info Build
+              (c) 2026 TIA Info Build
             </small>
           </div>
         </form>

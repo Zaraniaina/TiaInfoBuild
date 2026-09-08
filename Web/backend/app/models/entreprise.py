@@ -54,6 +54,7 @@ class Entreprise(Base):
     factures: Mapped[list["Facture"]] = relationship("Facture", back_populates="entreprise", lazy="selectin")
     paiements: Mapped[list["Paiement"]] = relationship("Paiement", back_populates="entreprise", lazy="selectin")
     depenses: Mapped[list["Depense"]] = relationship("Depense", back_populates="entreprise", lazy="selectin")
+    avenants: Mapped[list["Avenant"]] = relationship("Avenant", back_populates="entreprise", lazy="selectin")
     rapports_financiers: Mapped[list["RapportFinancier"]] = relationship("RapportFinancier", back_populates="entreprise", lazy="selectin")
     alertes: Mapped[list["Alerte"]] = relationship("Alerte", back_populates="entreprise", lazy="selectin")
     materiaux: Mapped[list["Materiel"]] = relationship("Materiel", back_populates="entreprise", lazy="selectin")
@@ -63,3 +64,4 @@ class Entreprise(Base):
     pointages: Mapped[list["Pointage"]] = relationship("Pointage", back_populates="entreprise", lazy="selectin")
     heures_supplementaires: Mapped[list["HeureSupplementaire"]] = relationship("HeureSupplementaire", back_populates="entreprise", lazy="selectin")
     historique_postes: Mapped[list["HistoriquePoste"]] = relationship("HistoriquePoste", back_populates="entreprise", lazy="selectin")
+    subscriptions: Mapped[list["Subscription"]] = relationship("Subscription", back_populates="entreprise", lazy="selectin")

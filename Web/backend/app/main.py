@@ -1,6 +1,60 @@
 """TIA INFO BUILD - Backend FastAPI
 Point d'entrée principal: application, routers, middleware, CORS.
 """
+from datetime import datetime, date
+from decimal import Decimal
+
+import fastapi.encoders as _encoders
+
+# Patch : évite la récursion infinie de jsonable_encoder sur les objets SQLAlchemy
+# (relations circulaires ex: Utilisateur.role <-> Role.utilisateurs).
+# On ne sérialise que les colonnes, pas les relations.
+# On convertit datetime/date/Decimal en types JSON-sérialisables.
+# On patche AUSSI les modules qui ont déjà importé jsonable_encoder avant nous.
+_original_jsonable_encoder = _encoders.jsonable_encoder
+
+
+def _valeur_json(v):
+    """Convertit une valeur en type JSON-sérialisable."""
+    if isinstance(v, datetime):
+        return v.isoformat()
+    if isinstance(v, date):
+        return v.isoformat()
+    if isinstance(v, Decimal):
+        return float(v)
+    return v
+
+
+def _safe_jsonable_encoder(obj, **kwargs):
+    # Éviter la récursion sur les objets déjà visités via id()
+    seen = kwargs.pop("_seen", None)
+    if seen is None:
+        seen = set()
+
+    if hasattr(obj, "__table__"):
+        obj_id = id(obj)
+        if obj_id in seen:
+            return str(obj)  # référence circulaire -> représentation textuelle
+        seen.add(obj_id)
+        try:
+            return {c.name: _valeur_json(getattr(obj, c.name)) for c in obj.__table__.columns}
+        except Exception:
+            return str(obj)
+    if isinstance(obj, dict):
+        return {k: _safe_jsonable_encoder(v, _seen=seen) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_safe_jsonable_encoder(item, _seen=seen) for item in obj]
+    if isinstance(obj, (datetime, date, Decimal)):
+        return _valeur_json(obj)
+    return _original_jsonable_encoder(obj, **kwargs)
+
+
+_encoders.jsonable_encoder = _safe_jsonable_encoder
+import sys as _sys
+for _m in list(_sys.modules.values()):
+    if getattr(_m, "jsonable_encoder", None) is _original_jsonable_encoder:
+        setattr(_m, "jsonable_encoder", _safe_jsonable_encoder)
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -11,7 +65,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.database import engine
-from app.middleware import LoggingMiddleware, MultiTenantMiddleware
+from app.middleware import CacheControlMiddleware, LoggingMiddleware, MultiTenantMiddleware
 
 
 @asynccontextmanager
@@ -25,10 +79,49 @@ async def lifespan(app: FastAPI):
         print(" Database connection OK")
     except Exception as exc:
         print(f" Database connection failed: {exc}")
+    # Startup: detecter la derive de schema (modeles vs base) avant qu'elle ne
+    # casse le login ou d'autres endpoints en production (erreur 1054 / 500).
+    try:
+        await _verifier_derive_schema()
+    except Exception as exc:
+        print(f" Schema drift check failed: {exc}")
     yield
     # Shutdown: fermer le pool
     await engine.dispose()
-    print("🔌 Database disconnected")
+    print(" Database disconnected")
+
+
+async def _verifier_derive_schema():
+    """Compare les modeles SQLAlchemy au schema MySQL reel et journalise les ecarts."""
+    from sqlalchemy import inspect
+    import app.models  # noqa: F401 (enregistre tous les modeles dans Base.metadata)
+    from app.database import Base
+
+    def _compare(sync_conn):
+        insp = inspect(sync_conn)
+        db_tables = set(insp.get_table_names())
+        missing_tables = []
+        missing_cols = []
+        for table_name, table in Base.metadata.tables.items():
+            if table_name not in db_tables:
+                missing_tables.append(table_name)
+                continue
+            cols = {c["name"] for c in insp.get_columns(table_name)}
+            for col in table.columns:
+                if col.name not in cols:
+                    missing_cols.append(f"{table_name}.{col.name}")
+        return missing_tables, missing_cols
+
+    async with engine.connect() as conn:
+        missing_tables, missing_cols = await conn.run_sync(_compare)
+
+    if missing_tables or missing_cols:
+        print(" ATTENTION: derive de schema detectee (modeles vs base de donnees).")
+        print("   Tables manquantes :" + (", ".join(missing_tables) or " aucune"))
+        print("   Colonnes manquantes :" + (", ".join(missing_cols) or " aucune"))
+        print("   -> Executer: alembic upgrade head  (ou python compare_schema.py pour le rapport complet)")
+    else:
+        print(" Schema OK: aucun ecart entre les modeles et la base de donnees")
 
 
 app = FastAPI(
@@ -44,6 +137,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(MultiTenantMiddleware)
+app.add_middleware(CacheControlMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -69,7 +163,7 @@ async def root():
 
 
 # Inclusion des routers
-from app.routers import auth, super_admin, chantiers, rh, stocks, commercial, finance, materiels, alertes, dashboard, parametres, sync, utilisateurs, preferences
+from app.routers import auth, super_admin, chantiers, rh, stocks, commercial, finance, materiels, alertes, dashboard, parametres, sync, utilisateurs, preferences, subscriptions, espace_client, employe_terrain
 
 api_prefix = "/api"
 
@@ -87,6 +181,9 @@ app.include_router(alertes.router, prefix=f"{api_prefix}/alertes", tags=["alerte
 app.include_router(parametres.router, prefix=f"{api_prefix}/parametres", tags=["parametres"])
 app.include_router(preferences.router, prefix=f"{api_prefix}/preferences", tags=["preferences"])
 app.include_router(sync.router, prefix=f"{api_prefix}/sync", tags=["sync"])
+app.include_router(subscriptions.router, prefix=f"{api_prefix}/subscriptions", tags=["subscriptions"])
+app.include_router(espace_client.router, prefix=f"{api_prefix}/espace-client", tags=["espace-client"])
+app.include_router(employe_terrain.router, prefix=f"{api_prefix}/employe-terrain", tags=["employe-terrain"])
 
 
 # --- Handlers d'exceptions globaux ---

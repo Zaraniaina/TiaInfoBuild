@@ -1,4 +1,4 @@
-"""Schémas Pydantic pour les entités Facture et Paiement."""
+"""Schémas Pydantic pour les entités Facture, LigneFacture et Paiement."""
 from datetime import date, datetime
 from typing import Any
 
@@ -8,6 +8,85 @@ from pydantic import (
     Field,
     field_validator,
 )
+
+
+class LigneFactureCreate(BaseModel):
+    """Corps de la requête pour une ligne de facture."""
+
+    facture_id: int | None = None
+    type: str | None = Field(default="article", max_length=20)
+    article_id: int | None = None
+    description: str = Field(..., min_length=1)
+    categorie: str | None = Field(default=None, max_length=50)
+    quantite: float | None = Field(default=0.0)
+    unite: str | None = None
+    prix_unitaire: float | None = Field(default=0.0)
+    remise: float | None = Field(default=0.0)
+    taux_tva: float | None = Field(default=20.0)
+    total_ht: float | None = Field(default=0.0)
+    total_ttc: float | None = Field(default=0.0)
+    ordre: int | None = Field(default=0)
+
+    @field_validator("categorie")
+    @classmethod
+    def validate_categorie(cls, v: str | None) -> str | None:
+        if v is not None:
+            allowed = {
+                "materiaux",
+                "main-d_œuvre",
+                "materiel_et_engins",
+                "prestations",
+                "sous_traitance",
+                "autres_frais",
+            }
+            if v not in allowed:
+                raise ValueError(f"Catégorie invalide. Valeurs autorisées: {allowed}")
+        return v
+
+    @field_validator("quantite")
+    @classmethod
+    def validate_quantite(cls, v: float | None) -> float | None:
+        if v is not None and v < 0:
+            raise ValueError("La quantité ne peut pas être négative")
+        return v
+
+    @field_validator("prix_unitaire", "remise", "total_ht", "total_ttc")
+    @classmethod
+    def validate_positive(cls, v: float | None) -> float | None:
+        if v is not None and v < 0:
+            raise ValueError("La valeur ne peut pas être négative")
+        return v
+
+    @field_validator("taux_tva", "remise")
+    @classmethod
+    def validate_percent(cls, v: float | None) -> float | None:
+        if v is not None and (v < 0 or v > 100):
+            raise ValueError("Le pourcentage doit être compris entre 0 et 100")
+        return v
+
+
+class LigneFactureResponse(BaseModel):
+    """Schéma de réponse pour une ligne de facture."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    facture_id: int | None = None
+    type: str | None = None
+    article_id: int | None = None
+    description: str
+    categorie: str | None = None
+    quantite: float | None = None
+    unite: str | None = None
+    prix_unitaire: float | None = None
+    remise: float | None = None
+    taux_tva: float | None = None
+    total_ht: float | None = None
+    total_ttc: float | None = None
+    ordre: int | None = None
+    is_deleted: bool | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class PaiementCreate(BaseModel):
@@ -86,6 +165,7 @@ class FactureCreate(BaseModel):
     mode_paiement: str | None = None
     notes: str | None = None
     montant_paye: float | None = Field(default=0.0)
+    lignes: list[LigneFactureCreate] | None = None
 
     @field_validator("montant_ht", "montant_ttc", "montant_paye")
     @classmethod
@@ -105,7 +185,7 @@ class FactureCreate(BaseModel):
     @classmethod
     def validate_type(cls, v: str | None) -> str | None:
         if v is not None:
-            allowed = {"standard", "pro_format", "pro_forma"}
+            allowed = {"standard", "pro_format", "pro_forma", "acompte", "solde", "avoir"}
             if v not in allowed:
                 raise ValueError(f"Type de facture invalide. Valeurs autorisées: {allowed}")
         return v
@@ -114,7 +194,7 @@ class FactureCreate(BaseModel):
     @classmethod
     def validate_statut(cls, v: str | None) -> str | None:
         if v is not None:
-            allowed = {"emis", "partiellement_payee", "payee", "en_retard", "annulee"}
+            allowed = {"emis", "envoye", "payee", "partiellement_payee", "en_retard", "annulee"}
             if v not in allowed:
                 raise ValueError(f"Statut invalide. Valeurs autorisées: {allowed}")
         return v
@@ -156,7 +236,7 @@ class FactureUpdate(BaseModel):
     @classmethod
     def validate_statut(cls, v: str | None) -> str | None:
         if v is not None:
-            allowed = {"emis", "partiellement_payee", "payee", "en_retard", "annulee"}
+            allowed = {"emis", "envoye", "payee", "partiellement_payee", "en_retard", "annulee"}
             if v not in allowed:
                 raise ValueError(f"Statut invalide. Valeurs autorisées: {allowed}")
         return v
@@ -175,7 +255,11 @@ class FactureResponse(BaseModel):
     type: str | None = None
     montant_ht: float | None = None
     tva: float | None = None
+    montant_tva: float | None = None
     montant_ttc: float | None = None
+    montant_acompte_deduit: float | None = None
+    montant_paye: float | None = None
+    reste_a_payer: float | None = None
     date_creation: date | None = None
     date_emission: date | None = None
     date_echeance: date | None = None
@@ -183,7 +267,6 @@ class FactureResponse(BaseModel):
     conditions_paiement: str | None = None
     mode_paiement: str | None = None
     notes: str | None = None
-    montant_paye: float | None = None
     is_deleted: bool | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
@@ -203,6 +286,7 @@ class FactureList(BaseModel):
     type: str | None = None
     montant_ttc: float | None = None
     montant_paye: float | None = None
+    reste_a_payer: float | None = None
     date_echeance: date | None = None
     statut: str | None = None
     is_deleted: bool | None = None

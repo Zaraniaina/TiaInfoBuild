@@ -1,5 +1,5 @@
 /* =========================================================================
-   TIA INFO BUILD — Configuration des Rôles & Permissions (RBAC)
+   TIA INFO BUILD - Configuration des Rôles & Permissions (RBAC)
    Aligné à 100% sur le référentiel roles_tia_builds (11 Rôles Principaux & Sous-rôles).
    ========================================================================= */
 
@@ -13,18 +13,16 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/super-admin/logs',
     '/super-admin/parametres',
     '/dashboard',
+    '/pricing',
   ],
   admin_entreprise: [
+    // Restreint selon roles_tia_builds/01_admin_entreprise.md :
+    // accès uniquement à l'administration (utilisateurs, paramètres), KPI/dashboard,
+    // historique de connexion et page tarifs (pricing).
     '/dashboard',
-    '/chantiers',
-    '/finance',
-    '/rh',
-    '/materiels',
-    '/stocks',
-    '/commercial',
-    '/alertes',
     '/historique-logins',
     '/settings',
+    '/pricing',
   ],
   directeur: [
     '/dashboard',
@@ -88,17 +86,35 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/alertes',
   ],
   employe: [
-    '/dashboard',
-    '/chantiers',
-    '/rh',
-    '/materiels',
-    '/stocks',
-    '/alertes',
+    '/employe',
+    '/employe/profil',
+    '/employe/chantiers',
+    '/employe/taches',
+    '/employe/travaux',
+    '/employe/rapports',
+    '/employe/photos',
+    '/employe/signalements',
+        '/employe/notifications',
+    '/employe/planning',
+    '/employe/documents',
+    '/employe/badge',
   ],
   client: [
-    '/dashboard',
-    '/commercial',
-    '/chantiers',
+    '/client',
+    '/client/profil',
+    '/client/demandes',
+    '/client/projets',
+    '/client/devis',
+    '/client/contrats',
+    '/client/avenants',
+    '/client/chantiers',
+    '/client/avancement',
+    '/client/situations',
+    '/client/factures',
+    '/client/paiements',
+    '/client/documents',
+    '/client/notifications',
+    '/client/parametres',
   ],
 }
 
@@ -143,7 +159,7 @@ export const SUB_ROLES: Record<string, string[]> = {
   materiel: ['Responsable Matériel / Parc', 'Technicien Maintenance', "Chauffeur / Conducteur d'Engin"],
   magasinier: ['Responsable Stocks / Approvisionnement', 'Magasinier Entrepôt', 'Livreur / Chauffeur Logistique'],
   commercial: ['Responsable Commercial', "Chargé d'Affaires", 'Assistant Commercial / ADV'],
-  employe: ['Ouvrier Qualifié', 'Manœuvre', "Conducteur d'Engin", 'Apprenti / Stagiaire'],
+  employe: ['Ouvrier Qualifié', 'Manoeuvre', "Conducteur d'Engin", 'Apprenti / Stagiaire'],
   client: ['Client Maître d\'Ouvrage', 'Représentant Client'],
 }
 
@@ -160,6 +176,10 @@ export interface RolePermissions {
   canDeleteEmploye: boolean
   canValidatePointage: boolean
   canScanQR: boolean
+  // Actions terrain & tâches
+  canReportTask: boolean
+  canDeclareConsumption: boolean
+  canGenerateQR: boolean
 
   // Finance & Dépenses
   canCreateDepense: boolean
@@ -179,18 +199,84 @@ export interface RolePermissions {
   // Commercial & Devis
   canCreateClient: boolean
   canCreateDevis: boolean
+  canCreateFacture: boolean
   canValidateDevis: boolean
   canAddPaiement: boolean
+
+  // Cycle commercial (Demandes, Projets, Métrés, Situations)
+  canCreateDemande: boolean
+  canCreateProjet: boolean
+  canCreateMetre: boolean
+  canCreateSituation: boolean
 
   // Administration & Système
   canAccessSettings: boolean
   canManageUsers: boolean
   canViewAuditLogs: boolean
+  // Abonnements / offres
+  canManageSubscription: boolean
 }
 
 export function getRolePermissions(roleCode: string): RolePermissions {
   const role = roleCode || 'employe'
-  const isAdmin = ['super_admin', 'admin_entreprise'].includes(role)
+  // Pour `admin_entreprise` le périmètre est restreint (gestion utilisateurs, paramètres,
+  // abonnement, KPI/dashboard et audit). Nous refusons l'accès aux modules métier.
+  if (role === 'admin_entreprise') {
+    return {
+      // Chantiers & Phases
+      canCreateChantier: false,
+      canEditChantier: false,
+      canDeleteChantier: false,
+      canValidatePhase: false,
+
+      // RH & Pointages
+      canCreateEmploye: false,
+      canEditEmploye: false,
+      canDeleteEmploye: false,
+      canValidatePointage: false,
+      canScanQR: false,
+
+      // Finance & Dépenses
+      canCreateDepense: false,
+      canValidateDepense: false,
+      canExportFinance: false,
+
+      // Stocks & Inventaires
+      canCreateArticle: false,
+      canAddMouvementStock: false,
+      canDeleteArticle: false,
+
+      // Matériel & Parc
+      canCreateMateriel: false,
+      canAddMaintenance: false,
+      canAssignMateriel: false,
+
+      // Commercial & Devis
+      canCreateClient: false,
+      canCreateDevis: false,
+      canCreateFacture: false,
+      canValidateDevis: false,
+      canAddPaiement: false,
+
+      // Cycle commercial (Demandes, Projets, Métrés, Situations)
+      canCreateDemande: false,
+      canCreateProjet: false,
+      canCreateMetre: false,
+      canCreateSituation: false,
+
+      // Administration & Système
+      canAccessSettings: true,
+      canManageUsers: true,
+      canViewAuditLogs: true,
+      // Gestion abonnement tenant
+      canManageSubscription: true,
+      // Actions terrain non autorisées
+      canReportTask: false,
+      canDeclareConsumption: false,
+      canGenerateQR: false,
+    }
+  }
+  const isAdmin = ['super_admin'].includes(role)
   const isDirecteur = role === 'directeur'
   const isChefProjet = role === 'chef_projet'
   const isChefChantier = role === 'chef_chantier'
@@ -199,45 +285,64 @@ export function getRolePermissions(roleCode: string): RolePermissions {
   const isMateriel = role === 'materiel'
   const isMagasinier = role === 'magasinier'
   const isCommercial = role === 'commercial'
+  const isEmploye = role === 'employe'
 
   return {
     // Chantiers
-    canCreateChantier: isAdmin || isDirecteur || isChefProjet,
-    canEditChantier: isAdmin || isDirecteur || isChefProjet || isChefChantier,
+    // Création réservée à l'Admin SaaS et au Chef de Projet (DG consulte/valide)
+    canCreateChantier: isAdmin || isChefProjet,
+    canEditChantier: isAdmin || isChefProjet || isChefChantier,
     canDeleteChantier: isAdmin,
     canValidatePhase: isAdmin || isDirecteur || isChefProjet,
 
     // RH
-    canCreateEmploye: isAdmin || isRH || isDirecteur,
+    canCreateEmploye: isAdmin || isRH,
     canEditEmploye: isAdmin || isRH,
     canDeleteEmploye: isAdmin || isRH,
     canValidatePointage: isAdmin || isRH || isChefProjet || isChefChantier,
-    canScanQR: isAdmin || isRH || isChefChantier || isChefProjet,
+    // L'ouvrier doit pouvoir scanner le QR code depuis son mobile
+    canScanQR: isEmploye || isAdmin || isRH || isChefChantier || isChefProjet,
+    // Actions terrain & tâches
+    canReportTask: isChefChantier || isChefProjet || isEmploye,
+    canDeclareConsumption: isChefChantier || isMagasinier || isEmploye,
+    canGenerateQR: isChefChantier || isMagasinier || isChefProjet || isAdmin,
 
     // Finance
-    canCreateDepense: isAdmin || isComptable || isDirecteur || isChefProjet || isChefChantier,
+    // Saisie opérationnelle : Comptable, Chef de Chantier et Chef de Projet peuvent créer
+    canCreateDepense: isAdmin || isComptable || isChefProjet || isChefChantier,
     canValidateDepense: isAdmin || isDirecteur || isComptable,
     canExportFinance: isAdmin || isDirecteur || isComptable,
 
     // Stocks
-    canCreateArticle: isAdmin || isMagasinier || isDirecteur,
-    canAddMouvementStock: isAdmin || isMagasinier || isChefChantier || isChefProjet,
+    // Création d'articles: magasinier et admin; mouvements: magasinier et chef chantier
+    canCreateArticle: isAdmin || isMagasinier,
+    canAddMouvementStock: isAdmin || isMagasinier || isChefChantier,
     canDeleteArticle: isAdmin || isMagasinier,
 
     // Matériel
-    canCreateMateriel: isAdmin || isMateriel || isDirecteur,
+    canCreateMateriel: isAdmin || isMateriel,
     canAddMaintenance: isAdmin || isMateriel,
     canAssignMateriel: isAdmin || isMateriel || isChefProjet || isChefChantier,
 
     // Commercial
-    canCreateClient: isAdmin || isCommercial || isDirecteur,
-    canCreateDevis: isAdmin || isCommercial || isDirecteur,
+    canCreateClient: isAdmin || isCommercial,
+    // Le Directeur valide mais ne crée pas les devis courants
+    canCreateDevis: isAdmin || isCommercial,
+    canCreateFacture: isAdmin || isCommercial,
     canValidateDevis: isAdmin || isDirecteur || isCommercial,
     canAddPaiement: isAdmin || isCommercial || isComptable,
+
+    // Cycle commercial
+    canCreateDemande: isAdmin || isCommercial,
+    canCreateProjet: isAdmin || isCommercial || isChefProjet,
+    canCreateMetre: isAdmin || isCommercial || isChefProjet || isChefChantier,
+    canCreateSituation: isAdmin || isCommercial || isChefProjet || isChefChantier,
 
     // Administration & Système
     canAccessSettings: isAdmin,
     canManageUsers: isAdmin,
     canViewAuditLogs: isAdmin || isDirecteur,
+    // Abonnement (tenant)
+    canManageSubscription: role === 'admin_entreprise' || isAdmin,
   }
 }

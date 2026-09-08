@@ -7,6 +7,7 @@ import { useToastStore } from '@/stores/toast.store'
 import { api } from './services/api'
 import App from './App'
 import { ToastContainer } from '@/components/ui/ToastContainer'
+import { ErrorBoundary } from '@/components/error/ErrorBoundary'
 import './styles/index.css'
 
 const queryClient = new QueryClient({
@@ -61,12 +62,14 @@ function Root() {
 
   return (
     <StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <App />
-          <ToastContainer />
-        </BrowserRouter>
-      </QueryClientProvider>
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <App />
+            <ToastContainer />
+          </BrowserRouter>
+        </QueryClientProvider>
+      </ErrorBoundary>
     </StrictMode>
   )
 }

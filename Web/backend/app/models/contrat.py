@@ -32,6 +32,7 @@ class Contrat(Base):
     __table_args__ = (
         UniqueConstraint("reference", name="uq_contrats_reference"),
         Index("idx_contrats_entreprise_id", "entreprise_id"),
+        Index("idx_contrats_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_contrats_client_id", "client_id"),
     )
 
@@ -40,3 +41,4 @@ class Contrat(Base):
     factures: Mapped[list["Facture"]] = relationship("Facture", back_populates="contrat", lazy="selectin")
     chantier: Mapped["Chantier | None"] = relationship("Chantier", back_populates="contrats", lazy="selectin")
     devis: Mapped["Devis | None"] = relationship("Devis", back_populates="contrat", lazy="selectin")
+    avenants: Mapped[list["Avenant"]] = relationship("Avenant", back_populates="contrat", lazy="selectin")

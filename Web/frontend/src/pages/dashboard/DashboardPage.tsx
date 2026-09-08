@@ -2,6 +2,7 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useNavigate } from "react-router-dom";
 import { RoleBadge } from "@/components/layout/RoleBadge";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/services/api";
 import {
   SaasTenantsGrowthChart,
@@ -95,23 +96,22 @@ export function DashboardPage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const roleCode = user?.role_code || "employe";
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [charts, setCharts] = useState<DashboardChartsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [showBadgeModal, setShowBadgeModal] = useState(false);
 
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ["dashboard", "stats"],
+    queryFn: () => api.get("/dashboard/stats").then((res) => res.data),
+  })
+  const { data: charts, isLoading: chartsLoading } = useQuery({
+    queryKey: ["dashboard", "charts"],
+    queryFn: () => api.get("/dashboard/charts").then((res) => res.data),
+  })
+
   useEffect(() => {
-    api
-      .get("/dashboard/stats")
-      .then((res) => setStats(res.data))
-      .catch(() => setStats(null));
-    api
-      .get("/dashboard/charts")
-      .then((res) => setCharts(res.data))
-      .catch(() => setCharts(null))
-      .finally(() => setLoading(false));
-  }, []);
+    setLoading(statsLoading || chartsLoading)
+  }, [statsLoading, chartsLoading])
 
   const meta = ROLE_META[roleCode] || ROLE_META["employe"];
   const dashboardTitle = ROLE_DASHBOARD_TITLE[roleCode] || "Tableau de bord";
@@ -132,11 +132,11 @@ export function DashboardPage() {
   const renderAlert = () => {
     if (!meta.alert) return null;
     const colors: Record<string, string> = {
-      danger: "bg-danger bg-opacity-10 text-danger",
-      primary: "bg-primary bg-opacity-10 text-primary",
-      info: "bg-info bg-opacity-10 text-info",
-      success: "bg-success bg-opacity-10 text-success",
-      warning: "bg-warning bg-opacity-10 text-warning",
+      danger: "bg-danger bg-opacity-10 text-danger border",
+      primary: "bg-primary bg-opacity-10 text-primary border",
+      info: "bg-info bg-opacity-10 text-info border",
+      success: "bg-success bg-opacity-10 text-success border",
+      warning: "bg-warning bg-opacity-10 text-warning border",
     };
     return (
       <div
@@ -251,50 +251,50 @@ export function DashboardPage() {
                 <i className="bi bi-sliders me-2 text-primary"></i>Conformité
                 Paramétrage
               </h5>
-              <div className="d-flex flex-column gap-2">
+                <div className="d-flex flex-column gap-2">
                 <div className="d-flex justify-content-between align-items-center p-2 bg-light rounded">
                   <span className="small fw-semibold">
                     Rôles & Permissions RBAC
                   </span>
-                  <span className="badge bg-success">Conforme</span>
+                  <span className="badge bg-success bg-opacity-10 text-success border">Conforme</span>
                 </div>
                 <div className="d-flex justify-content-between align-items-center p-2 bg-light rounded">
                   <span className="small fw-semibold">
                     Format Numérotation Devis
                   </span>
-                  <span className="badge bg-success">Actif</span>
+                  <span className="badge bg-success bg-opacity-10 text-success border">Actif</span>
                 </div>
                 <div className="d-flex justify-content-between align-items-center p-2 bg-light rounded">
                   <span className="small fw-semibold">
                     Seuils Alertes Budgétaires
                   </span>
-                  <span className="badge bg-success">Configuré</span>
+                  <span className="badge bg-success bg-opacity-10 text-success border">Configuré</span>
                 </div>
                 <div className="d-flex justify-content-between align-items-center p-2 bg-light rounded">
                   <span className="small fw-semibold">
                     Politique Pointage Bureau
                   </span>
-                  <span className="badge bg-info">QR Fixe</span>
+                  <span className="badge bg-light text-dark border">QR Fixe</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
         <div className="card border-0 shadow-sm p-4 mb-4">
-          <h5 className="fw-bold mb-3">
-            <i className="bi bi-gear-fill me-2 text-primary"></i>Actions rapides
+          <h5 className="fw-bold mb-3 text-secondary">
+            <i className="bi bi-gear-fill me-2"></i>Actions rapides
             administration
           </h5>
           <div className="d-flex gap-2 flex-wrap">
             <button
-              className="btn btn-primary fw-bold"
+              className="btn btn-outline-secondary fw-bold"
               onClick={() => navigate("/settings")}
             >
               <i className="bi bi-person-gear me-2"></i>Gérer Comptes &
               Permissions
             </button>
             <button
-              className="btn btn-outline-dark fw-bold"
+              className="btn btn-outline-secondary fw-bold"
               onClick={() => navigate("/historique-logins")}
             >
               <i className="bi bi-shield-check me-2"></i>Audit Logs Connexions
@@ -386,7 +386,7 @@ export function DashboardPage() {
           {renderKpi(
             "Dépenses du Mois",
             `${depensesMois.toLocaleString()} MGA`,
-            "Matériaux, main d'œuvre, engins",
+            "Matériaux, main d'oeuvre, engins",
             "text-danger",
           )}
           {renderKpi(
@@ -467,7 +467,7 @@ export function DashboardPage() {
   const renderChefChantier = () => {
     const avancementPhysique = stats?.taux_avancement_physique ?? 0;
     const nbIncidents = stats?.incidents_non_resolus ?? 0;
-    const chantierPrincipal = stats?.rentabilite_chantiers?.[0]?.nom ?? "—";
+    const chantierPrincipal = stats?.rentabilite_chantiers?.[0]?.nom ?? "-";
     const nbEmployes = stats?.nb_employes ?? 0;
     const presencePct = stats?.attendance_rate ?? 0;
     const consommation = stats?.consommation_stock ?? 0;
@@ -477,23 +477,23 @@ export function DashboardPage() {
     return (
       <div>
         {renderAlert()}
-        <div className="alert-bar mb-4 bg-primary bg-opacity-10 text-primary border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div className="alert-bar mb-4 bg-secondary bg-opacity-10 text-dark border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
           <div>
             <strong>Mon Chantier : {chantierPrincipal}</strong>
             <div className="small mb-0">
-              Avancement physique: {avancementPhysique.toFixed(1)}% — Retard: +
+              Avancement physique: {avancementPhysique.toFixed(1)}% - Retard: +
               {retardJours.toFixed(1)} jour(s)
             </div>
           </div>
           <div className="d-flex gap-2">
             <button
-              className="btn btn-warning fw-bold text-dark"
+              className="btn btn-outline-secondary fw-bold"
               onClick={() => setShowScannerModal(true)}
             >
               <i className="bi bi-qr-code-scan me-2"></i>Scanner Badges Ouvriers
             </button>
             <button
-              className="btn btn-light fw-bold text-primary"
+              className="btn btn-outline-secondary fw-bold"
               onClick={() =>
                 alert(
                   "Auto-déclaration GPS enregistrée pour le Chef de Chantier (Catégorie B).",
@@ -678,7 +678,7 @@ export function DashboardPage() {
   // 10. RESPONSABLE COMMERCIAL DASHBOARD
   const renderCommercial = () => {
     const pipelineTotal = (charts?.pipeline_commercial?.data ?? []).reduce(
-      (a, b) => a + b,
+      (a: number, b: number) => a + b,
       0,
     );
     const tauxConv = stats?.nb_devis
@@ -814,7 +814,7 @@ export function DashboardPage() {
                         <small className="text-muted">{t.chantier}</small>
                       </div>
                       <span
-                        className={`badge ${t.statut === "En cours" ? "bg-warning text-dark" : "bg-secondary"}`}
+                        className={`badge ${t.statut === "En cours" ? "bg-warning bg-opacity-10 text-dark border" : "bg-secondary bg-opacity-10 text-dark border"}`}
                       >
                         {t.statut}
                       </span>
@@ -835,31 +835,39 @@ export function DashboardPage() {
   };
 
   const renderContent = () => {
+    if (statsLoading || chartsLoading) {
+      return (
+        <div className="d-flex justify-content-center align-items-center py-5">
+          <div className="spinner-border text-secondary" role="status"></div>
+        </div>
+      )
+    }
+
     switch (roleCode) {
       case "super_admin":
-        return renderSuperAdmin();
+        return renderSuperAdmin()
       case "admin_entreprise":
-        return renderAdminEntreprise();
+        return renderAdminEntreprise()
       case "directeur":
-        return renderDirecteur();
+        return renderDirecteur()
       case "comptable":
-        return renderComptable();
+        return renderComptable()
       case "chef_chantier":
-        return renderChefChantier();
+        return renderChefChantier()
       case "chef_projet":
-        return renderChefProjet();
+        return renderChefProjet()
       case "rh":
-        return renderRH();
+        return renderRH()
       case "materiel":
-        return renderMateriel();
+        return renderMateriel()
       case "magasinier":
-        return renderMagasinier();
+        return renderMagasinier()
       case "commercial":
-        return renderCommercial();
+        return renderCommercial()
       case "employe":
-        return renderEmploye();
+        return renderEmploye()
       default:
-        return renderEmploye();
+        return renderEmploye()
     }
   };
 
@@ -867,8 +875,8 @@ export function DashboardPage() {
     <div className="container-fluid py-4">
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-          <h2 className="mb-1 fw-bold">
-            <i className="bi bi-speedometer2 me-2 text-primary"></i>
+          <h2 className="mb-1 fw-bold text-secondary">
+            <i className="bi bi-speedometer2 me-2"></i>
             {dashboardTitle}
           </h2>
           <p className="text-secondary mb-0">
@@ -876,7 +884,7 @@ export function DashboardPage() {
             <strong>
               {user?.prenom} {user?.nom}
             </strong>{" "}
-            — {meta.greeting}
+            - {meta.greeting}
           </p>
         </div>
         <div className="d-flex align-items-center gap-2">
@@ -892,7 +900,7 @@ export function DashboardPage() {
 
       {loading ? (
         <div className="text-center py-5">
-          <div className="spinner-border text-primary" role="status"></div>
+          <div className="spinner-border text-secondary" role="status"></div>
         </div>
       ) : (
         renderContent()

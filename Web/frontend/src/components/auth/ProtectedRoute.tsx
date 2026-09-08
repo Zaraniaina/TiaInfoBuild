@@ -41,7 +41,8 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
 
   const allowed = allowedRoles || ROLE_MODULES[roleCode] || []
   if (allowed.length > 0 && !allowed.includes(pathKey) && pathKey !== '/') {
-    return <Navigate to="/dashboard" replace />
+    const defaultRoute = roleCode === 'employe' ? '/employe' : '/dashboard'
+    return <Navigate to={defaultRoute} replace />
   }
 
   return <Layout />

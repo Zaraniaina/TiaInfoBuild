@@ -8,6 +8,11 @@ export const rhService = {
     return (res.data as any).items || res.data
   },
 
+  async getEmployeBadgeQR(employeId: number) {
+    const res = await api.get(`/rh/employes/${employeId}/badge-qr`)
+    return res.data
+  },
+
   async createEmploye(data: Partial<Employe>) {
     const res = await api.post<Employe>('/rh/employes', data)
     return res.data

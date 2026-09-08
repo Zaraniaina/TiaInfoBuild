@@ -13,6 +13,7 @@ class Chantier(Base):
     entreprise_id: Mapped[int] = mapped_column(ForeignKey("entreprises.id", ondelete="CASCADE"))
     client_id: Mapped[int | None] = mapped_column(ForeignKey("clients.id"))
     chef_chantier_id: Mapped[int | None] = mapped_column(ForeignKey("utilisateurs.id"))
+    projet_id: Mapped[int | None] = mapped_column(ForeignKey("projets.id", ondelete="SET NULL"))
     numero: Mapped[str | None] = mapped_column(String(50))
     nom: Mapped[str] = mapped_column(String(255), nullable=False)
     adresse: Mapped[str | None] = mapped_column(Text)
@@ -34,13 +35,16 @@ class Chantier(Base):
 
     __table_args__ = (
         Index("idx_chantiers_entreprise_id", "entreprise_id"),
+        Index("idx_chantiers_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_chantiers_client_id", "client_id"),
         Index("idx_chantiers_chef_chantier_id", "chef_chantier_id"),
+        Index("idx_chantiers_projet_id", "projet_id"),
     )
 
     entreprise: Mapped["Entreprise"] = relationship("Entreprise", back_populates="chantiers", lazy="selectin")
     client: Mapped["Client | None"] = relationship("Client", back_populates="chantiers", lazy="selectin")
     chef_chantier: Mapped["Utilisateur | None"] = relationship("Utilisateur", back_populates="chantiers", lazy="selectin")
+    projet: Mapped["Projet | None"] = relationship("Projet", backref="chantiers_lies")
     phases: Mapped[list["Phase"]] = relationship("Phase", back_populates="chantier", lazy="selectin")
     incidents: Mapped[list["Incident"]] = relationship("Incident", back_populates="chantier", lazy="selectin")
     affectation_ressources: Mapped[list["AffectationRessource"]] = relationship("AffectationRessource", back_populates="chantier", lazy="selectin")
@@ -52,3 +56,12 @@ class Chantier(Base):
     rapports_financiers: Mapped[list["RapportFinancier"]] = relationship("RapportFinancier", back_populates="chantier", lazy="selectin")
     contrats: Mapped[list["Contrat"]] = relationship("Contrat", back_populates="chantier", lazy="selectin")
     mouvements_stock: Mapped[list["MouvementStock"]] = relationship("MouvementStock", back_populates="chantier", lazy="selectin")
+    situations: Mapped[list["SituationTravaux"]] = relationship("SituationTravaux", back_populates="chantier", lazy="selectin")
+
+    # Espace terrain : taches, travaux, rapports, photos, signalements, commentaires
+    taches: Mapped[list["Tache"]] = relationship("Tache", back_populates="chantier")
+    travaux_realises: Mapped[list["TravailRealise"]] = relationship("TravailRealise", back_populates="chantier")
+    rapports_journaliers: Mapped[list["RapportJournalier"]] = relationship("RapportJournalier", back_populates="chantier")
+    photos: Mapped[list["PhotoChantier"]] = relationship("PhotoChantier", back_populates="chantier")
+    signalements: Mapped[list["Signalement"]] = relationship("Signalement", back_populates="chantier")
+    commentaires: Mapped[list["Commentaire"]] = relationship("Commentaire", back_populates="chantier")

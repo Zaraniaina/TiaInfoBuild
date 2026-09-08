@@ -16,6 +16,8 @@ class Pointage(Base):
     date_jour: Mapped[datetime] = mapped_column(Date, nullable=False)
     heure_debut: Mapped[datetime | None] = mapped_column(Time)
     heure_fin: Mapped[datetime | None] = mapped_column(Time)
+    heure_pause_debut: Mapped[datetime | None] = mapped_column(Time)
+    heure_pause_fin: Mapped[datetime | None] = mapped_column(Time)
     heures_total: Mapped[float] = mapped_column(Numeric(4, 2), server_default="0")
     type: Mapped[str] = mapped_column(String(20), server_default="present")
     methode_pointage: Mapped[str] = mapped_column(String(50), server_default="manuel")
@@ -33,6 +35,7 @@ class Pointage(Base):
         Index("idx_pointages_employe_id", "employe_id"),
         Index("idx_pointages_date_jour", "date_jour"),
         Index("idx_pointages_chantier_id", "chantier_id"),
+        Index("idx_pointages_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
     )
 
     entreprise: Mapped["Entreprise"] = relationship("Entreprise", back_populates="pointages", lazy="selectin")

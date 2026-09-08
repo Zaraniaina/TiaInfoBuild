@@ -1,28 +1,73 @@
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { scheduleTokenRefresh, cancelTokenRefresh } from '@/services/api'
 import { useAuthStore } from '@/stores/auth.store'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
-import { DashboardPage } from '@/pages/dashboard/DashboardPage'
-import { ChantiersPage } from '@/pages/chantiers/ChantiersPage'
-import { RhPage } from '@/pages/rh/RhPage'
-import { StocksPage } from '@/pages/stocks/StocksPage'
-import { CommercialPage } from '@/pages/commercial/CommercialPage'
-import { FinancePage } from '@/pages/finance/FinancePage'
-import { MaterielsPage } from '@/pages/materiels/MaterielsPage'
-import { AlertesPage } from '@/pages/alertes/AlertesPage'
-import { HistoriqueLoginsPage } from '@/pages/historique-logins/HistoriqueLoginsPage'
-import { SettingsPage } from '@/pages/settings/SettingsPage'
-import { SuperAdminDashboardPage } from '@/pages/super-admin/SuperAdminDashboardPage'
-import { SuperAdminEntreprisesPage } from '@/pages/super-admin/SuperAdminEntreprisesPage'
-import { SuperAdminUtilisateursPage } from '@/pages/super-admin/SuperAdminUtilisateursPage'
-import { SuperAdminAbonnementsPage } from '@/pages/super-admin/SuperAdminAbonnementsPage'
-import { SuperAdminFacturationPage } from '@/pages/super-admin/SuperAdminFacturationPage'
-import { SuperAdminLogsPage } from '@/pages/super-admin/SuperAdminLogsPage'
-import { SuperAdminParametresPage } from '@/pages/super-admin/SuperAdminParametresPage'
-import { ClientPage } from '@/pages/client/ClientPage'
+import { ClientLoginPage } from '@/pages/auth/ClientLoginPage'
+import { RoleRedirect } from '@/components/auth/RoleRedirect'
+import { PricingPage } from '@/pages/pricing/PricingPage'
+
+const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
+const ChantiersPage = lazy(() => import('@/pages/chantiers/ChantiersPage').then((m) => ({ default: m.ChantiersPage })))
+const RhPage = lazy(() => import('@/pages/rh/RhPage').then((m) => ({ default: m.RhPage })))
+const StocksPage = lazy(() => import('@/pages/stocks/StocksPage').then((m) => ({ default: m.StocksPage })))
+const CommercialPage = lazy(() => import('@/pages/commercial/CommercialPage').then((m) => ({ default: m.CommercialPage })))
+const FinancePage = lazy(() => import('@/pages/finance/FinancePage').then((m) => ({ default: m.FinancePage })))
+const MaterielsPage = lazy(() => import('@/pages/materiels/MaterielsPage').then((m) => ({ default: m.MaterielsPage })))
+const AlertesPage = lazy(() => import('@/pages/alertes/AlertesPage').then((m) => ({ default: m.AlertesPage })))
+const HistoriqueLoginsPage = lazy(() => import('@/pages/historique-logins/HistoriqueLoginsPage').then((m) => ({ default: m.HistoriqueLoginsPage })))
+const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })))
+const SuperAdminDashboardPage = lazy(() => import('@/pages/super-admin/SuperAdminDashboardPage').then((m) => ({ default: m.SuperAdminDashboardPage })))
+const SuperAdminEntreprisesPage = lazy(() => import('@/pages/super-admin/SuperAdminEntreprisesPage').then((m) => ({ default: m.SuperAdminEntreprisesPage })))
+const SuperAdminUtilisateursPage = lazy(() => import('@/pages/super-admin/SuperAdminUtilisateursPage').then((m) => ({ default: m.SuperAdminUtilisateursPage })))
+const SuperAdminAbonnementsPage = lazy(() => import('@/pages/super-admin/SuperAdminAbonnementsPage').then((m) => ({ default: m.SuperAdminAbonnementsPage })))
+const SuperAdminFacturationPage = lazy(() => import('@/pages/super-admin/SuperAdminFacturationPage').then((m) => ({ default: m.SuperAdminFacturationPage })))
+const SuperAdminLogsPage = lazy(() => import('@/pages/super-admin/SuperAdminLogsPage').then((m) => ({ default: m.SuperAdminLogsPage })))
+const SuperAdminParametresPage = lazy(() => import('@/pages/super-admin/SuperAdminParametresPage').then((m) => ({ default: m.SuperAdminParametresPage })))
+const ClientLayout = lazy(() => import('@/pages/client/ClientLayout').then((m) => ({ default: m.ClientLayout })))
+const EmployeLayout = lazy(() => import('@/pages/employe/EmployeLayout').then((m) => ({ default: m.EmployeLayout })))
+const EmployeDashboard = lazy(() => import('@/pages/employe/EmployePage').then((m) => ({ default: m.EmployePage })))
+const EmployeProfil = lazy(() => import('@/pages/employe/EmployeProfilPage').then((m) => ({ default: m.EmployeProfilPage })))
+const EmployeChantiers = lazy(() => import('@/pages/employe/EmployeChantiersPage').then((m) => ({ default: m.EmployeChantiersPage })))
+const EmployeTaches = lazy(() => import('@/pages/employe/EmployeTachesPage').then((m) => ({ default: m.EmployeTachesPage })))
+const EmployeTravaux = lazy(() => import('@/pages/employe/EmployeTravauxPage').then((m) => ({ default: m.EmployeTravauxPage })))
+const EmployeRapports = lazy(() => import('@/pages/employe/EmployeRapportsPage').then((m) => ({ default: m.EmployeRapportsPage })))
+const EmployePhotos = lazy(() => import('@/pages/employe/EmployePhotosPage').then((m) => ({ default: m.EmployePhotosPage })))
+const EmployeSignalements = lazy(() => import('@/pages/employe/EmployeSignalementsPage').then((m) => ({ default: m.EmployeSignalementsPage })))
+const EmployeNotificationsPage = lazy(() => import('@/pages/employe/EmployeNotificationsPage').then((m) => ({ default: m.EmployeNotificationsPage })))
+const EmployeDocuments = lazy(() => import('@/pages/employe/EmployeDocumentsPage').then((m) => ({ default: m.EmployeDocumentsPage })))
+const EmployePlanning = lazy(() => import('@/pages/employe/EmployePlanningPage').then((m) => ({ default: m.EmployePlanningPage })))
+const EmployeBadge = lazy(() => import('@/pages/employe/EmployeBadgePage').then((m) => ({ default: m.EmployeBadgePage })))
+
+const ClientDashboard = lazy(() => import('@/pages/client/ClientDashboard').then((m) => ({ default: m.ClientDashboard })))
+
+const ClientProfil = lazy(() => import('@/pages/client/ClientProfil').then((m) => ({ default: m.ClientProfil })))
+const ClientDemandesPage = lazy(() => import('@/pages/client/ClientDemandesPage').then((m) => ({ default: m.ClientDemandesPage })))
+const ClientProjetsPage = lazy(() => import('@/pages/client/ClientProjetsPage').then((m) => ({ default: m.ClientProjetsPage })))
+const ClientDevisPage = lazy(() => import('@/pages/client/ClientDevisPage').then((m) => ({ default: m.ClientDevisPage })))
+const ClientContratsPage = lazy(() => import('@/pages/client/ClientContratsPage').then((m) => ({ default: m.ClientContratsPage })))
+const ClientAvenantsPage = lazy(() => import('@/pages/client/ClientAvenantsPage').then((m) => ({ default: m.ClientAvenantsPage })))
+const ClientChantiersPage = lazy(() => import('@/pages/client/ClientChantiersPage').then((m) => ({ default: m.ClientChantiersPage })))
+const ClientAvancementPage = lazy(() => import('@/pages/client/ClientAvancementPage').then((m) => ({ default: m.ClientAvancementPage })))
+const ClientSituationsPage = lazy(() => import('@/pages/client/ClientSituationsPage').then((m) => ({ default: m.ClientSituationsPage })))
+const ClientFacturesPage = lazy(() => import('@/pages/client/ClientFacturesPage').then((m) => ({ default: m.ClientFacturesPage })))
+const ClientPaiementsPage = lazy(() => import('@/pages/client/ClientPaiementsPage').then((m) => ({ default: m.ClientPaiementsPage })))
+const ClientDocumentsPage = lazy(() => import('@/pages/client/ClientDocumentsPage').then((m) => ({ default: m.ClientDocumentsPage })))
+const ClientNotificationsPage = lazy(() => import('@/pages/client/ClientNotificationsPage').then((m) => ({ default: m.ClientNotificationsPage })))
+const ClientParametresPage = lazy(() => import('@/pages/client/ClientParametresPage').then((m) => ({ default: m.ClientParametresPage })))
+
+
+function PageFallback() {
+  return (
+    <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
+      <div className="spinner-border text-primary" role="status">
+        <span className="visually-hidden">Chargement...</span>
+      </div>
+    </div>
+  )
+}
 
 function App() {
   const token = useAuthStore((s) => s.token)
@@ -35,28 +80,62 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/client-login" element={<ClientLoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
       <Route path="/" element={<ProtectedRoute />}>
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="chantiers" element={<ChantiersPage />} />
-        <Route path="rh" element={<RhPage />} />
-        <Route path="stocks" element={<StocksPage />} />
-        <Route path="commercial" element={<CommercialPage />} />
-        <Route path="finance" element={<FinancePage />} />
-        <Route path="materiels" element={<MaterielsPage />} />
-        <Route path="alertes" element={<AlertesPage />} />
-        <Route path="historique-logins" element={<HistoriqueLoginsPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="client" element={<ClientPage />} />
+        <Route index element={<RoleRedirect />} />
+        <Route path="dashboard" element={<Suspense fallback={<PageFallback />}><DashboardPage /></Suspense>} />
+        <Route path="chantiers" element={<Suspense fallback={<PageFallback />}><ChantiersPage /></Suspense>} />
+        <Route path="rh" element={<Suspense fallback={<PageFallback />}><RhPage /></Suspense>} />
+        <Route path="stocks" element={<Suspense fallback={<PageFallback />}><StocksPage /></Suspense>} />
+        <Route path="commercial" element={<Suspense fallback={<PageFallback />}><CommercialPage /></Suspense>} />
+        <Route path="finance" element={<Suspense fallback={<PageFallback />}><FinancePage /></Suspense>} />
+        <Route path="materiels" element={<Suspense fallback={<PageFallback />}><MaterielsPage /></Suspense>} />
+        <Route path="alertes" element={<Suspense fallback={<PageFallback />}><AlertesPage /></Suspense>} />
+        <Route path="historique-logins" element={<Suspense fallback={<PageFallback />}><HistoriqueLoginsPage /></Suspense>} />
+        <Route path="settings" element={<Suspense fallback={<PageFallback />}><SettingsPage /></Suspense>} />
+        <Route path="client" element={<Suspense fallback={<PageFallback />}><ClientLayout /></Suspense>}>
+          <Route index element={<Suspense fallback={<PageFallback />}><ClientDashboard /></Suspense>} />
+          <Route path="profil" element={<Suspense fallback={<PageFallback />}><ClientProfil /></Suspense>} />
+          <Route path="demandes" element={<Suspense fallback={<PageFallback />}><ClientDemandesPage /></Suspense>} />
+          <Route path="projets" element={<Suspense fallback={<PageFallback />}><ClientProjetsPage /></Suspense>} />
+          <Route path="devis" element={<Suspense fallback={<PageFallback />}><ClientDevisPage /></Suspense>} />
+          <Route path="contrats" element={<Suspense fallback={<PageFallback />}><ClientContratsPage /></Suspense>} />
+          <Route path="avenants" element={<Suspense fallback={<PageFallback />}><ClientAvenantsPage /></Suspense>} />
+          <Route path="chantiers" element={<Suspense fallback={<PageFallback />}><ClientChantiersPage /></Suspense>} />
+          <Route path="avancement" element={<Suspense fallback={<PageFallback />}><ClientAvancementPage /></Suspense>} />
+          <Route path="situations" element={<Suspense fallback={<PageFallback />}><ClientSituationsPage /></Suspense>} />
+          <Route path="factures" element={<Suspense fallback={<PageFallback />}><ClientFacturesPage /></Suspense>} />
+          <Route path="paiements" element={<Suspense fallback={<PageFallback />}><ClientPaiementsPage /></Suspense>} />
+          <Route path="documents" element={<Suspense fallback={<PageFallback />}><ClientDocumentsPage /></Suspense>} />
+          <Route path="notifications" element={<Suspense fallback={<PageFallback />}><ClientNotificationsPage /></Suspense>} />
+          <Route path="parametres" element={<Suspense fallback={<PageFallback />}><ClientParametresPage /></Suspense>} />
+        </Route>
+        <Route path="employe" element={<Suspense fallback={<PageFallback />}><EmployeLayout /></Suspense>}>
+          <Route index element={<Suspense fallback={<PageFallback />}><EmployeDashboard /></Suspense>} />
+          <Route path="profil" element={<Suspense fallback={<PageFallback />}><EmployeProfil /></Suspense>} />
+          <Route path="chantiers" element={<Suspense fallback={<PageFallback />}><EmployeChantiers /></Suspense>} />
+          <Route path="taches" element={<Suspense fallback={<PageFallback />}><EmployeTaches /></Suspense>} />
+          <Route path="travaux" element={<Suspense fallback={<PageFallback />}><EmployeTravaux /></Suspense>} />
+          <Route path="rapports" element={<Suspense fallback={<PageFallback />}><EmployeRapports /></Suspense>} />
+          <Route path="photos" element={<Suspense fallback={<PageFallback />}><EmployePhotos /></Suspense>} />
+          <Route path="signalements" element={<Suspense fallback={<PageFallback />}><EmployeSignalements /></Suspense>} />
+                    <Route path="notifications" element={<Suspense fallback={<PageFallback />}><EmployeNotificationsPage /></Suspense>} />
+          <Route path="planning" element={<Suspense fallback={<PageFallback />}><EmployePlanning /></Suspense>} />
+          <Route path="documents" element={<Suspense fallback={<PageFallback />}><EmployeDocuments /></Suspense>} />
+          <Route path="badge" element={<Suspense fallback={<PageFallback />}><EmployeBadge /></Suspense>} />
+
+        </Route>
+        <Route path="pricing" element={<Suspense fallback={<PageFallback />}><PricingPage /></Suspense>} />
         <Route path="super-admin">
-          <Route index element={<SuperAdminDashboardPage />} />
-          <Route path="entreprises" element={<SuperAdminEntreprisesPage />} />
-          <Route path="utilisateurs" element={<SuperAdminUtilisateursPage />} />
-          <Route path="abonnements" element={<SuperAdminAbonnementsPage />} />
-          <Route path="facturation" element={<SuperAdminFacturationPage />} />
-          <Route path="logs" element={<SuperAdminLogsPage />} />
-          <Route path="parametres" element={<SuperAdminParametresPage />} />
+          <Route index element={<Suspense fallback={<PageFallback />}><SuperAdminDashboardPage /></Suspense>} />
+          <Route path="entreprises" element={<Suspense fallback={<PageFallback />}><SuperAdminEntreprisesPage /></Suspense>} />
+          <Route path="utilisateurs" element={<Suspense fallback={<PageFallback />}><SuperAdminUtilisateursPage /></Suspense>} />
+          <Route path="abonnements" element={<Suspense fallback={<PageFallback />}><SuperAdminAbonnementsPage /></Suspense>} />
+          <Route path="facturation" element={<Suspense fallback={<PageFallback />}><SuperAdminFacturationPage /></Suspense>} />
+          <Route path="logs" element={<Suspense fallback={<PageFallback />}><SuperAdminLogsPage /></Suspense>} />
+          <Route path="parametres" element={<Suspense fallback={<PageFallback />}><SuperAdminParametresPage /></Suspense>} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />

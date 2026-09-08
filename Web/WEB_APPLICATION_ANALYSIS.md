@@ -1,7 +1,7 @@
 # Analyse Technique — Application Web TIA INFO BUILD
 
-> **Version:** 1.0.0  
-> **Date:** 2026-08-28  
+> **Version:** 1.1.0  
+> **Date:** 2026-09-03  
 > **Scope:** Backend FastAPI + Frontend React (Web)  
 > **Exclusions:** `node_modules/`, `.env`, `__pycache__/`, `.git/`, env virtuels
 
@@ -456,6 +456,77 @@ Web/frontend/
 - **Outil:** Alembic
 - **Chemin:** `Web/backend/alembic/`
 - **Commande:** `alembic upgrade head`
+- **État actuel:** 12 migrations appliquées (de `001_initial_schema` à `012_add_avenants`)
+
+#### Procédure de migration
+
+```bash
+# Appliquer toutes les migrations en attente
+alembic upgrade head
+
+# Vérifier l'état actuel
+alembic current
+
+# Vérifier l'historique complet
+alembic history
+```
+
+#### ⚠️ Contrainte critique : longueur des IDs de révision
+
+**La colonne `version_num` de la table `alembic_version` est limitée à VARCHAR(32).**
+Tout ID de révision dépassant 32 caractères sera **tronqué silencieusement** par MySQL,
+ce qui provoque l'erreur suivante :
+
+```
+Online migration expected to match one row when updating 'XXX' to 'YYY' in 'alembic_version'; 0 found
+```
+
+**Règle obligatoire :** Chaque `revision` dans les fichiers de migration doit faire **≤ 32 caractères**.
+
+| Révision | Longueur | Statut |
+|----------|----------|--------|
+| `001_initial_schema` | 18 | ✅ |
+| `002_chantiers_schema` | 20 | ✅ |
+| `003_roles_and_historique_poste` | 30 | ✅ |
+| `004_remaining_modules` | 21 | ✅ |
+| `005_finance_alertes_sync` | 24 | ✅ |
+| `006_add_missing_columns` | 22 | ✅ |
+| `007_convert_ids_to_bigint` | 25 | ✅ |
+| `008_add_code_qr_badge` | 21 | ✅ |
+| `009_add_pointage_columns` | 24 | ✅ |
+| `010_add_subscriptions` | 21 | ✅ |
+| `011_ligne_categories_factures` | 29 | ✅ |
+| `012_add_avenants` | 16 | ✅ |
+
+#### Créer une nouvelle migration
+
+```bash
+# Créer une migration (utiliser un ID court, ≤ 32 caractères)
+alembic revision -m "description courte"
+
+# Exemples d'IDs valides :
+# ✅ "013_add_table_xyz" (17 car.)
+# ✅ "014_fix_column" (13 car.)
+# ❌ "013_add_new_table_for_customer_invoices" (41 car.) → TRONQUÉ !
+```
+
+**Bonnes pratiques :**
+- Utiliser le format `NNN_description_courte` (ex. `013_add_notifications`)
+- Le descriptif complet va dans la docstring du fichier, pas dans l'ID
+- Vérifier la longueur : `len("votre_revision_id") <= 32`
+
+#### Script de vérification
+
+Un script de vérification est disponible pour diagnostiquer les problèmes de migration :
+
+```bash
+python scripts/check_alembic_version.py
+```
+
+Il vérifie :
+- L'état de la table `alembic_version`
+- Que le head est atteint
+- Que tous les IDs de révision sont dans la limite de 32 caractères
 
 ### 6.3 Scripts d'Initialisation
 
@@ -734,6 +805,7 @@ Cette section décrit comment maintenir ce document à jour après chaque modifi
 | Nouvelle dépendance | §2 Stack Technique |
 | Nouvelle config .env | §10 Configuration & Déploiement |
 | Nouvelle feature métier | §9 Fonctionnalités Métier |
+| Nouvelle migration Alembic | §6.2 Migrations (vérifier `len(revision) <= 32`) |
 
 ### 11.3 Conventions de Nommage
 
@@ -742,7 +814,11 @@ Cette section décrit comment maintenir ce document à jour après chaque modifi
 - **Routes API** : `kebab-case` pluriel (ex: `/api/chantiers`, `/api/heures-sup`)
 - **Variables d'environnement** : `UPPER_SNAKE_CASE`
 - **Rôles** : `snake_case` (ex: `admin_entreprise`)
+- **Révisions Alembic** : `NNN_description_courte` (max 32 caractères, limite de la colonne `version_num`)
+  - ✅ `013_add_notifications`
+  - ✅ `014_fix_column`
+  - ❌ `013_add_new_table_for_customer_invoices` (tronqué !)
 
 ---
 
-*Document généré le 2026-08-28 — À mettre à jour après chaque modification significative du code.*
+*Document mis à jour le 2026-09-03 — À mettre à jour après chaque modification significative du code.*

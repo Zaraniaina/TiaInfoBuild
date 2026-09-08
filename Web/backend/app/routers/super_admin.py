@@ -1,18 +1,20 @@
 """Router pour le Super Admin (propriétaire SaaS)."""
-from datetime import datetime, timedelta  # noqa: F401
+from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing_extensions import Annotated
 
 from app.database import get_db
-from app.security import require_super_admin
+from app.security import require_super_admin, generate_temp_password, hash_password
 from app.models.entreprise import Entreprise
 from app.models.utilisateur import Utilisateur
 from app.models.alerte import Alerte
 from app.models.facture import Facture
+from app.models.historique_connexion import HistoriqueConnexion
+from app.models.paiement import Paiement
 from app.schemas.entreprise import EntrepriseCreate, EntrepriseUpdate, EntrepriseResponse
 from app.schemas.utilisateur import UtilisateurResponse, UtilisateurList
 from app.schemas.dashboard import SuperAdminStatsResponse, PlatformSettingsResponse
@@ -24,19 +26,19 @@ DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 @router.get("/stats", response_model=SuperAdminStatsResponse)
 async def get_stats(payload: CurrentUser, db: DbSession):
-    total_entreprises = (await db.execute(select(func.count(Entreprise.id)))).scalar_one_or_none() or 0
-    total_utilisateurs = (await db.execute(select(func.count(Utilisateur.id)))).scalar_one_or_none() or 0
+    total_entreprises = (await db.execute(select(func.count(Entreprise.id)).where(Entreprise.is_deleted == False))).scalar_one_or_none() or 0
+    total_utilisateurs = (await db.execute(select(func.count(Utilisateur.id)).where(Utilisateur.is_deleted == False))).scalar_one_or_none() or 0
     from app.models.chantier import Chantier
-    total_chantiers = (await db.execute(select(func.count(Chantier.id)))).scalar_one_or_none() or 0
-    entreprises_actives = (await db.execute(select(func.count(Entreprise.id)).where(Entreprise.actif == True))).scalar_one_or_none() or 0
+    total_chantiers = (await db.execute(select(func.count(Chantier.id)).where(Chantier.is_deleted == False))).scalar_one_or_none() or 0
+    entreprises_actives = (await db.execute(select(func.count(Entreprise.id)).where(Entreprise.actif == True, Entreprise.is_deleted == False))).scalar_one_or_none() or 0
     entreprises_inactives = total_entreprises - entreprises_actives
-    abonnements_result = await db.execute(select(Entreprise.abonnement, func.count(Entreprise.id)).group_by(Entreprise.abonnement))
-    abonnements = {row[0]: row[1] for row in abonnements_result.all()}
+    abonnements_result = await db.execute(select(Entreprise.abonnement, func.count(Entreprise.id)).where(Entreprise.is_deleted == False).group_by(Entreprise.abonnement))
+    abonnements = {row[0] or "gratuit": row[1] for row in abonnements_result.all()}
 
     now = datetime.now()
     debut_mois = datetime(now.year, now.month, 1)
     nouveaux_utilisateurs_mois = (await db.execute(
-        select(func.count(Utilisateur.id)).where(Utilisateur.date_creation >= debut_mois)
+        select(func.count(Utilisateur.id)).where(Utilisateur.date_creation >= debut_mois, Utilisateur.is_deleted == False)
     )).scalar_one_or_none() or 0
 
     factures_en_retard = (await db.execute(
@@ -52,11 +54,15 @@ async def get_stats(payload: CurrentUser, db: DbSession):
     )).scalar_one_or_none() or 0
 
     revenu_mensuel = (await db.execute(
-        select(func.coalesce(func.sum(Facture.montant_paye), 0)).where(
-            Facture.date_paiement >= debut_mois,
-            Facture.is_deleted == False,
+        select(func.coalesce(func.sum(Paiement.montant), 0)).where(
+            Paiement.date_paiement >= debut_mois,
+            Paiement.is_deleted == False,
         )
     )).scalar_one_or_none() or 0.0
+
+    total_paiements = (await db.execute(
+        select(func.count(Paiement.id)).where(Paiement.is_deleted == False)
+    )).scalar_one_or_none() or 0
 
     return SuperAdminStatsResponse(
         total_entreprises=total_entreprises,
@@ -71,6 +77,8 @@ async def get_stats(payload: CurrentUser, db: DbSession):
         revenu_mensuel=float(revenu_mensuel),
         incidents_critiques=incidents_critiques,
         demandes_support=demandes_support,
+        factures_en_retard=factures_en_retard,
+        total_paiements=total_paiements,
     )
 
 
@@ -80,7 +88,7 @@ async def tenants_evolution(payload: CurrentUser, db: DbSession, months: int = Q
     now = datetime.now()
     debut = datetime(now.year, 1, 1) if months >= 12 else datetime(now.year, now.month, 1) - timedelta(days=30 * (months - 1))
     result = await db.execute(
-        select(Entreprise.date_creation).where(Entreprise.date_creation >= debut)
+        select(Entreprise.date_creation).where(Entreprise.date_creation >= debut, Entreprise.is_deleted == False)
     )
     rows = result.fetchall() or []
     buckets = {}
@@ -115,7 +123,7 @@ async def list_entreprises(
     search: str | None = Query(default=None),
     actif: bool | None = Query(default=None),
 ):
-    query = select(Entreprise)
+    query = select(Entreprise).where(Entreprise.is_deleted == False)
     if search:
         query = query.where(Entreprise.nom.ilike(f"%{search}%"))
     if actif is not None:
@@ -126,17 +134,38 @@ async def list_entreprises(
 
 @router.post("/entreprises", response_model=EntrepriseResponse, status_code=status.HTTP_201_CREATED)
 async def create_entreprise(payload: CurrentUser, db: DbSession, data: EntrepriseCreate):
-    obj_in = data.model_dump()
+    obj_in = data.model_dump(exclude={"admin_nom", "admin_prenom", "admin_email", "admin_password", "admin_telephone"})
     entreprise = Entreprise(**obj_in)
     db.add(entreprise)
     await db.flush()
     await db.refresh(entreprise)
+
+    if data.admin_email and data.admin_password:
+        from app.models.role import Role
+        role_result = await db.execute(select(Role).where(Role.code == "admin_entreprise"))
+        role = role_result.scalar_one_or_none()
+        if not role:
+            raise HTTPException(status_code=500, detail="Rôle admin_entreprise introuvable")
+        admin = Utilisateur(
+            entreprise_id=entreprise.id,
+            role_id=role.id,
+            nom=data.admin_nom or "Admin",
+            prenom=data.admin_prenom or "Entreprise",
+            email=data.admin_email,
+            mot_de_passe_hash=hash_password(data.admin_password),
+            telephone=data.admin_telephone,
+            statut="actif",
+            must_change_password=True,
+        )
+        db.add(admin)
+        await db.flush()
+
     return entreprise
 
 
 @router.put("/entreprises/{id}", response_model=EntrepriseResponse)
 async def update_entreprise(payload: CurrentUser, db: DbSession, id: int, data: EntrepriseUpdate):
-    result = await db.execute(select(Entreprise).where(Entreprise.id == id))
+    result = await db.execute(select(Entreprise).where(Entreprise.id == id, Entreprise.is_deleted == False))
     entreprise = result.scalar_one_or_none()
     if not entreprise:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entreprise non trouvée")
@@ -150,13 +179,25 @@ async def update_entreprise(payload: CurrentUser, db: DbSession, id: int, data: 
 
 @router.post("/entreprises/{id}/desactiver", response_model=dict)
 async def toggle_entreprise(payload: CurrentUser, db: DbSession, id: int):
-    result = await db.execute(select(Entreprise).where(Entreprise.id == id))
+    result = await db.execute(select(Entreprise).where(Entreprise.id == id, Entreprise.is_deleted == False))
     entreprise = result.scalar_one_or_none()
     if not entreprise:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entreprise non trouvée")
     entreprise.actif = not entreprise.actif
     await db.commit()
     return {"actif": entreprise.actif}
+
+
+@router.delete("/entreprises/{id}")
+async def delete_entreprise(payload: CurrentUser, db: DbSession, id: int):
+    result = await db.execute(select(Entreprise).where(Entreprise.id == id, Entreprise.is_deleted == False))
+    entreprise = result.scalar_one_or_none()
+    if not entreprise:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entreprise non trouvée")
+    entreprise.is_deleted = True
+    entreprise.actif = False
+    await db.commit()
+    return {"detail": "Entreprise supprimée avec succès"}
 
 
 @router.get("/utilisateurs", response_model=list[UtilisateurList])
@@ -166,12 +207,39 @@ async def list_all_utilisateurs(
     page: int = Query(default=1, ge=1),
     size: int = Query(default=25, ge=1, le=100),
     search: str | None = Query(default=None),
+    entreprise_id: int | None = Query(default=None),
 ):
     query = select(Utilisateur).where(Utilisateur.is_deleted == False)
     if search:
         query = query.where((Utilisateur.nom.ilike(f"%{search}%")) | (Utilisateur.email.ilike(f"%{search}%")))
+    if entreprise_id is not None:
+        query = query.where(Utilisateur.entreprise_id == entreprise_id)
     result = await db.execute(query.offset((page - 1) * size).limit(size))
     return list(result.scalars().all())
+
+
+@router.post("/utilisateurs/{id}/reset-password")
+async def reset_user_password(payload: CurrentUser, db: DbSession, id: int):
+    result = await db.execute(select(Utilisateur).where(Utilisateur.id == id, Utilisateur.is_deleted == False))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur non trouvé")
+    temp_password = generate_temp_password()
+    user.mot_de_passe_hash = hash_password(temp_password)
+    user.must_change_password = True
+    await db.flush()
+    return {"detail": "Mot de passe réinitialisé", "temp_password": temp_password}
+
+
+@router.post("/utilisateurs/{id}/suspendre")
+async def toggle_user_status(payload: CurrentUser, db: DbSession, id: int):
+    result = await db.execute(select(Utilisateur).where(Utilisateur.id == id, Utilisateur.is_deleted == False))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur non trouvé")
+    user.statut = "inactif" if user.statut == "actif" else "actif"
+    await db.commit()
+    return {"statut": user.statut}
 
 
 @router.get("/alerts")
@@ -196,7 +264,6 @@ async def list_alerts(payload: CurrentUser, db: DbSession, size: int = Query(def
 
 @router.get("/logs")
 async def list_logs(payload: CurrentUser, db: DbSession, size: int = Query(default=50, le=100)):
-    from app.models.historique_connexion import HistoriqueConnexion
     result = await db.execute(
         select(HistoriqueConnexion).where(HistoriqueConnexion.is_deleted == False).order_by(HistoriqueConnexion.date_connexion.desc()).limit(size)
     )
@@ -205,7 +272,7 @@ async def list_logs(payload: CurrentUser, db: DbSession, size: int = Query(defau
         "items": [
             {
                 "id": l.id,
-                "niveau": "info",
+                "niveau": "info" if l.reussi else "error",
                 "message": f"Connexion utilisateur #{l.utilisateur_id} - {'Succès' if l.reussi else 'Échec'}",
                 "date": l.date_connexion.isoformat() if l.date_connexion else None,
                 "utilisateur": "system",
@@ -217,16 +284,16 @@ async def list_logs(payload: CurrentUser, db: DbSession, size: int = Query(defau
 
 @router.get("/abonnements")
 async def list_abonnements(payload: CurrentUser, db: DbSession):
-    result = await db.execute(select(Entreprise.abonnement, func.count(Entreprise.id)).group_by(Entreprise.abonnement))
+    result = await db.execute(select(Entreprise.abonnement, func.count(Entreprise.id)).where(Entreprise.is_deleted == False).group_by(Entreprise.abonnement))
     abonnements = [
-        {"id": 1, "nom": k or "gratuit", "prix": 0, "utilisateurs_max": 5, "chantiers_max": 3, "stockage_go": 5, "actif": True}
-        for k, _ in result.all()
+        {"id": 1, "nom": k or "gratuit", "prix": 0, "utilisateurs_max": 5, "chantiers_max": 3, "stockage_go": 5, "actif": True, "count": v}
+        for k, v in result.all()
     ]
     if not abonnements:
         abonnements = [
-            {"id": 1, "nom": "Pro", "prix": 150000, "utilisateurs_max": 10, "chantiers_max": 5, "stockage_go": 10, "actif": True},
-            {"id": 2, "nom": "Premium", "prix": 350000, "utilisateurs_max": 25, "chantiers_max": 15, "stockage_go": 50, "actif": True},
-            {"id": 3, "nom": "Enterprise", "prix": 750000, "utilisateurs_max": 999, "chantiers_max": 999, "stockage_go": 200, "actif": True},
+            {"id": 1, "nom": "Pro", "prix": 150000, "utilisateurs_max": 10, "chantiers_max": 5, "stockage_go": 10, "actif": True, "count": 0},
+            {"id": 2, "nom": "Premium", "prix": 350000, "utilisateurs_max": 25, "chantiers_max": 15, "stockage_go": 50, "actif": True, "count": 0},
+            {"id": 3, "nom": "Enterprise", "prix": 750000, "utilisateurs_max": 999, "chantiers_max": 999, "stockage_go": 200, "actif": True, "count": 0},
         ]
     return abonnements
 
@@ -249,6 +316,27 @@ async def list_facturation(payload: CurrentUser, db: DbSession, size: int = Quer
                 "moyen": f.mode_paiement or "-",
             }
             for f in factures
+        ]
+    }
+
+
+@router.get("/paiements")
+async def list_paiements(payload: CurrentUser, db: DbSession, size: int = Query(default=50, le=100)):
+    result = await db.execute(
+        select(Paiement).where(Paiement.is_deleted == False).order_by(Paiement.date_paiement.desc()).limit(size)
+    )
+    paiements = result.scalars().all()
+    return {
+        "items": [
+            {
+                "id": p.id,
+                "entreprise": p.entreprise.nom if p.entreprise else f"Entreprise #{p.entreprise_id}",
+                "montant": float(p.montant or 0),
+                "date_paiement": p.date_paiement.isoformat() if p.date_paiement else None,
+                "mode_paiement": p.mode_paiement or "-",
+                "facture_id": p.facture_id,
+            }
+            for p in paiements
         ]
     }
 

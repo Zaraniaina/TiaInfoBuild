@@ -48,7 +48,7 @@ export function SuperAdminParametresPage() {
     return (
       <div className="container-fluid py-4">
         <div className="d-flex justify-content-center py-5">
-          <div className="spinner-border text-danger" role="status"></div>
+          <div className="spinner-border text-secondary" role="status"></div>
         </div>
       </div>
     )
@@ -57,7 +57,7 @@ export function SuperAdminParametresPage() {
   return (
     <div className="container-fluid py-4">
       <div className="mb-4">
-        <h2 className="fw-bold mb-1"><i className="bi bi-gear me-2 text-danger"></i>Paramètres Plateforme</h2>
+        <h2 className="fw-bold mb-1 text-secondary"><i className="bi bi-gear me-2"></i>Paramètres Plateforme</h2>
         <p className="text-secondary mb-0">Configuration globale du SaaS, intégrations et fonctionnalités.</p>
       </div>
 
@@ -105,7 +105,7 @@ export function SuperAdminParametresPage() {
               </div>
             </div>
 
-            <button type="submit" className="btn btn-danger fw-bold" disabled={saving}>
+            <button type="submit" className="btn btn-outline-secondary fw-bold" disabled={saving}>
               {saving ? 'Enregistrement...' : 'Enregistrer les paramètres'}
             </button>
           </form>

@@ -119,15 +119,15 @@ export function StocksPage() {
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-          <h2 className="mb-1"><i className="bi bi-box-seam me-2 text-primary"></i>Gestion des Stocks</h2>
-          <p className="text-secondary mb-0">Articles, matériaux de chantier, mouvements et fournisseurs</p>
+           <h2 className="mb-1 text-secondary"><i className="bi bi-box-seam me-2"></i>Gestion des Stocks</h2>
+           <p className="text-secondary mb-0">Articles, matériaux de chantier, mouvements et fournisseurs</p>
         </div>
         {activeTab === 'articles' && perms.canCreateArticle ? (
-          <button className="btn btn-primary fw-bold" onClick={() => { setSelectedArticle(null); setArticleForm({ stock_actuel: 0, stock_mini: 10, prix_vente: 0 }); setShowArticleModal(true); }}>
+          <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedArticle(null); setArticleForm({ stock_actuel: 0, stock_mini: 10, prix_vente: 0 }); setShowArticleModal(true); }}>
             <i className="bi bi-plus-lg me-2"></i>Nouvel article
           </button>
         ) : activeTab === 'mouvements' && perms.canAddMouvementStock ? (
-          <button className="btn btn-primary fw-bold" onClick={() => { setMouvementForm({ article_id: articles[0]?.id || 1, quantite: 1, type_mouvement: 'entree', notes: '' }); setShowMouvementModal(true); }}>
+          <button className="btn btn-outline-secondary fw-bold" onClick={() => { setMouvementForm({ article_id: articles[0]?.id || 1, quantite: 1, type_mouvement: 'entree', notes: '' }); setShowMouvementModal(true); }}>
             <i className="bi bi-arrow-left-right me-2"></i>Nouveau mouvement
           </button>
         ) : null}
@@ -155,7 +155,7 @@ export function StocksPage() {
       {/* Main Content */}
       {loading ? (
         <div className="text-center py-5">
-          <div className="spinner-border text-primary" role="status"></div>
+          <div className="spinner-border text-secondary" role="status"></div>
         </div>
       ) : activeTab === 'articles' ? (
         <div>
@@ -215,14 +215,14 @@ export function StocksPage() {
                         </td>
                         <td className="font-monospace fs-6 fw-bold">{art.stock_actuel}</td>
                         <td className="font-monospace text-muted">{art.stock_mini}</td>
-                        <td className="fw-bold text-primary">{art.prix_vente?.toLocaleString()} MGA</td>
+                        <td className="fw-bold text-secondary">{art.prix_vente?.toLocaleString()} MGA</td>
                         <td>
                           {isRupture ? (
-                            <span className="badge bg-danger px-3 py-2">Rupture</span>
+                            <span className="badge bg-danger bg-opacity-10 text-danger border">Rupture</span>
                           ) : isLow ? (
-                            <span className="badge bg-warning text-dark px-3 py-2">Stock Bas</span>
+                            <span className="badge bg-warning bg-opacity-10 text-dark border">Stock Bas</span>
                           ) : (
-                            <span className="badge bg-success bg-opacity-10 text-success px-3 py-2">En Stock</span>
+                            <span className="badge bg-success bg-opacity-10 text-success border">En Stock</span>
                           )}
                         </td>
                         <td>
@@ -255,14 +255,14 @@ export function StocksPage() {
                 {mouvements.map(m => (
                   <tr key={m.id}>
                     <td className="fw-semibold">Article #{m.article_id}</td>
-                    <td>
-                      <span className={`badge ${m.type_mouvement === 'entree' ? 'bg-success' : 'bg-danger'}`}>
-                        {m.type_mouvement}
-                      </span>
-                    </td>
+                      <td>
+                        <span className={`badge ${m.type_mouvement === 'entree' ? 'bg-success bg-opacity-10 text-success border' : 'bg-danger bg-opacity-10 text-danger border'}`}>
+                          {m.type_mouvement}
+                        </span>
+                      </td>
                     <td className="font-monospace fw-bold">{m.quantite}</td>
-                    <td>{m.notes || '—'}</td>
-                    <td className="small text-muted">{m.date_mouvement || '—'}</td>
+                    <td>{m.notes || '-'}</td>
+                    <td className="small text-muted">{m.date_mouvement || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -277,8 +277,8 @@ export function StocksPage() {
                 <div className="card-body">
                   <h5 className="fw-bold text-dark mb-2">{f.nom}</h5>
                   <p className="text-muted small mb-1"><i className="bi bi-geo-alt me-2"></i>{f.adresse || 'Antananarivo'}</p>
-                  <p className="text-muted small mb-1"><i className="bi bi-telephone me-2"></i>{f.telephone || '—'}</p>
-                  <p className="text-muted small mb-0"><i className="bi bi-envelope me-2"></i>{f.email || '—'}</p>
+                  <p className="text-muted small mb-1"><i className="bi bi-telephone me-2"></i>{f.telephone || '-'}</p>
+                  <p className="text-muted small mb-0"><i className="bi bi-envelope me-2"></i>{f.email || '-'}</p>
                 </div>
               </div>
             </div>
@@ -325,8 +325,8 @@ export function StocksPage() {
                   </div>
                 </div>
                 <div className="modal-footer bg-light">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowArticleModal(false)}>Annuler</button>
-                  <button type="submit" className="btn btn-primary fw-bold">Enregistrer</button>
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowArticleModal(false)}>Annuler</button>
+                  <button type="submit" className="btn btn-outline-secondary fw-bold">Enregistrer</button>
                 </div>
               </form>
             </div>
@@ -349,7 +349,7 @@ export function StocksPage() {
                     <label className="form-label fw-semibold">Article *</label>
                     <select className="form-select" value={mouvementForm.article_id} onChange={e => setMouvementForm({ ...mouvementForm, article_id: Number(e.target.value) })}>
                       {articles.map(a => (
-                        <option key={a.id} value={a.id}>{a.reference} — {a.nom}</option>
+                        <option key={a.id} value={a.id}>{a.reference} - {a.nom}</option>
                       ))}
                     </select>
                   </div>
@@ -371,8 +371,8 @@ export function StocksPage() {
                   </div>
                 </div>
                 <div className="modal-footer bg-light">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowMouvementModal(false)}>Annuler</button>
-                  <button type="submit" className="btn btn-dark fw-bold">Enregistrer le mouvement</button>
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowMouvementModal(false)}>Annuler</button>
+                  <button type="submit" className="btn btn-outline-secondary fw-bold">Enregistrer le mouvement</button>
                 </div>
               </form>
             </div>

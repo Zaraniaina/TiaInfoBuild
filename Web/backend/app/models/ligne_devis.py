@@ -14,6 +14,7 @@ class LigneDevis(Base):
     type: Mapped[str] = mapped_column(String(20), server_default="article")
     article_id: Mapped[int | None] = mapped_column(ForeignKey("articles.id"))
     description: Mapped[str] = mapped_column(Text, nullable=False)
+    categorie: Mapped[str | None] = mapped_column(String(50))
     quantite: Mapped[float] = mapped_column(Numeric(10, 2), server_default="0")
     unite: Mapped[str | None] = mapped_column(String(20))
     prix_unitaire: Mapped[float] = mapped_column(Numeric(10, 2), server_default="0")

@@ -65,5 +65,25 @@ export const chantiersService = {
   async deleteAffectation(id: number, affId: number) {
     const res = await api.delete(`/chantiers/${id}/affectations/${affId}`)
     return res.data
+  },
+
+  async getProjetsTransformables() {
+    const res = await api.get<{ items: ProjetTransformable[]; total: number }>('/chantiers/projets-transformables')
+    return res.data.items
+  },
+
+  async transformerProjet(projetId: number) {
+    const res = await api.post<Chantier>(`/chantiers/from-projet/${projetId}`)
+    return res.data
   }
+}
+
+export interface ProjetTransformable {
+  projet_id: number
+  reference: string | null
+  nom: string
+  client_id: number | null
+  localisation: string | null
+  montant_contrat: number
+  contrat_reference: string | null
 }

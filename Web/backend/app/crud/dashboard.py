@@ -17,6 +17,8 @@ from app.models.rapport_financier import RapportFinancier
 from app.models.pointage import Pointage
 from app.models.incident import Incident
 from app.models.mouvement_stock import MouvementStock
+from app.models.contrat import Contrat
+from app.models.paiement import Paiement
 
 
 class DashboardCRUD:
@@ -131,9 +133,11 @@ class DashboardCRUD:
             alertes_critiques = result.scalar_one_or_none() or 0
 
             ca_subq = (
-                select(Facture.chantier_id, func.coalesce(func.sum(Facture.montant_ttc), 0).label("ca"))
+                select(Contrat.chantier_id, func.coalesce(func.sum(Facture.montant_ttc), 0).label("ca"))
+                .select_from(Facture)
+                .join(Contrat, Facture.contrat_id == Contrat.id)
                 .where(Facture.is_deleted == False)
-                .group_by(Facture.chantier_id)
+                .group_by(Contrat.chantier_id)
                 .subquery()
             )
             depense_subq = (
@@ -187,11 +191,13 @@ class DashboardCRUD:
             depassements_budgetaires = depassement_result.scalar_one_or_none() or 0
 
             paiement_delay_result = await db.execute(
-                select(func.avg(func.datediff(Facture.date_paiement, Facture.date_echeance))).where(
+                select(func.avg(func.datediff(Paiement.date_paiement, Facture.date_echeance))).where(
+                    Paiement.entreprise_id == entreprise_id,
                     Facture.entreprise_id == entreprise_id,
+                    Paiement.is_deleted == False,
                     Facture.is_deleted == False,
                     Facture.statut == "payee",
-                    Facture.date_paiement.is_not(None),
+                    Paiement.date_paiement.is_not(None),
                     Facture.date_echeance.is_not(None),
                 )
             )
@@ -230,6 +236,15 @@ class DashboardCRUD:
 
         if role_code == "chef_chantier":
             chef_chantier_id = user_id
+            # Initialiser les variables pour eviter UnboundLocalError
+            nb_incidents = 0
+            incidents_non_resolus = 0
+            retard_jours = 0.0
+            consommation_stock = 0.0
+            ecart_stock = 0.0
+            nb_alertes_chantier = 0
+            taux_avancement_physique = 0.0
+            taux_avancement_financier = 0.0
 
             if chef_chantier_id:
                 mes_chantiers = select(Chantier.id).where(
@@ -337,9 +352,11 @@ class DashboardCRUD:
                     nb_alertes_chantier = nb_alertes_chantier_result.scalar_one_or_none() or 0
 
                     chef_ca_subq = (
-                        select(Facture.chantier_id, func.coalesce(func.sum(Facture.montant_ttc), 0).label("ca"))
+                        select(Contrat.chantier_id, func.coalesce(func.sum(Facture.montant_ttc), 0).label("ca"))
+                        .select_from(Facture)
+                        .join(Contrat, Facture.contrat_id == Contrat.id)
                         .where(Facture.is_deleted == False)
-                        .group_by(Facture.chantier_id)
+                        .group_by(Contrat.chantier_id)
                         .subquery()
                     )
                     chef_depense_subq = (

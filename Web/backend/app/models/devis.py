@@ -12,6 +12,7 @@ class Devis(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     entreprise_id: Mapped[int] = mapped_column(ForeignKey("entreprises.id", ondelete="CASCADE"))
     client_id: Mapped[int] = mapped_column(ForeignKey("clients.id", ondelete="CASCADE"))
+    projet_id: Mapped[int | None] = mapped_column(ForeignKey("projets.id", ondelete="SET NULL"))
     numero: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     objet: Mapped[str | None] = mapped_column(Text)
     montant_ht: Mapped[float] = mapped_column(Numeric(12, 2), server_default="0")
@@ -23,6 +24,9 @@ class Devis(Base):
     conditions_paiement: Mapped[str | None] = mapped_column(Text)
     mode_paiement: Mapped[str | None] = mapped_column(String(50))
     notes: Mapped[str | None] = mapped_column(Text)
+    reponse_le: Mapped[datetime | None] = mapped_column(DateTime)
+    reponse_par_id: Mapped[int | None] = mapped_column(ForeignKey("utilisateurs.id", ondelete="SET NULL"))
+    reponse_motif: Mapped[str | None] = mapped_column(Text)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -30,10 +34,12 @@ class Devis(Base):
     __table_args__ = (
         UniqueConstraint("numero", name="uq_devis_numero"),
         Index("idx_devis_entreprise_id", "entreprise_id"),
+        Index("idx_devis_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_devis_statut", "statut"),
     )
 
     entreprise: Mapped["Entreprise"] = relationship("Entreprise", back_populates="devis", lazy="selectin")
     client: Mapped["Client"] = relationship("Client", back_populates="devis", lazy="selectin")
+    projet: Mapped["Projet | None"] = relationship("Projet", back_populates="devis", lazy="selectin")
     lignes_devis: Mapped[list["LigneDevis"]] = relationship("LigneDevis", back_populates="devis", lazy="selectin")
     contrat: Mapped["Contrat | None"] = relationship("Contrat", back_populates="devis", lazy="selectin")

@@ -23,6 +23,7 @@ class Equipe(Base):
 
     __table_args__ = (
         Index("idx_equipes_entreprise_id", "entreprise_id"),
+        Index("idx_equipes_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
     )
 
     entreprise: Mapped["Entreprise"] = relationship("Entreprise", back_populates="equipes", lazy="selectin")

@@ -20,6 +20,44 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'danger' | 'info'; text: string } | null>(null)
   const [lastScanned, setLastScanned] = useState<any | null>(null)
 
+  const showGlobalToast = (text: string, type: 'success' | 'danger' | 'info' = 'info') => {
+    try {
+      const id = `tia-toast-${Date.now()}`
+      const el = document.createElement('div')
+      el.id = id
+      el.style.position = 'fixed'
+      el.style.right = '20px'
+      el.style.top = '20px'
+      el.style.zIndex = '2000'
+      el.style.padding = '10px 14px'
+      el.style.borderRadius = '8px'
+      el.style.boxShadow = '0 6px 18px rgba(0,0,0,0.12)'
+      el.style.fontSize = '0.95rem'
+      el.style.transition = 'opacity 0.3s ease, transform 0.3s ease'
+      el.style.opacity = '1'
+      el.style.transform = 'translateY(0)'
+      if (type === 'success') {
+        el.style.background = '#1e7e34'
+        el.style.color = '#fff'
+      } else if (type === 'danger') {
+        el.style.background = '#c82333'
+        el.style.color = '#fff'
+      } else {
+        el.style.background = '#0d6efd'
+        el.style.color = '#fff'
+      }
+      el.textContent = text
+      document.body.appendChild(el)
+      setTimeout(() => {
+        el.style.opacity = '0'
+        el.style.transform = 'translateY(-8px)'
+        setTimeout(() => el.remove(), 350)
+      }, 3500)
+    } catch (e) {
+      // noop if DOM not available
+    }
+  }
+
   if (!isOpen) return null
 
   const handleScanSubmit = async (e?: React.FormEvent) => {
@@ -60,8 +98,10 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
       setLastScanned(result)
       setStatusMessage({
         type: 'success',
-        text: result.message || 'Pointage enregistré avec succès !',
+        text: typeof result?.message === 'string' ? result.message : 'Pointage enregistré avec succès !',
       })
+      const toastText = typeof result?.message === 'string' ? result.message : 'Pointage enregistré avec succès !'
+      showGlobalToast(toastText, 'success')
       setQrCodeInput('')
       if (onPointageSuccess) onPointageSuccess(result)
     } catch (err: any) {
@@ -111,25 +151,25 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
               </div>
             )}
 
-            {/* Confirmation du dernier pointage */}
-            {lastScanned && lastScanned.employe && (
-              <div className="card border-0 shadow-sm p-3 rounded-3 mb-3" style={{ background: 'var(--tia-bg-surface)', color: 'var(--tia-text-primary)' }}>
-                <div className="d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-3">
-                    <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: '42px', height: '42px', background: 'var(--tia-accent)', color: 'var(--tia-accent-text)' }}>
-                      {lastScanned.employe.prenom?.[0] || 'O'}
-                    </div>
-                    <div>
-                      <div className="fw-bold" style={{ color: 'var(--tia-text-primary)' }}>{lastScanned.employe.prenom} {lastScanned.employe.nom}</div>
-                      <small className="text-muted" style={{ fontSize: '0.75rem' }}>{lastScanned.employe.poste} — Mat: {lastScanned.employe.matricule || 'N/A'}</small>
-                    </div>
-                  </div>
-                  <span className={`badge ${lastScanned.status === 'entree_enregistree' ? 'bg-success' : 'bg-warning text-dark'}`}>
-                    {lastScanned.status === 'entree_enregistree' ? 'ENTRÉE VALIDÉE' : 'SORTIE VALIDÉE'}
-                  </span>
-                </div>
-              </div>
-            )}
+             {/* Confirmation du dernier pointage */}
+             {lastScanned && lastScanned.employe && (
+               <div className="card border-0 shadow-sm p-3 rounded-3 mb-3" style={{ background: 'var(--tia-bg-surface)', color: 'var(--tia-text-primary)' }}>
+                 <div className="d-flex align-items-center justify-content-between">
+                   <div className="d-flex align-items-center gap-3">
+                     <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: '42px', height: '42px', background: 'var(--tia-accent)', color: 'var(--tia-accent-text)' }}>
+                       {String(lastScanned.employe.prenom || '').charAt(0) || 'O'}
+                     </div>
+                     <div>
+                       <div className="fw-bold" style={{ color: 'var(--tia-text-primary)' }}>{String(lastScanned.employe.prenom || '')} {String(lastScanned.employe.nom || '')}</div>
+                       <small className="text-muted" style={{ fontSize: '0.75rem' }}>{String(lastScanned.employe.poste || '')} - Mat: {String(lastScanned.employe.matricule || 'N/A')}</small>
+                     </div>
+                   </div>
+                   <span className={`badge ${lastScanned.status === 'entree_enregistree' ? 'bg-success' : 'bg-warning text-dark'}`}>
+                     {lastScanned.status === 'entree_enregistree' ? 'ENTRÉE VALIDÉE' : 'SORTIE VALIDÉE'}
+                   </span>
+                 </div>
+               </div>
+             )}
 
             {/* Input Form */}
             <form onSubmit={handleScanSubmit}>

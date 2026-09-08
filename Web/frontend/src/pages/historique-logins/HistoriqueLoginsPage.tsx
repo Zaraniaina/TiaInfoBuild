@@ -53,9 +53,9 @@ export function HistoriqueLoginsPage() {
                   <tr key={l.id}>
                     <td className="fw-semibold">Utilisateur #{l.utilisateur_id}</td>
                     <td className="font-monospace">{l.ip_address || '127.0.0.1'}</td>
-                    <td className="small text-muted">{l.user_agent || '—'}</td>
+                    <td className="small text-muted">{l.user_agent || '-'}</td>
                     <td>
-                      <span className={`badge ${l.reussi ? 'bg-success' : 'bg-danger'}`}>
+                      <span className={`badge ${l.reussi ? 'bg-success bg-opacity-10 text-success border' : 'bg-danger bg-opacity-10 text-danger border'}`}>
                         {l.reussi ? 'Succès' : 'Échec'}
                       </span>
                     </td>

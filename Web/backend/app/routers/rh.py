@@ -37,6 +37,7 @@ from app.schemas.equipe import (
     MembreEquipeCreate,
 )
 from app.security import CurrentUserPayload, DbDep
+from app.core.permissions import Role, PERMISSION_MAP
 
 router = APIRouter()
 
@@ -344,6 +345,41 @@ async def get_employe_badge_qr(
     }
 
 
+@router.get("/mon-badge", response_model=dict)
+async def get_mon_badge(payload: CurrentUserPayload, db: DbDep):
+    """Badge QR de l'employe rattache au compte connecte (resolution par email)."""
+    _require_permission(payload, "rh:read")
+    user = payload.get("user")
+    email = (getattr(user, "email", None) or "").strip().lower()
+    entreprise_id = payload.get("entreprise_id")
+    query = select(Employe).where(Employe.is_deleted == False)
+    if email:
+        query = query.where(func.lower(Employe.email) == email)
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aucune fiche employe rattachee a votre compte")
+    if entreprise_id is not None:
+        query = query.where(Employe.entreprise_id == entreprise_id)
+    employe = (await db.execute(query)).scalar_one_or_none()
+    if not employe:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aucune fiche employe rattachee a votre compte")
+
+    if not employe.code_qr_badge:
+        import uuid
+        employe.code_qr_badge = f"TIA-EMP-{employe.entreprise_id or 1}-{employe.id}-{uuid.uuid4().hex[:8].upper()}"
+        await db.flush()
+
+    return {
+        "id": employe.id,
+        "matricule": employe.matricule or f"EMP-{employe.id:04d}",
+        "nom": employe.nom,
+        "prenom": employe.prenom,
+        "poste": employe.poste,
+        "photo": employe.photo,
+        "code_qr_badge": employe.code_qr_badge,
+        "date_generation": datetime.now().isoformat(),
+    }
+
+
 class ScanBadgeRequest(BaseModel):
     code_qr_badge: str
     chantier_id: int | None = None
@@ -358,7 +394,11 @@ async def scan_badge_pointage(
     obj_in: ScanBadgeRequest,
     db: DbDep,
 ):
-    _require_permission(payload, "rh:write")
+    # Autoriser si le rôle possède la permission `rh:write` ou si c'est un `admin_entreprise`
+    role_code = payload.get("role_code")
+    permissions = PERMISSION_MAP.get(role_code, [])
+    if "*" not in permissions and "rh:write" not in permissions and role_code != Role.ADMIN_ENTREPRISE:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission 'rh:write' requise")
     entreprise_id = payload.get("entreprise_id")
     user_id = payload.get("sub") or payload.get("id")
 

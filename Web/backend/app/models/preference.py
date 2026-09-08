@@ -11,7 +11,7 @@ class Preference(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("utilisateurs.id", ondelete="CASCADE"), unique=True)
-    theme: Mapped[str] = mapped_column(String(20), server_default="auto")
+    theme: Mapped[str] = mapped_column(String(20), server_default="light")
     langue: Mapped[str] = mapped_column(String(10), server_default="fr")
     date_format: Mapped[str] = mapped_column(String(20), server_default="DD/MM/YYYY")
     devise: Mapped[str] = mapped_column(String(10), server_default="MGA")

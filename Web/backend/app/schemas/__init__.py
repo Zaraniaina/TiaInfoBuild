@@ -31,6 +31,32 @@ from app.schemas.contrat import (
     ContratResponse,
     ContratUpdate,
 )
+from app.schemas.demande_travaux import (
+    DemandeTravauxCreate,
+    DemandeTravauxList,
+    DemandeTravauxResponse,
+    DemandeTravauxUpdate,
+)
+from app.schemas.projet import (
+    ProjetCreate,
+    ProjetList,
+    ProjetResponse,
+    ProjetUpdate,
+)
+from app.schemas.metre import (
+    MetreCreate,
+    MetreList,
+    MetreResponse,
+    MetreUpdate,
+)
+from app.schemas.situation_travaux import (
+    SituationTravauxCreate,
+    SituationTravauxList,
+    SituationTravauxResponse,
+    SituationTravauxUpdate,
+    LigneSituationCreate,
+    LigneSituationResponse,
+)
 from app.schemas.depense import (
     DepenseCreate,
     DepenseList,
@@ -218,6 +244,28 @@ __all__ = [
     "ContratUpdate",
     "ContratResponse",
     "ContratList",
+    # demande_travaux
+    "DemandeTravauxCreate",
+    "DemandeTravauxUpdate",
+    "DemandeTravauxResponse",
+    "DemandeTravauxList",
+    # projet
+    "ProjetCreate",
+    "ProjetUpdate",
+    "ProjetResponse",
+    "ProjetList",
+    # metre
+    "MetreCreate",
+    "MetreUpdate",
+    "MetreResponse",
+    "MetreList",
+    # situation_travaux
+    "SituationTravauxCreate",
+    "SituationTravauxUpdate",
+    "SituationTravauxResponse",
+    "SituationTravauxList",
+    "LigneSituationCreate",
+    "LigneSituationResponse",
     # facture
     "FactureCreate",
     "FactureUpdate",

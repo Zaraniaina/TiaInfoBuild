@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { api } from "@/services/api";
+import { subscriptionsService } from '@/services/subscriptions.service'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from "@/stores/auth.store";
 import { useToastStore } from "@/stores/toast.store";
-import { ROLE_NAMES } from "@/config/roles.config";
+import { ROLE_NAMES, getRolePermissions } from "@/config/roles.config";
 import { formatErrorMessage } from "@/utils/errorMessage";
 
 type UserRole =
@@ -79,6 +81,9 @@ interface AlerteLog {
 
 export function SettingsPage() {
   const { user } = useAuthStore();
+  const roleCode = user?.role_code || 'employe'
+  const perms = getRolePermissions(roleCode)
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<
     "utilisateurs" | "parametres" | "audit" | "profil"
   >("utilisateurs");
@@ -116,6 +121,8 @@ export function SettingsPage() {
     prefixe_contrat: "CTR",
   });
   const [entrepriseLoaded, setEntrepriseLoaded] = useState(false);
+  const [subscription, setSubscription] = useState<any | null>(null)
+  const [subLoading, setSubLoading] = useState(true)
 
   const [profilForm, setProfilForm] = useState({
     nom: user?.nom || "",
@@ -209,6 +216,10 @@ export function SettingsPage() {
   useEffect(() => {
     loadEntrepriseSettings();
     loadRoles();
+    subscriptionsService.getMySubscription()
+      .then(s => setSubscription(s))
+      .catch(() => setSubscription(null))
+      .finally(() => setSubLoading(false))
   }, []);
 
   useEffect(() => {
@@ -420,28 +431,28 @@ export function SettingsPage() {
 
   const getRoleBadge = (role: string) => {
     const map: Record<string, string> = {
-      super_admin: "bg-danger",
-      admin_entreprise: "bg-primary",
-      directeur: "bg-success",
-      comptable: "bg-info",
-      chef_chantier: "bg-warning text-dark",
-      chef_projet: "bg-dark",
-      rh: "bg-purple text-white",
-      materiel: "bg-secondary",
-      magasinier: "bg-secondary",
-      commercial: "bg-success",
+      super_admin: "bg-danger bg-opacity-10 text-danger border",
+      admin_entreprise: "bg-primary bg-opacity-10 text-primary border",
+      directeur: "bg-success bg-opacity-10 text-success border",
+      comptable: "bg-info bg-opacity-10 text-info border",
+      chef_chantier: "bg-warning bg-opacity-10 text-dark border",
+      chef_projet: "bg-secondary bg-opacity-10 text-dark border",
+      rh: "bg-light text-dark border",
+      materiel: "bg-light text-dark border",
+      magasinier: "bg-light text-dark border",
+      commercial: "bg-success bg-opacity-10 text-success border",
       employe: "bg-light text-dark border",
       client: "bg-light text-dark border",
     };
-    return map[role] || "bg-secondary";
+    return map[role] || "bg-light text-dark border";
   };
 
   return (
     <div className="container-fluid py-4">
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-          <h2 className="mb-1 fw-bold">
-            <i className="bi bi-gear me-2 text-primary"></i>Administration &
+          <h2 className="mb-1 fw-bold text-secondary">
+            <i className="bi bi-gear me-2"></i>Administration &
             Paramètres
           </h2>
           <p className="text-secondary mb-0">
@@ -502,7 +513,7 @@ export function SettingsPage() {
               />
             </div>
             <button
-              className="btn btn-primary fw-bold"
+              className="btn btn-outline-secondary fw-bold"
               onClick={openCreateUser}
             >
               <i className="bi bi-person-plus me-2"></i>Nouvel Utilisateur
@@ -535,16 +546,16 @@ export function SettingsPage() {
                     </td>
                     <td>
                       <span
-                        className={`badge ${u.statut === "actif" ? "bg-success" : "bg-secondary"}`}
+                        className={`badge ${u.statut === "actif" ? "bg-success bg-opacity-10 text-success border" : "bg-secondary bg-opacity-10 text-dark border"}`}
                       >
                         {u.statut === "actif" ? "Actif" : "Inactif"}
                       </span>
                     </td>
                     <td className="d-none d-md-table-cell text-muted">
-                      {u.telephone || "—"}
+                      {u.telephone || "-"}
                     </td>
                     <td className="text-muted">
-                      {u.derniere_connexion || "—"}
+                      {u.derniere_connexion || "-"}
                     </td>
                     <td className="text-end">
                       <div className="d-flex gap-1 justify-content-end">
@@ -583,6 +594,31 @@ export function SettingsPage() {
 
       {activeTab === "parametres" &&
         (entrepriseLoaded ? (
+          <>
+          <div className="card border-0 shadow-sm mb-4 p-3">
+            <div className="d-flex justify-content-between align-items-center">
+              <div>
+                <div className="small text-muted">Abonnement</div>
+                <div className="fw-semibold">
+                  {subLoading ? 'Chargement...' : (subscription ? (subscription.plan?.nom || subscription.plan?.code || 'Formule') : 'Aucun abonnement actif')}
+                </div>
+                {!subLoading && subscription?.date_fin && (
+                  <div className="small text-muted">Valide jusqu'au {new Date(subscription.date_fin).toLocaleDateString()}</div>
+                )}
+              </div>
+              <div>
+                {perms.canManageSubscription ? (
+                  <button className="btn btn-outline-secondary" onClick={() => navigate('/pricing')}>
+                    Gérer l'abonnement
+                  </button>
+                ) : (
+                  <button className="btn btn-outline-secondary" disabled title="Vous n'êtes pas autorisé à gérer l'abonnement">
+                    Gérer l'abonnement
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
           <form onSubmit={handleSaveEntreprise}>
             <div className="row g-3 mb-4">
               <div className="col-md-6">
@@ -728,7 +764,7 @@ export function SettingsPage() {
                   }
                 >
                   <option value="MGA">MGA (Ariary)</option>
-                  <option value="EUR">EUR (€)</option>
+                  <option value="EUR">EUR</option>
                   <option value="USD">USD ($)</option>
                 </select>
               </div>
@@ -818,23 +854,24 @@ export function SettingsPage() {
 
             <button
               type="submit"
-              className="btn btn-primary fw-bold"
+              className="btn btn-outline-secondary fw-bold"
               disabled={saving}
             >
               {saving ? "Enregistrement..." : "Enregistrer les paramètres"}
             </button>
           </form>
+          </>
         ) : (
-          <div className="text-center py-5">
-            <div className="spinner-border text-primary" role="status"></div>
-          </div>
+        <div className="text-center py-5">
+          <div className="spinner-border text-secondary" role="status"></div>
+        </div>
         ))}
 
       {activeTab === "audit" && (
         <div className="table-card">
           <div className="table-header">
             <h5 className="fw-bold mb-0">
-              <i className="bi bi-shield-check me-2 text-primary"></i>Journal
+              <i className="bi bi-shield-check me-2"></i>Journal
               d'activité
             </h5>
             <button
@@ -864,10 +901,10 @@ export function SettingsPage() {
                     <td className="font-monospace">
                       {l.ip_address || "127.0.0.1"}
                     </td>
-                    <td className="small text-muted">{l.user_agent || "—"}</td>
+                    <td className="small text-muted">{l.user_agent || "-"}</td>
                     <td>
                       <span
-                        className={`badge ${l.reussi ? "bg-success" : "bg-danger"}`}
+                        className={`badge ${l.reussi ? "bg-success bg-opacity-10 text-success border" : "bg-danger bg-opacity-10 text-danger border"}`}
                       >
                         {l.reussi ? "Succès" : "Échec"}
                       </span>
@@ -929,7 +966,7 @@ export function SettingsPage() {
           </div>
           <button
             type="submit"
-            className="btn btn-primary fw-bold mt-4"
+            className="btn btn-outline-secondary fw-bold mt-4"
             disabled={saving}
           >
             Mettre à jour le profil
@@ -1074,17 +1111,17 @@ export function SettingsPage() {
                 <div className="modal-footer border-0 pt-0">
                   <button
                     type="button"
-                    className="btn btn-secondary"
+                     className="btn btn-outline-secondary"
                     onClick={() => setShowUserModal(false)}
                     disabled={saving}
                   >
                     Annuler
                   </button>
-                  <button
-                    type="submit"
-                    className="btn btn-primary fw-bold"
-                    disabled={saving}
-                  >
+                    <button
+                      type="submit"
+                      className="btn btn-outline-secondary fw-bold"
+                      disabled={saving}
+                    >
                     {saving
                       ? "Enregistrement..."
                       : editingUser

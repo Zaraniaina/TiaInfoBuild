@@ -35,6 +35,11 @@ class EntrepriseCreate(BaseModel):
     validite_devis: int | None = Field(default=30)
     mentions_legales: str | None = None
     actif: bool | None = True
+    admin_nom: str | None = Field(default=None, max_length=100)
+    admin_prenom: str | None = Field(default=None, max_length=100)
+    admin_email: EmailStr | None = None
+    admin_password: str | None = Field(default=None, min_length=8)
+    admin_telephone: str | None = Field(default=None, max_length=50)
 
     @field_validator("tva_defaut")
     @classmethod
@@ -48,6 +53,24 @@ class EntrepriseCreate(BaseModel):
     def validate_delai(cls, v: int | None) -> int | None:
         if v is not None and v < 0:
             raise ValueError("Le délai de paiement ne peut pas être négatif")
+        return v
+
+    @field_validator("admin_password")
+    @classmethod
+    def validate_admin_password(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        import re
+        if len(v) < 8:
+            raise ValueError("Le mot de passe admin doit contenir au moins 8 caractères")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Le mot de passe admin doit contenir au moins une majuscule")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Le mot de passe admin doit contenir au moins une minuscule")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("Le mot de passe admin doit contenir au moins un chiffre")
+        if not re.search(r"[^A-Za-z0-9]", v):
+            raise ValueError("Le mot de passe admin doit contenir au moins un caractère spécial")
         return v
 
 
