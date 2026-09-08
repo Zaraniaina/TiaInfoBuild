@@ -1,6 +1,6 @@
 """fourteenth migration: add devis.projet_id and factures.situation_id columns
 
-Revision ID: 014_devis_projet_facture_situation
+Revision ID: 014_devis_projet_facture
 Revises: 013_commercial_cycle
 Create Date: 2026-09-04 14:20:00.000000
 """
@@ -10,7 +10,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "014_devis_projet_facture_situation"
+revision: str = "014_devis_projet_facture"
 down_revision: Union[str, None] = "013_commercial_cycle"
 branch_labels: Union[Sequence[str], None] = None
 depends_on: Union[Sequence[str], None] = None

@@ -17,7 +17,7 @@ import sqlalchemy as sa
 
 
 revision: str = "015_fix_pointages_columns"
-down_revision: Union[str, None] = "014_devis_projet_facture_situation"
+down_revision: Union[str, None] = "014_devis_projet_facture"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
