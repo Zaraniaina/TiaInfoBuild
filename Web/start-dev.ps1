@@ -28,6 +28,22 @@ try {
     Pop-Location
 }
 
+# 2bis. Seed des donnees de base (roles, comptes de test, entreprise demo, abonnement).
+# Idempotent : sans effet si les donnees existent deja. Garantit que les comptes de
+# test (admin@tia.mg, demo@btppro.mg, client@btppro.mg, etc.) sont presents apres
+# une creation de base / refonte des migrations, sinon login 401.
+Write-Host " Initialisation des donnees de base (seed idempotent)..." -ForegroundColor Green
+Push-Location "$PSScriptRoot\backend"
+try {
+    if (Test-Path 'env\Scripts\Activate.ps1') { .\env\Scripts\Activate.ps1 }
+    python -m app.scripts.init_db
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host " ATTENTION : echec du seed. Les comptes de test peuvent etre absents." -ForegroundColor Yellow
+    }
+} finally {
+    Pop-Location
+}
+
 # 3. Démarrer Backend FastAPI
 Write-Host " Lancement du Backend FastAPI (Port 8000)..." -ForegroundColor Green
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot\backend'; if (Test-Path 'env\Scripts\Activate.ps1') { .\env\Scripts\Activate.ps1 }; uvicorn app.main:app --reload --port 8000"
