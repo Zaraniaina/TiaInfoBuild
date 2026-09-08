@@ -21,18 +21,23 @@ from app.schemas.utilisateur import UtilisateurCreate, UtilisateurUpdate, Utilis
 MAX_ADMIN_ENTREPRISE = 2
 
 
+# IMPORTANT : ces alias doivent etre definis AVANT leur premiere utilisation dans
+# une signature de fonction. Python < 3.14 evalue les annotations des fonctions
+# immediatement au moment du "def" : un alias utilise avant sa definition leve
+# "NameError: name 'DbSession' is not defined" (Python 3.14+ masque ce bug via
+# l'evaluation paresseuse des annotations, PEP 649).
+router = APIRouter(tags=["utilisateurs"])
+CurrentUser = Annotated[dict[str, Any], Depends(get_current_active_user)]
+DbSession = Annotated[AsyncSession, Depends(get_db)]
+AdminCheck = Annotated[dict[str, Any], Depends(require_permission("parametres:write"))]
+
+
 async def _resolve_admin_role_id(db: DbSession) -> int | None:
     """Retourne l'id réel du rôle admin_entreprise (ou None s'il n'existe pas encore)."""
     # On utilise le code littéral "admin_entreprise" : l'import `Role` ici est le modèle SQL,
     # pas l'énuméré de core.permissions.
     result = await db.execute(select(Role.id).where(Role.code == "admin_entreprise"))
     return result.scalar_one_or_none()
-
-
-router = APIRouter(tags=["utilisateurs"])
-CurrentUser = Annotated[dict[str, Any], Depends(get_current_active_user)]
-DbSession = Annotated[AsyncSession, Depends(get_db)]
-AdminCheck = Annotated[dict[str, Any], Depends(require_permission("parametres:write"))]
 
 
 @router.get("", response_model=dict)

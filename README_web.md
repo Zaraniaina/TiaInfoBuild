@@ -67,19 +67,15 @@ npm run build
 
 ## Comptes de test
 
-Créer un utilisateur via `/api/auth/register` ou peupler la DB manuellement avec un rôle parmi :
-- super_admin
-- admin_entreprise
-- directeur
-- comptable
-- chef_projet
-- chef_chantier
-- rh
-- materiel
-- magasinier
-- commercial
-- employe
-- client
+Les comptes sont créés automatiquement par le seed (voir Dépannage et `Web/backend/README.md`).
+Mot de passe universel : `Admin123!`. Rôles disponibles :
+- super_admin (admin@tia.mg)
+- admin_entreprise (demo@btppro.mg)
+- directeur, comptable, chef_projet, chef_chantier, rh, materiel, magasinier, commercial
+- employe, client
+
+Si les comptes n'existent pas (base recreee) : `python -m app.scripts.init_db`
+depuis `Web/backend` (idempotent, sans effet si les donnees existent deja).
 
 ## Dépannage
 
@@ -88,3 +84,11 @@ Créer un utilisateur via `/api/auth/register` ou peupler la DB manuellement ave
 - Erreur DB : vérifier que MySQL est démarré et que la base existe
 - CORS : vérifier `CORS_ORIGINS` dans `Web/backend/.env`
 - 404 sur les routes : vérifier que le backend a bien redémarré après les correctifs de préfixes
+- `NameError: name 'DbSession' is not defined` au demarrage : version Python < 3.14 et alias
+  `Annotated` utilise avant sa definition. Corrige dans le depot (definir les alias en tete de
+  module) -> faire un `git pull` puis relancer. Details : `Web/backend/README.md`.
+- `401` au login : comptes de test absents (base recreee sans seed). Lancer le seed ou utiliser
+  `start-dev.ps1` qui le fait automatiquement.
+- Migrations Alembic : nom de revision <= 32 caracteres (sinon troncature silencieuse dans
+  `alembic_version` et erreur "0 found") ; type de FK identique au type de la colonne cible
+  (sinon errno 150). Details : `Web/backend/README.md`.

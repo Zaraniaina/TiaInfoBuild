@@ -233,6 +233,35 @@ APP_DEBUG=True
 
 ## 🛠️ Dépannage
 
+### Erreur : `NameError: name 'DbSession' is not defined` au demarrage du backend
+Cause : un alias `Annotated` (ex: `DbSession`) etait utilise dans une annotation de fonction
+AVANT sa definition dans le module.
+- Python 3.13 et avant : les annotations sont evaluees immediatement au `def` -> crash.
+- Python 3.14+ : annotations paresseuses (PEP 649) -> le bug passe inapercu sur une machine recente
+  mais casse celle du collegue.
+
+Ce cas est corrige dans `app/routers/utilisateurs.py` (alias definis en tete de module).
+**Regle a respecter** : dans tout router, definir les alias `Router = APIRouter(...)`,
+`DbSession = Annotated[...]`, `AdminCheck = ...` AVANT la premiere fonction qui les utilise.
+Apres un `git pull`, relancer le backend.
+
+### Regles pour les futures migrations Alembic
+- Le nom de revision (fichier + `revision=`) doit faire **32 caracteres maximum** :
+  `alembic_version` est un VARCHAR(32), un nom trop long est tronque silencieusement et
+  provoque l'erreur `expected to match one row... 0 found` (cas de la revision 014 renommee).
+- Le type de colonne FK doit correspondre EXACTEMENT au type de la colonne cible
+  (ex: FK vers `projets.id` = `int(11)` -> `sa.Integer()`, pas `BigInteger`, sinon errno 150).
+- Ecrire les migrations de facon idempotente (verifier colonnes/FK/index existants
+  avant creation) pour garantir la reproductibilite sur un clone.
+
+### Erreur : `401 "Email ou mot de passe incorrect"` apres une recration de la base
+Les comptes de test n'existent pas : le seed n'a pas ete relance.
+```powershell
+python -m app.scripts.init_db
+```
+Ce script est idempotent (sans effet si les donnees existent deja). `start-dev.ps1`
+l'execute automatiquement apres les migrations.
+
 ### Erreur : `Can't create table ... (errno: 150)`
 Problème de contrainte FK mal formée. La migration 011 a été corrigée (création de table sans FK, puis ajout séparé).
 
