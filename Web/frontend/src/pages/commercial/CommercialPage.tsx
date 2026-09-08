@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react'
 import type { Devis, Facture, Client, Contrat, Paiement, LigneDevis, LigneFacture, Chantier, Avenant, StatutDevis, TypeClient, TypeFacture, StatutFacture, StatutChantier } from '@/types'
 import { commercialService } from '@/services/commercial.service'
@@ -1044,7 +1045,7 @@ export function CommercialPage() {
             </div>
           </div>
           </div>
-        )})()})
+        )})()}
       {/* Modal Facture Builder */}
       {showFactureModal && (
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
