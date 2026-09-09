@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
 import type { Utilisateur } from '@/types'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 export function SuperAdminUtilisateursPage() {
   const [users, setUsers] = useState<Utilisateur[]>([])
@@ -60,9 +61,8 @@ export function SuperAdminUtilisateursPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="text-center py-4 text-muted">
-                    <span className="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></span>
-                    Chargement des utilisateurs...
+                  <td colSpan={4} className="p-0 border-0">
+                    <TableSkeleton rows={6} columns={4} />
                   </td>
                 </tr>
               ) : (

@@ -133,7 +133,13 @@ export function PricingPage() {
         className="btn-close position-absolute top-0 end-0 m-3"
         aria-label="Fermer et revenir a la page precedente"
         title="Retour a la page precedente"
-        onClick={() => navigate(-1)}
+        onClick={() => {
+          if (user?.entreprise_id) {
+            navigate('/dashboard')
+          } else {
+            navigate(-1)
+          }
+        }}
       ></button>
       <div className="text-center mb-5">
         <h1 className="fw-bold mb-2">Nos Formules d'Abonnement</h1>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { employeTerrainService } from '@/services/employeTerrain.service'
 import type { TravailRealise } from '@/types'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 export function EmployeTravauxPage() {
   const [travaux, setTravaux] = useState<TravailRealise[]>([])
@@ -33,7 +34,7 @@ export function EmployeTravauxPage() {
     } catch { alert('Erreur lors de la déclaration') }
   }
 
-  if (loading) return <div className="text-center py-5"><div className="spinner-border text-primary" /></div>
+  if (loading) return <TableSkeleton rows={8} columns={6} />
   if (err) return <div className="alert alert-danger m-3">{err}</div>
 
   return (

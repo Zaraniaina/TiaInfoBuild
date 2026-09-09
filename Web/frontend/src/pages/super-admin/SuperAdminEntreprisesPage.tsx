@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
 import { subscriptionsService } from '@/services/subscriptions.service'
 import type { Entreprise, Plan } from '@/types'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 export function SuperAdminEntreprisesPage() {
   const [entreprises, setEntreprises] = useState<Entreprise[]>([])
@@ -162,9 +163,8 @@ export function SuperAdminEntreprisesPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-4 text-muted">
-                    <span className="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></span>
-                    Chargement des entreprises...
+                  <td colSpan={6} className="p-0 border-0">
+                    <TableSkeleton rows={6} columns={6} />
                   </td>
                 </tr>
               ) : (

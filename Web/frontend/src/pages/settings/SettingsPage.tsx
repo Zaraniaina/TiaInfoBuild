@@ -6,6 +6,7 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useToastStore } from "@/stores/toast.store";
 import { ROLE_NAMES, getRolePermissions } from "@/config/roles.config";
 import { formatErrorMessage } from "@/utils/errorMessage";
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 type UserRole =
   | "admin_entreprise"
@@ -862,9 +863,7 @@ export function SettingsPage() {
           </form>
           </>
         ) : (
-        <div className="text-center py-5">
-          <div className="spinner-border text-secondary" role="status"></div>
-        </div>
+        <TableSkeleton rows={8} columns={6} />
         ))}
 
       {activeTab === "audit" && (

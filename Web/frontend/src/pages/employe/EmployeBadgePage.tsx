@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { employeTerrainService } from '@/services/employeTerrain.service'
 import type { Pointage } from '@/types'
+import { PageSkeleton } from '@/components/ui/Skeleton'
 
 export function EmployeBadgePage() {
   const [badge, setBadge] = useState<{ employe: any; code_qr: string } | null>(null)
@@ -18,7 +19,7 @@ export function EmployeBadgePage() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <div className="text-center py-5"><div className="spinner-border text-primary" /></div>
+  if (loading) return <PageSkeleton />
   if (err) return <div className="alert alert-danger m-3">{err}</div>
   if (!badge) return null
 

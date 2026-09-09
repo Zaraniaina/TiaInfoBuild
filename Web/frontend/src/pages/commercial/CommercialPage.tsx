@@ -11,6 +11,7 @@ import { DemandeTravauxTab } from './DemandeTravauxTab'
 import { ProjetsTab } from './ProjetsTab'
 import { MetresTab } from './MetresTab'
 import { SituationsTab } from './SituationsTab'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 type LigneDevisRow = Partial<LigneDevis> & { _deleted?: boolean }
 type LigneFactureRow = Partial<LigneFacture> & { _deleted?: boolean }
@@ -542,9 +543,7 @@ export function CommercialPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border text-secondary" role="status"></div>
-        </div>
+        <TableSkeleton rows={8} columns={6} />
       ) : activeTab === 'devis' ? (
         <div className="card border-0 shadow-sm">
           <div className="table-responsive">

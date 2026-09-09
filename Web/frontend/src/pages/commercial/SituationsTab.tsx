@@ -13,6 +13,7 @@ import { chantiersService } from '@/services/chantiers.service'
 import { useToastStore } from '@/stores/toast.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 const EMPTY_FORM: SituationTravauxCreate = {
   chantier_id: undefined,
@@ -240,9 +241,7 @@ const handleSaveLigne = async (e: React.FormEvent) => {
       </div>
 
       {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border text-secondary" role="status"></div>
-        </div>
+        <TableSkeleton rows={8} columns={6} />
       ) : (
         <div className="card border-0 shadow-sm">
           <div className="table-responsive">

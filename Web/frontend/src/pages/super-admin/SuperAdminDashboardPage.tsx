@@ -3,6 +3,7 @@ import { api } from "@/services/api";
 import { SaasTenantsGrowthChart } from "@/components/charts/DashboardCharts";
 import type { SuperAdminStats } from "@/types";
 import { useNavigate } from "react-router-dom";
+import { TableSkeleton } from "@/components/ui/Skeleton";
 
 interface Tenant {
   id: number;
@@ -30,36 +31,21 @@ export function SuperAdminDashboardPage() {
     data: number[];
   }>({ labels: [], data: [] });
   const [croissance, setCroissance] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api
-      .get("/super-admin/stats")
-      .then((res) => setStats(res.data))
-      .catch(() => setStats(null));
-
-    api
-      .get("/super-admin/tenants-evolution")
-      .then((res) => {
-        setEvolution({
-          labels: res.data.labels ?? [],
-          data: res.data.data ?? [],
-        });
+    Promise.all([
+      api.get("/super-admin/stats").then((res) => setStats(res.data)).catch(() => setStats(null)),
+      api.get("/super-admin/tenants-evolution").then((res) => {
+        setEvolution({ labels: res.data.labels ?? [], data: res.data.data ?? [] });
         setCroissance(res.data.croissance ?? 0);
-      })
-      .catch(() => {
+      }).catch(() => {
         setEvolution({ labels: [], data: [] });
         setCroissance(0);
-      });
-
-    api
-      .get("/super-admin/entreprises?size=5")
-      .then((res) => setRecentTenants(res.data.items || res.data || []))
-      .catch(() => setRecentTenants([]));
-
-    api
-      .get("/super-admin/alerts")
-      .then((res) => setAlerts(res.data.items || res.data || []))
-      .catch(() => setAlerts([]));
+      }),
+      api.get("/super-admin/entreprises?size=5").then((res) => setRecentTenants(res.data.items || res.data || [])).catch(() => setRecentTenants([])),
+      api.get("/super-admin/alerts").then((res) => setAlerts(res.data.items || res.data || [])).catch(() => setAlerts([])),
+    ]).finally(() => setLoading(false));
   }, []);
 
   return (
@@ -264,6 +250,14 @@ export function SuperAdminDashboardPage() {
               </tr>
             </thead>
             <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="p-0 border-0">
+                    <TableSkeleton rows={5} columns={4} />
+                  </td>
+                </tr>
+              ) : (
+                <>
               {recentTenants.map((t) => (
                 <tr key={t.id}>
                   <td className="fw-semibold">{t.nom}</td>
@@ -288,6 +282,8 @@ export function SuperAdminDashboardPage() {
                     Aucune entreprise inscrite pour le moment.
                   </td>
                 </tr>
+              )}
+                </>
               )}
             </tbody>
           </table>
