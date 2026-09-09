@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
 import { QRScannerModal } from '@/components/pointage/QRScannerModal'
 import { WorkerBadgeCard } from '@/components/pointage/WorkerBadgeCard'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 export function RhPage() {
   const { user } = useAuthStore()
@@ -164,8 +165,8 @@ export function RhPage() {
 
       {/* Tab Content */}
       {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border text-secondary" role="status"></div>
+        <div className="card border-0 shadow-sm p-3">
+          <TableSkeleton rows={8} columns={6} />
         </div>
       ) : activeTab === 'employes' ? (
         <div>

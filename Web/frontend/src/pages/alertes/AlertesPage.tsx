@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Alerte } from '@/types'
 import { alertesService } from '@/services/alertes.service'
+import { ListSkeleton } from '@/components/ui/Skeleton'
 
 export function AlertesPage() {
   const [alertes, setAlertes] = useState<Alerte[]>([])
@@ -38,8 +39,8 @@ export function AlertesPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border text-secondary" role="status"></div>
+        <div className="card border-0 shadow-sm p-3">
+          <ListSkeleton items={5} />
         </div>
       ) : (
         <div className="list-group border-0 shadow-sm">
