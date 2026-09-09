@@ -278,6 +278,25 @@ La table existe déjà dans la base mais `alembic_version` n'a pas été mis à 
 alembic stamp head
 ```
 
+### Erreur : `AttributeError: type object 'Preference' has no attribute 'cle'`
+La route `/api/super-admin/settings` utilise `Preference.cle` mais le modèle `Preference` n'a pas cette colonne (il est lié à `user_id`).
+
+**Cause** : le code utilisait le mauvais modèle pour stocker les paramètres de plateforme.
+
+**Correction** : un modèle dédié `PlatformSettings` a été créé dans `app/models/platform_settings.py` avec les colonnes `cle`, `valeur`, `description`, `updated_at`.
+
+Pour appliquer la correction :
+1. Faire un `git pull` pour récupérer le nouveau modèle
+2. Créer la table :
+```powershell
+python -c "import asyncio; from app.database import engine, Base; from app.models.platform_settings import PlatformSettings; asyncio.run(Base.metadata.create_all(engine))"
+```
+3. Relancer le backend.
+
+---
+
+
+
 ---
 
 ## ⚡ Bonnes pratiques de performance (pour les agents IA)

@@ -352,11 +352,15 @@ async def list_paiements(payload: CurrentUser, db: DbSession, size: int = Query(
 
 @router.get("/settings", response_model=PlatformSettingsResponse)
 async def get_platform_settings(payload: CurrentUser, db: DbSession):
-    from app.models.preference import Preference
-    result = await db.execute(select(Preference).where(Preference.cle == "platform_settings"))
+    from app.models.platform_settings import PlatformSettings
+    import json
+    result = await db.execute(select(PlatformSettings).where(PlatformSettings.cle == "platform_settings"))
     pref = result.scalar_one_or_none()
     if pref and pref.valeur:
-        return PlatformSettingsResponse(**pref.valeur)
+        try:
+            return PlatformSettingsResponse(**json.loads(pref.valeur))
+        except (json.JSONDecodeError, TypeError):
+            pass
     return PlatformSettingsResponse(
         nom_plateforme="TIA INFO BUILD",
         support_email="support@tiainfo.mg",
@@ -369,14 +373,15 @@ async def get_platform_settings(payload: CurrentUser, db: DbSession):
 
 @router.put("/settings", response_model=PlatformSettingsResponse)
 async def update_platform_settings(payload: CurrentUser, db: DbSession, data: PlatformSettingsResponse):
-    from app.models.preference import Preference
-    result = await db.execute(select(Preference).where(Preference.cle == "platform_settings"))
+    from app.models.platform_settings import PlatformSettings
+    import json
+    result = await db.execute(select(PlatformSettings).where(PlatformSettings.cle == "platform_settings"))
     pref = result.scalar_one_or_none()
     if not pref:
-        pref = Preference(cle="platform_settings", valeur=data.model_dump())
+        pref = PlatformSettings(cle="platform_settings", valeur=json.dumps(data.model_dump()))
         db.add(pref)
     else:
-        pref.valeur = data.model_dump()
+        pref.valeur = json.dumps(data.model_dump())
     await db.flush()
     await db.refresh(pref)
     return data
