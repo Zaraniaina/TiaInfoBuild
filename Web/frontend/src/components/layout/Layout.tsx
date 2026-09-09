@@ -15,6 +15,13 @@ export function Layout() {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 992)
   const [subscription, setSubscription] = useState<SubscriptionWithPlan | null>(null)
   const [subLoading, setSubLoading] = useState(true)
+  const [now, setNow] = useState<number>(0)
+
+  useEffect(() => {
+    setNow(Date.now())
+    const id = window.setInterval(() => setNow(Date.now()), 60 * 60 * 1000)
+    return () => window.clearInterval(id)
+  }, [])
 
   useEffect(() => {
     hydrateThemeFromBackend()
@@ -29,22 +36,22 @@ export function Layout() {
     const canViewAbonnement = user?.role_code === 'admin_entreprise' || user?.role_code === 'super_admin'
 
   useEffect(() => {
-    if (canViewAbonnement && user?.entreprise_id) {
-      subscriptionsService.getMySubscription()
-        .then(setSubscription)
-        .catch(() => setSubscription(null))
-        .finally(() => setSubLoading(false))
-    } else {
+    if (!canViewAbonnement || !user?.entreprise_id) {
       setSubLoading(false)
+      return
     }
+    subscriptionsService.getMySubscription()
+      .then(setSubscription)
+      .catch(() => setSubscription(null))
+      .finally(() => setSubLoading(false))
   }, [canViewAbonnement, user?.entreprise_id])
 
-  const isExpiringSoon = subscription?.date_prochain_renouvellement
-    ? new Date(subscription.date_prochain_renouvellement) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  const isExpiringSoon = now > 0 && subscription?.date_prochain_renouvellement
+    ? new Date(subscription.date_prochain_renouvellement) <= new Date(now + 7 * 24 * 60 * 60 * 1000)
     : false
 
-  const isExpired = subscription?.date_fin
-    ? new Date(subscription.date_fin) < new Date()
+  const isExpired = now > 0 && subscription?.date_fin
+    ? new Date(subscription.date_fin) < new Date(now)
     : false
 
   return (

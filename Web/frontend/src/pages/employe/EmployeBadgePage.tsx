@@ -2,10 +2,6 @@ import { useEffect, useState } from 'react'
 import { employeTerrainService } from '@/services/employeTerrain.service'
 import type { Pointage } from '@/types'
 
-const typePointageLabel: Record<string, string> = {
-  entree: 'Entrée', sortie: 'Sortie', debut_pause: 'Début pause', fin_pause: 'Fin pause',
-}
-
 export function EmployeBadgePage() {
   const [badge, setBadge] = useState<{ employe: any; code_qr: string } | null>(null)
   const [pointages, setPointages] = useState<Pointage[]>([])

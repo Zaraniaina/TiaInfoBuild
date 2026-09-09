@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.facture import Facture
 from app.models.depense import Depense
 from app.models.chantier import Chantier
+from app.models.phase import Phase
 from app.models.employe import Employe
 from app.models.article import Article
 from app.models.client import Client

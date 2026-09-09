@@ -11,11 +11,7 @@ export function ClientParametresPage() {
   const [enregistrement, setEnregistrement] = useState(false)
   const logout = useAuthStore((s) => s.logout)
 
-  useEffect(() => {
-    charger()
-  }, [])
-
-  const charger = async () => {
+  async function charger() {
     try {
       setLoading(true)
       const data = await espaceClientService.getPreferences()
@@ -26,6 +22,10 @@ export function ClientParametresPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    charger()
+  }, [])
 
   const enregistrer = async () => {
     if (!prefs) return

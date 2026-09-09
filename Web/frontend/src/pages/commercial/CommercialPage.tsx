@@ -32,7 +32,7 @@ export function CommercialPage() {
   const [loading, setLoading] = useState(true)
 
   // Filters
-  const [search, setSearch] = useState('')
+  const search = ''
 
   // Modals
   const [showDevisModal, setShowDevisModal] = useState(false)
@@ -329,13 +329,13 @@ export function CommercialPage() {
           link.remove()
           window.URL.revokeObjectURL(url)
           addToast({ type: 'success', title: 'Client créé', message: 'Bon de création téléchargé.' })
-        } catch (e) {
+        } catch {
           addToast({ type: 'warning', title: 'Client créé', message: 'Client créé mais impossible de télécharger le PDF.' })
         }
       } else {
         addToast({ type: 'success', title: 'Client créé', message: 'Le client a été créé.' })
       }
-    } catch (err) {
+    } catch {
       addToast({ type: 'error', title: 'Erreur', message: 'Impossible de créer le client.' })
     }
   }
@@ -623,7 +623,7 @@ export function CommercialPage() {
                               addToast({ type: 'success', title: 'Transformé', message: 'Le devis a été transformé en contrat.' })
                               setActiveTab('contrats')
                               loadData()
-                            } catch (e) {
+                            } catch {
                               addToast({ type: 'error', title: 'Erreur', message: 'Impossible de transformer le devis.' })
                             }
                           }}>

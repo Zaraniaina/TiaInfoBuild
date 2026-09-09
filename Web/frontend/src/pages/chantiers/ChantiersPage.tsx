@@ -73,7 +73,7 @@ export function ChantiersPage() {
       setShowTransformModal(false)
       alert('Chantier créé avec succès depuis le projet.')
       loadChantiers()
-    } catch (e) {
+    } catch {
       alert('Erreur lors de la création du chantier.')
     } finally {
       setTransformLoading(false)

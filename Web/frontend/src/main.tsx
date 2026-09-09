@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useState, lazy } from 'react'
+import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -49,7 +49,6 @@ function LoadingFallback() {
   )
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 function Root() {
   const [ready, setReady] = useState(false)
 

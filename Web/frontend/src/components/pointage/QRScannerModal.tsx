@@ -1,26 +1,38 @@
-import React, { useState } from 'react'
+import { useState, useCallback, type FormEvent } from 'react'
 import { api } from '@/services/api'
-import { useAuthStore } from '@/stores/auth.store'
+
+interface PointageEmploye {
+  prenom: string
+  nom: string
+  poste: string
+  matricule?: string
+}
+
+interface ScanResult {
+  message?: string
+  employe?: PointageEmploye
+  status?: 'entree_enregistree' | 'sortie_enregistree'
+}
 
 interface QRScannerModalProps {
   isOpen: boolean
   onClose: () => void
   chantierId?: number
-  onPointageSuccess?: (data: any) => void
+  onPointageSuccess?: (data: ScanResult) => void
 }
 
-export const QRScannerModal: React.FC<QRScannerModalProps> = ({
+export function QRScannerModal({
   isOpen,
   onClose,
   chantierId,
   onPointageSuccess,
-}) => {
+}: QRScannerModalProps) {
   const [qrCodeInput, setQrCodeInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'danger' | 'info'; text: string } | null>(null)
-  const [lastScanned, setLastScanned] = useState<any | null>(null)
+  const [lastScanned, setLastScanned] = useState<ScanResult | null>(null)
 
-  const showGlobalToast = (text: string, type: 'success' | 'danger' | 'info' = 'info') => {
+  const showGlobalToast = useCallback((text: string, type: 'success' | 'danger' | 'info' = 'info') => {
     try {
       const id = `tia-toast-${Date.now()}`
       const el = document.createElement('div')
@@ -53,14 +65,21 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
         el.style.transform = 'translateY(-8px)'
         setTimeout(() => el.remove(), 350)
       }, 3500)
-    } catch (e) {
+    } catch {
       // noop if DOM not available
     }
-  }
+  }, [])
+
+  const handleClose = useCallback(() => {
+    setQrCodeInput('')
+    setStatusMessage(null)
+    setLastScanned(null)
+    onClose()
+  }, [onClose])
 
   if (!isOpen) return null
 
-  const handleScanSubmit = async (e?: React.FormEvent) => {
+  const handleScanSubmit = async (e?: FormEvent) => {
     if (e) e.preventDefault()
     if (!qrCodeInput.trim()) return
 
@@ -68,7 +87,6 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
     setStatusMessage(null)
 
     try {
-      // Geoloc attempt
       let lat: number | null = null
       let lon: number | null = null
       if (navigator.geolocation) {
@@ -87,26 +105,27 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
         '/rh/pointages/scan-badge',
         {
           code_qr_badge: qrCodeInput.trim(),
-          chantier_id: chantierId || null,
+          chantier_id: chantierId ?? null,
           latitude: lat,
           longitude: lon,
           notes: 'Scan direct via Terminal Chef de Chantier',
         }
       )
 
-      const result = response.data
+      const result = response.data as ScanResult
       setLastScanned(result)
       setStatusMessage({
         type: 'success',
-        text: typeof result?.message === 'string' ? result.message : 'Pointage enregistré avec succès !',
+        text: result?.message ?? 'Pointage enregistré avec succès !',
       })
-      const toastText = typeof result?.message === 'string' ? result.message : 'Pointage enregistré avec succès !'
+      const toastText = result?.message ?? 'Pointage enregistré avec succès !'
       showGlobalToast(toastText, 'success')
       setQrCodeInput('')
       if (onPointageSuccess) onPointageSuccess(result)
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errObj = err as { response?: { data?: { detail?: string } } }
       console.error(err)
-      const detail = err.response?.data?.detail || 'Erreur lors de la validation du badge QR.'
+      const detail = errObj.response?.data?.detail ?? 'Erreur lors de la validation du badge QR.'
       setStatusMessage({ type: 'danger', text: detail })
     } finally {
       setLoading(false)
@@ -114,7 +133,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
   }
 
   return (
-    <div className="modal fade show" style={{ display: 'block', backgroundColor: 'var(--tia-bg-base)' }} tabIndex={-1}>
+    <div className="modal fade show" tabIndex={-1} aria-hidden={!isOpen} style={{ display: isOpen ? 'flex' : 'none' }}>
       <div className="modal-dialog modal-dialog-centered modal-md">
         <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
           {/* Header */}
@@ -151,25 +170,24 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
               </div>
             )}
 
-             {/* Confirmation du dernier pointage */}
-             {lastScanned && lastScanned.employe && (
-               <div className="card border-0 shadow-sm p-3 rounded-3 mb-3" style={{ background: 'var(--tia-bg-surface)', color: 'var(--tia-text-primary)' }}>
-                 <div className="d-flex align-items-center justify-content-between">
-                   <div className="d-flex align-items-center gap-3">
-                     <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: '42px', height: '42px', background: 'var(--tia-accent)', color: 'var(--tia-accent-text)' }}>
-                       {String(lastScanned.employe.prenom || '').charAt(0) || 'O'}
-                     </div>
-                     <div>
-                       <div className="fw-bold" style={{ color: 'var(--tia-text-primary)' }}>{String(lastScanned.employe.prenom || '')} {String(lastScanned.employe.nom || '')}</div>
-                       <small className="text-muted" style={{ fontSize: '0.75rem' }}>{String(lastScanned.employe.poste || '')} - Mat: {String(lastScanned.employe.matricule || 'N/A')}</small>
-                     </div>
-                   </div>
-                   <span className={`badge ${lastScanned.status === 'entree_enregistree' ? 'bg-success' : 'bg-warning text-dark'}`}>
-                     {lastScanned.status === 'entree_enregistree' ? 'ENTRÉE VALIDÉE' : 'SORTIE VALIDÉE'}
-                   </span>
-                 </div>
-               </div>
-             )}
+            {lastScanned?.employe && (
+              <div className="card border-0 shadow-sm p-3 rounded-3 mb-3" style={{ background: 'var(--tia-bg-surface)', color: 'var(--tia-text-primary)' }}>
+                <div className="d-flex align-items-center justify-content-between">
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: '42px', height: '42px', background: 'var(--tia-accent)', color: 'var(--tia-accent-text)' }}>
+                      {lastScanned.employe.prenom.charAt(0) || 'O'}
+                    </div>
+                    <div>
+                      <div className="fw-bold" style={{ color: 'var(--tia-text-primary)' }}>{lastScanned.employe.prenom} {lastScanned.employe.nom}</div>
+                      <small className="text-muted" style={{ fontSize: '0.75rem' }}>{lastScanned.employe.poste} - Mat: {lastScanned.employe.matricule || 'N/A'}</small>
+                    </div>
+                  </div>
+                  <span className={`badge ${lastScanned.status === 'entree_enregistree' ? 'bg-success' : 'bg-warning text-dark'}`}>
+                    {lastScanned.status === 'entree_enregistree' ? 'ENTRÉE VALIDÉE' : 'SORTIE VALIDÉE'}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Input Form */}
             <form onSubmit={handleScanSubmit}>
@@ -196,7 +214,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
 
           {/* Footer */}
           <div className="modal-footer border-top px-4 py-3" style={{ background: 'var(--tia-bg-surface)', borderColor: 'var(--tia-border)', color: 'var(--tia-text-primary)' }}>
-            <button type="button" className="btn btn-outline-secondary rounded-pill px-4" onClick={onClose}>
+            <button type="button" className="btn btn-outline-secondary rounded-pill px-4" onClick={handleClose}>
               Fermer
             </button>
           </div>

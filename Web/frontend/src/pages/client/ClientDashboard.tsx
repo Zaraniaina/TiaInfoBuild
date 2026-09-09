@@ -7,11 +7,7 @@ export function ClientDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadDashboard()
-  }, [])
-
-  const loadDashboard = async () => {
+  async function loadDashboard() {
     try {
       setLoading(true)
       const result = await espaceClientService.getDashboard()
@@ -22,6 +18,10 @@ export function ClientDashboard() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    loadDashboard()
+  }, [])
 
   if (loading) {
     return (

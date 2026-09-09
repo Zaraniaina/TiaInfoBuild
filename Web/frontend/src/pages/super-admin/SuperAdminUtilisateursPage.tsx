@@ -58,6 +58,15 @@ export function SuperAdminUtilisateursPage() {
               </tr>
             </thead>
             <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="text-center py-4 text-muted">
+                    <span className="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></span>
+                    Chargement des utilisateurs...
+                  </td>
+                </tr>
+              ) : (
+                <>
               {filtered.map(u => (
                 <tr key={u.id}>
                   <td className="fw-semibold">{u.nom} {u.prenom}</td>
@@ -72,6 +81,8 @@ export function SuperAdminUtilisateursPage() {
                     Aucun utilisateur trouvé.
                   </td>
                 </tr>
+              )}
+                </>
               )}
             </tbody>
           </table>
