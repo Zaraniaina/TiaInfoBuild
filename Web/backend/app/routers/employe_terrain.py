@@ -357,6 +357,12 @@ async def get_travaux(payload: CurrentUserPayload, db: DbDep):
     return {"items": result.scalars().all()}
 
 
+# Alias pour compatibilite
+@router.get("/travaux")
+async def get_travaux_alias(payload: CurrentUserPayload, db: DbDep):
+    return await get_travaux(payload, db)
+
+
 # ==================== RAPPORTS JOURNALIERS ====================
 
 class RapportJournalierCreate(BaseModel):
@@ -626,6 +632,12 @@ async def get_mon_badge(payload: CurrentUserPayload, db: DbDep):
         "employe": employe,
         "code_qr": employe.code_qr_badge or f"TIA-EMP-{employe.id}-1-0",
     }
+
+
+# Alias pour compatibilite
+@router.get("/badge")
+async def get_badge_alias(payload: CurrentUserPayload, db: DbDep):
+    return await get_mon_badge(payload, db)
 
 
 @router.get("/pointages")

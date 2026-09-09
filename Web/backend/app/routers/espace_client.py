@@ -519,6 +519,12 @@ async def get_avancements(payload: CurrentUserPayload, db: DbDep):
     return {"items": items}
 
 
+# Alias pour compatibilite
+@router.get("/avancement")
+async def get_avancement_alias(payload: CurrentUserPayload, db: DbDep):
+    return await get_avancements(payload, db)
+
+
 @router.get("/situations")
 async def get_situations(payload: CurrentUserPayload, db: DbDep):
     _require_permission(payload, "espace_client:read")
