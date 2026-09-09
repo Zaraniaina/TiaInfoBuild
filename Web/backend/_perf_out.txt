@@ -1,0 +1,10 @@
+/api/dashboard/stats                         1895 ms  HTTP 200  1057 octets
+/api/dashboard/charts                         987 ms  HTTP 200  766 octets
+/api/chantiers                               2357 ms  HTTP 403  48 octets
+/api/clients                                 1990 ms  HTTP 404  22 octets
+/api/employes                                 219 ms  HTTP 404  22 octets
+/api/materiels                               1833 ms  HTTP 403  48 octets
+/api/stocks/articles                         1152 ms  HTTP 403  45 octets
+/api/alertes                                 1183 ms  HTTP 403  47 octets
+/api/utilisateurs                            3462 ms  HTTP 200  3408 octets
+/api/parametres/entreprise                   1861 ms  HTTP 200  622 octets

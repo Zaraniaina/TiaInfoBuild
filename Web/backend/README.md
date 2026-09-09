@@ -278,6 +278,94 @@ La table existe déjà dans la base mais `alembic_version` n'a pas été mis à 
 alembic stamp head
 ```
 
+---
+
+## ⚡ Bonnes pratiques de performance (pour les agents IA)
+
+### 1. Requêtes SQL : éviter le N+1
+**Problème** : charger N enregistrements puis faire N requêtes supplémentaires (un par enregistrement).
+```python
+# MAUVAIS : N+1 query (1 requête + N requêtes)
+items = (await db.execute(select(Entreprise))).scalars().all()
+for e in items:
+    count = (await db.execute(
+        select(func.count(Utilisateur.id)).where(Utilisateur.entreprise_id == e.id)
+    )).scalar()
+
+# BON : sous-requête scalaire corrélée (1 requête totale)
+subq = (
+    select(func.count(Utilisateur.id))
+    .where(Utilisateur.entreprise_id == Entreprise.id)
+    .correlate(Entreprise)
+    .scalar_subquery()
+)
+result = await db.execute(select(Entreprise, subq.label("user_count")))
+```
+
+### 2. Agrégation : une seule requête au lieu de N
+**Problème** : compter 10 choses différentes = 10 requêtes SQL.
+```python
+# MAUVAIS : 10 requêtes séparées
+total = (await db.execute(select(func.count(Entreprise.id)))).scalar()
+actives = (await db.execute(select(func.count(Entreprise.id)).where(...))).scalar()
+...
+
+# BON : sous-requêtes scalaires en une seule requête
+subq_total = select(func.count(Entreprise.id)).scalar_subquery()
+subq_actives = select(func.count(Entreprise.id)).where(Entreprise.actif == True).scalar_subquery()
+row = (await db.execute(select(subq_total, subq_actives, ...))).one()
+```
+
+### 3. SQL echo : toujours désactivé en production
+```python
+# database.py
+echo=settings.db_echo,  # False par défaut, True uniquement pour debug ponctuel
+```
+L'echo SQL logue **chaque requête + toutes les lignes de résultats** : x10 ou plus sur les temps de réponse.
+
+### 4. Pagination obligatoire sur les listes
+```python
+# Toujours paginer les listes (éviter de charger 10 000 lignes)
+@router.get("/items")
+async def list_items(page: int = Query(1, ge=1), size: int = Query(25, ge=1, le=100)):
+    offset = (page - 1) * size
+    result = await db.execute(select(Item).offset(offset).limit(size))
+    return {"items": result.scalars().all(), "total": total}
+```
+
+### 5. Index sur les colonnes de jointure et filtres
+```sql
+-- Index obligatoires pour les performances
+CREATE INDEX idx_utilisateurs_entreprise_id ON utilisateurs(entreprise_id);
+CREATE INDEX idx_utilisateurs_is_deleted ON utilisateurs(is_deleted);
+CREATE INDEX idx_chantiers_entreprise_id ON chantiers(entreprise_id);
+CREATE INDEX idx_factures_statut ON factures(statut);
+```
+
+### 6. Éviter les requêtes dans les boucles
+```python
+# MAUVAIS
+for id in ids:
+    item = (await db.execute(select(Item).where(Item.id == id))).scalar()
+
+# BON : une seule requête IN
+items = (await db.execute(select(Item).where(Item.id_(ids)))).scalars().all()
+```
+
+### 7. Utiliser `selectinload` pour les relations
+```python
+# MAUVAIS : lazy loading dans une boucle (N+1)
+for e in entreprises:
+    print(e.utilisateurs)  # requête supplémentaire à chaque itération
+
+# BON : eager loading en une requête
+from sqlalchemy.orm import selectinload
+result = await db.execute(
+    select(Entreprise).options(selectinload(Entreprise.utilisateurs))
+)
+```
+
+
 ### Erreur : `Can't connect to MySQL`
 - Vérifier que **MySQL est démarré** (XAMPP / WAMP / service)
 - Vérifier le `DATABASE_URL` dans `.env`

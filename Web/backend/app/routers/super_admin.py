@@ -26,60 +26,69 @@ DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 @router.get("/stats", response_model=SuperAdminStatsResponse)
 async def get_stats(payload: CurrentUser, db: DbSession):
-    total_entreprises = (await db.execute(select(func.count(Entreprise.id)).where(Entreprise.is_deleted == False))).scalar_one_or_none() or 0
-    total_utilisateurs = (await db.execute(select(func.count(Utilisateur.id)).where(Utilisateur.is_deleted == False))).scalar_one_or_none() or 0
+    """
+    Statistiques du tableau de bord Super Admin.
+    OPTIMISE : sous-requêtes scalaires au lieu de 9 requêtes séparées.
+    """
     from app.models.chantier import Chantier
-    total_chantiers = (await db.execute(select(func.count(Chantier.id)).where(Chantier.is_deleted == False))).scalar_one_or_none() or 0
-    entreprises_actives = (await db.execute(select(func.count(Entreprise.id)).where(Entreprise.actif == True, Entreprise.is_deleted == False))).scalar_one_or_none() or 0
-    entreprises_inactives = total_entreprises - entreprises_actives
-    abonnements_result = await db.execute(select(Entreprise.abonnement, func.count(Entreprise.id)).where(Entreprise.is_deleted == False).group_by(Entreprise.abonnement))
-    abonnements = {row[0] or "gratuit": row[1] for row in abonnements_result.all()}
 
     now = datetime.now()
     debut_mois = datetime(now.year, now.month, 1)
-    nouveaux_utilisateurs_mois = (await db.execute(
-        select(func.count(Utilisateur.id)).where(Utilisateur.date_creation >= debut_mois, Utilisateur.is_deleted == False)
-    )).scalar_one_or_none() or 0
 
-    factures_en_retard = (await db.execute(
-        select(func.count(Facture.id)).where(Facture.statut == "en_retard", Facture.is_deleted == False)
-    )).scalar_one_or_none() or 0
+    # Sous-requêtes scalaires (compatibles MySQL/SQLAlchemy)
+    subq_entreprises = select(func.count(Entreprise.id)).where(Entreprise.is_deleted == False).scalar_subquery()
+    subq_actives = select(func.count(Entreprise.id)).where(Entreprise.actif == True, Entreprise.is_deleted == False).scalar_subquery()
+    subq_utilisateurs = select(func.count(Utilisateur.id)).where(Utilisateur.is_deleted == False).scalar_subquery()
+    subq_chantiers = select(func.count(Chantier.id)).where(Chantier.is_deleted == False).scalar_subquery()
+    subq_nouveaux = select(func.count(Utilisateur.id)).where(Utilisateur.date_creation >= debut_mois, Utilisateur.is_deleted == False).scalar_subquery()
+    subq_factures = select(func.count(Facture.id)).where(Facture.statut == "en_retard", Facture.is_deleted == False).scalar_subquery()
+    subq_incidents = select(func.count(Alerte.id)).where(Alerte.niveau_gravite == "critique", Alerte.statut != "traite", Alerte.is_deleted == False).scalar_subquery()
+    subq_support = select(func.count(Alerte.id)).where(Alerte.niveau_gravite.in_(["basse", "moyenne"]), Alerte.statut == "non_lue", Alerte.is_deleted == False).scalar_subquery()
+    subq_revenu = select(func.coalesce(func.sum(Paiement.montant), 0)).where(Paiement.date_paiement >= debut_mois, Paiement.is_deleted == False).scalar_subquery()
+    subq_paiements = select(func.count(Paiement.id)).where(Paiement.is_deleted == False).scalar_subquery()
 
-    incidents_critiques = (await db.execute(
-        select(func.count(Alerte.id)).where(Alerte.niveau_gravite == "critique", Alerte.statut != "traite", Alerte.is_deleted == False)
-    )).scalar_one_or_none() or 0
-
-    demandes_support = (await db.execute(
-        select(func.count(Alerte.id)).where(Alerte.niveau_gravite.in_(["basse", "moyenne"]), Alerte.statut == "non_lue", Alerte.is_deleted == False)
-    )).scalar_one_or_none() or 0
-
-    revenu_mensuel = (await db.execute(
-        select(func.coalesce(func.sum(Paiement.montant), 0)).where(
-            Paiement.date_paiement >= debut_mois,
-            Paiement.is_deleted == False,
+    # Requête unique avec toutes les sous-requêtes
+    row = (await db.execute(
+        select(
+            subq_entreprises.label("total_entreprises"),
+            subq_actives.label("entreprises_actives"),
+            subq_utilisateurs.label("total_utilisateurs"),
+            subq_chantiers.label("total_chantiers"),
+            subq_nouveaux.label("nouveaux_mois"),
+            subq_factures.label("factures_retard"),
+            subq_incidents.label("incidents"),
+            subq_support.label("support"),
+            subq_revenu.label("revenu"),
+            subq_paiements.label("total_paiements"),
         )
-    )).scalar_one_or_none() or 0.0
+    )).one()
 
-    total_paiements = (await db.execute(
-        select(func.count(Paiement.id)).where(Paiement.is_deleted == False)
-    )).scalar_one_or_none() or 0
+    total_entreprises = row.total_entreprises or 0
+    entreprises_actives = row.entreprises_actives or 0
+
+    # Répartition par abonnement
+    abonnements_result = await db.execute(
+        select(Entreprise.abonnement, func.count(Entreprise.id))
+        .where(Entreprise.is_deleted == False)
+        .group_by(Entreprise.abonnement)
+    )
+    abonnements = {row_[0] or "gratuit": row_[1] for row_ in abonnements_result.all()}
 
     return SuperAdminStatsResponse(
         total_entreprises=total_entreprises,
-        total_utilisateurs=total_utilisateurs,
-        total_chantiers=total_chantiers,
-        ca_total=float(revenu_mensuel),
+        total_utilisateurs=row.total_utilisateurs or 0,
+        total_chantiers=row.total_chantiers or 0,
         entreprises_actives=entreprises_actives,
-        entreprises_inactives=entreprises_inactives,
+        entreprises_inactives=(total_entreprises - entreprises_actives),
         abonnements=abonnements,
-        nouveaux_utilisateurs_mois=nouveaux_utilisateurs_mois,
-        uptime=99.9,
-        revenu_mensuel=float(revenu_mensuel),
-        incidents_critiques=incidents_critiques,
-        demandes_support=demandes_support,
-        factures_en_retard=factures_en_retard,
-        total_paiements=total_paiements,
+        nouveaux_utilisateurs_mois=row.nouveaux_mois or 0,
+        factures_en_retard=row.factures_retard or 0,
+        incidents_critiques=row.incidents or 0,
+        demandes_support=row.support or 0,
+        revenu_mensuel=float(row.revenu or 0),
+        total_paiements=row.total_paiements or 0,
     )
+
 
 
 @router.get("/tenants-evolution")

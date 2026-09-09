@@ -92,3 +92,47 @@ depuis `Web/backend` (idempotent, sans effet si les donnees existent deja).
 - Migrations Alembic : nom de revision <= 32 caracteres (sinon troncature silencieuse dans
   `alembic_version` et erreur "0 found") ; type de FK identique au type de la colonne cible
   (sinon errno 150). Details : `Web/backend/README.md`.
+
+---
+
+## ⚡ Bonnes pratiques de performance (pour les agents IA)
+
+### Backend (FastAPI + SQLAlchemy)
+
+1. **Éviter le N+1** : utiliser des sous-requêtes scalaires corrélées au lieu de boucles avec requêtes.
+2. **Agréger en une requête** : utiliser `scalar_subquery()` pour combiner plusieurs comptes.
+3. **SQL echo désactivé** : `echo=settings.db_echo` (False par défaut, x10 sur les temps si activé).
+4. **Pagination obligatoire** : `offset`/`limit` sur toutes les listes, jamais de `SELECT *` complet.
+5. **Index** : colonnes de jointure (`entreprise_id`) et filtres fréquents (`is_deleted`, `statut`).
+6. **`selectinload`** pour les relations eager, jamais de lazy loading dans une boucle.
+
+### Frontend (React)
+
+1. **Requêtes parallèles** : utiliser `Promise.all()` pour les appels indépendants.
+```typescript
+// MAUVAIS : séquentiel
+const users = await fetchUsers();
+const projects = await fetchProjects();
+
+// BON : parallèle
+const [users, projects] = await Promise.all([fetchUsers(), fetchProjects()]);
+```
+
+2. **Éviter les re-renders inutiles** : mémoiser avec `React.memo`, `useMemo`, `useCallback`.
+
+3. **Pagination côté serveur** : ne jamais charger 10 000 lignes côté client.
+
+4. **Debounce sur la recherche** : attendre 300ms après la dernière frappe avant d'appeler l'API.
+
+5. **Éviter les appels API dans les boucles** : utiliser un seul appel avec filtre IN.
+
+### Résultat des optimisations appliquées
+
+| Route | Avant | Après | Gain |
+|-------|-------|-------|------|
+| `/api/super-admin/stats` | 9 requêtes (~1500ms) | 1 requête (281ms) | ~5x |
+| `/api/super-admin/entreprises` | N+1 (1+3N requêtes) | 2 requêtes (1461ms) | ~3x+ |
+| SQL echo | Activé (x10) | Désactivé | ~10x |
+
+Voir `Web/backend/README.md` pour les exemples de code détaillés.
+

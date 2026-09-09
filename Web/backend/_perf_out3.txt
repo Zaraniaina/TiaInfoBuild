@@ -1,0 +1,70 @@
+Traceback (most recent call last):
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpx\_transports\default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpx\_transports\default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpcore\_sync\connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpcore\_sync\connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+        pool_request.request
+    )
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpcore\_sync\connection.py", line 101, in handle_request
+    raise exc
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpcore\_sync\connection.py", line 78, in handle_request
+    stream = self._connect(request)
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpcore\_sync\connection.py", line 124, in _connect
+    stream = self._network_backend.connect_tcp(**kwargs)
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpcore\_backends\sync.py", line 207, in connect_tcp
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\Zaraniaina\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectError: [WinError 10061] No connection could be made because the target machine actively refused it
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\_perf_check.py", line 6, in <module>
+    r = c.post('/api/auth/login', json={'email': 'demo@btppro.mg', 'password': 'Admin123!'})
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpx\_client.py", line 1144, in post
+    return self.request(
+           ~~~~~~~~~~~~^
+        "POST",
+        ^^^^^^^
+    ...<11 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpx\_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpx\_client.py", line 914, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpx\_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpx\_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpx\_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpx\_transports\default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Zaraniaina\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "D:\Tia_info_projet\projet 2\TiaInfoBuild\Web\backend\env\Lib\site-packages\httpx\_transports\default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectError: [WinError 10061] No connection could be made because the target machine actively refused it
