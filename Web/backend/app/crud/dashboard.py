@@ -19,6 +19,7 @@ from app.models.incident import Incident
 from app.models.mouvement_stock import MouvementStock
 from app.models.contrat import Contrat
 from app.models.paiement import Paiement
+from app.models.entreprise import Entreprise
 
 
 class DashboardCRUD:
@@ -26,6 +27,69 @@ class DashboardCRUD:
 
     def __init__(self) -> None:
         pass
+
+    async def get_global_stats(self, db: AsyncSession, payload: dict | None = None) -> dict:
+        """Statistiques globales pour le Super Admin (toutes entreprises)."""
+        # Compteurs globaux sans filtre entreprise
+        total_entreprises = (await db.execute(
+            select(func.count()).select_from(Entreprise).where(Entreprise.is_deleted == False)
+        )).scalar_one_or_none() or 0
+
+        total_utilisateurs = (await db.execute(
+            select(func.count()).select_from(Utilisateur).where(Utilisateur.is_deleted == False)
+        )).scalar_one_or_none() or 0
+
+        total_chantiers = (await db.execute(
+            select(func.count()).select_from(Chantier).where(Chantier.is_deleted == False)
+        )).scalar_one_or_none() or 0
+
+        chantiers_actifs = (await db.execute(
+            select(func.count()).select_from(Chantier).where(Chantier.statut == "en_cours", Chantier.is_deleted == False)
+        )).scalar_one_or_none() or 0
+
+        total_employes = (await db.execute(
+            select(func.count()).select_from(Employe).where(Employe.is_deleted == False)
+        )).scalar_one_or_none() or 0
+
+        total_clients = (await db.execute(
+            select(func.count()).select_from(Client).where(Client.is_deleted == False)
+        )).scalar_one_or_none() or 0
+
+        return {
+            "ca_total": 0.0,
+            "ca_mois": 0.0,
+            "depenses_mois": 0.0,
+            "margin_net": 0.0,
+            "marge_brute": 0.0,
+            "marge_nette": 0.0,
+            "factures_en_retard": 0,
+            "nb_chantiers_actifs": chantiers_actifs,
+            "nb_employes": total_employes,
+            "nb_articles": 0,
+            "nb_clients": total_clients,
+            "nb_devis": 0,
+            "devis_pending_dg": 0,
+            "nb_materiels": 0,
+            "stocks_alerte": 0,
+            "attendance_rate": 0.0,
+            "maintenance_due": 0,
+            "top_chantiers": [],
+            "ca_evolution": [],
+            "alertes_recentes": [],
+            "alertes_critiques": 0,
+            "nb_utilisateurs": total_utilisateurs,
+            "utilisateurs_inactifs": 0,
+            "uptime": 99.9,
+            "taux_avancement_physique": 0.0,
+            "taux_avancement_financier": 0.0,
+            "rentabilite_chantiers": [],
+            "depassements_budgetaires": 0,
+            "delai_moyen_paiement": 0.0,
+            "tresorerie_par_client": [],
+            "rapports_disponibles": 0,
+            "total_entreprises": total_entreprises,
+            "total_chantiers": total_chantiers,
+        }
 
     async def get_stats(self, db: AsyncSession, entreprise_id: int, payload: dict | None = None) -> dict:
         role_code = (payload or {}).get("role_code", "")

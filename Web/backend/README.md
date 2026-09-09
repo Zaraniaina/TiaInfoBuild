@@ -283,7 +283,7 @@ La route `/api/super-admin/settings` utilise `Preference.cle` mais le modèle `P
 
 **Cause** : le code utilisait le mauvais modèle pour stocker les paramètres de plateforme.
 
-**Correction** : un modèle dédié `PlatformSettings` a été créé dans `app/models/platform_settings.py` avec les colonnes `cle`, `valeur`, `description`, `updated_at`.
+**Correction** : un modèle dédié `PlatformSettings` a été créé dans `app/models/platform_settings.py` avec les colonnes `cle`, `valeur`, `description`, `updated_t`.
 
 Pour appliquer la correction :
 1. Faire un `git pull` pour récupérer le nouveau modèle
@@ -292,6 +292,21 @@ Pour appliquer la correction :
 python -c "import asyncio; from app.database import engine, Base; from app.models.platform_settings import PlatformSettings; asyncio.run(Base.metadata.create_all(engine))"
 ```
 3. Relancer le backend.
+
+### Erreur : `400 Entreprise ID manquant` pour le Super Admin sur `/api/dashboard/stats`
+Le Super Admin n'a pas d'entreprise_id, la route échouait.
+
+**Correction** : ajout d'une méthode `get_global_stats` dans `DashboardCRUD` qui retourne des statistiques globales (toutes entreprises) quand l'utilisateur est super_admin sans entreprise_id.
+
+### Écran blanc sur le frontend
+**Cause** : les modules `lazy()` avec `Suspense` peuvent bloquer le rendu.
+
+**Correction** :
+- Ajout d'un `LoadingFallback` avec timeout de 10 secondes
+- Affichage d'un bouton "Recharger" si le chargement prend trop de temps
+- Meilleure gestion des erreurs dans `ErrorBoundary`
+
+---
 
 ---
 
