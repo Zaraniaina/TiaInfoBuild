@@ -20,6 +20,7 @@ import {
 import { ROLE_DASHBOARD_TITLE } from "@/config/roles.config";
 import { QRScannerModal } from "@/components/pointage/QRScannerModal";
 import { WorkerBadgeCard } from "@/components/pointage/WorkerBadgeCard";
+import { PageSkeleton } from "@/components/ui/Skeleton"
 
 const ROLE_META: Record<
   string,

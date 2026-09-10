@@ -1,0 +1,14 @@
+
+> frontend@0.0.0 build
+> tsc -b && vite build
+
+src/pages/client/ClientDocumentsPage.tsx(37,47): error TS2322: Type '{ rows: number; cols: number; }' is not assignable to type 'IntrinsicAttributes & { rows?: number | undefined; columns?: number | undefined; }'.
+  Property 'cols' does not exist on type 'IntrinsicAttributes & { rows?: number | undefined; columns?: number | undefined; }'.
+src/pages/dashboard/DashboardPage.tsx(22,10): error TS2300: Duplicate identifier 'WorkerBadgeCard'.
+src/pages/dashboard/DashboardPage.tsx(24,10): error TS2300: Duplicate identifier 'WorkerBadgeCard'.
+src/pages/employe/EmployeDocumentsPage.tsx(24,85): error TS2322: Type '{ rows: number; cols: number; }' is not assignable to type 'IntrinsicAttributes & { rows?: number | undefined; columns?: number | undefined; }'.
+  Property 'cols' does not exist on type 'IntrinsicAttributes & { rows?: number | undefined; columns?: number | undefined; }'.
+src/pages/employe/EmployePage.tsx(3,15): error TS2300: Duplicate identifier 'DashboardTerrain'.
+src/pages/employe/EmployePage.tsx(6,15): error TS2300: Duplicate identifier 'DashboardTerrain'.
+src/pages/pricing/PricingPage.tsx(151,33): error TS2322: Type '{ rows: number; cols: number; }' is not assignable to type 'IntrinsicAttributes & { rows?: number | undefined; columns?: number | undefined; }'.
+  Property 'cols' does not exist on type 'IntrinsicAttributes & { rows?: number | undefined; columns?: number | undefined; }'.

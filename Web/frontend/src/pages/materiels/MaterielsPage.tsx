@@ -3,6 +3,7 @@ import type { Materiel } from '@/types'
 import { materielsService } from '@/services/materiels.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
+import { PageSkeleton } from '@/components/ui/Skeleton'
 
 export function MaterielsPage() {
   const { user } = useAuthStore()
@@ -75,9 +76,7 @@ export function MaterielsPage() {
         </div>
 
       {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border text-secondary" role="status"></div>
-        </div>
+        <PageSkeleton />
       ) : (
         <div className="row g-4">
           {materiels.map(m => (

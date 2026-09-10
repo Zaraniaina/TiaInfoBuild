@@ -3,6 +3,7 @@ import { subscriptionsService } from '@/services/subscriptions.service'
 import { useAuthStore } from '@/stores/auth.store'
 import type { Plan } from '@/types'
 import { useNavigate } from 'react-router-dom'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 const PLANS_DEFAULT: Plan[] = [
   {
@@ -147,9 +148,7 @@ export function PricingPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border text-secondary" role="status"></div>
-        </div>
+        <TableSkeleton rows={3} columns={3} />
       ) : (
         <div className="row g-4">
           {plans.map((plan) => {
