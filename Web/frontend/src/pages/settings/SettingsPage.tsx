@@ -121,6 +121,7 @@ export function SettingsPage() {
     prefixe_facture: "FAC",
     prefixe_contrat: "CTR",
   });
+  const [usersLoading, setUsersLoading] = useState(false)
   const [entrepriseLoaded, setEntrepriseLoaded] = useState(false);
   const [subscription, setSubscription] = useState<any | null>(null)
   const [subLoading, setSubLoading] = useState(true)
