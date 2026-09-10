@@ -42,7 +42,7 @@ export function EmployeTravauxPage() {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h5 className="mb-0"><i className="bi bi-bar-chart"></i> Travaux réalisés</h5>
         <button className="btn btn-success btn-sm" onClick={() => setShowForm(!showForm)}>
-          {showForm ? '<i className="bi bi-x"></i> Fermer' : '+ Déclarer un travail'}
+          {showForm ? (<><i className="bi bi-x me-1"></i>Fermer</>) : '+ Déclarer un travail'}
         </button>
       </div>
 
