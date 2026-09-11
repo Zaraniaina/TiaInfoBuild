@@ -38,6 +38,16 @@ from app.schemas.equipe import (
 )
 from app.security import CurrentUserPayload, DbDep
 from app.core.permissions import Role, PERMISSION_MAP
+from app.crud.conge import CongeCRUD
+from app.models.conge import Conge
+from app.models.notification import Notification
+from app.models.utilisateur import Utilisateur
+from app.schemas.conge import (
+    CongeCreate,
+    CongeDecision,
+    CongeResponse,
+    CongeList,
+)
 
 router = APIRouter()
 
@@ -753,3 +763,113 @@ async def update_heure_sup_statut(
     updated = await crud.update(db, hs, data)
     await db.refresh(updated)
     return HeureSupplementaireResponse.model_validate(updated)
+
+
+# --- Congés ---
+
+
+async def _get_employe_rh(db: DbDep, id: int, entreprise_id: int | None) -> Employe:
+    employe = await EmployeCRUD().get(db, id)
+    if not employe or employe.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employé non trouvé")
+    if entreprise_id is not None and employe.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employé non trouvé")
+    return employe
+
+
+def _conge_response(c: Conge) -> CongeResponse:
+    resp = CongeResponse.model_validate(c)
+    if c.employe is not None:
+        resp.employe_nom = c.employe.nom
+        resp.employe_prenom = c.employe.prenom
+    return resp
+
+
+@router.post("/conges", response_model=CongeResponse, status_code=status.HTTP_201_CREATED)
+async def create_conge(payload: CurrentUserPayload, obj_in: CongeCreate, db: DbDep):
+    _require_permission(payload, "rh:write")
+    entreprise_id = payload.get("entreprise_id")
+    employe = await _get_employe_rh(db, obj_in.employe_id, entreprise_id)
+    crud = CongeCRUD()
+    conge = await crud.create(db, {
+        "entreprise_id": entreprise_id,
+        "employe_id": employe.id,
+        "type": obj_in.type,
+        "date_debut": obj_in.date_debut,
+        "date_fin": obj_in.date_fin,
+        "nb_jours": obj_in.nb_jours,
+        "motif": obj_in.motif,
+        "statut": Conge.STATUT_EN_ATTENTE,
+    })
+    await db.refresh(conge)
+    return _conge_response(conge)
+
+
+@router.get("/conges", response_model=CongeList)
+async def list_conges(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    statut: str | None = Query(default=None),
+    employe_id: int | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=25, ge=1, le=100),
+):
+    _require_permission(payload, "rh:read")
+    entreprise_id = payload.get("entreprise_id")
+    if entreprise_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Entreprise requise")
+    items, total = await CongeCRUD().list_for_entreprise(
+        db, entreprise_id, statut=statut, employe_id=employe_id, page=page, size=size
+    )
+    return {"items": [_conge_response(c) for c in items], "total": total, "page": page, "size": size}
+
+
+async def _decide_conge(payload: CurrentUserPayload, db: DbDep, id: int, statut: str, decision: CongeDecision) -> CongeResponse:
+    _require_permission(payload, "rh:write")
+    entreprise_id = payload.get("entreprise_id")
+    conge = await CongeCRUD().get(db, id)
+    if not conge or conge.is_deleted or (entreprise_id is not None and conge.entreprise_id != entreprise_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Congé non trouvé")
+    user = payload.get("user")
+    valide_par = getattr(user, "id", None)
+    conge = await CongeCRUD().decide(db, conge, statut=statut, valide_par=valide_par,
+                                     commentaire=decision.commentaire)
+    # Notification in-app : cible le compte utilisateur de l'employé (via email)
+    utilisateur_id = None
+    if conge.employe is not None and conge.employe.email:
+        u = (await db.execute(
+            select(Utilisateur).where(Utilisateur.email == conge.employe.email,
+                                      Utilisateur.is_deleted == False)
+        )).scalar_one_or_none()
+        if u is not None:
+            utilisateur_id = u.id
+    libelle = "validé" if statut == Conge.STATUT_VALIDE else "refusé"
+    db.add(Notification(
+        utilisateur_id=utilisateur_id,
+        entreprise_id=entreprise_id,
+        type="conge",
+        titre=f"Congé {libelle}",
+        message=f"Votre congé du {conge.date_debut} au {conge.date_fin} a été {libelle}.",
+        entite_type="conge",
+        entite_id=conge.id,
+    ))
+    await db.flush()
+    return _conge_response(conge)
+
+
+@router.post("/conges/{id}/valider", response_model=CongeResponse)
+async def valider_conge(payload: CurrentUserPayload, db: DbDep, id: int, decision: CongeDecision | None = None):
+    return await _decide_conge(payload, db, id, Conge.STATUT_VALIDE, decision or CongeDecision())
+
+
+@router.post("/conges/{id}/refuser", response_model=CongeResponse)
+async def refuser_conge(payload: CurrentUserPayload, db: DbDep, id: int, decision: CongeDecision | None = None):
+    return await _decide_conge(payload, db, id, Conge.STATUT_REFUSE, decision or CongeDecision())
+
+
+@router.get("/conges/{employe_id}/solde")
+async def get_solde_conges(payload: CurrentUserPayload, db: DbDep, employe_id: int):
+    _require_permission(payload, "rh:read")
+    employe = await _get_employe_rh(db, employe_id, payload.get("entreprise_id"))
+    solde = await CongeCRUD().solde_restant(db, employe)
+    return {"solde_restant": solde, "solde_annuel": float(employe.solde_conges_annuel or 30)}
