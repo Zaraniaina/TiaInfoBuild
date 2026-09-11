@@ -153,6 +153,15 @@ async def health_check():
     return {"status": "ok", "app": settings.app_name, "env": settings.app_env}
 
 
+# Fichiers uploadés (photos matériel, manuels)
+import os
+from fastapi.staticfiles import StaticFiles
+from app.core.file_storage import UPLOAD_DIR
+
+os.makedirs(str(UPLOAD_DIR), exist_ok=True)
+app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+
+
 @app.get("/", tags=["root"])
 async def root():
     return {
