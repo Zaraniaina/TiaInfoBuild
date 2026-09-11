@@ -174,6 +174,14 @@ export interface Employe {
   date_debut_contrat?: string;
   date_fin_contrat?: string;
   salaire_base: number;
+  mode_remuneration?: ModeRemuneration;
+  taux_journalier?: number;
+  taux_horaire?: number;
+  prix_tache?: number;
+  numero_cnaps?: string;
+  numero_ostie?: string;
+  statut_declaration?: "non_declare" | "cnaps" | "cnaps_ostie";
+  solde_conges_annuel?: number;
   telephone?: string;
   email?: string;
   adresse?: string;
@@ -267,6 +275,60 @@ export interface HeureSupplementaire {
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
+}
+
+// ---- Congés & Paie (module RH) ----
+
+export type ModeRemuneration = "mensuel" | "journalier" | "horaire" | "a_la_tache";
+export type TypeConge = "annuel" | "maladie" | "maternite" | "exceptionnel" | "sans_solde";
+export type StatutConge = "en_attente" | "valide" | "refuse" | "annule";
+
+export interface Conge {
+  id: number;
+  entreprise_id?: number;
+  employe_id: number;
+  type: TypeConge;
+  date_debut: string;
+  date_fin: string;
+  nb_jours: number;
+  statut: StatutConge;
+  motif?: string;
+  valide_par?: number;
+  date_validation?: string;
+  commentaire_refus?: string;
+  is_deleted?: boolean;
+  created_at?: string;
+  employe_nom?: string;
+  employe_prenom?: string;
+}
+
+export interface CongeListe {
+  items: Conge[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+export interface SoldeConge {
+  solde_restant: number;
+  solde_annuel: number;
+}
+
+export interface LignePaie {
+  employe_id: number;
+  nom: string;
+  prenom?: string;
+  mode_remuneration: ModeRemuneration;
+  jours_valides: number;
+  heures_sup: number;
+  brut: number;
+}
+
+export interface RapportPaie {
+  mois: number;
+  annee: number;
+  lignes: LignePaie[];
+  total: number;
 }
 
 // ============================================================

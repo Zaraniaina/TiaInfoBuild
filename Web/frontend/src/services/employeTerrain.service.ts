@@ -10,6 +10,7 @@ import type {
   NotificationTerrain,
   Document,
   Pointage,
+  Conge,
 } from '@/types'
 
 const BASE = '/employe-terrain'
@@ -75,5 +76,16 @@ export const employeTerrainService = {
 
   ajouterCommentaire: (data: Record<string, any>) =>
     api.post(`${BASE}/commentaires`, data).then((r) => r.data),
+
+  // Congés (self-only)
+  demanderConge: (data: { type: string; date_debut: string; date_fin: string; nb_jours: number; motif?: string }) =>
+    api.post<Conge>(`${BASE}/conges`, data).then((r) => r.data),
+
+  getMesConges: () =>
+    api.get<{ items: Conge[]; total_items: number; solde_restant: number; solde_annuel: number }>(`${BASE}/conges`)
+      .then((r) => r.data),
+
+  annulerConge: (id: number) =>
+    api.post<Conge>(`${BASE}/conges/${id}/annuler`, {}).then((r) => r.data),
 }
 
