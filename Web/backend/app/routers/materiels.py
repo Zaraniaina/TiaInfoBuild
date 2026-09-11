@@ -1,12 +1,12 @@
 """Routers pour le module materiels: liste, detail, CRUD, maintenance, export CSV."""
 from datetime import date, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.export import export_csv
+from app.core import file_storage
 from app.crud.base import BaseCRUD
 from app.crud.materiel import MaterielCRUD
 from app.database import get_db
@@ -240,3 +240,90 @@ async def export_materiaux_csv(
         media_type="text/csv; charset=utf-8-sig",
         headers={"Content-Disposition": "attachment; filename=materiaux.csv"},
     )
+
+
+# ==================== UPLOADS PHOTO / MANUEL ====================
+
+
+async def _get_materiel_entreprise(db, id: int, entreprise_id: int | None) -> Materiel:
+    materiel = await materiel_crud.get(db, id)
+    if not materiel or materiel.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Matériel non trouvé")
+    if entreprise_id is not None and materiel.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Matériel non trouvé")
+    return materiel
+
+
+@router.post("/{id}/upload-photo")
+async def upload_photo(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+    fichier: UploadFile = File(...),
+):
+    _require_permission(payload, "materiels:write")
+    entreprise_id = _get_entreprise_id(payload)
+    materiel = await _get_materiel_entreprise(db, id, entreprise_id)
+    try:
+        url = await file_storage.save_upload(
+            fichier, "materiel-photos", file_storage.ALLOWED_PHOTO_EXT, file_storage.MAX_PHOTO_MB
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    # Supprime l'ancienne photo si présente
+    if materiel.photo_url:
+        await file_storage.delete_upload(materiel.photo_url)
+    materiel.photo_url = url
+    await db.flush()
+    await db.refresh(materiel)
+    return {"photo_url": url}
+
+
+@router.post("/{id}/upload-manuel")
+async def upload_manuel(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+    fichier: UploadFile = File(...),
+):
+    _require_permission(payload, "materiels:write")
+    entreprise_id = _get_entreprise_id(payload)
+    materiel = await _get_materiel_entreprise(db, id, entreprise_id)
+    try:
+        url = await file_storage.save_upload(
+            fichier, "materiels-manuels", file_storage.ALLOWED_MANUEL_EXT, file_storage.MAX_MANUEL_MB
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    if materiel.manuel_url:
+        await file_storage.delete_upload(materiel.manuel_url)
+    materiel.manuel_url = url
+    await db.flush()
+    await db.refresh(materiel)
+    return {"manuel_url": url}
+
+
+@router.delete("/{id}/photo")
+async def delete_photo(payload: CurrentUserPayload, db: DbDep, id: int):
+    _require_permission(payload, "materiels:write")
+    entreprise_id = _get_entreprise_id(payload)
+    materiel = await _get_materiel_entreprise(db, id, entreprise_id)
+    if materiel.photo_url:
+        await file_storage.delete_upload(materiel.photo_url)
+    materiel.photo_url = None
+    await db.flush()
+    await db.refresh(materiel)
+    return {"photo_url": None}
+
+
+@router.delete("/{id}/manuel")
+async def delete_manuel(payload: CurrentUserPayload, db: DbDep, id: int):
+    _require_permission(payload, "materiels:write")
+    entreprise_id = _get_entreprise_id(payload)
+    materiel = await _get_materiel_entreprise(db, id, entreprise_id)
+    if materiel.manuel_url:
+        await file_storage.delete_upload(materiel.manuel_url)
+    materiel.manuel_url = None
+    await db.flush()
+    await db.refresh(materiel)
+    return {"manuel_url": None}
