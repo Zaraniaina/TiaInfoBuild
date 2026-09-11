@@ -3,6 +3,10 @@ from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
+import csv
+import io
+
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 
@@ -873,3 +877,125 @@ async def get_solde_conges(payload: CurrentUserPayload, db: DbDep, employe_id: i
     employe = await _get_employe_rh(db, employe_id, payload.get("entreprise_id"))
     solde = await CongeCRUD().solde_restant(db, employe)
     return {"solde_restant": solde, "solde_annuel": float(employe.solde_conges_annuel or 30)}
+
+
+# --- Paie ---
+
+
+def _heures_du_pointage(pt: Pointage) -> float:
+    """Heures travaillées d'un pointage (fin - début - pauses), borné à 0."""
+    if not pt.heure_debut or not pt.heure_fin:
+        return 0.0
+    delta = (datetime.combine(date.min, pt.heure_fin)
+             - datetime.combine(date.min, pt.heure_debut)).total_seconds() / 3600
+    pauses = 0.0
+    if pt.heure_pause_debut and pt.heure_pause_fin:
+        pauses = max(
+            (datetime.combine(date.min, pt.heure_pause_fin)
+             - datetime.combine(date.min, pt.heure_pause_debut)).total_seconds() / 3600,
+            0.0,
+        )
+    return max(delta - pauses, 0.0)
+
+
+@router.get("/paie")
+async def rapport_paie(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    mois: int = Query(..., ge=1, le=12),
+    annee: int = Query(..., ge=2000, le=2100),
+    employe_id: int | None = Query(default=None),
+):
+    _require_permission(payload, "rh:read")
+    entreprise_id = payload.get("entreprise_id")
+    if entreprise_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Entreprise requise")
+
+    debut = date(annee, mois, 1)
+    fin_exclu = date(annee + 1, 1, 1) if mois == 12 else date(annee, mois + 1, 1)
+
+    q_emp = select(Employe).where(Employe.is_deleted == False, Employe.entreprise_id == entreprise_id)
+    if employe_id:
+        q_emp = q_emp.where(Employe.id == employe_id)
+    employes = (await db.execute(q_emp)).scalars().all()
+
+    q_pt = select(Pointage).where(
+        Pointage.is_deleted == False,
+        Pointage.entreprise_id == entreprise_id,
+        Pointage.date_jour >= debut,
+        Pointage.date_jour < fin_exclu,
+    )
+    pointages = (await db.execute(q_pt)).scalars().all()
+
+    q_hs = select(HeureSupplementaire).where(
+        HeureSupplementaire.is_deleted == False,
+        HeureSupplementaire.statut == "validee",
+        HeureSupplementaire.date_hs >= debut,
+        HeureSupplementaire.date_hs < fin_exclu,
+    )
+    heures_sup = (await db.execute(q_hs)).scalars().all()
+
+    # Indexation des pointages par employé
+    jours_par_emp: dict[int, set] = {}
+    heures_par_emp: dict[int, float] = {}
+    for pt in pointages:
+        if pt.statut_validation == "refuse":
+            continue
+        if pt.date_jour is not None:
+            jours_par_emp.setdefault(pt.employe_id, set()).add(pt.date_jour)
+        heures_par_emp[pt.employe_id] = heures_par_emp.get(pt.employe_id, 0.0) + _heures_du_pointage(pt)
+
+    hs_par_emp: dict[int, float] = {}
+    for hs in heures_sup:
+        if hs.employe_id:
+            hs_par_emp[hs.employe_id] = hs_par_emp.get(hs.employe_id, 0.0) + (hs.nb_heures or 0) * (hs.taux_majoration or 1.5)
+
+    lignes = []
+    total = 0.0
+    for emp in employes:
+        mode = emp.mode_remuneration or "mensuel"
+        jours_valides = float(len(jours_par_emp.get(emp.id, set())))
+        h_sup = hs_par_emp.get(emp.id, 0.0)
+        if mode == "journalier":
+            brut = jours_valides * float(emp.taux_journalier or 0)
+        elif mode == "horaire":
+            brut = heures_par_emp.get(emp.id, 0.0) * float(emp.taux_horaire or 0)
+        elif mode == "a_la_tache":
+            brut = 0.0  # v1 : calcul par tâche reporté en v2
+        else:  # mensuel : plein si pas de pointage ou mois complet, sinon proraté sur 26 jours
+            brut = float(emp.salaire_base or 0)
+            if jours_valides != 0 and jours_valides < 26:
+                brut = round(float(emp.salaire_base or 0) * jours_valides / 26, 2)
+            brut += h_sup
+        lignes.append({
+            "employe_id": emp.id, "nom": emp.nom, "prenom": emp.prenom,
+            "mode_remuneration": mode, "jours_valides": jours_valides,
+            "heures_sup": round(h_sup, 2), "brut": round(brut, 2),
+        })
+        total += brut
+
+    return {"mois": mois, "annee": annee, "lignes": lignes, "total": round(total, 2)}
+
+
+@router.get("/paie/export")
+async def export_paie_csv(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    mois: int = Query(..., ge=1, le=12),
+    annee: int = Query(..., ge=2000, le=2100),
+):
+    _require_permission(payload, "rh:read")
+    rapport = await rapport_paie(payload, db, mois=mois, annee=annee, employe_id=None)
+    buf = io.StringIO()
+    buf.write("\ufeff")  # BOM pour Excel
+    writer = csv.writer(buf, delimiter=";")
+    writer.writerow(["Employe ID", "Nom", "Prenom", "Mode", "Jours valides", "Heures sup", "Brut (Ar)"])
+    for l in rapport["lignes"]:
+        writer.writerow([l["employe_id"], l["nom"], l["prenom"], l["mode_remuneration"],
+                         str(l["jours_valides"]).replace(".", ","),
+                         str(l["heures_sup"]).replace(".", ","),
+                         str(l["brut"]).replace(".", ",")])
+    writer.writerow(["", "", "", "", "", "TOTAL", str(rapport["total"]).replace(".", ",")])
+    buf.seek(0)
+    return StreamingResponse(iter([buf.read()]), media_type="text/csv",
+                             headers={"Content-Disposition": f"attachment; filename=paie_{annee}_{mois:02d}.csv"})
