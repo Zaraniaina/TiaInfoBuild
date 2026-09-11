@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 import csv
 import io
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, func
 
 from app.crud.employe import EmployeCRUD
@@ -46,6 +46,7 @@ from app.crud.conge import CongeCRUD
 from app.models.conge import Conge
 from app.models.notification import Notification
 from app.models.utilisateur import Utilisateur
+from app.models.document import Document
 from app.schemas.conge import (
     CongeCreate,
     CongeDecision,
@@ -877,6 +878,76 @@ async def get_solde_conges(payload: CurrentUserPayload, db: DbDep, employe_id: i
     employe = await _get_employe_rh(db, employe_id, payload.get("entreprise_id"))
     solde = await CongeCRUD().solde_restant(db, employe)
     return {"solde_restant": solde, "solde_annuel": float(employe.solde_conges_annuel or 30)}
+
+
+# --- Documents RH ---
+
+CATEGORIES_DOCUMENTS_RH = {"contrat_travail", "cnaps", "ostie", "certificat", "autre"}
+
+
+class DocumentRHCreate(BaseModel):
+    """Corps de la requête pour attacher un document à un employé."""
+
+    nom: str = Field(..., min_length=1, max_length=255)
+    categorie: str = Field(default="autre", max_length=50)
+    fichier_url: str | None = None
+    description: str | None = None
+
+    @field_validator("categorie")
+    @classmethod
+    def validate_categorie(cls, v: str) -> str:
+        if v not in CATEGORIES_DOCUMENTS_RH:
+            raise ValueError(f"Catégorie invalide. Valeurs autorisées: {sorted(CATEGORIES_DOCUMENTS_RH)}")
+        return v
+
+
+class DocumentRHResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: int
+    employe_id: int | None = None
+    categorie: str
+    nom: str
+    fichier_url: str | None = None
+    description: str | None = None
+    created_at: datetime | None = None
+    is_deleted: bool | None = None
+
+
+@router.get("/employes/{employe_id}/documents")
+async def list_documents_rh(payload: CurrentUserPayload, db: DbDep, employe_id: int):
+    _require_permission(payload, "rh:read")
+    employe = await _get_employe_rh(db, employe_id, payload.get("entreprise_id"))
+    query = select(Document).where(
+        Document.employe_id == employe.id,
+        Document.is_deleted == False,
+    ).order_by(Document.created_at.desc())
+    result = await db.execute(query)
+    documents = result.scalars().all()
+    return {"items": [DocumentRHResponse.model_validate(d) for d in documents]}
+
+
+@router.post("/employes/{employe_id}/documents", response_model=DocumentRHResponse, status_code=status.HTTP_201_CREATED)
+async def create_document_rh(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    employe_id: int,
+    obj_in: DocumentRHCreate,
+):
+    _require_permission(payload, "rh:write")
+    employe = await _get_employe_rh(db, employe_id, payload.get("entreprise_id"))
+    doc = Document(
+        entreprise_id=employe.entreprise_id,
+        employe_id=employe.id,
+        nom=obj_in.nom,
+        categorie=obj_in.categorie,
+        fichier_url=obj_in.fichier_url,
+        description=obj_in.description,
+    )
+    db.add(doc)
+    await db.flush()
+    await db.refresh(doc)
+    return DocumentRHResponse.model_validate(doc)
 
 
 # --- Paie ---
