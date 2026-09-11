@@ -24,6 +24,14 @@ class EmployeCreate(BaseModel):
     date_debut_contrat: date | None = None
     date_fin_contrat: date | None = None
     salaire_base: float | None = Field(default=0.0)
+    mode_remuneration: str | None = Field(default="mensuel", max_length=20)
+    taux_journalier: float | None = Field(default=None, ge=0)
+    taux_horaire: float | None = Field(default=None, ge=0)
+    prix_tache: float | None = Field(default=None, ge=0)
+    numero_cnaps: str | None = Field(default=None, max_length=50)
+    numero_ostie: str | None = Field(default=None, max_length=50)
+    statut_declaration: str | None = Field(default="non_declare", max_length=20)
+    solde_conges_annuel: float | None = Field(default=None, ge=0)
     telephone: str | None = Field(default=None, max_length=50)
     email: EmailStr | None = None
     adresse: str | None = None
@@ -39,9 +47,25 @@ class EmployeCreate(BaseModel):
     @field_validator("type_contrat")
     @classmethod
     def validate_type_contrat(cls, v: str | None) -> str | None:
-        allowed = {"CDI", "CDD", "INTERIM", "STAGE", "TEMPS_PARTIEL"}
+        allowed = {"CDI", "CDD", "INTERIM", "STAGE", "TEMPS_PARTIEL", "JOURNALIER"}
         if v is not None and v.upper() not in allowed:
-            raise ValueError(f"Type de contrat invalide. Valeurs autorisées: {allowed}")
+            raise ValueError(f"Type de contrat invalide. Valeurs autorisées: {sorted(allowed)}")
+        return v.upper() if v else v
+
+    @field_validator("mode_remuneration")
+    @classmethod
+    def validate_mode_remuneration(cls, v: str | None) -> str | None:
+        allowed = {"mensuel", "journalier", "horaire", "a_la_tache"}
+        if v is not None and v not in allowed:
+            raise ValueError(f"Mode de rémunération invalide. Valeurs autorisées: {sorted(allowed)}")
+        return v
+
+    @field_validator("statut_declaration")
+    @classmethod
+    def validate_statut_declaration(cls, v: str | None) -> str | None:
+        allowed = {"non_declare", "cnaps", "cnaps_ostie"}
+        if v is not None and v not in allowed:
+            raise ValueError(f"Statut de déclaration invalide. Valeurs autorisées: {sorted(allowed)}")
         return v
 
     @field_validator("statut")
@@ -66,6 +90,14 @@ class EmployeUpdate(BaseModel):
     date_debut_contrat: date | None = None
     date_fin_contrat: date | None = None
     salaire_base: float | None = None
+    mode_remuneration: str | None = Field(default=None, max_length=20)
+    taux_journalier: float | None = Field(default=None, ge=0)
+    taux_horaire: float | None = Field(default=None, ge=0)
+    prix_tache: float | None = Field(default=None, ge=0)
+    numero_cnaps: str | None = Field(default=None, max_length=50)
+    numero_ostie: str | None = Field(default=None, max_length=50)
+    statut_declaration: str | None = Field(default=None, max_length=20)
+    solde_conges_annuel: float | None = Field(default=None, ge=0)
     telephone: str | None = Field(default=None, max_length=50)
     email: EmailStr | None = None
     adresse: str | None = None
@@ -107,6 +139,14 @@ class EmployeResponse(BaseModel):
     date_debut_contrat: date | None = None
     date_fin_contrat: date | None = None
     salaire_base: float | None = None
+    mode_remuneration: str | None = None
+    taux_journalier: float | None = None
+    taux_horaire: float | None = None
+    prix_tache: float | None = None
+    numero_cnaps: str | None = None
+    numero_ostie: str | None = None
+    statut_declaration: str | None = None
+    solde_conges_annuel: float | None = None
     telephone: str | None = None
     email: EmailStr | None = None
     adresse: str | None = None
