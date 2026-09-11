@@ -12,6 +12,7 @@ from app.models.chantier import Chantier
 from app.models.client import Client
 from app.models.client_adresse import ClientAdresse
 from app.models.commentaire import Commentaire
+from app.models.conge import Conge
 from app.models.contrat import Contrat
 from app.models.demande_travaux import DemandeTravaux
 from app.models.depense import Depense
@@ -65,6 +66,7 @@ __all__ = [
     "Client",
     "ClientAdresse",
     "Commentaire",
+    "Conge",
     "Contrat",
     "DemandeTravaux",
     "Depense",

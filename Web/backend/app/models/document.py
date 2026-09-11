@@ -17,6 +17,7 @@ class Document(Base):
     client_id: Mapped[int | None] = mapped_column(ForeignKey("clients.id", ondelete="CASCADE"))
     chantier_id: Mapped[int | None] = mapped_column(ForeignKey("chantiers.id", ondelete="CASCADE"))
     projet_id: Mapped[int | None] = mapped_column(ForeignKey("projets.id", ondelete="CASCADE"))
+    employe_id: Mapped[int | None] = mapped_column(ForeignKey("employes.id", ondelete="CASCADE"))
     categorie: Mapped[str] = mapped_column(String(50), server_default="autre")
     nom: Mapped[str] = mapped_column(String(255), nullable=False)
     fichier_url: Mapped[str | None] = mapped_column(String(500))
@@ -30,4 +31,5 @@ class Document(Base):
     __table_args__ = (
         Index("idx_documents_entreprise_id", "entreprise_id"),
         Index("idx_documents_client_id", "client_id"),
+        Index("idx_documents_employe_id", "employe_id"),
     )
