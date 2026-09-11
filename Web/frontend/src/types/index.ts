@@ -1336,6 +1336,9 @@ export interface Document {
   fichier_url: string;
   created_at: string;
   description?: string;
+  employe_id?: number;
+  taille_octets?: number;
+  mime_type?: string;
 }
 
 export interface ProfilTerrain {

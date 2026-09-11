@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { Employe, Pointage, Equipe, HeureSupplementaire, Conge, CongeListe, SoldeConge, RapportPaie } from '@/types'
+import type { Employe, Pointage, Equipe, HeureSupplementaire, Conge, CongeListe, SoldeConge, RapportPaie, Document } from '@/types'
 
 export const rhService = {
   // Employés
@@ -10,6 +10,21 @@ export const rhService = {
 
   async getEmployeBadgeQR(employeId: number) {
     const res = await api.get(`/rh/employes/${employeId}/badge-qr`)
+    return res.data
+  },
+
+  async getEmploye(id: number) {
+    const res = await api.get<Employe>(`/rh/employes/${id}`)
+    return res.data
+  },
+
+  async getEmployeDocuments(id: number) {
+    const res = await api.get<{ items: Document[] }>(`/rh/employes/${id}/documents`)
+    return res.data.items
+  },
+
+  async createEmployeDocument(id: number, data: { nom: string; categorie: string; fichier_url?: string; description?: string }) {
+    const res = await api.post<Document>(`/rh/employes/${id}/documents`, data)
     return res.data
   },
 

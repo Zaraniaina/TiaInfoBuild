@@ -8,6 +8,7 @@ import { WorkerBadgeCard } from '@/components/pointage/WorkerBadgeCard'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { RhCongesTab } from './RhCongesTab'
 import { RhPaieTab } from './RhPaieTab'
+import { RhEmployeDocsModal } from './RhEmployeDocsModal'
 
 export function RhPage() {
   const { user } = useAuthStore()
@@ -32,6 +33,7 @@ export function RhPage() {
   const [showBadgeModal, setShowBadgeModal] = useState(false)
   const [showScannerModal, setShowScannerModal] = useState(false)
   const [selectedBadgeEmploye, setSelectedBadgeEmploye] = useState<Employe | null>(null)
+  const [docsEmployeId, setDocsEmployeId] = useState<number | null>(null)
   const [selectedEmploye, setSelectedEmploye] = useState<Employe | null>(null)
   const [employeForm, setEmployeForm] = useState<Partial<Employe>>({})
   const [posteForm, setPosteForm] = useState({
