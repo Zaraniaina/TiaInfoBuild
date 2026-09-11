@@ -7,7 +7,7 @@ l'email du compte connecte.
 from datetime import datetime, date
 
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select, func
 
 from app.security import CurrentUserPayload, DbDep
@@ -22,6 +22,9 @@ from app.models.signalement import Signalement
 from app.models.commentaire import Commentaire
 from app.models.affectation_chantier import AffectationChantier
 from app.models.notification import Notification
+from app.models.conge import Conge
+from app.crud.conge import CongeCRUD
+from app.schemas.conge import CongeResponse, TYPES_VALIDES
 
 router = APIRouter(tags=["employe-terrain"])
 
@@ -653,4 +656,72 @@ async def get_mes_pointages(payload: CurrentUserPayload, db: DbDep):
         ).order_by(Pointage.date_jour.desc(), Pointage.heure_debut.desc())
     )).scalars().all()
     return {"items": pointages}
+
+
+# ==================== CONGES (self-only) ====================
+
+
+class CongeDemandeCreate(BaseModel):
+    """Demande de congé par l'employé lui-même (self-only)."""
+
+    type: str = Field(default="annuel", max_length=30)
+    date_debut: date
+    date_fin: date
+    nb_jours: float = Field(..., gt=0)
+    motif: str | None = None
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, v: str) -> str:
+        if v not in TYPES_VALIDES:
+            raise ValueError(f"Type invalide: {sorted(TYPES_VALIDES)}")
+        return v
+
+    @model_validator(mode="after")
+    def validate_dates(self):
+        if self.date_fin < self.date_debut:
+            raise ValueError("date_fin doit être postérieure ou égale à date_debut")
+        return self
+
+
+@router.post("/conges", response_model=CongeResponse, status_code=status.HTTP_201_CREATED)
+async def demander_conge(payload: CurrentUserPayload, obj_in: CongeDemandeCreate, db: DbDep):
+    _require_permission(payload, "employe_terrain:write")
+    employe = await _get_employe(payload, db)
+    conge = await CongeCRUD().create(db, {
+        "entreprise_id": employe.entreprise_id, "employe_id": employe.id,
+        "type": obj_in.type, "date_debut": obj_in.date_debut, "date_fin": obj_in.date_fin,
+        "nb_jours": obj_in.nb_jours, "motif": obj_in.motif, "statut": Conge.STATUT_EN_ATTENTE,
+    })
+    await db.refresh(conge)
+    return CongeResponse.model_validate(conge)
+
+
+@router.get("/conges")
+async def mes_conges(payload: CurrentUserPayload, db: DbDep):
+    _require_permission(payload, "employe_terrain:read")
+    employe = await _get_employe(payload, db)
+    items, total = await CongeCRUD().list_for_employe(db, employe.id, page=1, size=100)
+    solde = await CongeCRUD().solde_restant(db, employe)
+    return {
+        "items": [CongeResponse.model_validate(c) for c in items],
+        "total_items": total,
+        "solde_restant": solde,
+        "solde_annuel": float(employe.solde_conges_annuel or 30),
+    }
+
+
+@router.post("/conges/{id}/annuler", response_model=CongeResponse)
+async def annuler_mon_conge(payload: CurrentUserPayload, db: DbDep, id: int):
+    _require_permission(payload, "employe_terrain:write")
+    employe = await _get_employe(payload, db)
+    conge = await CongeCRUD().get(db, id)
+    if not conge or conge.is_deleted or conge.employe_id != employe.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Congé non trouvé")
+    if conge.statut != Conge.STATUT_EN_ATTENTE:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Seule une demande en attente peut être annulée")
+    conge.statut = Conge.STATUT_ANNULE
+    await db.flush()
+    await db.refresh(conge)
+    return CongeResponse.model_validate(conge)
 
