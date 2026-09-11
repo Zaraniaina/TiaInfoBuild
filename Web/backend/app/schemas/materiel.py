@@ -61,6 +61,9 @@ class MaterielCreate(BaseModel):
     date_acquisition: date | None = None
     valeur_achat: float | None = Field(default=0.0)
     description: str | None = None
+    photo_url: str | None = Field(default=None, max_length=500)
+    manuel_url: str | None = Field(default=None, max_length=500)
+    normes: str | None = None
     statut: str | None = Field(default="disponible", max_length=20)
 
     @field_validator("valeur_achat")
@@ -92,6 +95,9 @@ class MaterielUpdate(BaseModel):
     date_acquisition: date | None = None
     valeur_achat: float | None = None
     description: str | None = None
+    photo_url: str | None = Field(default=None, max_length=500)
+    manuel_url: str | None = Field(default=None, max_length=500)
+    normes: str | None = None
     statut: str | None = None
 
     @field_validator("valeur_achat")
@@ -127,6 +133,9 @@ class MaterielResponse(BaseModel):
     date_acquisition: date | None = None
     valeur_achat: float | None = None
     description: str | None = None
+    photo_url: str | None = None
+    manuel_url: str | None = None
+    normes: str | None = None
     statut: str | None = None
     is_deleted: bool | None = None
     created_at: datetime | None = None
@@ -148,5 +157,6 @@ class MaterielList(BaseModel):
     date_acquisition: date | None = None
     valeur_achat: float | None = None
     statut: str | None = None
+    photo_url: str | None = None
     is_deleted: bool | None = None
     created_at: datetime | None = None
