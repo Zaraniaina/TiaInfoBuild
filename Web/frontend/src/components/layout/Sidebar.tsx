@@ -17,6 +17,7 @@ const MODULE_META: Record<string, { label: string; icon: string; section: string
   '/employe/planning': { label: 'Mon planning', icon: 'bi-calendar', section: 'Espace Terrain' },
     '/employe/documents': { label: 'Documents', icon: 'bi-folder', section: 'Espace Terrain' },
   '/employe/badge': { label: 'Mon badge QR', icon: 'bi-qr-code', section: 'Espace Terrain' },
+  '/employe/conges': { label: 'Mes congés', icon: 'bi-calendar2-week', section: 'Espace Terrain' },
 
   '/dashboard': { label: 'Tableau de bord', icon: 'bi-speedometer2', section: 'Principal' },
   '/super-admin': { label: 'Dashboard SaaS', icon: 'bi-shield-lock', section: 'Plateforme SaaS' },

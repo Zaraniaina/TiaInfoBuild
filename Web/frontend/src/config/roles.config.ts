@@ -97,6 +97,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/employe/planning',
     '/employe/documents',
     '/employe/badge',
+    '/employe/conges',
   ],
   client: [
     '/client',
