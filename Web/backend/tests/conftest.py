@@ -18,6 +18,19 @@ from app.database import Base, get_db
 from app.main import app
 from app.security import get_current_user
 
+import sqlalchemy as sa
+from sqlalchemy import BigInteger
+
+
+def _sqlite_friendly_pk(metadata) -> None:
+    """Les PK du projet sont BigInteger (MySQL). SQLite n'auto-incrémente que
+    INTEGER PRIMARY KEY : on normalise les PK BigInteger -> Integer pour le
+    seul schéma de test (aucun impact MySQL / Alembic). Idempotent."""
+    for table in metadata.tables.values():
+        for col in table.columns:
+            if col.primary_key and isinstance(col.type, BigInteger):
+                col.type = sa.Integer()
+
 
 class _FakeUser:
     """Doublet minimal d'un Utilisateur pour les dépendances (id, email)."""
@@ -30,6 +43,7 @@ class _FakeUser:
 @pytest_asyncio.fixture
 async def db_session() -> AsyncIterator[AsyncSession]:
     engine = create_async_engine("sqlite+aiosqlite://")
+    _sqlite_friendly_pk(Base.metadata)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False, autoflush=False)
