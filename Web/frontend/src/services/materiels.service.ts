@@ -30,5 +30,29 @@ export const materielsService = {
   async addMaintenance(materielId: number, data: Partial<Maintenance>) {
     const res = await api.post<Maintenance>(`/materiels/${materielId}/maintenance`, data)
     return res.data
-  }
+  },
+
+  async uploadPhoto(materielId: number, file: File) {
+    const fd = new FormData()
+    fd.append('fichier', file)
+    const res = await api.post<{ photo_url: string }>(`/materiels/${materielId}/upload-photo`, fd)
+    return res.data
+  },
+
+  async uploadManuel(materielId: number, file: File) {
+    const fd = new FormData()
+    fd.append('fichier', file)
+    const res = await api.post<{ manuel_url: string }>(`/materiels/${materielId}/upload-manuel`, fd)
+    return res.data
+  },
+
+  async deletePhoto(materielId: number) {
+    const res = await api.delete<{ photo_url: null }>(`/materiels/${materielId}/photo`)
+    return res.data
+  },
+
+  async deleteManuel(materielId: number) {
+    const res = await api.delete<{ manuel_url: null }>(`/materiels/${materielId}/manuel`)
+    return res.data
+  },
 }

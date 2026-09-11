@@ -24,6 +24,9 @@ class Materiel(Base):
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    photo_url: Mapped[str | None] = mapped_column(String(500))
+    manuel_url: Mapped[str | None] = mapped_column(String(500))
+    normes: Mapped[str | None] = mapped_column(Text)
 
     __table_args__ = (
         Index("idx_materiaux_entreprise_id", "entreprise_id"),

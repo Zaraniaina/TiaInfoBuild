@@ -922,6 +922,9 @@ export interface Materiel {
   valeur_achat: number;
   description?: string;
   statut: StatutMateriel;
+  photo_url?: string;
+  manuel_url?: string;
+  normes?: string;
   maintenances?: Maintenance[];
   is_deleted: boolean;
   created_at: string;
