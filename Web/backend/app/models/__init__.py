@@ -31,7 +31,9 @@ from app.models.ligne_devis import LigneDevis
 from app.models.ligne_facture import LigneFacture
 from app.models.maintenance import Maintenance
 from app.models.materiel import Materiel
+from app.models.mouvement_materiel import MouvementMateriel
 from app.models.membre_equipe import MembreEquipe
+
 from app.models.metre import Metre
 from app.models.mouvement_stock import MouvementStock
 from app.models.notification import Notification
@@ -86,6 +88,7 @@ __all__ = [
     "LigneSituation",
     "Maintenance",
     "Materiel",
+    "MouvementMateriel",
     "MembreEquipe",
     "Metre",
     "MouvementStock",

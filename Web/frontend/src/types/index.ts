@@ -902,12 +902,49 @@ export interface RapportFinancier {
 }
 
 // ============================================================
-// MATERIALS
+// ============================================================
+// MATERIALS BTP & TRAÇABILITÉ
 // ============================================================
 
 export type StatutMateriel =
-  "disponible" | "en_utilisation" | "en_maintenance" | "hors_service";
+  | "disponible"
+  | "en_utilisation"
+  | "en_maintenance"
+  | "hors_service"
+  | "en_panne"
+  | "perdu";
+
 export type TypeMateriel = "engin" | "outil" | "vehicule";
+
+export type CategorieBTP =
+  | "engin_lourd"
+  | "equipement_levage"
+  | "vehicule_utilitaire"
+  | "petit_outillage"
+  | "echafaudage_securite";
+
+export type StatutVGP =
+  | "conforme"
+  | "echeance_proche"
+  | "perime"
+  | "non_assujetti";
+
+export type StatutMouvement = "demande" | "en_transit" | "livre" | "annule";
+
+export interface MouvementMateriel {
+  id: number;
+  entreprise_id: number;
+  materiel_id: number;
+  chantier_origine_id?: number;
+  chantier_destination_id?: number;
+  date_depart: string;
+  date_reception?: string;
+  transporteur?: string;
+  statut: StatutMouvement;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export interface Materiel {
   id: number;
@@ -925,7 +962,19 @@ export interface Materiel {
   photo_url?: string;
   manuel_url?: string;
   normes?: string;
+  categorie_btp?: CategorieBTP;
+  immatriculation?: string;
+  heures_moteur?: number;
+  kilometrage?: number;
+  frequence_entretien_heures?: number;
+  statut_vgp?: StatutVGP;
+  date_derniere_vgp?: string;
+  date_prochaine_vgp?: string;
+  organisme_vgp?: string;
+  certificat_vgp_url?: string;
+  qr_code_key?: string;
   maintenances?: Maintenance[];
+  mouvements?: MouvementMateriel[];
   is_deleted: boolean;
   created_at: string;
   updated_at: string;

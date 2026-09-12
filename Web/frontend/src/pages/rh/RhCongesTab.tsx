@@ -76,7 +76,7 @@ export function RhCongesTab() {
     try {
       await rhService.createConge({
         employe_id: Number(form.employe_id),
-        type: form.type,
+        type: form.type as any,
         date_debut: form.date_debut,
         date_fin: form.date_fin,
         nb_jours: Number(form.nb_jours),

@@ -65,6 +65,17 @@ class MaterielCreate(BaseModel):
     manuel_url: str | None = Field(default=None, max_length=500)
     normes: str | None = None
     statut: str | None = Field(default="disponible", max_length=20)
+    categorie_btp: str | None = Field(default="engin_lourd", max_length=100)
+    immatriculation: str | None = Field(default=None, max_length=50)
+    heures_moteur: float | None = Field(default=0.0, ge=0)
+    kilometrage: float | None = Field(default=0.0, ge=0)
+    frequence_entretien_heures: float | None = Field(default=None, ge=0)
+    statut_vgp: str | None = Field(default="conforme", max_length=30)
+    date_derniere_vgp: date | None = None
+    date_prochaine_vgp: date | None = None
+    organisme_vgp: str | None = Field(default=None, max_length=100)
+    certificat_vgp_url: str | None = Field(default=None, max_length=500)
+    qr_code_key: str | None = Field(default=None, max_length=100)
 
     @field_validator("valeur_achat")
     @classmethod
@@ -77,7 +88,7 @@ class MaterielCreate(BaseModel):
     @classmethod
     def validate_statut(cls, v: str | None) -> str | None:
         if v is not None:
-            allowed = {"disponible", "en_panne", "en_maintenance", "hors_service", "perdu"}
+            allowed = {"disponible", "en_panne", "en_maintenance", "hors_service", "perdu", "en_utilisation"}
             if v not in allowed:
                 raise ValueError(f"Statut invalide. Valeurs autorisées: {allowed}")
         return v
@@ -99,6 +110,17 @@ class MaterielUpdate(BaseModel):
     manuel_url: str | None = Field(default=None, max_length=500)
     normes: str | None = None
     statut: str | None = None
+    categorie_btp: str | None = None
+    immatriculation: str | None = None
+    heures_moteur: float | None = None
+    kilometrage: float | None = None
+    frequence_entretien_heures: float | None = None
+    statut_vgp: str | None = None
+    date_derniere_vgp: date | None = None
+    date_prochaine_vgp: date | None = None
+    organisme_vgp: str | None = None
+    certificat_vgp_url: str | None = None
+    qr_code_key: str | None = None
 
     @field_validator("valeur_achat")
     @classmethod
@@ -111,10 +133,43 @@ class MaterielUpdate(BaseModel):
     @classmethod
     def validate_statut(cls, v: str | None) -> str | None:
         if v is not None:
-            allowed = {"disponible", "en_panne", "en_maintenance", "hors_service", "perdu"}
+            allowed = {"disponible", "en_panne", "en_maintenance", "hors_service", "perdu", "en_utilisation"}
             if v not in allowed:
                 raise ValueError(f"Statut invalide. Valeurs autorisées: {allowed}")
         return v
+
+
+class HorametreUpdate(BaseModel):
+    """Corps de la requête pour enregistrer les heures horamètre ou km."""
+    heures_moteur: float | None = Field(default=None, ge=0)
+    kilometrage: float | None = Field(default=None, ge=0)
+    notes: str | None = None
+
+
+class MouvementMaterielCreate(BaseModel):
+    """Création d'un bon de transfert entre chantiers."""
+    materiel_id: int = Field(..., ge=1)
+    chantier_origine_id: int | None = None
+    chantier_destination_id: int | None = None
+    transporteur: str | None = Field(default=None, max_length=255)
+    notes: str | None = None
+
+
+class MouvementMaterielResponse(BaseModel):
+    """Schéma de réponse pour un transfert de matériel."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    entreprise_id: int
+    materiel_id: int
+    chantier_origine_id: int | None = None
+    chantier_destination_id: int | None = None
+    date_depart: datetime
+    date_reception: datetime | None = None
+    transporteur: str | None = None
+    statut: str
+    notes: str | None = None
+    created_at: datetime | None = None
 
 
 class MaterielResponse(BaseModel):
@@ -137,10 +192,22 @@ class MaterielResponse(BaseModel):
     manuel_url: str | None = None
     normes: str | None = None
     statut: str | None = None
+    categorie_btp: str | None = None
+    immatriculation: str | None = None
+    heures_moteur: float | None = 0.0
+    kilometrage: float | None = 0.0
+    frequence_entretien_heures: float | None = None
+    statut_vgp: str | None = None
+    date_derniere_vgp: date | None = None
+    date_prochaine_vgp: date | None = None
+    organisme_vgp: str | None = None
+    certificat_vgp_url: str | None = None
+    qr_code_key: str | None = None
     is_deleted: bool | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
     maintenances: list[MaintenanceResponse] | None = None
+    mouvements: list[MouvementMaterielResponse] | None = None
 
 
 class MaterielList(BaseModel):
@@ -158,5 +225,10 @@ class MaterielList(BaseModel):
     valeur_achat: float | None = None
     statut: str | None = None
     photo_url: str | None = None
+    categorie_btp: str | None = None
+    statut_vgp: str | None = None
+    heures_moteur: float | None = None
+    date_prochaine_vgp: date | None = None
     is_deleted: bool | None = None
     created_at: datetime | None = None
+

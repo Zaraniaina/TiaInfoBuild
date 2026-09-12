@@ -74,7 +74,6 @@ export function RhEmployeDocsModal({ employeId, onClose }: Props) {
             </h5>
             <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
           </div>
-      <!-- SUITE-DOCS-1 -->
           <div className="modal-body">
             {loading ? (
               <div className="text-center text-muted py-4">Chargement...</div>
@@ -112,7 +111,6 @@ export function RhEmployeDocsModal({ employeId, onClose }: Props) {
                       <i className="bi bi-plus-circle me-1"></i>Ajouter
                     </button>
                   </div>
-<!-- SUITE-DOCS-2 -->
                   {showForm && (
                     <form onSubmit={handleAdd} className="border rounded-3 p-3 mb-3 bg-light">
                       <div className="row g-2">

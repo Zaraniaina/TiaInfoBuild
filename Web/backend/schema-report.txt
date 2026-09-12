@@ -1,0 +1,5 @@
+=== TABLES MANQUANTES ===
+(aucune)
+
+=== COLONNES MANQUANTES ===
+(aucune)

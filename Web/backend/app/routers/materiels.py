@@ -12,6 +12,7 @@ from app.crud.materiel import MaterielCRUD
 from app.database import get_db
 from app.models.materiel import Materiel
 from app.models.maintenance import Maintenance
+from app.models.mouvement_materiel import MouvementMateriel
 from app.schemas.materiel import (
     MaterielCreate,
     MaterielUpdate,
@@ -19,7 +20,13 @@ from app.schemas.materiel import (
     MaterielList,
     MaintenanceCreate,
     MaintenanceResponse,
+    HorametreUpdate,
+    MouvementMaterielCreate,
+    MouvementMaterielResponse,
 )
+import uuid
+from app.core.export import export_csv
+
 from app.security import CurrentUserPayload, DbDep
 
 router = APIRouter(tags=["materiels"])
@@ -327,3 +334,157 @@ async def delete_manuel(payload: CurrentUserPayload, db: DbDep, id: int):
     await db.flush()
     await db.refresh(materiel)
     return {"manuel_url": None}
+
+
+# ==================== VGP & CONFORMITÉ BTP ====================
+
+
+@router.post("/{id}/upload-vgp")
+async def upload_vgp(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+    fichier: UploadFile = File(...),
+):
+    _require_permission(payload, "materiels:write")
+    entreprise_id = _get_entreprise_id(payload)
+    materiel = await _get_materiel_entreprise(db, id, entreprise_id)
+    try:
+        url = await file_storage.save_upload(
+            fichier, "materiels-vgp", file_storage.ALLOWED_MANUEL_EXT, file_storage.MAX_MANUEL_MB
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    if materiel.certificat_vgp_url:
+        await file_storage.delete_upload(materiel.certificat_vgp_url)
+    materiel.certificat_vgp_url = url
+    await db.flush()
+    await db.refresh(materiel)
+    return {"certificat_vgp_url": url}
+
+
+@router.delete("/{id}/vgp")
+async def delete_vgp(payload: CurrentUserPayload, db: DbDep, id: int):
+    _require_permission(payload, "materiels:write")
+    entreprise_id = _get_entreprise_id(payload)
+    materiel = await _get_materiel_entreprise(db, id, entreprise_id)
+    if materiel.certificat_vgp_url:
+        await file_storage.delete_upload(materiel.certificat_vgp_url)
+    materiel.certificat_vgp_url = None
+    await db.flush()
+    await db.refresh(materiel)
+    return {"certificat_vgp_url": None}
+
+
+# ==================== CARNET DE BORD & HORAMÈTRE ====================
+
+
+@router.post("/{id}/horametre", response_model=MaterielResponse)
+async def update_horametre(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+    data: HorametreUpdate,
+):
+    _require_permission(payload, "materiels:write")
+    entreprise_id = _get_entreprise_id(payload)
+    materiel = await _get_materiel_entreprise(db, id, entreprise_id)
+    if data.heures_moteur is not None:
+        materiel.heures_moteur = data.heures_moteur
+    if data.kilometrage is not None:
+        materiel.kilometrage = data.kilometrage
+    await db.flush()
+    await db.refresh(materiel)
+    return materiel
+
+
+# ==================== BONS DE TRANSFERT / MOUVEMENTS ====================
+
+
+@router.get("/transferts", response_model=list[MouvementMaterielResponse])
+async def list_transferts(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    materiel_id: int | None = Query(default=None),
+):
+    _require_permission(payload, "materiels:read")
+    entreprise_id = _get_entreprise_id(payload)
+    q = select(MouvementMateriel).where(MouvementMateriel.is_deleted == False)
+    if entreprise_id:
+        q = q.where(MouvementMateriel.entreprise_id == entreprise_id)
+    if materiel_id:
+        q = q.where(MouvementMateriel.materiel_id == materiel_id)
+    result = await db.execute(q.order_by(MouvementMateriel.created_at.desc()))
+    return list(result.scalars().all())
+
+
+@router.post("/transferts", response_model=MouvementMaterielResponse, status_code=status.HTTP_201_CREATED)
+async def create_transfert(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    data: MouvementMaterielCreate,
+):
+    _require_permission(payload, "materiels:write")
+    entreprise_id = _get_entreprise_id(payload)
+    materiel = await _get_materiel_entreprise(db, data.materiel_id, entreprise_id)
+    
+    mouvement = MouvementMateriel(
+        entreprise_id=entreprise_id,
+        materiel_id=data.materiel_id,
+        chantier_origine_id=data.chantier_origine_id,
+        chantier_destination_id=data.chantier_destination_id,
+        transporteur=data.transporteur,
+        notes=data.notes,
+        statut="en_transit",
+        date_depart=datetime.now(),
+    )
+    db.add(mouvement)
+    materiel.statut = "en_utilisation"
+    await db.flush()
+    await db.refresh(mouvement)
+    return mouvement
+
+
+@router.put("/transferts/{id}/valider", response_model=MouvementMaterielResponse)
+async def valider_transfert(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+):
+    _require_permission(payload, "materiels:write")
+    entreprise_id = _get_entreprise_id(payload)
+    q = select(MouvementMateriel).where(MouvementMateriel.id == id, MouvementMateriel.is_deleted == False)
+    if entreprise_id:
+        q = q.where(MouvementMateriel.entreprise_id == entreprise_id)
+    res = await db.execute(q)
+    mouvement = res.scalar_one_or_none()
+    if not mouvement:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transfert non trouvé")
+    
+    mouvement.statut = "livre"
+    mouvement.date_reception = datetime.now()
+    await db.flush()
+    await db.refresh(mouvement)
+    return mouvement
+
+
+# ==================== TRAÇABILITÉ & QR CODE ====================
+
+
+@router.get("/{id}/qr-code")
+async def get_qr_code(payload: CurrentUserPayload, db: DbDep, id: int):
+    _require_permission(payload, "materiels:read")
+    entreprise_id = _get_entreprise_id(payload)
+    materiel = await _get_materiel_entreprise(db, id, entreprise_id)
+    if not materiel.qr_code_key:
+        materiel.qr_code_key = f"MAT-{materiel.id}-{uuid.uuid4().hex[:8].upper()}"
+        await db.flush()
+        await db.refresh(materiel)
+    return {
+        "materiel_id": materiel.id,
+        "nom": materiel.nom,
+        "numero_serie": materiel.numero_serie,
+        "qr_code_key": materiel.qr_code_key,
+        "statut_vgp": materiel.statut_vgp,
+        "statut": materiel.statut,
+    }
