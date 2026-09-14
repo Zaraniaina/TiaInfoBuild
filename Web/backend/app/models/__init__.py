@@ -10,6 +10,7 @@ from app.models.article import Article
 from app.models.avenant import Avenant
 from app.models.chantier import Chantier
 from app.models.client import Client
+from app.models.depot import Depot
 from app.models.client_adresse import ClientAdresse
 from app.models.commentaire import Commentaire
 from app.models.conge import Conge
@@ -71,6 +72,7 @@ __all__ = [
     "Conge",
     "Contrat",
     "DemandeTravaux",
+    "Depot",
     "Depense",
     "Devis",
     "Document",

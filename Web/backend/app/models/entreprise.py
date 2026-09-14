@@ -65,3 +65,4 @@ class Entreprise(Base):
     heures_supplementaires: Mapped[list["HeureSupplementaire"]] = relationship("HeureSupplementaire", back_populates="entreprise", lazy="selectin")
     historique_postes: Mapped[list["HistoriquePoste"]] = relationship("HistoriquePoste", back_populates="entreprise", lazy="selectin")
     subscriptions: Mapped[list["Subscription"]] = relationship("Subscription", back_populates="entreprise", lazy="selectin")
+    depots: Mapped[list["Depot"]] = relationship("Depot", back_populates="entreprise", lazy="selectin")

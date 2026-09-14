@@ -404,6 +404,67 @@ export interface MouvementStock {
   updated_at: string;
 }
 
+export type StatutEmprunt = "en_cours" | "restitue" | "en_retard";
+export type EtatOutillageRetour = "conforme" | "a_reparer" | "nettoyage_requis";
+
+export interface EmpruntOutillage {
+  id: number;
+  outillage_nom: string;
+  code_outil?: string;
+  emprunteur_nom: string;
+  chantier_nom: string;
+  date_emprunt: string;
+  date_retour_prevue: string;
+  date_retour_effective?: string;
+  statut: StatutEmprunt;
+  etat_retour?: EtatOutillageRetour;
+  notes?: string;
+}
+
+export interface BonReception {
+  id: number;
+  numero_bl: string;
+  fournisseur_nom: string;
+  date_reception: string;
+  article_nom: string;
+  quantite_livree: number;
+  unite: string;
+  etat_livraison: "conforme" | "reserve" | "refuse";
+  controleur_nom: string;
+  notes?: string;
+}
+
+export interface BonSortieChantier {
+  id: number;
+  numero_bon: string;
+  chantier_nom: string;
+  phase_nom?: string;
+  recepteur_nom: string;
+  date_sortie: string;
+  article_nom: string;
+  quantite: number;
+  unite: string;
+  code_qr: string;
+}
+
+export type TypeDepot = "magasin_principal" | "depot_chantier" | "zone_exterieure" | "armoire_outillage";
+
+export interface Depot {
+  id: number;
+  entreprise_id?: number;
+  code: string;
+  nom: string;
+  adresse?: string;
+  responsable?: string;
+  telephone?: string;
+  capacite_m2?: number;
+  type: TypeDepot;
+  is_deleted?: boolean;
+  created_at?: string;
+}
+
+
+
 // ============================================================
 // COMMERCIAL
 // ============================================================

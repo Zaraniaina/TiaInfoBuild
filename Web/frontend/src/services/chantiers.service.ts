@@ -75,6 +75,16 @@ export const chantiersService = {
   async transformerProjet(projetId: number) {
     const res = await api.post<Chantier>(`/chantiers/from-projet/${projetId}`)
     return res.data
+  },
+
+  async getRapportsJournaliers(id: number) {
+    const res = await api.get<{ items: any[] }>(`/chantiers/${id}/rapports`)
+    return res.data.items || res.data
+  },
+
+  async createRapportJournalier(id: number, data: any) {
+    const res = await api.post(`/chantiers/${id}/rapports`, data)
+    return res.data
   }
 }
 
