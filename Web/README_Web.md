@@ -1,4 +1,4 @@
-﻿# Guide de démarrage Web — TIA INFO BUILD (XAMPP MySQL & 12 Rôles RBAC)
+# Guide de démarrage Web — TIA INFO BUILD (XAMPP MySQL & 12 Rôles RBAC)
 
 Guide complet pour installer, initialiser la base de données MySQL via XAMPP, exécuter les 12 rôles de la spécification `roles_tia_builds/`, et démarrer l'application Web (Backend FastAPI + Frontend React).
 
@@ -280,3 +280,75 @@ Les autres rôles (directeur, comptable, client…) ont un accès **lecture seul
 - Migrations Alembic : nom de revision <= 32 caracteres (`alembic_version` = VARCHAR(32),
   sinon troncature silencieuse et erreur "0 found") ; type de FK identique au type de la
   colonne cible (sinon errno 150) ; migrations idempotentes. Details : `Web/backend/README.md`.
+- **Email non reçu (dev)** : vérifier que Mailpit tourne sur `localhost:1025` et consulter l'interface web sur http://localhost:8025.
+  Si Mailpit n'est pas lancé, le backend log un warning et continue sans erreur (fail-silently).
+
+---
+
+## Système d'Email — Mot de Passe Oublié & Inscription Entreprise
+
+### Architecture
+
+- Service : `app/services/email.py` — stdlib Python (`smtplib`, `email.mime`), zéro dépendance externe.
+- Config : `app/config.py` — variables `SMTP_*` et `FRONTEND_URL`.
+
+### Dev — Mailpit (intercepteur local)
+
+**Mailpit** est un serveur SMTP de développement qui capture les emails sans les envoyer réellement.
+
+```powershell
+# Télécharger mailpit.exe depuis https://github.com/axllent/mailpit/releases
+# Lancer dans un terminal séparé (avant de démarrer le backend) :
+.\mailpit.exe
+
+# SMTP : localhost:1025
+# Interface Web : http://localhost:8025
+```
+
+Le backend est pré-configuré avec ces valeurs par défaut (aucun .env requis en dev).
+
+### Prod — Variables d'environnement SMTP
+
+Ajoutez ces variables dans `Web/backend/.env` :
+
+```env
+# SMTP Production (exemple Gmail)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=no-reply@votre-domaine.mg
+SMTP_PASSWORD=<mot_de_passe_app>
+SMTP_TLS=true
+SMTP_FROM_EMAIL=no-reply@votre-domaine.mg
+SMTP_FROM_NAME=TIA INFO BUILD
+
+# URL publique du frontend React
+FRONTEND_URL=https://app.votre-domaine.mg
+```
+
+> **Note SSL/TLS** : utilisez `SMTP_PORT=465` + `SMTP_TLS=true` pour SMTP over SSL (Gmail, OVH).
+> Pour STARTTLS (port 587), laissez `SMTP_TLS=false` — `smtplib.SMTP` gère le STARTTLS automatiquement.
+
+### Flux Email
+
+| Endpoint | Déclencheur | Contenu de l'email |
+|----------|-------------|-------------------|
+| `POST /api/auth/forgot-password` | Utilisateur soumet son email | Lien de réinitialisation valide **30 minutes** |
+| `POST /api/auth/reset-password` | Token validé → nouveau mot de passe accepté | *(pas d'email, retour JSON)* |
+| `POST /api/auth/register-entreprise` | Inscription nouvelle entreprise | Email de confirmation + lien d'activation (`GET /auth/verify-email?token=...`) valide **24h** |
+| `GET /api/auth/verify-email` | Clic sur le lien dans l'email | Active le compte admin (`is_email_verified=True`) |
+
+### Routes Frontend
+
+| Route | Page | Accès |
+|-------|------|-------|
+| `/forgot-password` | `ForgotPasswordPage.tsx` | Public |
+| `/reset-password?token=...` | `ResetPasswordPage.tsx` | Public (lien depuis email) |
+| `/register` ou `/register-entreprise` | `RegisterPage.tsx` | Public |
+| `/verify-email?token=...` | `VerifyEmailPage.tsx` | Public (lien d'activation depuis email) |
+
+### Sécurité
+
+- **Tokens JWT** : les liens de réinitialisation et de vérification d'email contiennent des JWT signés (`type=password_reset` [30 min], `type=email_verification` [24h]) — aucune table de tokens supplémentaire.
+- **Anti-énumération** : `POST /forgot-password` retourne toujours la même réponse, qu'un compte existe ou non.
+- **Vérification Email Obligatoire** : la connexion (`POST /login`) bloque avec HTTP 403 tout compte où `is_email_verified` est `False`.
+- **Politique de mot de passe** : validée côté backend (8 car. min, 1 maj, 1 min, 1 chiffre, 1 caractère spécial).

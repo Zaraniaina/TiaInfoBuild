@@ -123,6 +123,9 @@ export function LoginPage() {
                   Se souvenir de moi
                 </label>
               </div>
+              <Link to="/forgot-password" className="auth-link text-muted small">
+                Mot de passe oublié ?
+              </Link>
             </div>
 
             <button

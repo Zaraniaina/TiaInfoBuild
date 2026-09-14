@@ -82,7 +82,6 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
         "rh:read", "rh:write",
         "materiels:read",
         "stocks:read", "stocks:write",
-        "finance:read",
         "alertes:read",
         # pointage et déclarations terrain
         "pointage:write", "taches:write", "consommation:write",

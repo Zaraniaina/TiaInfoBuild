@@ -9,6 +9,7 @@ import { TableSkeleton } from '@/components/ui/Skeleton'
 import { RhCongesTab } from './RhCongesTab'
 import { RhPaieTab } from './RhPaieTab'
 import { RhEmployeDocsModal } from './RhEmployeDocsModal'
+import { PrintableDocumentModal, PrintableDocumentData } from '@/components/documents/PrintableDocumentModal'
 
 const POSTES_BTP = [
   'Conducteur de Travaux',
@@ -40,6 +41,28 @@ export function RhPage() {
   const [equipes, setEquipes] = useState<Equipe[]>([])
   const [heuresSup, setHeuresSup] = useState<HeureSupplementaire[]>([])
   const [loading, setLoading] = useState(true)
+  const [printDoc, setPrintDoc] = useState<{ show: boolean; data: PrintableDocumentData }>({
+    show: false,
+    data: {},
+  })
+
+  const openBatchBadges = () => {
+    setPrintDoc({
+      show: true,
+      data: {
+        entreprise_nom: user?.nom || 'TIA INFO BUILD',
+        employes_list: employes.map(e => ({
+          id: e.id,
+          nom: e.nom,
+          prenom: e.prenom,
+          matricule: e.matricule,
+          poste: e.poste,
+          photo: e.photo,
+          code_qr_badge: e.code_qr_badge || `TIA-EMP-${e.id}`,
+        })),
+      },
+    })
+  }
 
   // Filters
   const [search, setSearch] = useState('')
@@ -166,6 +189,9 @@ export function RhPage() {
           </div>
           {activeTab === 'employes' && (
             <div className="d-flex gap-2">
+                <button className="btn btn-outline-primary fw-bold" onClick={openBatchBadges} title="Imprimer la planche de badges pour le chantier">
+                  <i className="bi bi-printer me-2"></i>Imprimer Badges QR ({employes.length})
+                </button>
                 {perms.canGenerateQR && (
                   <button className="btn btn-outline-secondary fw-bold" onClick={() => setShowScannerModal(true)}>
                     <i className="bi bi-qr-code-scan me-2"></i>Scanner Pointage
@@ -625,6 +651,13 @@ export function RhPage() {
         isOpen={showScannerModal}
         onClose={() => setShowScannerModal(false)}
         onPointageSuccess={() => loadData()}
+      />
+
+      <PrintableDocumentModal
+        show={printDoc.show}
+        onClose={() => setPrintDoc({ show: false, data: {} })}
+        type="badge_grid"
+        data={printDoc.data}
       />
     </div>
   )

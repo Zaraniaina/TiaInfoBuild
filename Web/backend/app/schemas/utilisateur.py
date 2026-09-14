@@ -47,6 +47,7 @@ class UtilisateurUpdate(BaseModel):
     prenom: str | None = Field(default=None, max_length=100)
     email: EmailStr | None = Field(default=None)
     telephone: str | None = Field(default=None, max_length=50)
+    photo: str | None = Field(default=None)
     role_id: int | None = None
     role_code: str | None = None
     entreprise_id: int | None = None
@@ -89,6 +90,7 @@ class UtilisateurResponse(BaseModel):
     prenom: str | None = None
     email: EmailStr
     telephone: str | None = None
+    photo: str | None = None
     statut: str | None = None
     date_creation: datetime | None = None
     derniere_connexion: datetime | None = None

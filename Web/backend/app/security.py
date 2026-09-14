@@ -114,6 +114,48 @@ def create_refresh_token(subject: str | int) -> str:
     )
 
 
+def create_password_reset_token(email: str, expire_minutes: int = 30) -> str:
+    """Génère un token JWT signé pour la réinitialisation du mot de passe (valide 30 minutes)."""
+    return _create_token(
+        subject=email,
+        token_type="password_reset",
+        expires_delta=timedelta(minutes=expire_minutes),
+        secret=settings.secret_key,
+    )
+
+
+def verify_password_reset_token(token: str) -> str | None:
+    """Vérifie un token de réinitialisation et retourne l'adresse email si valide, sinon None."""
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        if payload.get("type") != "password_reset":
+            return None
+        return payload.get("sub")
+    except Exception:
+        return None
+
+
+def create_email_verification_token(email: str, expire_hours: int = 24) -> str:
+    """Génère un token JWT signé pour la vérification d'email (valide 24 heures)."""
+    return _create_token(
+        subject=email,
+        token_type="email_verification",
+        expires_delta=timedelta(hours=expire_hours),
+        secret=settings.secret_key,
+    )
+
+
+def verify_email_verification_token(token: str) -> str | None:
+    """Vérifie un token de vérification d'email et retourne l'adresse email si valide, sinon None."""
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        if payload.get("type") != "email_verification":
+            return None
+        return payload.get("sub")
+    except Exception:
+        return None
+
+
 def decode_token(token: str, refresh: bool = False) -> dict[str, Any]:
     # Le secret diffère selon le type de token (accès vs rafraîchissement) :
     # un token d'accès ne doit jamais être accepté comme token de rafraîchissement.

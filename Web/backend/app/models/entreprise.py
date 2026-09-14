@@ -32,6 +32,8 @@ class Entreprise(Base):
     delai_paiement_defaut: Mapped[int] = mapped_column(server_default="30")
     validite_devis: Mapped[int] = mapped_column(server_default="30")
     mentions_legales: Mapped[str | None] = mapped_column(Text)
+    couleurs_roles: Mapped[str | None] = mapped_column(Text)
+    entete_badge: Mapped[str | None] = mapped_column(String(255))
     actif: Mapped[bool] = mapped_column(Boolean, server_default="1")
     date_creation: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)

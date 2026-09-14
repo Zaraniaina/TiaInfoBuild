@@ -86,7 +86,7 @@ export function SettingsPage() {
   const perms = getRolePermissions(roleCode)
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<
-    "utilisateurs" | "parametres" | "audit" | "profil"
+    "utilisateurs" | "parametres" | "badges" | "audit" | "profil"
   >("utilisateurs");
   const [saving, setSaving] = useState(false);
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -101,6 +101,7 @@ export function SettingsPage() {
     role_code: "employe" as UserRole,
     password: "",
     telephone: "",
+    photo: "",
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [logs, setLogs] = useState<AlerteLog[]>([]);
@@ -114,13 +115,41 @@ export function SettingsPage() {
     adresse: "",
     ville: "",
     code_postal: "",
+    logo: "",
     devise: "MGA",
     tva_defaut: 20,
     delai_paiement_jours: 30,
     prefixe_devis: "DEV",
     prefixe_facture: "FAC",
     prefixe_contrat: "CTR",
+    entete_badge: "BADGE OFFICIEL POINTAGE TERRAIN",
+    couleurs_roles: JSON.stringify({
+      directeur: "#1e3a8a",
+      chef_projet: "#4338ca",
+      chef_chantier: "#ea580c",
+      comptable: "#0d9488",
+      rh: "#7e22ce",
+      materiel: "#475569",
+      magasinier: "#d97706",
+      commercial: "#059669",
+      employe: "#2563eb",
+      client: "#6d28d9",
+    }),
   });
+
+  const [roleColors, setRoleColors] = useState<Record<string, string>>({
+    directeur: "#1e3a8a",
+    chef_projet: "#4338ca",
+    chef_chantier: "#ea580c",
+    comptable: "#0d9488",
+    rh: "#7e22ce",
+    materiel: "#475569",
+    magasinier: "#d97706",
+    commercial: "#059669",
+    employe: "#2563eb",
+    client: "#6d28d9",
+  });
+
   const [usersLoading, setUsersLoading] = useState(true)
   const [logsLoading, setLogsLoading] = useState(true)
   const [entrepriseLoaded, setEntrepriseLoaded] = useState(false);
@@ -131,6 +160,7 @@ export function SettingsPage() {
     nom: user?.nom || "",
     prenom: user?.prenom || "",
     email: user?.email || "",
+    photo: (user as any)?.photo || "",
     password_actuel: "",
     nouveau_password: "",
   });
@@ -148,6 +178,15 @@ export function SettingsPage() {
             data.entreprise) ||
           (data as EntrepriseSettings) ||
           {};
+        const anyE = e as any;
+        if (anyE.couleurs_roles) {
+          try {
+            const parsed = typeof anyE.couleurs_roles === 'string' ? JSON.parse(anyE.couleurs_roles) : anyE.couleurs_roles;
+            setRoleColors(prev => ({ ...prev, ...parsed }));
+          } catch {
+            // fallback
+          }
+        }
         setEntrepriseForm({
           nom: e.nom || "",
           nom_commercial: e.nom_commercial || "",
@@ -157,12 +196,15 @@ export function SettingsPage() {
           adresse: e.adresse || "",
           ville: e.ville || "",
           code_postal: e.code_postal || "",
+          logo: anyE.logo || "",
           devise: e.devise || "MGA",
           tva_defaut: e.tva_defaut ?? 20,
           delai_paiement_jours: e.delai_paiement_defaut ?? 30,
           prefixe_devis: e.prefixe_devis || "DEV",
           prefixe_facture: e.prefixe_facture || "FAC",
           prefixe_contrat: e.prefixe_contrat || "CTR",
+          entete_badge: anyE.entete_badge || "BADGE OFFICIEL POINTAGE TERRAIN",
+          couleurs_roles: typeof anyE.couleurs_roles === 'string' ? anyE.couleurs_roles : JSON.stringify(roleColors),
         });
         setEntrepriseLoaded(true);
       })
@@ -293,6 +335,7 @@ export function SettingsPage() {
       role_code: "employe",
       password: "",
       telephone: "",
+      photo: "",
     });
     setFormError(null);
     setShowUserModal(true);
@@ -307,6 +350,7 @@ export function SettingsPage() {
       role_code: u.role_code,
       password: "",
       telephone: u.telephone || "",
+      photo: (u as any).photo || "",
     });
     setFormError(null);
     setShowUserModal(true);
@@ -484,6 +528,14 @@ export function SettingsPage() {
             onClick={() => setActiveTab("parametres")}
           >
             <i className="bi bi-building me-2"></i>Paramètres Entreprise
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === "badges" ? "active" : ""}`}
+            onClick={() => setActiveTab("badges")}
+          >
+            <i className="bi bi-palette me-2"></i>Logo & Badges QR
           </button>
         </li>
         <li className="nav-item">
@@ -940,8 +992,189 @@ export function SettingsPage() {
          </div>
        )}
 
+       {activeTab === "badges" && (
+         <div className="row g-4">
+           <div className="col-lg-7">
+             <div className="card border-0 shadow-sm p-4 rounded-4 mb-4">
+               <h5 className="fw-bold mb-3 border-bottom pb-2">
+                 <i className="bi bi-palette me-2 text-primary"></i>Personnalisation & Logo de l'Entreprise
+               </h5>
+               
+               <div className="mb-4">
+                 <label className="form-label fw-semibold">URL du Logo d'Entreprise</label>
+                 <div className="input-group">
+                   <span className="input-group-text bg-light"><i className="bi bi-image"></i></span>
+                   <input
+                     type="text"
+                     className="form-control"
+                     placeholder="https://exemple.com/logo.png (ou data:image/...)"
+                     value={entrepriseForm.logo}
+                     onChange={(e) => setEntrepriseForm({ ...entrepriseForm, logo: e.target.value })}
+                   />
+                 </div>
+                 <div className="form-text">Ce logo apparaîtra sur tous les Badges QR, Devis, Factures et Contrats.</div>
+               </div>
+
+               <div className="mb-4">
+                 <label className="form-label fw-semibold">En-tête des Badges QR de Pointage</label>
+                 <input
+                   type="text"
+                   className="form-control"
+                   value={entrepriseForm.entete_badge}
+                   onChange={(e) => setEntrepriseForm({ ...entrepriseForm, entete_badge: e.target.value })}
+                 />
+                 <div className="form-text">Ex: BADGE OFFICIEL POINTAGE TERRAIN</div>
+               </div>
+
+               <h5 className="fw-bold mb-3 border-bottom pb-2 pt-2">
+                 <i className="bi bi-paint-bucket me-2 text-primary"></i>Couleurs Thématiques par Rôle
+               </h5>
+               <p className="small text-muted mb-3">Personnalisez la couleur de la carte badge pour chaque fonction métier :</p>
+
+               <div className="row g-3">
+                 {[
+                   { code: 'chef_chantier', label: 'Chef de Chantier' },
+                   { code: 'chef_projet', label: 'Chef de Projet' },
+                   { code: 'directeur', label: 'Direction Générale' },
+                   { code: 'comptable', label: 'Comptable / DAF' },
+                   { code: 'rh', label: 'Responsable RH' },
+                   { code: 'materiel', label: 'Responsable Matériel' },
+                   { code: 'magasinier', label: 'Magasinier / Stocks' },
+                   { code: 'commercial', label: 'Commercial' },
+                   { code: 'employe', label: 'Employé de Terrain / Ouvrier' },
+                   { code: 'client', label: 'Client' },
+                 ].map((r) => (
+                   <div className="col-md-6" key={r.code}>
+                     <div className="d-flex align-items-center justify-content-between p-2 bg-light rounded border">
+                       <span className="small fw-semibold">{r.label}</span>
+                       <div className="d-flex align-items-center gap-2">
+                         <input
+                           type="color"
+                           className="form-control form-control-color"
+                           value={roleColors[r.code] || '#2563eb'}
+                           onChange={(e) => setRoleColors({ ...roleColors, [r.code]: e.target.value })}
+                           title={`Couleur pour ${r.label}`}
+                         />
+                         <span className="font-monospace small text-muted" style={{ width: '60px' }}>{roleColors[r.code] || '#2563eb'}</span>
+                       </div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+
+               <button
+                 type="button"
+                 className="btn btn-primary fw-bold mt-4 px-4 shadow-sm"
+                 disabled={saving}
+                 onClick={async () => {
+                   setSaving(true);
+                   try {
+                     const payload = {
+                       ...entrepriseForm,
+                       couleurs_roles: JSON.stringify(roleColors),
+                       delai_paiement_defaut: entrepriseForm.delai_paiement_jours,
+                     };
+                     await api.put("/parametres/entreprise", payload);
+                     useToastStore.getState().addToast({
+                       type: "success",
+                       title: "Personnalisation enregistrée",
+                       message: "Le logo et la charte graphique des badges ont été sauvegardés !",
+                       duration: 4000,
+                     });
+                   } catch (err) {
+                     useToastStore.getState().addToast({
+                       type: "error",
+                       title: "Erreur",
+                       message: formatErrorMessage(err, "Erreur lors de l'enregistrement de la charte."),
+                       duration: 5000,
+                     });
+                   } finally {
+                     setSaving(false);
+                   }
+                 }}
+               >
+                 <i className="bi bi-check-lg me-2"></i>Enregistrer la charte & badges
+               </button>
+             </div>
+           </div>
+
+           <div className="col-lg-5">
+             <div className="card border-0 shadow-sm p-4 rounded-4 sticky-top" style={{ top: '90px' }}>
+               <h6 className="fw-bold mb-3 text-muted text-uppercase tracking-wider">Aperçu en Direct du Badge QR</h6>
+               
+               <div
+                 className="card border-0 shadow-lg rounded-4 overflow-hidden text-white mx-auto p-3 text-center mb-3"
+                 style={{
+                   width: '100%',
+                   maxWidth: '340px',
+                   background: `linear-gradient(135deg, ${roleColors['chef_chantier'] || '#ea580c'} 0%, #0f172a 100%)`,
+                 }}
+               >
+                 <div className="pb-2 border-bottom border-white border-opacity-25 mb-2">
+                   {entrepriseForm.logo ? (
+                     <img src={entrepriseForm.logo} alt="Logo preview" style={{ maxHeight: '36px', maxWidth: '140px', objectFit: 'contain' }} className="d-block mx-auto mb-1" />
+                   ) : (
+                     <div className="fw-bold fs-6">{entrepriseForm.nom || 'TIA INFO BUILD'}</div>
+                   )}
+                   <div className="small font-monospace text-uppercase" style={{ fontSize: '0.68rem', color: '#38bdf8' }}>
+                     {entrepriseForm.entete_badge || 'BADGE OFFICIEL POINTAGE TERRAIN'}
+                   </div>
+                 </div>
+
+                 <div className="py-2">
+                   <div className="rounded-circle border border-2 border-white d-flex align-items-center justify-content-center fw-bold fs-3 bg-secondary text-white mx-auto mb-2" style={{ width: '80px', height: '80px' }}>
+                     R.O
+                   </div>
+                   <h5 className="fw-bold mb-0">Rakoto Olona</h5>
+                   <div className="badge bg-light text-dark fw-bold my-1 text-uppercase" style={{ fontSize: '0.75rem' }}>
+                     Chef de Chantier
+                   </div>
+                   <div className="small text-light text-opacity-75 mb-2">Matricule: <span className="font-monospace fw-bold">EMP-042</span></div>
+
+                   <div className="p-2 bg-white rounded-3 d-inline-block shadow-sm">
+                     <img
+                       src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=TIA-EMP-042-SAMPLE"
+                       alt="QR Preview"
+                       style={{ width: '130px', height: '130px', display: 'block' }}
+                     />
+                   </div>
+                   <div className="small text-light text-opacity-50 mt-2" style={{ fontSize: '0.68rem' }}>
+                     Logo & couleur appliqués automatiquement lors de l'impression.
+                   </div>
+                 </div>
+               </div>
+             </div>
+           </div>
+         </div>
+       )}
+
       {activeTab === "profil" && (
-        <form onSubmit={handleSaveProfil}>
+        <form onSubmit={handleSaveProfil} className="card border-0 shadow-sm p-4 rounded-4" style={{ maxWidth: '700px' }}>
+          <h5 className="fw-bold mb-4 border-bottom pb-2"><i className="bi bi-person-circle me-2 text-primary"></i>Mon Profil Personnel</h5>
+          
+          <div className="d-flex align-items-center gap-4 mb-4 pb-3 border-bottom">
+            <div>
+              {profilForm.photo ? (
+                <img src={profilForm.photo} alt="Avatar" className="rounded-circle border border-3 border-primary shadow-sm" style={{ width: '96px', height: '96px', objectFit: 'cover' }} />
+              ) : (
+                <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold fs-2 shadow-sm" style={{ width: '96px', height: '96px' }}>
+                  {profilForm.prenom?.[0] || 'U'}{profilForm.nom?.[0] || ''}
+                </div>
+              )}
+            </div>
+            <div className="flex-grow-1">
+              <label className="form-label fw-semibold">Photo de profil (URL ou Image)</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="https://exemple.com/photo.jpg"
+                value={profilForm.photo}
+                onChange={(e) => setProfilForm({ ...profilForm, photo: e.target.value })}
+              />
+              <div className="form-text">Cette photo apparaîtra sur votre profil, votre badge et la plateforme.</div>
+            </div>
+          </div>
+
           <div className="row g-3">
             <div className="col-md-6">
               <label className="form-label fw-semibold">Prénom</label>
@@ -979,10 +1212,10 @@ export function SettingsPage() {
           </div>
           <button
             type="submit"
-            className="btn btn-outline-secondary fw-bold mt-4"
+            className="btn btn-primary fw-bold mt-4 shadow-sm"
             disabled={saving}
           >
-            Mettre à jour le profil
+            <i className="bi bi-check-lg me-2"></i>Mettre à jour le profil
           </button>
         </form>
       )}

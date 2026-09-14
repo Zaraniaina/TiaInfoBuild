@@ -34,6 +34,8 @@ class EntrepriseCreate(BaseModel):
     delai_paiement_defaut: int | None = Field(default=30)
     validite_devis: int | None = Field(default=30)
     mentions_legales: str | None = None
+    couleurs_roles: str | None = None
+    entete_badge: str | None = Field(default=None, max_length=255)
     actif: bool | None = True
     admin_nom: str | None = Field(default=None, max_length=100)
     admin_prenom: str | None = Field(default=None, max_length=100)
@@ -98,6 +100,8 @@ class EntrepriseUpdate(BaseModel):
     delai_paiement_defaut: int | None = None
     validite_devis: int | None = None
     mentions_legales: str | None = None
+    couleurs_roles: str | None = None
+    entete_badge: str | None = None
     actif: bool | None = None
 
 
@@ -128,6 +132,8 @@ class EntrepriseResponse(BaseModel):
     delai_paiement_defaut: int | None = None
     validite_devis: int | None = None
     mentions_legales: str | None = None
+    couleurs_roles: str | None = None
+    entete_badge: str | None = None
     actif: bool | None = None
     date_creation: datetime | None = None
     created_at: datetime | None = None

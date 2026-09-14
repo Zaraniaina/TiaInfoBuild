@@ -2,11 +2,13 @@ import React from 'react'
 import { Employe } from '@/types'
 
 interface WorkerBadgeCardProps {
-  employe: Partial<Employe> & { code_qr_badge?: string }
+  employe: Partial<Employe> & { code_qr_badge?: string; couleur_role?: string }
+  entrepriseLogo?: string
+  entrepriseNom?: string
   onPrint?: () => void
 }
 
-export const WorkerBadgeCard: React.FC<WorkerBadgeCardProps> = ({ employe, onPrint }) => {
+export const WorkerBadgeCard: React.FC<WorkerBadgeCardProps> = ({ employe, entrepriseLogo, entrepriseNom, onPrint }) => {
   const qrCodeValue = typeof employe.code_qr_badge === 'string' ? employe.code_qr_badge : `TIA-EMP-1-${employe.id || 0}-REF`
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCodeValue)}`
 
@@ -15,13 +17,20 @@ export const WorkerBadgeCard: React.FC<WorkerBadgeCardProps> = ({ employe, onPri
   const poste = typeof employe.poste === 'string' ? employe.poste : 'Ouvrier de Chantier'
   const matricule = typeof employe.matricule === 'string' ? employe.matricule : `EMP-${employe.id}`
   const contrat = typeof employe.type_contrat === 'string' ? employe.type_contrat : 'CDI'
+  const cardBg = employe.couleur_role
+    ? `linear-gradient(135deg, ${employe.couleur_role} 0%, #0f172a 100%)`
+    : 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)'
 
   return (
-    <div className="card border-0 shadow-sm rounded-4 overflow-hidden" style={{ maxWidth: '380px', margin: '0 auto', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', color: '#fff' }}>
+    <div className="card border-0 shadow-sm rounded-4 overflow-hidden" style={{ maxWidth: '380px', margin: '0 auto', background: cardBg, color: '#fff' }}>
       {/* Header Badge */}
-      <div className="p-3 text-center border-bottom border-secondary border-opacity-25" style={{ background: 'rgba(255, 255, 255, 0.05)' }}>
+      <div className="p-3 text-center border-bottom border-secondary border-opacity-25" style={{ background: 'rgba(255, 255, 255, 0.08)' }}>
         <div className="d-flex align-items-center justify-content-center gap-2">
-          <div className="bg-primary text-white rounded-3 fw-bold px-2 py-1" style={{ fontSize: '0.8rem' }}>TIA BUILD</div>
+          {entrepriseLogo ? (
+            <img src={entrepriseLogo} alt="Logo" style={{ maxHeight: '32px', maxWidth: '140px', objectFit: 'contain' }} />
+          ) : (
+            <div className="bg-primary text-white rounded-3 fw-bold px-2 py-1" style={{ fontSize: '0.8rem' }}>{entrepriseNom || 'TIA BUILD'}</div>
+          )}
           <span className="fw-bold tracking-wider text-uppercase" style={{ fontSize: '0.85rem', color: '#38bdf8' }}>BADGE OFFICIEL TERRAIN</span>
         </div>
       </div>

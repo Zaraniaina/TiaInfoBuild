@@ -47,7 +47,6 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/rh',
     '/materiels',
     '/stocks',
-    '/finance',
     '/alertes',
   ],
   chef_chantier: [
@@ -56,7 +55,6 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/rh',
     '/materiels',
     '/stocks',
-    '/finance',
     '/alertes',
   ],
   rh: [
@@ -81,7 +79,6 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/dashboard',
     '/commercial',
     '/chantiers',
-    '/finance',
     '/alertes',
   ],
   employe: [
@@ -328,9 +325,9 @@ export function getRolePermissions(roleCode: string): RolePermissions {
     canCreateClient: isAdmin || isCommercial,
     // Le Directeur valide mais ne crée pas les devis courants
     canCreateDevis: isAdmin || isCommercial,
-    canCreateFacture: isAdmin || isCommercial,
+    canCreateFacture: isAdmin || isCommercial || isComptable,
     canValidateDevis: isAdmin || isDirecteur || isCommercial,
-    canAddPaiement: isAdmin || isCommercial || isComptable,
+    canAddPaiement: isAdmin || isDirecteur || isComptable,
 
     // Cycle commercial
     canCreateDemande: isAdmin || isCommercial,

@@ -22,6 +22,7 @@ class Client(Base):
     telephone: Mapped[str | None] = mapped_column(String(50))
     portable: Mapped[str | None] = mapped_column(String(50))
     site_web: Mapped[str | None] = mapped_column(String(255))
+    photo: Mapped[str | None] = mapped_column(Text)
     adresse: Mapped[str | None] = mapped_column(Text)
     adresse_complement: Mapped[str | None] = mapped_column(Text)
     code_postal: Mapped[str | None] = mapped_column(String(20))

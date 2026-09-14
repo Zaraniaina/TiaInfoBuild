@@ -54,6 +54,16 @@ class Settings(BaseSettings):
     default_entreprise_tva: float = 20.0
     default_entreprise_delai_paiement: int = 30
 
+    # SMTP / Email Configuration (Mailpit en dev par défaut)
+    smtp_host: str = "localhost"
+    smtp_port: int = 1025
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_tls: bool = False
+    smtp_from_email: str = "no-reply@tiainfobuild.com"
+    smtp_from_name: str = "TIA INFO BUILD"
+    frontend_url: str = "http://localhost:5173"
+
     # Logging
     log_level: str = "INFO"
 

@@ -72,3 +72,49 @@ Entités : Client, DemandeTravaux, Projet, Metre, Devis, Contrat, Avenant, Chant
 - **Rôle client** : Ajouté (12 rôles total)
 - **Module commercial** : Ajout des entités Demande, Projet, Métré, Situation avec routes CRUD complètes
 - **Frontend commercial** : Interfaces des 4 nouvelles entités (types, service API, onglets, modals) intégrées à CommercialPage
+
+## Emails & Réinitialisation de Mot de Passe
+
+### Développement — Mailpit (intercepteur local)
+
+En développement, tous les emails envoyés par le backend sont interceptés localement par **Mailpit** (aucun email réel n'est envoyé).
+
+1. **Télécharger Mailpit** : https://github.com/axllent/mailpit/releases
+2. **Lancer Mailpit** (dans un terminal séparé) :
+   ```powershell
+   mailpit.exe
+   # SMTP sur localhost:1025 | Interface Web sur http://localhost:8025
+   ```
+3. Le backend est pré-configuré pour Mailpit en dev (`SMTP_HOST=localhost`, `SMTP_PORT=1025`).
+4. Consultez **http://localhost:8025** pour voir tous les emails reçus.
+
+### Production — Configuration SMTP
+
+Ajoutez ces variables dans `Web/backend/.env` (ou dans vos variables d'environnement serveur) :
+
+| Variable | Description | Exemple prod |
+|----------|-------------|--------------|
+| `SMTP_HOST` | Serveur SMTP | `smtp.gmail.com` |
+| `SMTP_PORT` | Port SMTP | `465` (SSL) ou `587` (STARTTLS) |
+| `SMTP_USER` | Identifiant | `no-reply@entreprise.mg` |
+| `SMTP_PASSWORD` | Mot de passe app | `xxxxxxxxxxx` |
+| `SMTP_TLS` | SSL/TLS natif | `true` |
+| `SMTP_FROM_EMAIL` | Expéditeur | `no-reply@entreprise.mg` |
+| `SMTP_FROM_NAME` | Nom affiché | `TIA INFO BUILD` |
+| `FRONTEND_URL` | URL du frontend | `https://app.entreprise.mg` |
+
+### Flux Email Implémentés
+
+| Déclencheur | Email envoyé |
+|-------------|-------------|
+| `POST /api/auth/forgot-password` | Lien de réinitialisation de mot de passe (valide 30 min) |
+| `POST /api/auth/register-entreprise` | Email de confirmation et lien d'activation de compte (valide 24h) (`GET /auth/verify-email?token=...`) |
+| `POST /api/auth/register-entreprise` | Email de bienvenue à l'administrateur de la nouvelle entreprise |
+
+### Pages Frontend Ajoutées
+
+| Route | Page | Description |
+|-------|------|-------------|
+| `/forgot-password` | `ForgotPasswordPage.tsx` | Formulaire de demande de réinitialisation |
+| `/reset-password?token=...` | `ResetPasswordPage.tsx` | Formulaire de saisie du nouveau mot de passe |
+| `/register` ou `/register-entreprise` | `RegisterPage.tsx` | Inscription d'une nouvelle entreprise |

@@ -6,6 +6,9 @@ import { useAuthStore } from '@/stores/auth.store'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { ClientLoginPage } from '@/pages/auth/ClientLoginPage'
+import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
+import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage'
 import { RoleRedirect } from '@/components/auth/RoleRedirect'
 import { PricingPage } from '@/pages/pricing/PricingPage'
 
@@ -83,6 +86,10 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/client-login" element={<ClientLoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/register-entreprise" element={<RegisterPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/" element={<ProtectedRoute />}>
         <Route index element={<RoleRedirect />} />

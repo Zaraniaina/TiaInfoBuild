@@ -110,7 +110,7 @@ async def update_profile(payload: CurrentUserPayload, db: DbDep, data: Utilisate
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur non trouvé")
     obj_in = data.model_dump(exclude_unset=True)
     # Filtrer uniquement les champs autorisés pour la modification du profil personnel
-    allowed_profile_fields = {"nom", "prenom", "telephone", "email"}
+    allowed_profile_fields = {"nom", "prenom", "telephone", "email", "photo"}
     for field, value in obj_in.items():
         if field in allowed_profile_fields and value is not None:
             setattr(user, field, value)
@@ -123,6 +123,7 @@ async def update_profile(payload: CurrentUserPayload, db: DbDep, data: Utilisate
             "prenom": user.prenom,
             "email": user.email,
             "telephone": user.telephone,
+            "photo": user.photo,
             "role_code": user.role_code,
             "entreprise_id": user.entreprise_id,
             "must_change_password": user.must_change_password,

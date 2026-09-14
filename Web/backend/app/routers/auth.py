@@ -16,6 +16,10 @@ from app.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    create_password_reset_token,
+    verify_password_reset_token,
+    create_email_verification_token,
+    verify_email_verification_token,
 )
 from app.models.utilisateur import Utilisateur
 from app.models.historique_connexion import HistoriqueConnexion
@@ -29,6 +33,13 @@ from app.schemas.auth import (
     PermissionResponse,
     RegisterEntrepriseRequest,
     RegisterEntrepriseResponse,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+)
+from app.services.email import (
+    send_reset_password_email,
+    send_welcome_entreprise_email,
+    send_email_verification_email,
 )
 from app.core.permissions import PERMISSION_MAP, Role
 
@@ -69,6 +80,12 @@ async def login(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email ou mot de passe incorrect",
+        )
+
+    if user.is_email_verified is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Veuillez confirmer votre adresse email avant de vous connecter. Un email de confirmation vous a été envoyé par email.",
         )
 
     try:
@@ -247,45 +264,124 @@ async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, re
         email=data.admin_email,
         mot_de_passe_hash=hashed_password,
         statut="actif",
+        is_email_verified=False,
     )
     db.add(admin_user)
     await db.flush()
-    # Pas de db.refresh(admin_user) : admin_user.id / .email sont déjà disponibles
-    # après le flush. Un refresh rechargerait tout le graphe de relations selectin.
 
-    access_token = create_access_token(
-        subject=admin_user.id,
-        role_code=role_code,
-        entreprise_id=entreprise.id,
-        permissions=permissions,
-    )
-    refresh_token = create_refresh_token(admin_user.id)
-    refresh_hash = hash_password(refresh_token)
-    refresh_expires = datetime.now() + timedelta(days=settings.refresh_token_expire_days)
-    db_refresh = RefreshToken(utilisateur_id=admin_user.id, token_hash=refresh_hash, expires_at=refresh_expires)
-    db.add(db_refresh)
-    admin_user.derniere_connexion = datetime.now()
-    await db.execute(
-        HistoriqueConnexion.__table__.insert().values(
-            utilisateur_id=admin_user.id,
-            ip_address=request.client.host if request.client else None,
-            user_agent=request.headers.get("user-agent"),
-            reussi=True,
-            date_connexion=datetime.now(),
-        )
-    )
     await db.commit()
-    # Pas de db.refresh(admin_user) : les champs retournés (email, id) sont déjà
-    # chargés. Un refresh rechargerait tout le graphe de relations selectin de
-    # l'utilisateur et échouerait en 500 sur une colonne manquante d'une table liée.
+
+    # Envoi de l'email de confirmation
+    verification_token = create_email_verification_token(admin_user.email)
+    admin_fullname = f"{admin_user.prenom or ''} {admin_user.nom or ''}".strip()
+    await send_email_verification_email(
+        to_email=admin_user.email,
+        token=verification_token,
+        admin_nom=admin_fullname,
+        entreprise_nom=entreprise.nom,
+    )
 
     return RegisterEntrepriseResponse(
         entreprise_id=entreprise.id,
         utilisateur_id=admin_user.id,
         email=admin_user.email,
         role_code=role_code,
-        message="Entreprise créée avec succès",
+        message="Entreprise créée avec succès. Un email de confirmation vous a été envoyé pour activer votre compte.",
     )
+
+
+@router.post("/forgot-password")
+async def forgot_password(payload: ForgotPasswordRequest, db: DbSession):
+    """Demande un lien de réinitialisation de mot de passe envoyé par email."""
+    result = await db.execute(
+        select(Utilisateur).where(
+            Utilisateur.email == payload.email,
+            Utilisateur.is_deleted == False,
+        )
+    )
+    user = result.scalar_one_or_none()
+
+    if user:
+        reset_token = create_password_reset_token(user.email)
+        user_name = f"{user.prenom or ''} {user.nom or ''}".strip()
+        await send_reset_password_email(
+            to_email=user.email,
+            reset_token=reset_token,
+            user_name=user_name,
+        )
+
+    # Réponse uniforme pour éviter l'énumération d'adresses email
+    return {
+        "message": "Si l'adresse email correspond à un compte actif, un lien de réinitialisation vous a été envoyé par email."
+    }
+
+
+@router.post("/reset-password")
+async def reset_password(payload: ResetPasswordRequest, db: DbSession):
+    """Réinitialise le mot de passe via un token JWT valide."""
+    email = verify_password_reset_token(payload.token)
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le lien de réinitialisation est invalide ou a expiré.",
+        )
+
+    result = await db.execute(
+        select(Utilisateur).where(
+            Utilisateur.email == email,
+            Utilisateur.is_deleted == False,
+        )
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Utilisateur non trouvé ou compte désactivé.",
+        )
+
+    user.mot_de_passe_hash = hash_password(payload.new_password)
+    user.must_change_password = False
+    await db.commit()
+
+    return {
+        "message": "Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter."
+    }
+
+
+@router.get("/verify-email")
+async def verify_email(token: str, db: DbSession):
+    """Valide l'adresse email d'un utilisateur grâce au token JWT de vérification."""
+    email = verify_email_verification_token(token)
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le lien de confirmation est invalide ou a expiré.",
+        )
+
+    result = await db.execute(
+        select(Utilisateur).where(
+            Utilisateur.email == email,
+            Utilisateur.is_deleted == False,
+        )
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Utilisateur non trouvé ou compte supprimé.",
+        )
+
+    if user.is_email_verified:
+        return {"message": "Votre adresse email est déjà confirmée. Vous pouvez vous connecter."}
+
+    user.is_email_verified = True
+    await db.commit()
+
+    return {
+        "message": "Votre adresse email a été confirmée avec succès. Vous pouvez maintenant vous connecter."
+    }
 
 
 @router.post("/change-password")

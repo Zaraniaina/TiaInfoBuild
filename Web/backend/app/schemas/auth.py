@@ -188,3 +188,41 @@ class RegisterEntrepriseResponse(BaseModel):
     email: str
     role_code: str
     message: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Demande de réinitialisation de mot de passe."""
+
+    email: EmailStr
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+
+class ResetPasswordRequest(BaseModel):
+    """Réinitialisation effectuant la mise à jour du mot de passe."""
+
+    token: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8)
+    confirm_password: str = Field(..., min_length=8)
+
+    @model_validator(mode="after")
+    def check_passwords_match(self) -> "ResetPasswordRequest":
+        if self.new_password != self.confirm_password:
+            raise ValueError("Les mots de passe ne correspondent pas")
+        return self
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password_policy(cls, v: str) -> str:
+        import re
+        if len(v) < 8:
+            raise ValueError("Le mot de passe doit contenir au moins 8 caractères")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Le mot de passe doit contenir au moins une majuscule")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Le mot de passe doit contenir au moins une minuscule")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("Le mot de passe doit contenir au moins un chiffre")
+        if not re.search(r"[^A-Za-z0-9]", v):
+            raise ValueError("Le mot de passe doit contenir au moins un caractère spécial")
+        return v
