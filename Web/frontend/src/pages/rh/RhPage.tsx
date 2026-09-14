@@ -5,11 +5,15 @@ import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
 import { QRScannerModal } from '@/components/pointage/QRScannerModal'
 import { WorkerBadgeCard } from '@/components/pointage/WorkerBadgeCard'
+import { TableSkeleton } from '@/components/ui/Skeleton'
+import { RhCongesTab } from './RhCongesTab'
+import { RhPaieTab } from './RhPaieTab'
+import { RhEmployeDocsModal } from './RhEmployeDocsModal'
 
 export function RhPage() {
   const { user } = useAuthStore()
   const perms = getRolePermissions(user?.role_code || '')
-  const [activeTab, setActiveTab] = useState<'employes' | 'pointages' | 'equipes' | 'heures-sup'>('employes')
+  const [activeTab, setActiveTab] = useState<'employes' | 'pointages' | 'equipes' | 'heures-sup' | 'conges' | 'paie'>('employes')
 
   // State
   const [employes, setEmployes] = useState<Employe[]>([])
@@ -29,6 +33,7 @@ export function RhPage() {
   const [showBadgeModal, setShowBadgeModal] = useState(false)
   const [showScannerModal, setShowScannerModal] = useState(false)
   const [selectedBadgeEmploye, setSelectedBadgeEmploye] = useState<Employe | null>(null)
+  const [docsEmployeId, setDocsEmployeId] = useState<number | null>(null)
   const [selectedEmploye, setSelectedEmploye] = useState<Employe | null>(null)
   const [employeForm, setEmployeForm] = useState<Partial<Employe>>({})
   const [posteForm, setPosteForm] = useState({
@@ -54,6 +59,8 @@ export function RhPage() {
         const data = await rhService.getHeuresSup()
         setHeuresSup(data)
       }
+      // conges & paie : composants dédiés (RhCongesTab / RhPaieTab) qui gèrent
+      // leur propre chargement. Rien à faire ici.
     } catch {
       setEmployes([])
       setPointages([])
@@ -160,12 +167,22 @@ export function RhPage() {
             <i className="bi bi-clock-history me-2"></i>Heures Sup.
           </button>
         </li>
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'conges' ? 'active' : ''}`} onClick={() => setActiveTab('conges')}>
+            <i className="bi bi-calendar2-week me-2"></i>Congés
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'paie' ? 'active' : ''}`} onClick={() => setActiveTab('paie')}>
+            <i className="bi bi-cash-coin me-2"></i>Paie
+          </button>
+        </li>
       </ul>
 
       {/* Tab Content */}
       {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border text-secondary" role="status"></div>
+        <div className="card border-0 shadow-sm p-3">
+          <TableSkeleton rows={8} columns={6} />
         </div>
       ) : activeTab === 'employes' ? (
         <div>
@@ -352,6 +369,10 @@ export function RhPage() {
             </div>
           ))}
         </div>
+      ) : activeTab === 'conges' ? (
+        <RhCongesTab />
+      ) : activeTab === 'paie' ? (
+        <RhPaieTab />
       ) : (
         <div className="card border-0 shadow-sm">
           <div className="table-responsive">
@@ -443,6 +464,43 @@ export function RhPage() {
                     <div className="col-md-6">
                       <label className="form-label fw-semibold">Téléphone</label>
                       <input type="text" className="form-control" value={employeForm.telephone || ''} onChange={e => setEmployeForm({...employeForm, telephone: e.target.value})} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Mode de Rémunération</label>
+                      <select className="form-select" value={employeForm.mode_remuneration || 'mensuel'} onChange={e => setEmployeForm({...employeForm, mode_remuneration: e.target.value as any})}>
+                        <option value="mensuel">Mensuel</option>
+                        <option value="journalier">Journalier</option>
+                        <option value="horaire">Horaire</option>
+                        <option value="a_la_tache">À la tâche</option>
+                      </select>
+                    </div>
+                    {(employeForm.mode_remuneration === 'journalier' || employeForm.mode_remuneration === 'horaire') && (
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">
+                          Taux {employeForm.mode_remuneration === 'journalier' ? 'journalier' : 'horaire'} (MGA)
+                        </label>
+                        <input type="number" className="form-control font-monospace" value={employeForm.taux_journalier || employeForm.taux_horaire || 0} onChange={e => setEmployeForm({...employeForm, [employeForm.mode_remuneration === 'journalier' ? 'taux_journalier' : 'taux_horaire']: Number(e.target.value)})} />
+                      </div>
+                    )}
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Solde congés annuel (jours)</label>
+                      <input type="number" min={0} step={0.5} className="form-control font-monospace" value={employeForm.solde_conges_annuel ?? 30} onChange={e => setEmployeForm({...employeForm, solde_conges_annuel: Number(e.target.value)})} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">N° CNAPS</label>
+                      <input type="text" className="form-control" value={employeForm.numero_cnaps || ''} onChange={e => setEmployeForm({...employeForm, numero_cnaps: e.target.value})} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">N° OSTIE</label>
+                      <input type="text" className="form-control" value={employeForm.numero_ostie || ''} onChange={e => setEmployeForm({...employeForm, numero_ostie: e.target.value})} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Statut Déclaration</label>
+                      <select className="form-select" value={employeForm.statut_declaration || 'non_declare'} onChange={e => setEmployeForm({...employeForm, statut_declaration: e.target.value as any})}>
+                        <option value="non_declare">Non déclaré</option>
+                        <option value="cnaps">CNAPS</option>
+                        <option value="cnaps_ostie">CNAPS + OSTIE</option>
+                      </select>
                     </div>
                   </div>
                 </div>

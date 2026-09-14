@@ -3,6 +3,7 @@ import type { Article, MouvementStock, Fournisseur } from '@/types'
 import { stocksService } from '@/services/stocks.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 export function StocksPage() {
   const { user } = useAuthStore()
@@ -154,8 +155,8 @@ export function StocksPage() {
 
       {/* Main Content */}
       {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border text-secondary" role="status"></div>
+        <div className="card border-0 shadow-sm p-3">
+          <TableSkeleton rows={8} columns={5} />
         </div>
       ) : activeTab === 'articles' ? (
         <div>

@@ -233,6 +233,35 @@ APP_DEBUG=True
 
 ## 🛠️ Dépannage
 
+### Erreur : `NameError: name 'DbSession' is not defined` au demarrage du backend
+Cause : un alias `Annotated` (ex: `DbSession`) etait utilise dans une annotation de fonction
+AVANT sa definition dans le module.
+- Python 3.13 et avant : les annotations sont evaluees immediatement au `def` -> crash.
+- Python 3.14+ : annotations paresseuses (PEP 649) -> le bug passe inapercu sur une machine recente
+  mais casse celle du collegue.
+
+Ce cas est corrige dans `app/routers/utilisateurs.py` (alias definis en tete de module).
+**Regle a respecter** : dans tout router, definir les alias `Router = APIRouter(...)`,
+`DbSession = Annotated[...]`, `AdminCheck = ...` AVANT la premiere fonction qui les utilise.
+Apres un `git pull`, relancer le backend.
+
+### Regles pour les futures migrations Alembic
+- Le nom de revision (fichier + `revision=`) doit faire **32 caracteres maximum** :
+  `alembic_version` est un VARCHAR(32), un nom trop long est tronque silencieusement et
+  provoque l'erreur `expected to match one row... 0 found` (cas de la revision 014 renommee).
+- Le type de colonne FK doit correspondre EXACTEMENT au type de la colonne cible
+  (ex: FK vers `projets.id` = `int(11)` -> `sa.Integer()`, pas `BigInteger`, sinon errno 150).
+- Ecrire les migrations de facon idempotente (verifier colonnes/FK/index existants
+  avant creation) pour garantir la reproductibilite sur un clone.
+
+### Erreur : `401 "Email ou mot de passe incorrect"` apres une recration de la base
+Les comptes de test n'existent pas : le seed n'a pas ete relance.
+```powershell
+python -m app.scripts.init_db
+```
+Ce script est idempotent (sans effet si les donnees existent deja). `start-dev.ps1`
+l'execute automatiquement apres les migrations.
+
 ### Erreur : `Can't create table ... (errno: 150)`
 Problème de contrainte FK mal formée. La migration 011 a été corrigée (création de table sans FK, puis ajout séparé).
 
@@ -248,6 +277,128 @@ La table existe déjà dans la base mais `alembic_version` n'a pas été mis à 
 ```powershell
 alembic stamp head
 ```
+
+### Erreur : `AttributeError: type object 'Preference' has no attribute 'cle'`
+La route `/api/super-admin/settings` utilise `Preference.cle` mais le modèle `Preference` n'a pas cette colonne (il est lié à `user_id`).
+
+**Cause** : le code utilisait le mauvais modèle pour stocker les paramètres de plateforme.
+
+**Correction** : un modèle dédié `PlatformSettings` a été créé dans `app/models/platform_settings.py` avec les colonnes `cle`, `valeur`, `description`, `updated_t`.
+
+Pour appliquer la correction :
+1. Faire un `git pull` pour récupérer le nouveau modèle
+2. Créer la table :
+```powershell
+python -c "import asyncio; from app.database import engine, Base; from app.models.platform_settings import PlatformSettings; asyncio.run(Base.metadata.create_all(engine))"
+```
+3. Relancer le backend.
+
+### Erreur : `400 Entreprise ID manquant` pour le Super Admin sur `/api/dashboard/stats`
+Le Super Admin n'a pas d'entreprise_id, la route échouait.
+
+**Correction** : ajout d'une méthode `get_global_stats` dans `DashboardCRUD` qui retourne des statistiques globales (toutes entreprises) quand l'utilisateur est super_admin sans entreprise_id.
+
+### Écran blanc sur le frontend
+**Cause** : les modules `lazy()` avec `Suspense` peuvent bloquer le rendu.
+
+**Correction** :
+- Ajout d'un `LoadingFallback` avec timeout de 10 secondes
+- Affichage d'un bouton "Recharger" si le chargement prend trop de temps
+- Meilleure gestion des erreurs dans `ErrorBoundary`
+
+---
+
+---
+
+
+
+---
+
+## ⚡ Bonnes pratiques de performance (pour les agents IA)
+
+### 1. Requêtes SQL : éviter le N+1
+**Problème** : charger N enregistrements puis faire N requêtes supplémentaires (un par enregistrement).
+```python
+# MAUVAIS : N+1 query (1 requête + N requêtes)
+items = (await db.execute(select(Entreprise))).scalars().all()
+for e in items:
+    count = (await db.execute(
+        select(func.count(Utilisateur.id)).where(Utilisateur.entreprise_id == e.id)
+    )).scalar()
+
+# BON : sous-requête scalaire corrélée (1 requête totale)
+subq = (
+    select(func.count(Utilisateur.id))
+    .where(Utilisateur.entreprise_id == Entreprise.id)
+    .correlate(Entreprise)
+    .scalar_subquery()
+)
+result = await db.execute(select(Entreprise, subq.label("user_count")))
+```
+
+### 2. Agrégation : une seule requête au lieu de N
+**Problème** : compter 10 choses différentes = 10 requêtes SQL.
+```python
+# MAUVAIS : 10 requêtes séparées
+total = (await db.execute(select(func.count(Entreprise.id)))).scalar()
+actives = (await db.execute(select(func.count(Entreprise.id)).where(...))).scalar()
+...
+
+# BON : sous-requêtes scalaires en une seule requête
+subq_total = select(func.count(Entreprise.id)).scalar_subquery()
+subq_actives = select(func.count(Entreprise.id)).where(Entreprise.actif == True).scalar_subquery()
+row = (await db.execute(select(subq_total, subq_actives, ...))).one()
+```
+
+### 3. SQL echo : toujours désactivé en production
+```python
+# database.py
+echo=settings.db_echo,  # False par défaut, True uniquement pour debug ponctuel
+```
+L'echo SQL logue **chaque requête + toutes les lignes de résultats** : x10 ou plus sur les temps de réponse.
+
+### 4. Pagination obligatoire sur les listes
+```python
+# Toujours paginer les listes (éviter de charger 10 000 lignes)
+@router.get("/items")
+async def list_items(page: int = Query(1, ge=1), size: int = Query(25, ge=1, le=100)):
+    offset = (page - 1) * size
+    result = await db.execute(select(Item).offset(offset).limit(size))
+    return {"items": result.scalars().all(), "total": total}
+```
+
+### 5. Index sur les colonnes de jointure et filtres
+```sql
+-- Index obligatoires pour les performances
+CREATE INDEX idx_utilisateurs_entreprise_id ON utilisateurs(entreprise_id);
+CREATE INDEX idx_utilisateurs_is_deleted ON utilisateurs(is_deleted);
+CREATE INDEX idx_chantiers_entreprise_id ON chantiers(entreprise_id);
+CREATE INDEX idx_factures_statut ON factures(statut);
+```
+
+### 6. Éviter les requêtes dans les boucles
+```python
+# MAUVAIS
+for id in ids:
+    item = (await db.execute(select(Item).where(Item.id == id))).scalar()
+
+# BON : une seule requête IN
+items = (await db.execute(select(Item).where(Item.id_(ids)))).scalars().all()
+```
+
+### 7. Utiliser `selectinload` pour les relations
+```python
+# MAUVAIS : lazy loading dans une boucle (N+1)
+for e in entreprises:
+    print(e.utilisateurs)  # requête supplémentaire à chaque itération
+
+# BON : eager loading en une requête
+from sqlalchemy.orm import selectinload
+result = await db.execute(
+    select(Entreprise).options(selectinload(Entreprise.utilisateurs))
+)
+```
+
 
 ### Erreur : `Can't connect to MySQL`
 - Vérifier que **MySQL est démarré** (XAMPP / WAMP / service)

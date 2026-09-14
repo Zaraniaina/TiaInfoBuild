@@ -6,6 +6,7 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useToastStore } from "@/stores/toast.store";
 import { ROLE_NAMES, getRolePermissions } from "@/config/roles.config";
 import { formatErrorMessage } from "@/utils/errorMessage";
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 type UserRole =
   | "admin_entreprise"
@@ -120,6 +121,8 @@ export function SettingsPage() {
     prefixe_facture: "FAC",
     prefixe_contrat: "CTR",
   });
+  const [usersLoading, setUsersLoading] = useState(true)
+  const [logsLoading, setLogsLoading] = useState(true)
   const [entrepriseLoaded, setEntrepriseLoaded] = useState(false);
   const [subscription, setSubscription] = useState<any | null>(null)
   const [subLoading, setSubLoading] = useState(true)
@@ -180,6 +183,7 @@ export function SettingsPage() {
   };
 
   const loadUsers = () => {
+    setUsersLoading(true)
     api
       .get("/utilisateurs?size=100")
       .then((res) => {
@@ -203,14 +207,17 @@ export function SettingsPage() {
           }),
         );
       })
-      .catch(() => setUsers([]));
+      .catch(() => setUsers([]))
+      .finally(() => setUsersLoading(false))
   };
 
   const loadLogs = () => {
+    setLogsLoading(true)
     api
       .get("/parametres/audit-logs?size=50")
       .then((res) => setLogs(res.data.items || res.data || []))
-      .catch(() => setLogs([]));
+      .catch(() => setLogs([]))
+      .finally(() => setLogsLoading(false))
   };
 
   useEffect(() => {
@@ -497,100 +504,104 @@ export function SettingsPage() {
         </li>
       </ul>
 
-      {activeTab === "utilisateurs" && (
-        <div className="table-card">
-          <div className="table-header">
-            <div className="input-group" style={{ maxWidth: "400px" }}>
-              <span className="input-group-text bg-light border-end-0">
-                <i className="bi bi-search"></i>
-              </span>
-              <input
-                type="text"
-                className="form-control border-start-0 bg-light"
-                placeholder="Rechercher un utilisateur..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <button
-              className="btn btn-outline-secondary fw-bold"
-              onClick={openCreateUser}
-            >
-              <i className="bi bi-person-plus me-2"></i>Nouvel Utilisateur
-            </button>
-          </div>
-          <div className="table-responsive">
-            <table className="table mb-0">
-              <thead>
-                <tr>
-                  <th>Utilisateur</th>
-                  <th>Email</th>
-                  <th>Rôle</th>
-                  <th>Statut</th>
-                  <th className="d-none d-md-table-cell">Téléphone</th>
-                  <th>Dernière connexion</th>
-                  <th className="text-end">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((u) => (
-                  <tr key={u.id}>
-                    <td className="fw-semibold">
-                      {u.prenom} {u.nom}
-                    </td>
-                    <td>{u.email}</td>
-                    <td>
-                      <span className={`badge ${getRoleBadge(u.role_code)}`}>
-                        {u.role_nom || u.role_code}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className={`badge ${u.statut === "actif" ? "bg-success bg-opacity-10 text-success border" : "bg-secondary bg-opacity-10 text-dark border"}`}
-                      >
-                        {u.statut === "actif" ? "Actif" : "Inactif"}
-                      </span>
-                    </td>
-                    <td className="d-none d-md-table-cell text-muted">
-                      {u.telephone || "-"}
-                    </td>
-                    <td className="text-muted">
-                      {u.derniere_connexion || "-"}
-                    </td>
-                    <td className="text-end">
-                      <div className="d-flex gap-1 justify-content-end">
-                        <button
-                          className="btn btn-sm btn-outline-primary"
-                          onClick={() => openEditUser(u)}
-                        >
-                          <i className="bi bi-pencil"></i>
-                        </button>
-                        <button
-                          className={`btn btn-sm ${u.statut === "actif" ? "btn-outline-danger" : "btn-outline-success"}`}
-                          onClick={() => handleToggleUser(u)}
-                        >
-                          {u.statut === "actif" ? (
-                            <i className="bi bi-x-circle"></i>
-                          ) : (
-                            <i className="bi bi-check-circle"></i>
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {filteredUsers.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="text-center py-4 text-muted">
-                      Aucun utilisateur trouvé.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+       {activeTab === "utilisateurs" && (
+         <div className="table-card">
+           <div className="table-header">
+             <div className="input-group" style={{ maxWidth: "400px" }}>
+               <span className="input-group-text bg-light border-end-0">
+                 <i className="bi bi-search"></i>
+               </span>
+               <input
+                 type="text"
+                 className="form-control border-start-0 bg-light"
+                 placeholder="Rechercher un utilisateur..."
+                 value={search}
+                 onChange={(e) => setSearch(e.target.value)}
+               />
+             </div>
+             <button
+               className="btn btn-outline-secondary fw-bold"
+               onClick={openCreateUser}
+             >
+               <i className="bi bi-person-plus me-2"></i>Nouvel Utilisateur
+             </button>
+           </div>
+           {usersLoading ? (
+             <TableSkeleton rows={6} columns={7} />
+           ) : (
+           <div className="table-responsive">
+             <table className="table mb-0">
+               <thead>
+                 <tr>
+                   <th>Utilisateur</th>
+                   <th>Email</th>
+                   <th>Rôle</th>
+                   <th>Statut</th>
+                   <th className="d-none d-md-table-cell">Téléphone</th>
+                   <th>Dernière connexion</th>
+                   <th className="text-end">Actions</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {filteredUsers.map((u) => (
+                   <tr key={u.id}>
+                     <td className="fw-semibold">
+                       {u.prenom} {u.nom}
+                     </td>
+                     <td>{u.email}</td>
+                     <td>
+                       <span className={`badge ${getRoleBadge(u.role_code)}`}>
+                         {u.role_nom || u.role_code}
+                       </span>
+                     </td>
+                     <td>
+                       <span
+                         className={`badge ${u.statut === "actif" ? "bg-success bg-opacity-10 text-success border" : "bg-secondary bg-opacity-10 text-dark border"}`}
+                       >
+                         {u.statut === "actif" ? "Actif" : "Inactif"}
+                       </span>
+                     </td>
+                     <td className="d-none d-md-table-cell text-muted">
+                       {u.telephone || "-"}
+                     </td>
+                     <td className="text-muted">
+                       {u.derniere_connexion || "-"}
+                     </td>
+                     <td className="text-end">
+                       <div className="d-flex gap-1 justify-content-end">
+                         <button
+                           className="btn btn-sm btn-outline-primary"
+                           onClick={() => openEditUser(u)}
+                         >
+                           <i className="bi bi-pencil"></i>
+                         </button>
+                         <button
+                           className={`btn btn-sm ${u.statut === "actif" ? "btn-outline-danger" : "btn-outline-success"}`}
+                           onClick={() => handleToggleUser(u)}
+                         >
+                           {u.statut === "actif" ? (
+                             <i className="bi bi-x-circle"></i>
+                           ) : (
+                             <i className="bi bi-check-circle"></i>
+                           )}
+                         </button>
+                       </div>
+                     </td>
+                   </tr>
+                 ))}
+                 {filteredUsers.length === 0 && (
+                   <tr>
+                     <td colSpan={7} className="text-center py-4 text-muted">
+                       Aucun utilisateur trouvé.
+                     </td>
+                   </tr>
+                 )}
+               </tbody>
+             </table>
+           </div>
+           )}
+         </div>
+       )}
 
       {activeTab === "parametres" &&
         (entrepriseLoaded ? (
@@ -862,70 +873,72 @@ export function SettingsPage() {
           </form>
           </>
         ) : (
-        <div className="text-center py-5">
-          <div className="spinner-border text-secondary" role="status"></div>
-        </div>
+        <TableSkeleton rows={8} columns={6} />
         ))}
 
-      {activeTab === "audit" && (
-        <div className="table-card">
-          <div className="table-header">
-            <h5 className="fw-bold mb-0">
-              <i className="bi bi-shield-check me-2"></i>Journal
-              d'activité
-            </h5>
-            <button
-              className="btn btn-outline-secondary btn-sm"
-              onClick={loadLogs}
-            >
-              <i className="bi bi-arrow-clockwise me-1"></i>Actualiser
-            </button>
-          </div>
-          <div className="table-responsive">
-            <table className="table mb-0">
-              <thead>
-                <tr>
-                  <th>Utilisateur</th>
-                  <th>IP</th>
-                  <th>Navigateur</th>
-                  <th>Statut</th>
-                  <th>Date & Heure</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((l) => (
-                  <tr key={l.id}>
-                    <td className="fw-semibold">
-                      Utilisateur #{l.utilisateur_id}
-                    </td>
-                    <td className="font-monospace">
-                      {l.ip_address || "127.0.0.1"}
-                    </td>
-                    <td className="small text-muted">{l.user_agent || "-"}</td>
-                    <td>
-                      <span
-                        className={`badge ${l.reussi ? "bg-success bg-opacity-10 text-success border" : "bg-danger bg-opacity-10 text-danger border"}`}
-                      >
-                        {l.reussi ? "Succès" : "Échec"}
-                      </span>
-                    </td>
-                    <td className="text-muted font-monospace">
-                      {l.date_connexion}
-                    </td>
-                  </tr>
-                ))}
-                {logs.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="text-center py-4 text-muted">
-                      Aucune entrée.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+       {activeTab === "audit" && (
+         <div className="table-card">
+           <div className="table-header">
+             <h5 className="fw-bold mb-0">
+               <i className="bi bi-shield-check me-2"></i>Journal
+               d'activité
+             </h5>
+             <button
+               className="btn btn-outline-secondary btn-sm"
+               onClick={loadLogs}
+             >
+               <i className="bi bi-arrow-clockwise me-1"></i>Actualiser
+             </button>
+           </div>
+           {logsLoading ? (
+             <TableSkeleton rows={8} columns={5} />
+           ) : (
+           <div className="table-responsive">
+             <table className="table mb-0">
+               <thead>
+                 <tr>
+                   <th>Utilisateur</th>
+                   <th>IP</th>
+                   <th>Navigateur</th>
+                   <th>Statut</th>
+                   <th>Date & Heure</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {logs.map((l) => (
+                   <tr key={l.id}>
+                     <td className="fw-semibold">
+                       Utilisateur #{l.utilisateur_id}
+                     </td>
+                     <td className="font-monospace">
+                       {l.ip_address || "127.0.0.1"}
+                     </td>
+                     <td className="small text-muted">{l.user_agent || "-"}</td>
+                     <td>
+                       <span
+                         className={`badge ${l.reussi ? "bg-success bg-opacity-10 text-success border" : "bg-danger bg-opacity-10 text-danger border"}`}
+                       >
+                         {l.reussi ? "Succès" : "Échec"}
+                       </span>
+                     </td>
+                     <td className="text-muted font-monospace">
+                       {l.date_connexion}
+                     </td>
+                   </tr>
+                 ))}
+                 {logs.length === 0 && (
+                   <tr>
+                     <td colSpan={5} className="text-center py-4 text-muted">
+                       Aucune entrée.
+                     </td>
+                   </tr>
+                 )}
+               </tbody>
+             </table>
+           </div>
+           )}
+         </div>
+       )}
 
       {activeTab === "profil" && (
         <form onSubmit={handleSaveProfil}>
@@ -1111,7 +1124,7 @@ export function SettingsPage() {
                 <div className="modal-footer border-0 pt-0">
                   <button
                     type="button"
-                     className="btn btn-outline-secondary"
+                    className="btn btn-outline-secondary"
                     onClick={() => setShowUserModal(false)}
                     disabled={saving}
                   >
@@ -1119,7 +1132,7 @@ export function SettingsPage() {
                   </button>
                     <button
                       type="submit"
-                      className="btn btn-outline-secondary fw-bold"
+                      className="btn btn-primary fw-bold"
                       disabled={saving}
                     >
                     {saving

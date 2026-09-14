@@ -2,6 +2,7 @@ import { espaceClientService, Document } from '@/services/espaceClient.service'
 import {
   PageHeader, useListePage, EtatChargement, EtatErreur, Vide, fmtDate,
 } from './shared'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import { useMemo } from 'react'
 
 const CATEGORIES = [
@@ -33,7 +34,7 @@ export function ClientDocumentsPage() {
     return map
   }, [items])
 
-  if (loading) return <EtatChargement />
+  if (loading) return <TableSkeleton rows={5} columns={3} />
   if (error) return <EtatErreur message={error} onRetry={recharger} />
 
   return (

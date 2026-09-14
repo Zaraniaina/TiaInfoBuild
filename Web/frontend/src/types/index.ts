@@ -174,6 +174,14 @@ export interface Employe {
   date_debut_contrat?: string;
   date_fin_contrat?: string;
   salaire_base: number;
+  mode_remuneration?: ModeRemuneration;
+  taux_journalier?: number;
+  taux_horaire?: number;
+  prix_tache?: number;
+  numero_cnaps?: string;
+  numero_ostie?: string;
+  statut_declaration?: "non_declare" | "cnaps" | "cnaps_ostie";
+  solde_conges_annuel?: number;
   telephone?: string;
   email?: string;
   adresse?: string;
@@ -267,6 +275,60 @@ export interface HeureSupplementaire {
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
+}
+
+// ---- Congés & Paie (module RH) ----
+
+export type ModeRemuneration = "mensuel" | "journalier" | "horaire" | "a_la_tache";
+export type TypeConge = "annuel" | "maladie" | "maternite" | "exceptionnel" | "sans_solde";
+export type StatutConge = "en_attente" | "valide" | "refuse" | "annule";
+
+export interface Conge {
+  id: number;
+  entreprise_id?: number;
+  employe_id: number;
+  type: TypeConge;
+  date_debut: string;
+  date_fin: string;
+  nb_jours: number;
+  statut: StatutConge;
+  motif?: string;
+  valide_par?: number;
+  date_validation?: string;
+  commentaire_refus?: string;
+  is_deleted?: boolean;
+  created_at?: string;
+  employe_nom?: string;
+  employe_prenom?: string;
+}
+
+export interface CongeListe {
+  items: Conge[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+export interface SoldeConge {
+  solde_restant: number;
+  solde_annuel: number;
+}
+
+export interface LignePaie {
+  employe_id: number;
+  nom: string;
+  prenom?: string;
+  mode_remuneration: ModeRemuneration;
+  jours_valides: number;
+  heures_sup: number;
+  brut: number;
+}
+
+export interface RapportPaie {
+  mois: number;
+  annee: number;
+  lignes: LignePaie[];
+  total: number;
 }
 
 // ============================================================
@@ -840,12 +902,49 @@ export interface RapportFinancier {
 }
 
 // ============================================================
-// MATERIALS
+// ============================================================
+// MATERIALS BTP & TRAÇABILITÉ
 // ============================================================
 
 export type StatutMateriel =
-  "disponible" | "en_utilisation" | "en_maintenance" | "hors_service";
+  | "disponible"
+  | "en_utilisation"
+  | "en_maintenance"
+  | "hors_service"
+  | "en_panne"
+  | "perdu";
+
 export type TypeMateriel = "engin" | "outil" | "vehicule";
+
+export type CategorieBTP =
+  | "engin_lourd"
+  | "equipement_levage"
+  | "vehicule_utilitaire"
+  | "petit_outillage"
+  | "echafaudage_securite";
+
+export type StatutVGP =
+  | "conforme"
+  | "echeance_proche"
+  | "perime"
+  | "non_assujetti";
+
+export type StatutMouvement = "demande" | "en_transit" | "livre" | "annule";
+
+export interface MouvementMateriel {
+  id: number;
+  entreprise_id: number;
+  materiel_id: number;
+  chantier_origine_id?: number;
+  chantier_destination_id?: number;
+  date_depart: string;
+  date_reception?: string;
+  transporteur?: string;
+  statut: StatutMouvement;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export interface Materiel {
   id: number;
@@ -860,7 +959,22 @@ export interface Materiel {
   valeur_achat: number;
   description?: string;
   statut: StatutMateriel;
+  photo_url?: string;
+  manuel_url?: string;
+  normes?: string;
+  categorie_btp?: CategorieBTP;
+  immatriculation?: string;
+  heures_moteur?: number;
+  kilometrage?: number;
+  frequence_entretien_heures?: number;
+  statut_vgp?: StatutVGP;
+  date_derniere_vgp?: string;
+  date_prochaine_vgp?: string;
+  organisme_vgp?: string;
+  certificat_vgp_url?: string;
+  qr_code_key?: string;
   maintenances?: Maintenance[];
+  mouvements?: MouvementMateriel[];
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
@@ -1274,6 +1388,9 @@ export interface Document {
   fichier_url: string;
   created_at: string;
   description?: string;
+  employe_id?: number;
+  taille_octets?: number;
+  mime_type?: string;
 }
 
 export interface ProfilTerrain {

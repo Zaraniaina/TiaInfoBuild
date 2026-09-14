@@ -1,4 +1,5 @@
 import { useState, useEffect, ReactNode } from 'react'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 /** Badge de statut colore selon la valeur. */
 export function StatutBadge({ statut }: { statut?: string }) {
@@ -125,10 +126,11 @@ export function useListePage<T>(charger: () => Promise<T[]>) {
   return { items, ...state, recharger }
 }
 
-export function EtatChargement() {
+export function EtatChargement({ rows = 8, columns = 6 }: { rows?: number; columns?: number }) {
   return (
-    <div className="d-flex justify-content-center py-5">
-      <div className="spinner-border text-primary" role="status">
+    <div className="card border-0 shadow-sm">
+      <div className="card-body">
+        <TableSkeleton rows={rows} columns={columns} />
         <span className="visually-hidden">Chargement...</span>
       </div>
     </div>

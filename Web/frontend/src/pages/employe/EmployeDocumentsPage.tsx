@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { employeTerrainService } from '@/services/employeTerrain.service'
 import type { Document } from '@/types'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 const categorieLabels: Record<string, string> = {
   demande: 'Demande', plan: 'Plan', devis: 'Devis', contrat: 'Contrat',
@@ -20,7 +21,7 @@ export function EmployeDocumentsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <div className="text-center py-5"><div className="spinner-border text-primary" /></div>
+  if (loading) return <div className="container-fluid py-3"><TableSkeleton rows={6} columns={3} /></div>
   if (err) return <div className="alert alert-danger m-3">{err}</div>
 
   return (

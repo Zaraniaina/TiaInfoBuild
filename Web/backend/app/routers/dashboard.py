@@ -29,6 +29,14 @@ def _require_permission(payload: CurrentUserPayload, permission: str) -> None:
 async def get_stats(payload: CurrentUserPayload, db: DbDep):
     _require_permission(payload, "dashboard:read")
     entreprise_id = payload.get("entreprise_id")
+    role_code = payload.get("role_code")
+
+    # Super Admin sans entreprise : retourne des statistiques globales
+    if not entreprise_id and role_code == "super_admin":
+        crud = DashboardCRUD()
+        stats = await crud.get_global_stats(db, payload)
+        return DashboardStatsResponse(**stats)
+
     if not entreprise_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Entreprise ID manquant")
     crud = DashboardCRUD()

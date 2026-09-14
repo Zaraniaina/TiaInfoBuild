@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
 import type { Utilisateur } from '@/types'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 export function SuperAdminUtilisateursPage() {
   const [users, setUsers] = useState<Utilisateur[]>([])
@@ -58,6 +59,14 @@ export function SuperAdminUtilisateursPage() {
               </tr>
             </thead>
             <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="p-0 border-0">
+                    <TableSkeleton rows={6} columns={4} />
+                  </td>
+                </tr>
+              ) : (
+                <>
               {filtered.map(u => (
                 <tr key={u.id}>
                   <td className="fw-semibold">{u.nom} {u.prenom}</td>
@@ -72,6 +81,8 @@ export function SuperAdminUtilisateursPage() {
                     Aucun utilisateur trouvé.
                   </td>
                 </tr>
+              )}
+                </>
               )}
             </tbody>
           </table>

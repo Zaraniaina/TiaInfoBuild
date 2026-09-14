@@ -17,10 +17,10 @@ import {
   SalesPipelineChart,
   WorkerPersonalAttendanceChart,
 } from "@/components/charts/DashboardCharts";
-import type { DashboardStats, DashboardChartsResponse } from "@/types";
 import { ROLE_DASHBOARD_TITLE } from "@/config/roles.config";
 import { QRScannerModal } from "@/components/pointage/QRScannerModal";
 import { WorkerBadgeCard } from "@/components/pointage/WorkerBadgeCard";
+import { PageSkeleton } from "@/components/ui/Skeleton"
 
 const ROLE_META: Record<
   string,
@@ -124,7 +124,13 @@ export function DashboardPage() {
   ) => (
     <div className="kpi-card">
       <div className="kpi-label">{label}</div>
-      <div className={`kpi-value ${colorClass}`}>{value}</div>
+      {statsLoading ? (
+        <div className="kpi-value placeholder-glow">
+          <span className="placeholder col-6 bg-secondary"></span>
+        </div>
+      ) : (
+        <div className={`kpi-value ${colorClass}`}>{value}</div>
+      )}
       {context && <div className="kpi-context">{context}</div>}
     </div>
   );

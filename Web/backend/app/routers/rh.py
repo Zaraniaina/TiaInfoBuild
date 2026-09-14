@@ -3,7 +3,11 @@ from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from fastapi.responses import StreamingResponse
+import csv
+import io
+
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, func
 
 from app.crud.employe import EmployeCRUD
@@ -38,6 +42,17 @@ from app.schemas.equipe import (
 )
 from app.security import CurrentUserPayload, DbDep
 from app.core.permissions import Role, PERMISSION_MAP
+from app.crud.conge import CongeCRUD
+from app.models.conge import Conge
+from app.models.notification import Notification
+from app.models.utilisateur import Utilisateur
+from app.models.document import Document
+from app.schemas.conge import (
+    CongeCreate,
+    CongeDecision,
+    CongeResponse,
+    CongeList,
+)
 
 router = APIRouter()
 
@@ -753,3 +768,305 @@ async def update_heure_sup_statut(
     updated = await crud.update(db, hs, data)
     await db.refresh(updated)
     return HeureSupplementaireResponse.model_validate(updated)
+
+
+# --- Congés ---
+
+
+async def _get_employe_rh(db: DbDep, id: int, entreprise_id: int | None) -> Employe:
+    employe = await EmployeCRUD().get(db, id)
+    if not employe or employe.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employé non trouvé")
+    if entreprise_id is not None and employe.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employé non trouvé")
+    return employe
+
+
+def _conge_response(c: Conge) -> CongeResponse:
+    resp = CongeResponse.model_validate(c)
+    if c.employe is not None:
+        resp.employe_nom = c.employe.nom
+        resp.employe_prenom = c.employe.prenom
+    return resp
+
+
+@router.post("/conges", response_model=CongeResponse, status_code=status.HTTP_201_CREATED)
+async def create_conge(payload: CurrentUserPayload, obj_in: CongeCreate, db: DbDep):
+    _require_permission(payload, "rh:write")
+    entreprise_id = payload.get("entreprise_id")
+    employe = await _get_employe_rh(db, obj_in.employe_id, entreprise_id)
+    crud = CongeCRUD()
+    conge = await crud.create(db, {
+        "entreprise_id": entreprise_id,
+        "employe_id": employe.id,
+        "type": obj_in.type,
+        "date_debut": obj_in.date_debut,
+        "date_fin": obj_in.date_fin,
+        "nb_jours": obj_in.nb_jours,
+        "motif": obj_in.motif,
+        "statut": Conge.STATUT_EN_ATTENTE,
+    })
+    await db.refresh(conge)
+    return _conge_response(conge)
+
+
+@router.get("/conges", response_model=CongeList)
+async def list_conges(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    statut: str | None = Query(default=None),
+    employe_id: int | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=25, ge=1, le=100),
+):
+    _require_permission(payload, "rh:read")
+    entreprise_id = payload.get("entreprise_id")
+    if entreprise_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Entreprise requise")
+    items, total = await CongeCRUD().list_for_entreprise(
+        db, entreprise_id, statut=statut, employe_id=employe_id, page=page, size=size
+    )
+    return {"items": [_conge_response(c) for c in items], "total": total, "page": page, "size": size}
+
+
+async def _decide_conge(payload: CurrentUserPayload, db: DbDep, id: int, statut: str, decision: CongeDecision) -> CongeResponse:
+    _require_permission(payload, "rh:write")
+    entreprise_id = payload.get("entreprise_id")
+    conge = await CongeCRUD().get(db, id)
+    if not conge or conge.is_deleted or (entreprise_id is not None and conge.entreprise_id != entreprise_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Congé non trouvé")
+    user = payload.get("user")
+    valide_par = getattr(user, "id", None)
+    conge = await CongeCRUD().decide(db, conge, statut=statut, valide_par=valide_par,
+                                     commentaire=decision.commentaire)
+    # Notification in-app : cible le compte utilisateur de l'employé (via email)
+    utilisateur_id = None
+    if conge.employe is not None and conge.employe.email:
+        u = (await db.execute(
+            select(Utilisateur).where(Utilisateur.email == conge.employe.email,
+                                      Utilisateur.is_deleted == False)
+        )).scalar_one_or_none()
+        if u is not None:
+            utilisateur_id = u.id
+    libelle = "validé" if statut == Conge.STATUT_VALIDE else "refusé"
+    db.add(Notification(
+        utilisateur_id=utilisateur_id,
+        entreprise_id=entreprise_id,
+        type="conge",
+        titre=f"Congé {libelle}",
+        message=f"Votre congé du {conge.date_debut} au {conge.date_fin} a été {libelle}.",
+        entite_type="conge",
+        entite_id=conge.id,
+    ))
+    await db.flush()
+    return _conge_response(conge)
+
+
+@router.post("/conges/{id}/valider", response_model=CongeResponse)
+async def valider_conge(payload: CurrentUserPayload, db: DbDep, id: int, decision: CongeDecision | None = None):
+    return await _decide_conge(payload, db, id, Conge.STATUT_VALIDE, decision or CongeDecision())
+
+
+@router.post("/conges/{id}/refuser", response_model=CongeResponse)
+async def refuser_conge(payload: CurrentUserPayload, db: DbDep, id: int, decision: CongeDecision | None = None):
+    return await _decide_conge(payload, db, id, Conge.STATUT_REFUSE, decision or CongeDecision())
+
+
+@router.get("/conges/{employe_id}/solde")
+async def get_solde_conges(payload: CurrentUserPayload, db: DbDep, employe_id: int):
+    _require_permission(payload, "rh:read")
+    employe = await _get_employe_rh(db, employe_id, payload.get("entreprise_id"))
+    solde = await CongeCRUD().solde_restant(db, employe)
+    return {"solde_restant": solde, "solde_annuel": float(employe.solde_conges_annuel or 30)}
+
+
+# --- Documents RH ---
+
+CATEGORIES_DOCUMENTS_RH = {"contrat_travail", "cnaps", "ostie", "certificat", "autre"}
+
+
+class DocumentRHCreate(BaseModel):
+    """Corps de la requête pour attacher un document à un employé."""
+
+    nom: str = Field(..., min_length=1, max_length=255)
+    categorie: str = Field(default="autre", max_length=50)
+    fichier_url: str | None = None
+    description: str | None = None
+
+    @field_validator("categorie")
+    @classmethod
+    def validate_categorie(cls, v: str) -> str:
+        if v not in CATEGORIES_DOCUMENTS_RH:
+            raise ValueError(f"Catégorie invalide. Valeurs autorisées: {sorted(CATEGORIES_DOCUMENTS_RH)}")
+        return v
+
+
+class DocumentRHResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: int
+    employe_id: int | None = None
+    categorie: str
+    nom: str
+    fichier_url: str | None = None
+    description: str | None = None
+    created_at: datetime | None = None
+    is_deleted: bool | None = None
+
+
+@router.get("/employes/{employe_id}/documents")
+async def list_documents_rh(payload: CurrentUserPayload, db: DbDep, employe_id: int):
+    _require_permission(payload, "rh:read")
+    employe = await _get_employe_rh(db, employe_id, payload.get("entreprise_id"))
+    query = select(Document).where(
+        Document.employe_id == employe.id,
+        Document.is_deleted == False,
+    ).order_by(Document.created_at.desc())
+    result = await db.execute(query)
+    documents = result.scalars().all()
+    return {"items": [DocumentRHResponse.model_validate(d) for d in documents]}
+
+
+@router.post("/employes/{employe_id}/documents", response_model=DocumentRHResponse, status_code=status.HTTP_201_CREATED)
+async def create_document_rh(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    employe_id: int,
+    obj_in: DocumentRHCreate,
+):
+    _require_permission(payload, "rh:write")
+    employe = await _get_employe_rh(db, employe_id, payload.get("entreprise_id"))
+    doc = Document(
+        entreprise_id=employe.entreprise_id,
+        employe_id=employe.id,
+        nom=obj_in.nom,
+        categorie=obj_in.categorie,
+        fichier_url=obj_in.fichier_url,
+        description=obj_in.description,
+    )
+    db.add(doc)
+    await db.flush()
+    await db.refresh(doc)
+    return DocumentRHResponse.model_validate(doc)
+
+
+# --- Paie ---
+
+
+def _heures_du_pointage(pt: Pointage) -> float:
+    """Heures travaillées d'un pointage (fin - début - pauses), borné à 0."""
+    if not pt.heure_debut or not pt.heure_fin:
+        return 0.0
+    delta = (datetime.combine(date.min, pt.heure_fin)
+             - datetime.combine(date.min, pt.heure_debut)).total_seconds() / 3600
+    pauses = 0.0
+    if pt.heure_pause_debut and pt.heure_pause_fin:
+        pauses = max(
+            (datetime.combine(date.min, pt.heure_pause_fin)
+             - datetime.combine(date.min, pt.heure_pause_debut)).total_seconds() / 3600,
+            0.0,
+        )
+    return max(delta - pauses, 0.0)
+
+
+@router.get("/paie")
+async def rapport_paie(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    mois: int = Query(..., ge=1, le=12),
+    annee: int = Query(..., ge=2000, le=2100),
+    employe_id: int | None = Query(default=None),
+):
+    _require_permission(payload, "rh:read")
+    entreprise_id = payload.get("entreprise_id")
+    if entreprise_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Entreprise requise")
+
+    debut = date(annee, mois, 1)
+    fin_exclu = date(annee + 1, 1, 1) if mois == 12 else date(annee, mois + 1, 1)
+
+    q_emp = select(Employe).where(Employe.is_deleted == False, Employe.entreprise_id == entreprise_id)
+    if employe_id:
+        q_emp = q_emp.where(Employe.id == employe_id)
+    employes = (await db.execute(q_emp)).scalars().all()
+
+    q_pt = select(Pointage).where(
+        Pointage.is_deleted == False,
+        Pointage.entreprise_id == entreprise_id,
+        Pointage.date_jour >= debut,
+        Pointage.date_jour < fin_exclu,
+    )
+    pointages = (await db.execute(q_pt)).scalars().all()
+
+    q_hs = select(HeureSupplementaire).where(
+        HeureSupplementaire.is_deleted == False,
+        HeureSupplementaire.statut == "validee",
+        HeureSupplementaire.date_hs >= debut,
+        HeureSupplementaire.date_hs < fin_exclu,
+    )
+    heures_sup = (await db.execute(q_hs)).scalars().all()
+
+    # Indexation des pointages par employé
+    jours_par_emp: dict[int, set] = {}
+    heures_par_emp: dict[int, float] = {}
+    for pt in pointages:
+        if pt.statut_validation == "refuse":
+            continue
+        if pt.date_jour is not None:
+            jours_par_emp.setdefault(pt.employe_id, set()).add(pt.date_jour)
+        heures_par_emp[pt.employe_id] = heures_par_emp.get(pt.employe_id, 0.0) + _heures_du_pointage(pt)
+
+    hs_par_emp: dict[int, float] = {}
+    for hs in heures_sup:
+        if hs.employe_id:
+            hs_par_emp[hs.employe_id] = hs_par_emp.get(hs.employe_id, 0.0) + (hs.nb_heures or 0) * (hs.taux_majoration or 1.5)
+
+    lignes = []
+    total = 0.0
+    for emp in employes:
+        mode = emp.mode_remuneration or "mensuel"
+        jours_valides = float(len(jours_par_emp.get(emp.id, set())))
+        h_sup = hs_par_emp.get(emp.id, 0.0)
+        if mode == "journalier":
+            brut = jours_valides * float(emp.taux_journalier or 0)
+        elif mode == "horaire":
+            brut = heures_par_emp.get(emp.id, 0.0) * float(emp.taux_horaire or 0)
+        elif mode == "a_la_tache":
+            brut = 0.0  # v1 : calcul par tâche reporté en v2
+        else:  # mensuel : plein si pas de pointage ou mois complet, sinon proraté sur 26 jours
+            brut = float(emp.salaire_base or 0)
+            if jours_valides != 0 and jours_valides < 26:
+                brut = round(float(emp.salaire_base or 0) * jours_valides / 26, 2)
+            brut += h_sup
+        lignes.append({
+            "employe_id": emp.id, "nom": emp.nom, "prenom": emp.prenom,
+            "mode_remuneration": mode, "jours_valides": jours_valides,
+            "heures_sup": round(h_sup, 2), "brut": round(brut, 2),
+        })
+        total += brut
+
+    return {"mois": mois, "annee": annee, "lignes": lignes, "total": round(total, 2)}
+
+
+@router.get("/paie/export")
+async def export_paie_csv(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    mois: int = Query(..., ge=1, le=12),
+    annee: int = Query(..., ge=2000, le=2100),
+):
+    _require_permission(payload, "rh:read")
+    rapport = await rapport_paie(payload, db, mois=mois, annee=annee, employe_id=None)
+    buf = io.StringIO()
+    buf.write("\ufeff")  # BOM pour Excel
+    writer = csv.writer(buf, delimiter=";")
+    writer.writerow(["Employe ID", "Nom", "Prenom", "Mode", "Jours valides", "Heures sup", "Brut (Ar)"])
+    for l in rapport["lignes"]:
+        writer.writerow([l["employe_id"], l["nom"], l["prenom"], l["mode_remuneration"],
+                         str(l["jours_valides"]).replace(".", ","),
+                         str(l["heures_sup"]).replace(".", ","),
+                         str(l["brut"]).replace(".", ",")])
+    writer.writerow(["", "", "", "", "", "TOTAL", str(rapport["total"]).replace(".", ",")])
+    buf.seek(0)
+    return StreamingResponse(iter([buf.read()]), media_type="text/csv",
+                             headers={"Content-Disposition": f"attachment; filename=paie_{annee}_{mois:02d}.csv"})

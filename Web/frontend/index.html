@@ -1,13 +1,69 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>TIA INFO BUILD</title>
+    <style>
+      body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+      #loading-screen {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: #f8f9fa;
+        color: #333;
+      }
+      #loading-screen .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid #e9ecef;
+        border-top: 4px solid #0d6efd;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+      }
+      #loading-screen h2 { font-size: 1.5rem; margin: 0 0 10px; color: #495057; }
+      #loading-screen p { font-size: 1rem; color: #6c757d; margin: 0; }
+      #loading-screen .retry-btn {
+        display: none;
+        margin-top: 20px;
+        padding: 10px 24px;
+        background: #0d6efd;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+      #loading-screen .retry-btn:hover { background: #0b5ed7; }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="loading-screen">
+        <div class="spinner"></div>
+        <h2>TIA INFO BUILD</h2>
+        <p>Chargement de l'application...</p>
+        <button class="retry-btn" onclick="window.location.reload()">Recharger</button>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Afficher le bouton "Recharger" après 15 secondes si l'application n'a pas démarré
+      setTimeout(function() {
+        var loadingScreen = document.getElementById('loading-screen');
+        var root = document.getElementById('root');
+        if (root && root.querySelector('#loading-screen')) {
+          var retryBtn = document.querySelector('.retry-btn');
+          if (retryBtn) retryBtn.style.display = 'block';
+          var msg = document.querySelector('#loading-screen p');
+          if (msg) msg.textContent = 'Le chargement prend plus de temps que prévu. Vérifiez votre connexion.';
+        }
+      }, 15000);
+    </script>
   </body>
 </html>

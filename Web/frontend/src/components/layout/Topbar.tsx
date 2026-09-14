@@ -76,6 +76,7 @@ export function Topbar() {
     }).catch(() => {})
   }, [canViewAlertes])
 
+  // Synchroniser le formulaire profil et écouter l'événement global pour ouvrir la modale mot de passe
   useEffect(() => {
     if (user) {
       setProfileForm({
@@ -85,16 +86,12 @@ export function Topbar() {
         telephone: '',
       })
     }
-  }, [user])
-
-  // Écouter l'événement global pour ouvrir la modale mot de passe (depuis Layout.tsx)
-  useEffect(() => {
     const handler = () => {
       handleOpenPassword()
     }
     window.addEventListener('open-change-password-modal', handler)
     return () => window.removeEventListener('open-change-password-modal', handler)
-  }, [])
+  }, [user])
 
   const confirmLogout = async () => {
     setIsLoggingOut(true)
@@ -154,8 +151,13 @@ export function Topbar() {
     }
   }
 
-  const handleOpenPassword = () => {
-    setPasswordForm({ old_password: '', new_password: '', confirm_password: '' })
+  function handleOpenPassword() {
+    setPasswordForm((prev) => ({
+      ...prev,
+      old_password: '',
+      new_password: '',
+      confirm_password: '',
+    }))
     setPasswordError(null)
     setShowUserMenu(false)
     setShowPasswordModal(true)

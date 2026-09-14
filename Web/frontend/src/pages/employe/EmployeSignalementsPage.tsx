@@ -3,9 +3,9 @@ import { employeTerrainService } from '@/services/employeTerrain.service'
 import type { Signalement, TypeSignalement, PrioriteSignalement } from '@/types'
 
 const TYPES: TypeSignalement[] = ['incident', 'securite', 'materiel', 'materiau', 'travaux', 'plan_document', 'acces_chantier', 'meteo', 'autre']
-const TYPES_LABEL: Record<string, string> = {
-  incident: '<i className="bi bi-exclamation-triangle"></i> Incident', securite: '<i className="bi bi-shield-check"></i> Sécurité', materiel: '<i className="bi bi-wrench"></i> Matériel', materiau: '<i className="bi bi-box"></i> Matériau',
-  travaux: '<i className="bi bi-building"></i> Travaux', plan_document: '<i className="bi bi-rulers"></i> Plan/document', acces_chantier: '<i className="bi bi-cone-striped"></i> Accès', meteo: '<i className="bi bi-cloud-rain"></i> Météo', autre: 'Autre',
+const TYPES_LABEL: Record<string, React.ReactNode> = {
+  incident: (<><i className="bi bi-exclamation-triangle me-1"></i>Incident</>), securite: (<><i className="bi bi-shield-check me-1"></i>Sécurité</>), materiel: (<><i className="bi bi-wrench me-1"></i>Matériel</>), materiau: (<><i className="bi bi-box me-1"></i>Matériau</>),
+  travaux: (<><i className="bi bi-building me-1"></i>Travaux</>), plan_document: (<><i className="bi bi-rulers me-1"></i>Plan/document</>), acces_chantier: (<><i className="bi bi-cone-striped me-1"></i>Accès</>), meteo: (<><i className="bi bi-cloud-rain me-1"></i>Météo</>), autre: 'Autre',
 }
 const prioriteBadge: Record<string, string> = { basse: 'secondary', normale: 'info', haute: 'warning', urgente: 'danger' }
 const statutBadge: Record<string, string> = { ouvert: 'warning', en_cours: 'primary', resolu: 'success', ferme: 'dark' }
@@ -47,7 +47,7 @@ export function EmployeSignalementsPage() {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h5 className="mb-0"><i className="bi bi-exclamation-triangle"></i> Signalements</h5>
         <button className="btn btn-danger btn-sm" onClick={() => setShowForm(!showForm)}>
-          {showForm ? '<i className="bi bi-x"></i> Fermer' : '+ Signaler un problème'}
+          {showForm ? (<><i className="bi bi-x me-1"></i>Fermer</>) : '+ Signaler un problème'}
         </button>
       </div>
 

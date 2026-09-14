@@ -40,6 +40,7 @@ const EmployeNotificationsPage = lazy(() => import('@/pages/employe/EmployeNotif
 const EmployeDocuments = lazy(() => import('@/pages/employe/EmployeDocumentsPage').then((m) => ({ default: m.EmployeDocumentsPage })))
 const EmployePlanning = lazy(() => import('@/pages/employe/EmployePlanningPage').then((m) => ({ default: m.EmployePlanningPage })))
 const EmployeBadge = lazy(() => import('@/pages/employe/EmployeBadgePage').then((m) => ({ default: m.EmployeBadgePage })))
+const EmployeConges = lazy(() => import('@/pages/employe/EmployeCongesPage').then((m) => ({ default: m.EmployeCongesPage })))
 
 const ClientDashboard = lazy(() => import('@/pages/client/ClientDashboard').then((m) => ({ default: m.ClientDashboard })))
 
@@ -125,6 +126,7 @@ function App() {
           <Route path="planning" element={<Suspense fallback={<PageFallback />}><EmployePlanning /></Suspense>} />
           <Route path="documents" element={<Suspense fallback={<PageFallback />}><EmployeDocuments /></Suspense>} />
           <Route path="badge" element={<Suspense fallback={<PageFallback />}><EmployeBadge /></Suspense>} />
+          <Route path="conges" element={<Suspense fallback={<PageFallback />}><EmployeConges /></Suspense>} />
 
         </Route>
         <Route path="pricing" element={<Suspense fallback={<PageFallback />}><PricingPage /></Suspense>} />

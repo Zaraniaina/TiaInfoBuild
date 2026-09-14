@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { employeTerrainService } from '@/services/employeTerrain.service'
 import type { DashboardTerrain } from '@/types'
+import { PageSkeleton } from '@/components/ui/Skeleton'
+import { employeTerrainService } from '@/services/employeTerrain.service'
 
 export function EmployePage() {
   const [dash, setDash] = useState<DashboardTerrain | null>(null)
@@ -14,7 +15,7 @@ export function EmployePage() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <div className="text-center py-5"><div className="spinner-border text-primary" /></div>
+  if (loading) return <PageSkeleton />
   if (err) return <div className="alert alert-danger m-3">{err}</div>
   if (!dash) return null
 

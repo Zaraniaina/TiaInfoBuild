@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
+import { PageSkeleton } from '@/components/ui/Skeleton'
 
 interface PlatformSettings {
   nom_plateforme: string
@@ -47,9 +48,7 @@ export function SuperAdminParametresPage() {
   if (!loaded) {
     return (
       <div className="container-fluid py-4">
-        <div className="d-flex justify-content-center py-5">
-          <div className="spinner-border text-secondary" role="status"></div>
-        </div>
+        <PageSkeleton />
       </div>
     )
   }

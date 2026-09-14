@@ -58,6 +58,9 @@ cd Web
 ```
 
 Ce script lance automatiquement :
+- Les migrations Alembic (`alembic upgrade head`)
+- Le seed des donnees de base (`python -m app.scripts.init_db`, idempotent : roles,
+  comptes de test, entreprise demo, abonnement par defaut)
 - Backend sur http://localhost:8000
 - Frontend sur http://localhost:5173
 
@@ -242,6 +245,11 @@ Les autres rôles (directeur, comptable, client…) ont un accès **lecture seul
 
 ## Notes de version & Correctifs appliqués
 
+- **Correctif NameError DbSession (clonage)** : `app/routers/utilisateurs.py` definissait l'alias `DbSession = Annotated[...]` APRES son utilisation dans une annotation. Python 3.14+ (annotations paresseuses, PEP 649) masquait le bug ; Python 3.13 et avant plantait au demarrage. Les alias sont maintenant definis en tete de module — regle : toujours definir les alias `Annotated` avant leur premiere utilisation.
+- **Seed automatique au demarrage** : `start-dev.ps1` execute `alembic upgrade head` puis `python -m app.scripts.init_db` (idempotent) avant de lancer le backend — plus de 401 login apres une recration de la base.
+- **Migrations Alembic reproductibles** : revision 014 renommee (`014_devis_projet_facture`, <= 32 caracteres) ; regle : nom de revision <= 32 caracteres, FK type-identique a la colonne cible (`sa.Integer()` vers un `int(11)`, sinon errno 150), migrations idempotentes.
+- **RBAC** : le super admin n'a plus l'entree "Tarifs & Abonnement" dans la sidebar (il gere les abonnements via `/super-admin/abonnements`) ; workflow projet -> chantier (`POST /chantiers/from-projet/{id}`, chef_projet et super_admin).
+- **UI** : bouton X (retour page precedente) sur la page Tarifs ; definition CSS `.table-header` ajoutee dans `tia-design.css` (en-tete de tableau de la page Parametres aligne) ; bouton "Creer l'utilisateur" passe en primaire.
 - **Seed automatique** : Le script `app/scripts/init_db.py` crée maintenant les 12 comptes de test automatiquement (rôles + utilisateurs). Mot de passe universel : `Admin123!`.
 - **Correctif permissions admin_entreprise** : Ajout des permissions `chantiers:read/write/delete`, `rh:read/write/delete`, `stocks:read/write/delete`, `commercial:read/write/delete`, `finance:read/write/delete`, `materiels:read/write/delete`, `alertes:read/write` pour le rôle `admin_entreprise` (provoquait un 403 sur plusieurs modules).
 - **Correctif 500 chef_chantier** : Initialisation des variables `nb_incidents`, `incidents_non_resolus`, `retard_jours`, `consommation_stock`, `ecart_stock`, `nb_alertes_chantier`, `taux_avancement_physique`, `taux_avancement_financier` dans `app/crud/dashboard.py` pour éviter `UnboundLocalError`.
@@ -262,3 +270,13 @@ Les autres rôles (directeur, comptable, client…) ont un accès **lecture seul
 - 404 sur les routes : vérifier que le backend a bien redémarré après les modifications des préfixes de routes
 - 500 sur `/dashboard/stats` : vérifier que le patch `jsonable_encoder` est appliqué (redémarrer le serveur)
 - 403 sur les modules : vérifier les permissions dans `app/core/permissions.py`
+- `NameError: name 'DbSession' is not defined` au demarrage du backend : alias `Annotated`
+  utilise avant sa definition (Python < 3.14 evalue les annotations immediatement ; 3.14+ les
+  evalue en paresseux et masque le bug). Corrige dans `app/routers/utilisateurs.py` : faire un
+  `git pull` et relancer. **Regle** : definir les alias `Annotated` en tete de module, avant
+  leur premiere utilisation dans une signature.
+- `401 "Email ou mot de passe incorrect"` : comptes de test absents (base recreee sans seed).
+  Lancer `python -m app.scripts.init_db` ou utiliser `start-dev.ps1` (le fait automatiquement).
+- Migrations Alembic : nom de revision <= 32 caracteres (`alembic_version` = VARCHAR(32),
+  sinon troncature silencieuse et erreur "0 found") ; type de FK identique au type de la
+  colonne cible (sinon errno 150) ; migrations idempotentes. Details : `Web/backend/README.md`.

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { subscriptionsService } from '@/services/subscriptions.service'
 import type { Plan, SubscriptionWithPlan } from '@/types'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 export function SuperAdminAbonnementsPage() {
   const [plans, setPlans] = useState<Plan[]>([])
@@ -128,7 +129,7 @@ export function SuperAdminAbonnementsPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-5"><div className="spinner-border text-secondary" role="status"></div></div>
+        <TableSkeleton rows={8} columns={6} />
       ) : (
         <>
           <div className="row g-4 mb-5">

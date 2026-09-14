@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { employeTerrainService } from '@/services/employeTerrain.service'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 const typeLabel: Record<string, string> = {
   entree: 'Entrée', sortie: 'Sortie', debut_pause: 'Début pause', fin_pause: 'Fin pause',
@@ -26,7 +27,7 @@ export function EmployePresencePage() {
     } catch { alert('Erreur lors du pointage') }
   }
 
-  if (loading) return <div className="text-center py-5"><div className="spinner-border text-primary" /></div>
+  if (loading) return <TableSkeleton rows={8} columns={6} />
   if (err) return <div className="alert alert-danger m-3">{err}</div>
 
   return (

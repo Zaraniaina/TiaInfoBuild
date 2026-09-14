@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 interface LogEntry {
   id: number
@@ -32,9 +33,7 @@ export function HistoriqueLoginsPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border text-dark" role="status"></div>
-        </div>
+        <TableSkeleton rows={8} columns={6} />
       ) : (
         <div className="card border-0 shadow-sm">
           <div className="table-responsive">

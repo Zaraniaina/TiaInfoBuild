@@ -4,6 +4,7 @@ import { chantiersService, type ProjetTransformable } from '@/services/chantiers
 import { QRScannerModal } from '@/components/pointage/QRScannerModal'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 export function ChantiersPage() {
   const { user } = useAuthStore()
@@ -72,7 +73,7 @@ export function ChantiersPage() {
       setShowTransformModal(false)
       alert('Chantier créé avec succès depuis le projet.')
       loadChantiers()
-    } catch (e) {
+    } catch {
       alert('Erreur lors de la création du chantier.')
     } finally {
       setTransformLoading(false)
@@ -262,8 +263,8 @@ export function ChantiersPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border text-secondary" role="status"></div>
+        <div className="card border-0 shadow-sm p-3">
+          <TableSkeleton rows={6} columns={6} />
         </div>
       ) : filteredChantiers.length === 0 ? (
         <div className="card border-0 shadow-sm text-center py-5">

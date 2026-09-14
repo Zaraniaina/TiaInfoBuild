@@ -17,11 +17,7 @@ export function ClientProfil() {
   const [confirmMdp, setConfirmMdp] = useState('')
   const [mdpMessage, setMdpMessage] = useState<string | null>(null)
 
-  useEffect(() => {
-    chargerProfil()
-  }, [])
-
-  const chargerProfil = async () => {
+  async function chargerProfil() {
     try {
       setLoading(true)
       const data = await espaceClientService.getProfil()
@@ -33,6 +29,10 @@ export function ClientProfil() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    chargerProfil()
+  }, [])
 
   const enregistrer = async () => {
     try {

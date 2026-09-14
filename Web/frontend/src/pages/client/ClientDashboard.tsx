@@ -1,17 +1,14 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { espaceClientService, DashboardData } from '@/services/espaceClient.service'
+import { PageSkeleton } from '@/components/ui/Skeleton'
 
 export function ClientDashboard() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadDashboard()
-  }, [])
-
-  const loadDashboard = async () => {
+  async function loadDashboard() {
     try {
       setLoading(true)
       const result = await espaceClientService.getDashboard()
@@ -23,14 +20,12 @@ export function ClientDashboard() {
     }
   }
 
+  useEffect(() => {
+    loadDashboard()
+  }, [])
+
   if (loading) {
-    return (
-      <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Chargement...</span>
-        </div>
-      </div>
-    )
+    return <PageSkeleton />
   }
 
   if (error) {

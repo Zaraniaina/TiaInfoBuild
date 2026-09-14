@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { Employe, Pointage, Equipe, HeureSupplementaire } from '@/types'
+import type { Employe, Pointage, Equipe, HeureSupplementaire, Conge, CongeListe, SoldeConge, RapportPaie, Document } from '@/types'
 
 export const rhService = {
   // Employés
@@ -10,6 +10,21 @@ export const rhService = {
 
   async getEmployeBadgeQR(employeId: number) {
     const res = await api.get(`/rh/employes/${employeId}/badge-qr`)
+    return res.data
+  },
+
+  async getEmploye(id: number) {
+    const res = await api.get<Employe>(`/rh/employes/${id}`)
+    return res.data
+  },
+
+  async getEmployeDocuments(id: number) {
+    const res = await api.get<{ items: Document[] }>(`/rh/employes/${id}/documents`)
+    return res.data.items
+  },
+
+  async createEmployeDocument(id: number, data: { nom: string; categorie: string; fichier_url?: string; description?: string }) {
+    const res = await api.post<Document>(`/rh/employes/${id}/documents`, data)
     return res.data
   },
 
@@ -64,5 +79,47 @@ export const rhService = {
   async validateHeureSup(id: number, statut: 'validee' | 'refusee') {
     const res = await api.put<HeureSupplementaire>(`/rh/heures-sup/${id}/statut`, { statut })
     return res.data
-  }
+  },
+
+  // Congés (RH)
+  async getConges(params?: { statut?: string; employe_id?: number; page?: number; size?: number }) {
+    const res = await api.get<CongeListe>('/rh/conges', { params })
+    return res.data
+  },
+
+  async createConge(data: Partial<Conge>) {
+    const res = await api.post<Conge>('/rh/conges', data)
+    return res.data
+  },
+
+  async validerConge(id: number) {
+    const res = await api.post<Conge>(`/rh/conges/${id}/valider`, {})
+    return res.data
+  },
+
+  async refuserConge(id: number, commentaire?: string) {
+    const res = await api.post<Conge>(`/rh/conges/${id}/refuser`, { commentaire })
+    return res.data
+  },
+
+  async getSoldeConge(employeId: number) {
+    const res = await api.get<SoldeConge>(`/rh/conges/${employeId}/solde`)
+    return res.data
+  },
+
+  // Paie
+  async getPaie(mois: number, annee: number) {
+    const res = await api.get<RapportPaie>('/rh/paie', { params: { mois, annee } })
+    return res.data
+  },
+
+  async exportPaie(mois: number, annee: number) {
+    const res = await api.get('/rh/paie/export', { params: { mois, annee }, responseType: 'blob' })
+    const url = URL.createObjectURL(res.data as Blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `paie_${annee}_${String(mois).padStart(2, '0')}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  },
 }

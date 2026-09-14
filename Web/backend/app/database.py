@@ -17,7 +17,10 @@ class Base(DeclarativeBase):
 
 engine = create_async_engine(
     settings.database_url,
-    echo=settings.app_debug,
+    # Volontairement decouple de app_debug : l'echo SQL logue chaque requete ET
+    # les lignes de resultats, ce qui multiplie le temps de reponse par 10 ou
+    # plus. Activer uniquement via DATABASE_ECHO=True pour un debug ponctuel.
+    echo=settings.db_echo,
     pool_pre_ping=True,
     pool_recycle=3600,
 )

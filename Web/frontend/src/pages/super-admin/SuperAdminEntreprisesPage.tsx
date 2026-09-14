@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
-import { useNavigate } from 'react-router-dom'
 import { subscriptionsService } from '@/services/subscriptions.service'
 import type { Entreprise, Plan } from '@/types'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 export function SuperAdminEntreprisesPage() {
-  const navigate = useNavigate()
   const [entreprises, setEntreprises] = useState<Entreprise[]>([])
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
@@ -162,6 +161,14 @@ export function SuperAdminEntreprisesPage() {
               </tr>
             </thead>
             <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="p-0 border-0">
+                    <TableSkeleton rows={6} columns={6} />
+                  </td>
+                </tr>
+              ) : (
+                <>
               {filtered.map(e => (
                 <tr key={e.id}>
                   <td>
@@ -205,6 +212,8 @@ export function SuperAdminEntreprisesPage() {
                     Aucune entreprise trouvée.
                   </td>
                 </tr>
+              )}
+                </>
               )}
             </tbody>
           </table>

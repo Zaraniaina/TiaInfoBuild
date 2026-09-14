@@ -3,6 +3,7 @@ import { subscriptionsService } from '@/services/subscriptions.service'
 import { useAuthStore } from '@/stores/auth.store'
 import type { Plan } from '@/types'
 import { useNavigate } from 'react-router-dom'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 const PLANS_DEFAULT: Plan[] = [
   {
@@ -127,16 +128,27 @@ export function PricingPage() {
   }
 
   return (
-    <div className="py-5">
+    <div className="py-5 position-relative">
+      <button
+        type="button"
+        className="btn-close position-absolute top-0 end-0 m-3"
+        aria-label="Fermer et revenir a la page precedente"
+        title="Retour a la page precedente"
+        onClick={() => {
+          if (user?.entreprise_id) {
+            navigate('/dashboard')
+          } else {
+            navigate(-1)
+          }
+        }}
+      ></button>
       <div className="text-center mb-5">
         <h1 className="fw-bold mb-2">Nos Formules d'Abonnement</h1>
         <p className="text-muted">Choisissez la formule adaptée à la taille de votre entreprise. Paiement Mobile Money disponible.</p>
       </div>
 
       {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border text-secondary" role="status"></div>
-        </div>
+        <TableSkeleton rows={3} columns={3} />
       ) : (
         <div className="row g-4">
           {plans.map((plan) => {

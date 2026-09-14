@@ -3,6 +3,7 @@ import type { Depense, RapportFinancier } from '@/types'
 import { financeService } from '@/services/finance.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 interface BudgetOverrun {
   id: number
@@ -167,9 +168,7 @@ export function FinancePage() {
       </ul>
 
       {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border text-secondary" role="status"></div>
-        </div>
+        <TableSkeleton rows={8} columns={6} />
       ) : activeTab === 'overview' ? (
         <div>
           <div className="row g-4 mb-4">

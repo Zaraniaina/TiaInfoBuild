@@ -22,6 +22,10 @@ class Settings(BaseSettings):
 
     # Database (MySQL async)
     database_url: str = "mysql+aiomysql://tia_user:tia_password@localhost:3306/tia_build_db"
+    # Echo SQL (log de chaque requete + lignes de resultats). TRES couteux en
+    # performance (x10 et plus sur chaque endpoint) : desactive par defaut,
+    # activer uniquement pour le debug ponctuel (DATABASE_ECHO=True dans .env).
+    db_echo: bool = False
 
     # JWT Security
     secret_key: str = "CHANGE_ME_IN_PRODUCTION_ACCESS"
