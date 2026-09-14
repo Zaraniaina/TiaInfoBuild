@@ -340,8 +340,9 @@ export function RegisterPage() {
               </Link>
             </p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
-  )
+  </div>
+)
 }
