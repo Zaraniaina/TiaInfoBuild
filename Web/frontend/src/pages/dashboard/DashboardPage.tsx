@@ -99,6 +99,7 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [showBadgeModal, setShowBadgeModal] = useState(false);
+  const [approvingId, setApprovingId] = useState<number | null>(null);
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["dashboard", "stats"],
@@ -108,6 +109,35 @@ export function DashboardPage() {
     queryKey: ["dashboard", "charts"],
     queryFn: () => api.get("/dashboard/charts").then((res) => res.data),
   })
+  const { data: validationsData, refetch: refetchValidations, isLoading: validationsLoading } = useQuery({
+    queryKey: ["dashboard", "validations"],
+    queryFn: () => api.get("/dashboard/validations").then((res) => res.data),
+    enabled: ["directeur", "admin_entreprise", "super_admin"].includes(roleCode),
+  })
+
+  const handleApprove = async (id: number) => {
+    setApprovingId(id)
+    try {
+      await api.post(`/dashboard/validations/${id}/approve`)
+      refetchValidations()
+    } catch {
+      alert("Erreur lors de l'approbation.")
+    } finally {
+      setApprovingId(null)
+    }
+  }
+
+  const handleReject = async (id: number) => {
+    setApprovingId(id)
+    try {
+      await api.post(`/dashboard/validations/${id}/reject`)
+      refetchValidations()
+    } catch {
+      alert("Erreur lors du refus.")
+    } finally {
+      setApprovingId(null)
+    }
+  }
 
   useEffect(() => {
     setLoading(statsLoading || chartsLoading)
@@ -320,17 +350,56 @@ export function DashboardPage() {
   // 3. DIRECTION GENERALE / DAF DASHBOARD
   const renderDirecteur = () => {
     const caTotal = stats?.ca_total || 0;
-    const margeBrute =
-      stats?.marge_brute ?? caTotal - (stats?.depenses_mois || 0);
+    const margeBrute = stats?.marge_brute ?? caTotal - (stats?.depenses_mois || 0);
     const margeNette = stats?.marge_nette ?? margeBrute * 0.9;
-    const tauxMarge =
-      caTotal > 0 ? ((margeNette / caTotal) * 100).toFixed(1) : "0.0";
+    const tauxMarge = caTotal > 0 ? ((margeNette / caTotal) * 100).toFixed(1) : "0.0";
     const alertesCritiques = stats?.alertes_critiques || 0;
     const validationsCount = stats?.devis_pending_dg || 0;
 
+    const validations: Array<{
+      id: number;
+      type: string;
+      reference: string;
+      chantier: string;
+      montant: number;
+      soumis_par: string;
+      date_soumission: string;
+    }> = validationsData?.items || [];
+
+    const risques: Array<{
+      niveau: string;
+      chantier: string;
+      description: string;
+      derive_pct: number;
+    }> = stats?.risques || [];
+
+    const budgetDerive: Array<{
+      chantier: string;
+      budget_initial: number;
+      consomme: number;
+      pct: number;
+    }> = stats?.budget_derive || [];
+
     return (
       <div>
-        {renderAlert()}
+        {/* Alert si validations urgentes */}
+        {validationsCount > 0 && (
+          <div className="alert-bar mb-4 bg-warning bg-opacity-10 text-dark border d-flex align-items-start gap-3">
+            <div className="alert-icon text-warning">
+              <i className="bi bi-hourglass-split"></i>
+            </div>
+            <div>
+              <strong>
+                {validationsCount} décision{validationsCount > 1 ? "s" : ""} en attente de validation DG
+              </strong>
+              <div className="small mb-0">
+                Des devis ou budgets soumis par vos équipes nécessitent votre arbitrage.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* KPIs Stratégiques */}
         <div className="row g-3 mb-4">
           {renderKpi(
             "Chiffre d'Affaires Brut",
@@ -348,17 +417,116 @@ export function DashboardPage() {
             "Devis / Budgets à Valider",
             String(validationsCount),
             "Soumis à validation DG",
-            "text-warning",
+            validationsCount > 0 ? "text-warning" : "text-secondary",
           )}
           {renderKpi(
             "Alertes Critiques",
             String(alertesCritiques),
             "Retards & dérives budgétaires",
-            "text-danger",
+            alertesCritiques > 0 ? "text-danger" : "text-secondary",
           )}
         </div>
+
+        {/* === CENTRE DE VALIDATION DG === */}
+        <div className="card border-0 shadow-sm mb-4">
+          <div className="card-header bg-white border-bottom d-flex align-items-center justify-content-between py-3">
+            <div className="d-flex align-items-center gap-2">
+              <i className="bi bi-patch-check-fill text-warning fs-5"></i>
+              <h6 className="fw-bold mb-0">Centre d'Approbations Exécutives</h6>
+              {validationsCount > 0 && (
+                <span className="badge bg-warning text-dark">{validationsCount}</span>
+              )}
+            </div>
+            <span className="small text-muted">Devis &amp; Budgets Chantiers</span>
+          </div>
+          <div className="card-body p-0">
+            {validationsLoading ? (
+              <div className="text-center py-4 text-muted">
+                <div className="spinner-border spinner-border-sm me-2"></div>
+                Chargement des validations…
+              </div>
+            ) : validations.length === 0 ? (
+              <div className="text-center py-5 text-muted">
+                <i className="bi bi-check2-circle fs-2 d-block mb-2 text-success"></i>
+                <strong>Aucune validation en attente</strong>
+                <div className="small">Toutes les soumissions ont été traitées.</div>
+              </div>
+            ) : (
+              <div className="table-responsive">
+                <table className="table table-hover align-middle mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th className="ps-3">Référence</th>
+                      <th>Type</th>
+                      <th>Chantier</th>
+                      <th>Montant</th>
+                      <th>Soumis par</th>
+                      <th>Date</th>
+                      <th className="text-center">Décision</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {validations.map((v) => (
+                      <tr key={v.id}>
+                        <td className="ps-3">
+                          <span className="fw-semibold text-primary">{v.reference}</span>
+                        </td>
+                        <td>
+                          <span className={`badge ${v.type === "devis" ? "bg-primary bg-opacity-10 text-primary" : "bg-info bg-opacity-10 text-info"} border`}>
+                            <i className={`bi ${v.type === "devis" ? "bi-file-earmark-text" : "bi-calculator"} me-1`}></i>
+                            {v.type === "devis" ? "Devis Client" : "Budget Chantier"}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="small fw-semibold">{v.chantier}</span>
+                        </td>
+                        <td>
+                          <span className="fw-bold text-dark">
+                            {v.montant.toLocaleString()} MGA
+                          </span>
+                        </td>
+                        <td>
+                          <span className="small text-muted">{v.soumis_par}</span>
+                        </td>
+                        <td>
+                          <span className="small text-muted">{v.date_soumission}</span>
+                        </td>
+                        <td className="text-center">
+                          <div className="d-flex gap-1 justify-content-center">
+                            <button
+                              className="btn btn-success btn-sm fw-semibold"
+                              disabled={approvingId === v.id}
+                              onClick={() => handleApprove(v.id)}
+                              title="Approuver"
+                            >
+                              {approvingId === v.id ? (
+                                <span className="spinner-border spinner-border-sm"></span>
+                              ) : (
+                                <><i className="bi bi-check-lg me-1"></i>Approuver</>
+                              )}
+                            </button>
+                            <button
+                              className="btn btn-outline-danger btn-sm"
+                              disabled={approvingId === v.id}
+                              onClick={() => handleReject(v.id)}
+                              title="Refuser"
+                            >
+                              <i className="bi bi-x-lg"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* === AVANCEMENT PHYSIQUE vs FINANCIER === */}
         <div className="row g-4 mb-4">
-          <div className="col-lg-12">
+          <div className="col-lg-8">
             <div className="chart-card">
               <CaVsDepensesChart
                 labels={charts?.ca_evolution?.labels}
@@ -367,10 +535,142 @@ export function DashboardPage() {
               />
             </div>
           </div>
+          <div className="col-lg-4">
+            <div className="chart-card h-100">
+              <MultiChantiersProgressChart
+                labels={charts?.top_chantiers?.labels}
+                avancement={charts?.top_chantiers?.avancement}
+                consommation={charts?.top_chantiers?.budget}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* === SYNTHESE RISQUES & DERIVES === */}
+        <div className="row g-4 mb-4">
+          {/* Dérives Budgétaires */}
+          <div className="col-lg-6">
+            <div className="card border-0 shadow-sm h-100">
+              <div className="card-header bg-white border-bottom py-3 d-flex align-items-center gap-2">
+                <i className="bi bi-graph-up-arrow text-danger"></i>
+                <h6 className="fw-bold mb-0">Dérives Budgétaires Chantiers</h6>
+              </div>
+              <div className="card-body p-0">
+                {budgetDerive.length === 0 ? (
+                  <div className="text-center py-4 text-muted small">
+                    <i className="bi bi-shield-check fs-3 d-block mb-2 text-success"></i>
+                    Aucune dérive détectée
+                  </div>
+                ) : (
+                  <div className="list-group list-group-flush">
+                    {budgetDerive.map((b, i) => (
+                      <div key={i} className="list-group-item d-flex align-items-center gap-3 py-3">
+                        <div className="flex-grow-1">
+                          <div className="fw-semibold small">{b.chantier}</div>
+                          <div className="progress mt-1" style={{ height: 6 }}>
+                            <div
+                              className={`progress-bar ${b.pct > 100 ? "bg-danger" : b.pct > 85 ? "bg-warning" : "bg-success"}`}
+                              style={{ width: `${Math.min(b.pct, 100)}%` }}
+                            ></div>
+                          </div>
+                          <div className="d-flex justify-content-between mt-1">
+                            <span className="x-small text-muted">
+                              {b.consomme.toLocaleString()} / {b.budget_initial.toLocaleString()} MGA
+                            </span>
+                            <span className={`x-small fw-bold ${b.pct > 100 ? "text-danger" : b.pct > 85 ? "text-warning" : "text-success"}`}>
+                              {b.pct.toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+                        {b.pct > 100 && (
+                          <i className="bi bi-exclamation-triangle-fill text-danger" title="Dépassement budgétaire"></i>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Risques Opérationnels */}
+          <div className="col-lg-6">
+            <div className="card border-0 shadow-sm h-100">
+              <div className="card-header bg-white border-bottom py-3 d-flex align-items-center gap-2">
+                <i className="bi bi-shield-exclamation text-warning"></i>
+                <h6 className="fw-bold mb-0">Risques Opérationnels Actifs</h6>
+              </div>
+              <div className="card-body p-0">
+                {risques.length === 0 ? (
+                  <div className="text-center py-4 text-muted small">
+                    <i className="bi bi-check-circle fs-3 d-block mb-2 text-success"></i>
+                    Aucun risque majeur signalé
+                  </div>
+                ) : (
+                  <div className="list-group list-group-flush">
+                    {risques.map((r, i) => {
+                      const color = r.niveau === "critique"
+                        ? "danger"
+                        : r.niveau === "élevé"
+                        ? "warning"
+                        : "info";
+                      return (
+                        <div key={i} className="list-group-item py-3">
+                          <div className="d-flex align-items-start gap-2">
+                            <span className={`badge bg-${color} bg-opacity-10 text-${color} border`}>
+                              {r.niveau.toUpperCase()}
+                            </span>
+                            <div>
+                              <div className="fw-semibold small">{r.chantier}</div>
+                              <div className="small text-muted">{r.description}</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* === ACTIONS RAPIDES DG === */}
+        <div className="card border-0 shadow-sm p-4 mb-4">
+          <h6 className="fw-bold mb-3 text-secondary">
+            <i className="bi bi-lightning-fill me-2"></i>Actions Stratégiques
+          </h6>
+          <div className="d-flex gap-2 flex-wrap">
+            <button
+              className="btn btn-outline-primary fw-semibold"
+              onClick={() => navigate("/chantiers")}
+            >
+              <i className="bi bi-buildings me-2"></i>Tableau Multi-Chantiers
+            </button>
+            <button
+              className="btn btn-outline-success fw-semibold"
+              onClick={() => navigate("/finance")}
+            >
+              <i className="bi bi-bar-chart-line me-2"></i>Rapport Financier Global
+            </button>
+            <button
+              className="btn btn-outline-secondary fw-semibold"
+              onClick={() => navigate("/rh")}
+            >
+              <i className="bi bi-people me-2"></i>Effectifs &amp; Présences
+            </button>
+            <button
+              className="btn btn-outline-warning fw-semibold"
+              onClick={() => navigate("/materiel")}
+            >
+              <i className="bi bi-truck me-2"></i>Parc Engins &amp; Matériel
+            </button>
+          </div>
         </div>
       </div>
     );
   };
+
 
   // 4. COMPTABLE / RESPONSABLE FINANCIER DASHBOARD
   const renderComptable = () => {

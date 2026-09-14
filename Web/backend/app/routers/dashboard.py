@@ -111,8 +111,10 @@ async def get_worker_attendance(payload: CurrentUserPayload, db: DbDep):
 
 @router.get("/validations")
 async def list_validations(payload: CurrentUserPayload, db: DbDep):
+    """Liste les devis et budgets en attente de validation par la Direction."""
     from app.models.devis import Devis
     from app.models.chantier import Chantier
+    from app.models.utilisateur import Utilisateur
 
     role_code = payload.get("role_code", "")
     entreprise_id = payload.get("entreprise_id")
@@ -120,43 +122,57 @@ async def list_validations(payload: CurrentUserPayload, db: DbDep):
     if not entreprise_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Entreprise ID manquant")
 
-    validations = []
+    if role_code not in ("directeur", "admin_entreprise", "super_admin"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès réservé à la Direction")
 
-    if role_code in ("directeur", "admin_entreprise", "super_admin"):
-        result = await db.execute(
-            select(Devis.id, Devis.numero, Devis.montant_ttc, Devis.statut, Devis.date_creation)
-            .where(Devis.entreprise_id == entreprise_id, Devis.is_deleted == False, Devis.statut == "brouillon")
-            .order_by(Devis.montant_ttc.desc())
-            .limit(20)
+    items = []
+
+    # Devis en attente de validation (statut = brouillon ou soumis)
+    devis_result = await db.execute(
+        select(Devis.id, Devis.numero, Devis.montant_ttc, Devis.date_creation, Devis.objet)
+        .where(
+            Devis.entreprise_id == entreprise_id,
+            Devis.is_deleted == False,
+            Devis.statut.in_(["brouillon", "soumis"]),
         )
-        for row in result.all():
-            validations.append({
-                "id": row.id,
-                "type": "devis",
-                "numero": row.numero,
-                "montant": float(row.montant_ttc or 0),
-                "statut": row.statut,
-                "date": row.date_creation.isoformat() if row.date_creation else None,
-            })
+        .order_by(Devis.montant_ttc.desc())
+        .limit(20)
+    )
+    for row in devis_result.all():
+        items.append({
+            "id": row.id,
+            "type": "devis",
+            "reference": row.numero,
+            "chantier": row.objet or "—",
+            "montant": float(row.montant_ttc or 0),
+            "soumis_par": "Commercial",
+            "date_soumission": row.date_creation.strftime("%d/%m/%Y") if row.date_creation else "—",
+        })
 
-        result = await db.execute(
-            select(Chantier.id, Chantier.nom, Chantier.budget_prevu, Chantier.budget_previsionnel, Chantier.statut)
-            .where(Chantier.entreprise_id == entreprise_id, Chantier.is_deleted == False, Chantier.statut == "planification")
-            .order_by(Chantier.budget_prevu.desc())
-            .limit(20)
+    # Budgets chantiers en attente (statut = planification)
+    chantier_result = await db.execute(
+        select(Chantier.id, Chantier.nom, Chantier.budget_prevu, Chantier.created_at)
+        .where(
+            Chantier.entreprise_id == entreprise_id,
+            Chantier.is_deleted == False,
+            Chantier.statut == "planification",
         )
-        for row in result.all():
-            validations.append({
-                "id": row.id,
-                "type": "budget_chantier",
-                "numero": row.nom,
-                "montant": float(row.budget_prevu or 0),
-                "statut": row.statut,
-                "date": None,
-            })
+        .order_by(Chantier.budget_prevu.desc())
+        .limit(20)
+    )
+    for row in chantier_result.all():
+        items.append({
+            "id": row.id,
+            "type": "budget_chantier",
+            "reference": f"BUDGET-{row.id:04d}",
+            "chantier": row.nom,
+            "montant": float(row.budget_prevu or 0),
+            "soumis_par": "Chef de Projet",
+            "date_soumission": row.created_at.strftime("%d/%m/%Y") if row.created_at else "—",
+        })
 
-    validations.sort(key=lambda x: x.get("date") or "", reverse=True)
-    return {"validations": validations}
+    items.sort(key=lambda x: x.get("date_soumission") or "", reverse=True)
+    return {"items": items, "total": len(items)}
 
 
 @router.post("/validations/{validation_id}/approve")
