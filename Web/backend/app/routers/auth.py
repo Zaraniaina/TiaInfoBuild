@@ -221,77 +221,85 @@ async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, re
     from app.crud.role import RoleCRUD
     from app.models.entreprise import Entreprise
 
-    existing_email = await db.execute(select(Utilisateur).where(Utilisateur.email == data.admin_email))
-    if existing_email.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email déjà utilisé")
-
-    entreprise = Entreprise(
-        nom=data.nom_entreprise,
-        email=data.entreprise_email or data.admin_email,
-        adresse=data.adresse,
-        telephone=data.telephone,
-    )
-    db.add(entreprise)
-    await db.flush()
-    # Pas de db.refresh(entreprise) : l'id est disponible après le flush. Un refresh
-    # chargerait en eager la relation selectin "pointages" (et tout le graphe), ce qui
-    # provoque un 500 "Unknown column" si la table pointages (ou une table liée) est
-    # désynchronisée du modèle ORM. Voir scripts/fix_missing_columns.py.
-
-    role_crud = RoleCRUD()
-    admin_role = await role_crud.get_by_code(db, Role.ADMIN_ENTREPRISE)
-    if not admin_role:
-        admin_role = Role(
-            code=Role.ADMIN_ENTREPRISE,
-            nom="Admin Entreprise",
-            description="Administrateur de l'entreprise",
-            permissions={"*": True},
-            is_system=True,
-        )
-        db.add(admin_role)
-        await db.flush()
-        # Pas de db.refresh(admin_role) : admin_role.code / .id sont déjà disponibles
-        # après le flush. Un refresh chargerait en eager la relation selectin "utilisateurs".
-
-    role_code = admin_role.code
-    permissions = PERMISSION_MAP.get(role_code, [])
-    hashed_password = hash_password(data.password)
-    admin_user = Utilisateur(
-        entreprise_id=entreprise.id,
-        role_id=admin_role.id,
-        nom=data.admin_nom,
-        prenom=data.admin_prenom,
-        email=data.admin_email,
-        mot_de_passe_hash=hashed_password,
-        statut="actif",
-        is_email_verified=False,
-    )
-    db.add(admin_user)
-    await db.flush()
-
-    await db.commit()
-
-    # Envoi de l'email de confirmation
     try:
-        verification_token = create_email_verification_token(admin_user.email)
-        admin_fullname = f"{admin_user.prenom or ''} {admin_user.nom or ''}".strip()
-        await send_email_verification_email(
-            to_email=admin_user.email,
-            verification_token=verification_token,
-            admin_nom=admin_fullname,
-            entreprise_nom=entreprise.nom,
-        )
-    except Exception as exc:
-        import logging
-        logging.getLogger(__name__).warning(f"Impossible d'envoyer l'email de vérification : {exc}")
+        existing_email = await db.execute(select(Utilisateur).where(Utilisateur.email == data.admin_email))
+        if existing_email.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Un utilisateur avec cette adresse email existe déjà.",
+            )
 
-    return RegisterEntrepriseResponse(
-        entreprise_id=entreprise.id,
-        utilisateur_id=admin_user.id,
-        email=admin_user.email,
-        role_code=role_code,
-        message="Entreprise créée avec succès. Un email de confirmation vous a été envoyé pour activer votre compte.",
-    )
+        entreprise = Entreprise(
+            nom=data.nom_entreprise,
+            email=data.entreprise_email or data.admin_email,
+            adresse=data.adresse,
+            telephone=data.telephone,
+        )
+        db.add(entreprise)
+        await db.flush()
+
+        role_crud = RoleCRUD()
+        admin_role = await role_crud.get_by_code(db, Role.ADMIN_ENTREPRISE)
+        if not admin_role:
+            admin_role = Role(
+                code=Role.ADMIN_ENTREPRISE,
+                nom="Admin Entreprise",
+                description="Administrateur de l'entreprise",
+                permissions={"*": True},
+                is_system=True,
+            )
+            db.add(admin_role)
+            await db.flush()
+
+        role_code = admin_role.code
+        hashed_password = hash_password(data.password)
+        admin_user = Utilisateur(
+            entreprise_id=entreprise.id,
+            role_id=admin_role.id,
+            nom=data.admin_nom,
+            prenom=data.admin_prenom,
+            email=data.admin_email,
+            mot_de_passe_hash=hashed_password,
+            statut="actif",
+            is_email_verified=False,
+        )
+        db.add(admin_user)
+        await db.flush()
+
+        await db.commit()
+
+        # Envoi de l'email de confirmation
+        try:
+            verification_token = create_email_verification_token(admin_user.email)
+            admin_fullname = f"{admin_user.prenom or ''} {admin_user.nom or ''}".strip()
+            await send_email_verification_email(
+                to_email=admin_user.email,
+                verification_token=verification_token,
+                admin_nom=admin_fullname,
+                entreprise_nom=entreprise.nom,
+            )
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(f"Impossible d'envoyer l'email de vérification : {exc}")
+
+        return RegisterEntrepriseResponse(
+            entreprise_id=entreprise.id,
+            utilisateur_id=admin_user.id,
+            email=admin_user.email,
+            role_code=role_code,
+            message="Entreprise créée avec succès. Un email de confirmation vous a été envoyé pour activer votre compte.",
+        )
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as exc:
+        await db.rollback()
+        import logging, traceback
+        logging.getLogger(__name__).error(f"Erreur lors de la création d'entreprise: {exc}\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Impossible de créer l'entreprise : {str(exc)}",
+        )
 
 
 @router.post("/forgot-password")
