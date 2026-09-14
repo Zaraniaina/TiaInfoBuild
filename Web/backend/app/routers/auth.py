@@ -276,7 +276,7 @@ async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, re
     admin_fullname = f"{admin_user.prenom or ''} {admin_user.nom or ''}".strip()
     await send_email_verification_email(
         to_email=admin_user.email,
-        token=verification_token,
+        verification_token=verification_token,
         admin_nom=admin_fullname,
         entreprise_nom=entreprise.nom,
     )
@@ -301,18 +301,28 @@ async def forgot_password(payload: ForgotPasswordRequest, db: DbSession):
     )
     user = result.scalar_one_or_none()
 
-    if user:
-        reset_token = create_password_reset_token(user.email)
-        user_name = f"{user.prenom or ''} {user.nom or ''}".strip()
-        await send_reset_password_email(
-            to_email=user.email,
-            reset_token=reset_token,
-            user_name=user_name,
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Aucun compte enregistré avec cette adresse email.",
         )
 
-    # Réponse uniforme pour éviter l'énumération d'adresses email
+    if user.statut != "actif":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Ce compte est désactivé. Veuillez contacter votre administrateur.",
+        )
+
+    reset_token = create_password_reset_token(user.email)
+    user_name = f"{user.prenom or ''} {user.nom or ''}".strip()
+    await send_reset_password_email(
+        to_email=user.email,
+        reset_token=reset_token,
+        user_name=user_name,
+    )
+
     return {
-        "message": "Si l'adresse email correspond à un compte actif, un lien de réinitialisation vous a été envoyé par email."
+        "message": "Un lien de réinitialisation vous a été envoyé par email. Veuillez vérifier votre boîte de réception."
     }
 
 

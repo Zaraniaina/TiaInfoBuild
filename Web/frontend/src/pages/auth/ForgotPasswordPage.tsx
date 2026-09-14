@@ -8,7 +8,7 @@ import { formatErrorMessage } from '@/utils/errorMessage'
 import { AuthVisualPanel } from '@/components/auth/AuthVisualPanel'
 
 const forgotSchema = z.object({
-  email: z.string().email('Veuillez saisir une adresse email invalide'),
+  email: z.string().email('Veuillez saisir une adresse email valide'),
 })
 
 type ForgotFormData = z.infer<typeof forgotSchema>

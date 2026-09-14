@@ -198,12 +198,14 @@ async def send_welcome_entreprise_email(
 
 async def send_email_verification_email(
     to_email: str,
-    verification_token: str,
-    admin_nom: str,
-    entreprise_nom: str,
+    verification_token: str | None = None,
+    admin_nom: str = "",
+    entreprise_nom: str = "",
+    token: str | None = None,
 ) -> bool:
     """Envoie l'email de confirmation d'adresse email après inscription entreprise."""
-    verify_link = f"{settings.frontend_url}/verify-email?token={verification_token}"
+    actual_token = verification_token or token or ""
+    verify_link = f"{settings.frontend_url}/verify-email?token={actual_token}"
     greeting = f"Bonjour {admin_nom}," if admin_nom.strip() else "Bonjour,"
 
     html_content = f"""
