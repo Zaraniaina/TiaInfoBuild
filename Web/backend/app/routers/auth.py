@@ -272,14 +272,18 @@ async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, re
     await db.commit()
 
     # Envoi de l'email de confirmation
-    verification_token = create_email_verification_token(admin_user.email)
-    admin_fullname = f"{admin_user.prenom or ''} {admin_user.nom or ''}".strip()
-    await send_email_verification_email(
-        to_email=admin_user.email,
-        verification_token=verification_token,
-        admin_nom=admin_fullname,
-        entreprise_nom=entreprise.nom,
-    )
+    try:
+        verification_token = create_email_verification_token(admin_user.email)
+        admin_fullname = f"{admin_user.prenom or ''} {admin_user.nom or ''}".strip()
+        await send_email_verification_email(
+            to_email=admin_user.email,
+            verification_token=verification_token,
+            admin_nom=admin_fullname,
+            entreprise_nom=entreprise.nom,
+        )
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning(f"Impossible d'envoyer l'email de vérification : {exc}")
 
     return RegisterEntrepriseResponse(
         entreprise_id=entreprise.id,
@@ -313,13 +317,17 @@ async def forgot_password(payload: ForgotPasswordRequest, db: DbSession):
             detail="Ce compte est désactivé. Veuillez contacter votre administrateur.",
         )
 
-    reset_token = create_password_reset_token(user.email)
-    user_name = f"{user.prenom or ''} {user.nom or ''}".strip()
-    await send_reset_password_email(
-        to_email=user.email,
-        reset_token=reset_token,
-        user_name=user_name,
-    )
+    try:
+        reset_token = create_password_reset_token(user.email)
+        user_name = f"{user.prenom or ''} {user.nom or ''}".strip()
+        await send_reset_password_email(
+            to_email=user.email,
+            reset_token=reset_token,
+            user_name=user_name,
+        )
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning(f"Impossible d'envoyer l'email de réinitialisation : {exc}")
 
     return {
         "message": "Un lien de réinitialisation vous a été envoyé par email. Veuillez vérifier votre boîte de réception."
