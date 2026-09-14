@@ -10,6 +10,52 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
 
+import aiomysql
+import pymysql
+
+# Correctif de compatibilité Python 3.14 / aiomysql :
+# Empêche AttributeError: 'NoneType' object has no attribute 'send'
+# lors du ping/recycle des connexions inactives dans le pool SQLAlchemy.
+_orig_aiomysql_ping = aiomysql.Connection.ping
+_orig_aiomysql_ensure_closed = aiomysql.Connection.ensure_closed
+
+
+async def _safe_aiomysql_ping(self, reconnect=True):
+    try:
+        writer = getattr(self, "_writer", None)
+        if writer is None or getattr(writer, "_transport", None) is None:
+            raise pymysql.OperationalError(2006, "Connection is closed (no transport)")
+        loop = getattr(self, "_loop", None)
+        if loop is None or (getattr(loop, "_proactor", None) is None and hasattr(loop, "_proactor")):
+            raise pymysql.OperationalError(2006, "Connection event loop closed")
+        return await _orig_aiomysql_ping(self, reconnect=reconnect)
+    except (pymysql.OperationalError, pymysql.InterfaceError):
+        raise
+    except Exception as exc:
+        raise pymysql.OperationalError(2006, f"MySQL server has gone away ({exc})") from exc
+
+
+async def _safe_aiomysql_ensure_closed(self):
+    try:
+        await _orig_aiomysql_ensure_closed(self)
+    except Exception:
+        pass
+
+
+_orig_aiomysql_close = aiomysql.Connection.close
+
+
+def _safe_aiomysql_close(self):
+    try:
+        _orig_aiomysql_close(self)
+    except Exception:
+        pass
+
+
+aiomysql.Connection.ping = _safe_aiomysql_ping
+aiomysql.Connection.ensure_closed = _safe_aiomysql_ensure_closed
+aiomysql.Connection.close = _safe_aiomysql_close
+
 
 class Base(DeclarativeBase):
     """Classe de base déclarative pour tous les modèles."""

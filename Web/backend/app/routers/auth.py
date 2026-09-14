@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status, BackgroundTasks
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing_extensions import Annotated
@@ -217,7 +217,12 @@ async def register(data: RegisterRequest, db: DbSession):
 
 
 @router.post("/register-entreprise", response_model=RegisterEntrepriseResponse, status_code=status.HTTP_201_CREATED)
-async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, request: Request):
+async def register_entreprise(
+    data: RegisterEntrepriseRequest,
+    db: DbSession,
+    request: Request,
+    background_tasks: BackgroundTasks,
+):
     from app.crud.role import RoleCRUD
     from app.models.entreprise import Entreprise
 
@@ -268,19 +273,16 @@ async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, re
 
         await db.commit()
 
-        # Envoi de l'email de confirmation
-        try:
-            verification_token = create_email_verification_token(admin_user.email)
-            admin_fullname = f"{admin_user.prenom or ''} {admin_user.nom or ''}".strip()
-            await send_email_verification_email(
-                to_email=admin_user.email,
-                verification_token=verification_token,
-                admin_nom=admin_fullname,
-                entreprise_nom=entreprise.nom,
-            )
-        except Exception as exc:
-            import logging
-            logging.getLogger(__name__).warning(f"Impossible d'envoyer l'email de vérification : {exc}")
+        # Envoi de l'email de confirmation en tâche de fond (non bloquant)
+        verification_token = create_email_verification_token(admin_user.email)
+        admin_fullname = f"{admin_user.prenom or ''} {admin_user.nom or ''}".strip()
+        background_tasks.add_task(
+            send_email_verification_email,
+            to_email=admin_user.email,
+            verification_token=verification_token,
+            admin_nom=admin_fullname,
+            entreprise_nom=entreprise.nom,
+        )
 
         return RegisterEntrepriseResponse(
             entreprise_id=entreprise.id,
@@ -303,7 +305,7 @@ async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, re
 
 
 @router.post("/forgot-password")
-async def forgot_password(payload: ForgotPasswordRequest, db: DbSession):
+async def forgot_password(payload: ForgotPasswordRequest, db: DbSession, background_tasks: BackgroundTasks):
     """Demande un lien de réinitialisation de mot de passe envoyé par email."""
     result = await db.execute(
         select(Utilisateur).where(
@@ -325,17 +327,14 @@ async def forgot_password(payload: ForgotPasswordRequest, db: DbSession):
             detail="Ce compte est désactivé. Veuillez contacter votre administrateur.",
         )
 
-    try:
-        reset_token = create_password_reset_token(user.email)
-        user_name = f"{user.prenom or ''} {user.nom or ''}".strip()
-        await send_reset_password_email(
-            to_email=user.email,
-            reset_token=reset_token,
-            user_name=user_name,
-        )
-    except Exception as exc:
-        import logging
-        logging.getLogger(__name__).warning(f"Impossible d'envoyer l'email de réinitialisation : {exc}")
+    reset_token = create_password_reset_token(user.email)
+    user_name = f"{user.prenom or ''} {user.nom or ''}".strip()
+    background_tasks.add_task(
+        send_reset_password_email,
+        to_email=user.email,
+        reset_token=reset_token,
+        user_name=user_name,
+    )
 
     return {
         "message": "Un lien de réinitialisation vous a été envoyé par email. Veuillez vérifier votre boîte de réception."
