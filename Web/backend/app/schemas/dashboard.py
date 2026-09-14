@@ -143,6 +143,8 @@ class DashboardStatsResponse(BaseModel):
     consommation_stock: float | None = None
     ecart_stock: float | None = None
     nb_alertes_chantier: int | None = None
+    budget_derive: list[dict[str, Any]] | None = None
+    risques: list[dict[str, Any]] | None = None
 
     @field_validator("ca_total", "ca_mois", "depenses_mois", "margin_net", "marge_brute", "marge_nette")
     @classmethod

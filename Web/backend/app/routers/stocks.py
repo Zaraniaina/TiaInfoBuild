@@ -1,4 +1,4 @@
-"""Router pour la gestion des stocks, articles, fournisseurs et mouvements."""
+"""Router pour la gestion des stocks, articles, fournisseurs, dépôts et mouvements."""
 from datetime import date, datetime
 from typing import Any
 
@@ -10,10 +10,12 @@ from app.security import CurrentUserPayload, DbDep
 from app.crud.article import ArticleCRUD
 from app.crud.fournisseur import FournisseurCRUD
 from app.crud.mouvement_stock import MouvementStockCRUD
+from app.crud.depot import DepotCRUD
 from app.crud.base import BaseCRUD
 from app.models.article import Article
 from app.models.fournisseur import Fournisseur
 from app.models.mouvement_stock import MouvementStock
+from app.models.depot import Depot
 from app.schemas.article import (
     ArticleCreate,
     ArticleUpdate,
@@ -31,6 +33,12 @@ from app.schemas.mouvement_stock import (
     MouvementStockCreate,
     MouvementStockResponse,
     MouvementStockList,
+)
+from app.schemas.depot import (
+    DepotCreate,
+    DepotUpdate,
+    DepotResponse,
+    DepotList,
 )
 
 _permission_map = None
@@ -333,3 +341,126 @@ async def create_mouvement(
     mouvement = await crud.create(db, data)
     await db.refresh(mouvement)
     return MouvementStockResponse.model_validate(mouvement)
+
+
+# --- Dépôts BTP ---
+
+@router.get("/depots", response_model=dict)
+async def list_depots(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    search: str | None = Query(default=None, description="Recherche par nom ou code"),
+    type: str | None = Query(default=None, description="Filtrer par type de dépôt"),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=50, ge=1, le=200),
+):
+    """Lister tous les dépôts actifs de l'entreprise."""
+    _require_permission(payload, "stocks:read")
+    entreprise_id = payload.get("entreprise_id")
+    skip = (page - 1) * size
+
+    query = select(Depot).where(Depot.is_deleted == False)
+    if entreprise_id is not None:
+        query = query.where(Depot.entreprise_id == entreprise_id)
+    if search:
+        query = query.where(
+            (Depot.nom.ilike(f"%{search}%")) | (Depot.code.ilike(f"%{search}%"))
+        )
+    if type:
+        query = query.where(Depot.type == type)
+
+    count_query = select(func.count()).select_from(query.subquery())
+    total = (await db.execute(count_query)).scalar_one() or 0
+
+    result = await db.execute(query.offset(skip).limit(size))
+    items = result.scalars().all()
+
+    return {
+        "items": [DepotList.model_validate(item) for item in items],
+        "total": total,
+        "page": page,
+        "size": size,
+    }
+
+
+@router.get("/depots/{id}", response_model=DepotResponse)
+async def get_depot(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+):
+    """Détail d'un dépôt."""
+    _require_permission(payload, "stocks:read")
+    entreprise_id = payload.get("entreprise_id")
+    crud = DepotCRUD()
+    depot = await crud.get(db, id)
+    if not depot or depot.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dépôt non trouvé")
+    if entreprise_id is not None and depot.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+    return DepotResponse.model_validate(depot)
+
+
+@router.post("/depots", response_model=DepotResponse, status_code=status.HTTP_201_CREATED)
+async def create_depot(
+    payload: CurrentUserPayload,
+    obj_in: DepotCreate,
+    db: DbDep,
+):
+    """Créer un nouveau dépôt / zone de stockage BTP."""
+    _require_permission(payload, "stocks:write")
+    entreprise_id = payload.get("entreprise_id")
+    data = obj_in.model_dump(exclude_unset=True)
+    if entreprise_id is not None and not data.get("entreprise_id"):
+        data["entreprise_id"] = entreprise_id
+    # Génération auto du code si absent
+    if not data.get("code"):
+        import random
+        data["code"] = f"DEP-{random.randint(10, 99)}-{random.randint(100, 999)}"
+    crud = DepotCRUD()
+    depot = await crud.create(db, data)
+    await db.refresh(depot)
+    return DepotResponse.model_validate(depot)
+
+
+@router.put("/depots/{id}", response_model=DepotResponse)
+async def update_depot(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+    obj_in: DepotUpdate,
+):
+    """Mettre à jour un dépôt existant."""
+    _require_permission(payload, "stocks:write")
+    entreprise_id = payload.get("entreprise_id")
+    crud = DepotCRUD()
+    depot = await crud.get(db, id)
+    if not depot or depot.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dépôt non trouvé")
+    if entreprise_id is not None and depot.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    data = obj_in.model_dump(exclude_unset=True)
+    updated = await crud.update(db, depot, data)
+    await db.refresh(updated)
+    return DepotResponse.model_validate(updated)
+
+
+@router.delete("/depots/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_depot(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+):
+    """Supprimer (soft-delete) un dépôt. Les articles liés conservent leur emplacement textuel."""
+    _require_permission(payload, "stocks:write")
+    entreprise_id = payload.get("entreprise_id")
+    crud = DepotCRUD()
+    depot = await crud.get(db, id)
+    if not depot or depot.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dépôt non trouvé")
+    if entreprise_id is not None and depot.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    depot.is_deleted = True
+    await db.flush()

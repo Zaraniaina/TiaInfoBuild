@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import type { Depense, RapportFinancier } from '@/types'
+import type { Depense, RapportFinancier, Chantier, Fournisseur } from '@/types'
 import { financeService } from '@/services/finance.service'
+import { chantiersService } from '@/services/chantiers.service'
+import { stocksService } from '@/services/stocks.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
 import { TableSkeleton } from '@/components/ui/Skeleton'
@@ -33,14 +35,41 @@ export function FinancePage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'depenses' | 'rapports' | 'budget' | 'paiements' | 'encours'>('overview')
   const [depenses, setDepenses] = useState<Depense[]>([])
   const [rapports, setRapports] = useState<RapportFinancier[]>([])
+  const [chantiers, setChantiers] = useState<Chantier[]>([])
+  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
   const [overruns, setOverruns] = useState<BudgetOverrun[]>([])
   const [paymentDelays, setPaymentDelays] = useState<any[]>([])
   const [clientOutstanding, setClientOutstanding] = useState<ClientOutstanding[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ description: '', montant: '', categorie: 'divers', date_depense: '' })
+  const [form, setForm] = useState({
+    reference_piece: '',
+    description: '',
+    montant: '',
+    categorie: 'materiaux',
+    date_depense: '',
+    chantier_id: '',
+    fournisseur_id: '',
+    mode_paiement: 'virement',
+  })
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
+
+  const openNewDepenseModal = () => {
+    const year = new Date().getFullYear()
+    const nextNum = String(depenses.length + 1).padStart(3, '0')
+    setForm({
+      reference_piece: `FAC-ACHAT-${year}-${nextNum}`,
+      description: '',
+      montant: '',
+      categorie: 'materiaux',
+      date_depense: new Date().toISOString().split('T')[0],
+      chantier_id: '',
+      fournisseur_id: '',
+      mode_paiement: 'virement',
+    })
+    setShowModal(true)
+  }
 
   const loadData = async () => {
     setLoading(true)
@@ -74,6 +103,8 @@ export function FinancePage() {
 
   useEffect(() => {
     loadData()
+    chantiersService.getAll().then(setChantiers).catch(() => setChantiers([]))
+    stocksService.getFournisseurs().then(setFournisseurs).catch(() => setFournisseurs([]))
   }, [activeTab])
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -85,11 +116,14 @@ export function FinancePage() {
         montant: parseFloat(form.montant),
         categorie: form.categorie,
         date_depense: form.date_depense || new Date().toISOString().split('T')[0],
+        chantier_id: form.chantier_id ? Number(form.chantier_id) : undefined,
+        fournisseur_id: form.fournisseur_id ? Number(form.fournisseur_id) : undefined,
+        mode_paiement: form.mode_paiement,
+        reference_piece: form.reference_piece,
         taux_tva: 20,
         statut: 'en_attente',
-      })
+      } as any)
       setShowModal(false)
-      setForm({ description: '', montant: '', categorie: 'divers', date_depense: '' })
       loadData()
     } catch {
       alert('Erreur lors de la création de la dépense')
@@ -118,12 +152,12 @@ export function FinancePage() {
       {/* Header */}
         <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
           <div>
-            <h2 className="mb-1 text-secondary"><i className="bi bi-bank me-2"></i>Gestion Financière</h2>
-            <p className="text-secondary mb-0">Suivez la trésorerie, la rentabilité, les dépenses et les bilans financiers</p>
+            <h2 className="mb-1 text-secondary"><i className="bi bi-bank me-2"></i>Gestion Financière & Comptabilité BTP</h2>
+            <p className="text-secondary mb-0">Suivez la trésorerie, la rentabilité par chantier, les décomptes et bilans financiers</p>
           </div>
           {activeTab === 'depenses' && perms.canCreateDepense && (
-            <button className="btn btn-outline-secondary fw-bold" onClick={() => setShowModal(true)}>
-              <i className="bi bi-plus-circle me-2"></i>Nouvelle Dépense
+            <button className="btn btn-outline-secondary fw-bold" onClick={openNewDepenseModal}>
+              <i className="bi bi-plus-circle me-2"></i>Nouvelle Dépense / Achat BTP
             </button>
           )}
           {activeTab === 'rapports' && perms.canExportFinance && (
@@ -364,41 +398,87 @@ export function FinancePage() {
 
       {/* Modal Nouvelle Dépense */}
       {showModal && (
-        <div className="modal fade show" style={{ display: 'block' }} tabIndex={-1}>
-          <div className="modal-dialog">
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex={-1}>
+          <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
               <form onSubmit={handleCreate}>
                 <div className="modal-header">
-                  <h5 className="modal-title">Nouvelle Dépense</h5>
-                  <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
+                  <h5 className="modal-title fw-bold">Nouvelle Dépense / Achat BTP</h5>
+                  <button type="button" className="btn-close btn-close-white" onClick={() => setShowModal(false)}></button>
                 </div>
                 <div className="modal-body">
-                  <div className="mb-3">
-                    <label className="form-label">Description</label>
-                    <input className="form-control" required value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Montant (MGA)</label>
-                    <input type="number" className="form-control" required min="0" step="0.01" value={form.montant} onChange={e => setForm({ ...form, montant: e.target.value })} />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Catégorie</label>
-                    <select className="form-select" value={form.categorie} onChange={e => setForm({ ...form, categorie: e.target.value })}>
-                      <option value="transport">Transport</option>
-                      <option value="materiaux">Matériaux</option>
-                      <option value="main_oeuvre">Main d'oeuvre</option>
-                      <option value="divers">Divers</option>
-                    </select>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Date</label>
-                    <input type="date" className="form-control" value={form.date_depense} onChange={e => setForm({ ...form, date_depense: e.target.value })} />
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Référence Pièce / Facture *</label>
+                      <div className="input-group">
+                        <input className="form-control font-monospace fw-bold" required value={form.reference_piece} onChange={e => setForm({ ...form, reference_piece: e.target.value })} />
+                        <button className="btn btn-outline-secondary" type="button" onClick={() => {
+                          const year = new Date().getFullYear()
+                          const nextNum = String(depenses.length + 1).padStart(3, '0')
+                          setForm({ ...form, reference_piece: `FAC-ACHAT-${year}-${nextNum}` })
+                        }}>
+                          <i className="bi bi-arrow-clockwise"></i>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Description / Libellé *</label>
+                      <input className="form-control" required placeholder="Achat de ciment, carburant touret..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Montant TTC (MGA) *</label>
+                      <input type="number" className="form-control font-monospace fs-5 fw-bold" required min="0" step="1" value={form.montant} onChange={e => setForm({ ...form, montant: e.target.value })} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Catégorie BTP *</label>
+                      <select className="form-select" value={form.categorie} onChange={e => setForm({ ...form, categorie: e.target.value })}>
+                        <option value="materiaux">Matériaux & Agglomérats</option>
+                        <option value="location_materiel">Location Matériel / Engins</option>
+                        <option value="carburant">Carburant & Transport Logistique</option>
+                        <option value="main_oeuvre">Main d'œuvre / Sous-traitance / Tâcherons</option>
+                        <option value="outillage">Outillage & Équipements Magasin</option>
+                        <option value="taxes_organismes">Taxes, CNAPS & OSTIE</option>
+                        <option value="divers">Divers & Frais Généraux</option>
+                      </select>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Chantier d'Imputation (Combobox)</label>
+                      <select className="form-select" value={form.chantier_id} onChange={e => setForm({ ...form, chantier_id: e.target.value })}>
+                        <option value="">Sélectionner un chantier...</option>
+                        {chantiers.map((c) => (
+                          <option key={c.id} value={c.id}>{c.numero ? `[${c.numero}] ` : ''}{c.nom}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Fournisseur / Prestataire (Combobox)</label>
+                      <select className="form-select" value={form.fournisseur_id} onChange={e => setForm({ ...form, fournisseur_id: e.target.value })}>
+                        <option value="">Sélectionner un fournisseur...</option>
+                        {fournisseurs.map((f) => (
+                          <option key={f.id} value={f.id}>{f.nom} ({f.code || 'Fournisseur'})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Mode de Règlement</label>
+                      <select className="form-select" value={form.mode_paiement} onChange={e => setForm({ ...form, mode_paiement: e.target.value })}>
+                        <option value="virement">Virement Bancaire (BNI / BOA / SG)</option>
+                        <option value="mvola">Mobile Money — MVola</option>
+                        <option value="orange_money">Mobile Money — Orange Money</option>
+                        <option value="cheque">Chèque Bancaire</option>
+                        <option value="especes">Caisse / Espèces</option>
+                      </select>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Date de la dépense</label>
+                      <input type="date" className="form-control" value={form.date_depense} onChange={e => setForm({ ...form, date_depense: e.target.value })} />
+                    </div>
                   </div>
                 </div>
-                <div className="modal-footer">
+                <div className="modal-footer bg-light">
                   <button type="button" className="btn btn-outline-secondary" onClick={() => setShowModal(false)} disabled={saving}>Annuler</button>
-                  <button type="submit" className="btn btn-outline-secondary" disabled={saving}>
-                    {saving ? 'Enregistrement...' : 'Enregistrer'}
+                  <button type="submit" className="btn btn-outline-secondary fw-bold" disabled={saving}>
+                    {saving ? 'Enregistrement...' : 'Enregistrer la dépense'}
                   </button>
                 </div>
               </form>

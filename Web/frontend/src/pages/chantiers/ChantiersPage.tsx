@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { Chantier } from '@/types'
+import type { Chantier, Employe } from '@/types'
 import { chantiersService, type ProjetTransformable } from '@/services/chantiers.service'
+import { rhService } from '@/services/rh.service'
 import { QRScannerModal } from '@/components/pointage/QRScannerModal'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
@@ -12,6 +13,7 @@ export function ChantiersPage() {
   const perms = getRolePermissions(roleCode)
 
   const [chantiers, setChantiers] = useState<Chantier[]>([])
+  const [employes, setEmployes] = useState<Employe[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statutFilter, setStatutFilter] = useState('')
@@ -40,6 +42,23 @@ export function ChantiersPage() {
     description: ''
   })
 
+  const openCreateChantierModal = () => {
+    const year = new Date().getFullYear()
+    const count = chantiers.length + 1
+    setSelectedChantier(null)
+    setFormData({
+      numero: `CHT-${year}-${String(count).padStart(3, '0')}`,
+      nom: '',
+      statut: 'planification',
+      budget_prevu: 0,
+      marge_cible: 15,
+      tva: 20,
+      description: ''
+    })
+    setActiveTabModal('infos')
+    setShowModal(true)
+  }
+
   const loadChantiers = async () => {
     setLoading(true)
     try {
@@ -54,6 +73,7 @@ export function ChantiersPage() {
 
   useEffect(() => {
     loadChantiers()
+    rhService.getEmployes().then(setEmployes).catch(() => setEmployes([]))
   }, [searchTerm, statutFilter])
 
   const openTransformModal = async () => {
@@ -446,14 +466,49 @@ export function ChantiersPage() {
                         />
                       </div>
                       <div className="col-md-4">
-                        <label className="form-label fw-semibold">Numéro</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="CHT-2026-XXX"
-                          value={formData.numero || ''}
-                          onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
-                        />
+                        <label className="form-label fw-semibold">Numéro (Auto-généré)</label>
+                        <div className="input-group">
+                          <input
+                            type="text"
+                            className="form-control font-monospace fw-bold"
+                            placeholder="CHT-2026-XXX"
+                            value={formData.numero || ''}
+                            onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                          />
+                          <button className="btn btn-outline-secondary" type="button" onClick={() => {
+                            const year = new Date().getFullYear()
+                            const count = chantiers.length + 1
+                            setFormData({ ...formData, numero: `CHT-${year}-${String(count).padStart(3, '0')}` })
+                          }}>
+                            <i className="bi bi-arrow-clockwise"></i>
+                          </button>
+                        </div>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Chef de Projet / Conducteur de Travaux</label>
+                        <select
+                          className="form-select"
+                          value={formData.chef_projet_id || ''}
+                          onChange={(e) => setFormData({ ...formData, chef_projet_id: e.target.value ? Number(e.target.value) : undefined })}
+                        >
+                          <option value="">Sélectionner un Conducteur de Travaux...</option>
+                          {employes.map((e) => (
+                            <option key={e.id} value={e.id}>{e.prenom || ''} {e.nom} ({e.poste || 'Cadre BTP'})</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Chef de Chantier / Responsable Site</label>
+                        <select
+                          className="form-select"
+                          value={formData.chef_chantier_id || ''}
+                          onChange={(e) => setFormData({ ...formData, chef_chantier_id: e.target.value ? Number(e.target.value) : undefined })}
+                        >
+                          <option value="">Sélectionner un Chef de Chantier...</option>
+                          {employes.map((e) => (
+                            <option key={e.id} value={e.id}>{e.prenom || ''} {e.nom} ({e.poste || 'Chef de Site'})</option>
+                          ))}
+                        </select>
                       </div>
                       <div className="col-md-6">
                         <label className="form-label fw-semibold">Statut</label>

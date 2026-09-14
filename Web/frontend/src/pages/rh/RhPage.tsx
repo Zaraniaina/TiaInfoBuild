@@ -10,6 +10,25 @@ import { RhCongesTab } from './RhCongesTab'
 import { RhPaieTab } from './RhPaieTab'
 import { RhEmployeDocsModal } from './RhEmployeDocsModal'
 
+const POSTES_BTP = [
+  'Conducteur de Travaux',
+  'Chef de Chantier',
+  'Chef d\'Équipe',
+  'Maçon Qualifié (Cat. III/IV)',
+  'Ferrailleur / Armaturier',
+  'Coffreur-Boiseur',
+  'Conducteur d\'Engins (CACES)',
+  'Électricien BTP',
+  'Plombier-Sanitaire',
+  'Peintre / Applicateur',
+  'Magasinier / Gestionnaire Stock',
+  'Topographe / Géomètre',
+  'Mécanicien Engins BTP',
+  'Manœuvre BTP',
+  'Directeur Technique',
+  'Comptable / Gestionnaire RH',
+]
+
 export function RhPage() {
   const { user } = useAuthStore()
   const perms = getRolePermissions(user?.role_code || '')
@@ -43,6 +62,24 @@ export function RhPage() {
     motif: ''
   })
 
+  const openNewEmployeModal = () => {
+    const year = new Date().getFullYear()
+    const count = employes.length + 1
+    const prefix = employeForm.type_contrat === 'JOURNALIER' ? 'JRN' : 'EMP'
+    setSelectedEmploye(null)
+    setEmployeForm({
+      matricule: `${prefix}-${year}-${String(count).padStart(3, '0')}`,
+      type_contrat: 'CDI',
+      statut: 'actif',
+      salaire_base: 0,
+      poste: POSTES_BTP[3],
+      mode_remuneration: 'mensuel',
+      solde_conges_annuel: 30,
+      statut_declaration: 'cnaps_ostie',
+    })
+    setShowEmployeModal(true)
+  }
+
   const loadData = async () => {
     setLoading(true)
     try {
@@ -59,8 +96,6 @@ export function RhPage() {
         const data = await rhService.getHeuresSup()
         setHeuresSup(data)
       }
-      // conges & paie : composants dédiés (RhCongesTab / RhPaieTab) qui gèrent
-      // leur propre chargement. Rien à faire ici.
     } catch {
       setEmployes([])
       setPointages([])
@@ -127,7 +162,7 @@ export function RhPage() {
         <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
           <div>
             <h2 className="mb-1 text-secondary"><i className="bi bi-people me-2"></i>Ressources Humaines</h2>
-            <p className="text-secondary mb-0">Gestion du personnel, des pointages, des équipes et des heures supplémentaires</p>
+            <p className="text-secondary mb-0">Gestion du personnel BTP, des pointages, des équipes et de la paie</p>
           </div>
           {activeTab === 'employes' && (
             <div className="d-flex gap-2">
@@ -137,7 +172,7 @@ export function RhPage() {
                   </button>
                 )}
               {perms.canCreateEmploye && (
-                <button className="btn btn-outline-secondary fw-bold" onClick={() => { setSelectedEmploye(null); setEmployeForm({ type_contrat: 'CDI', statut: 'actif', salaire_base: 0 }); setShowEmployeModal(true); }}>
+                <button className="btn btn-outline-secondary fw-bold" onClick={openNewEmployeModal}>
                   <i className="bi bi-person-plus me-2"></i>Nouvel employé
                 </button>
               )}
@@ -435,36 +470,55 @@ export function RhPage() {
               <form onSubmit={handleSaveEmploye}>
                 <div className="modal-body">
                   <div className="row g-3">
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold">Nom *</label>
-                      <input type="text" className="form-control" required value={employeForm.nom || ''} onChange={e => setEmployeForm({...employeForm, nom: e.target.value})} />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold">Prénom *</label>
-                      <input type="text" className="form-control" value={employeForm.prenom || ''} onChange={e => setEmployeForm({...employeForm, prenom: e.target.value})} />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold">Poste *</label>
-                      <input type="text" className="form-control" required value={employeForm.poste || ''} onChange={e => setEmployeForm({...employeForm, poste: e.target.value})} />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold">Type de Contrat</label>
-                      <select className="form-select" value={employeForm.type_contrat || 'CDI'} onChange={e => setEmployeForm({...employeForm, type_contrat: e.target.value as any})}>
-                        <option value="CDI">CDI</option>
-                        <option value="CDD">CDD</option>
-                        <option value="JOURNALIER">Journalier</option>
-                        <option value="INTERIM">Intérim</option>
-                        <option value="STAGE">Stage</option>
-                      </select>
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold">Salaire de Base (MGA)</label>
-                      <input type="number" className="form-control font-monospace" value={employeForm.salaire_base || 0} onChange={e => setEmployeForm({...employeForm, salaire_base: Number(e.target.value)})} />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold">Téléphone</label>
-                      <input type="text" className="form-control" value={employeForm.telephone || ''} onChange={e => setEmployeForm({...employeForm, telephone: e.target.value})} />
-                    </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Matricule (Auto-généré) *</label>
+                        <div className="input-group">
+                          <input type="text" className="form-control font-monospace fw-bold" required value={employeForm.matricule || ''} onChange={e => setEmployeForm({...employeForm, matricule: e.target.value})} />
+                          <button className="btn btn-outline-secondary" type="button" onClick={() => {
+                            const year = new Date().getFullYear()
+                            const count = employes.length + 1
+                            const prefix = employeForm.type_contrat === 'JOURNALIER' ? 'JRN' : 'EMP'
+                            setEmployeForm({...employeForm, matricule: `${prefix}-${year}-${String(count).padStart(3, '0')}`})
+                          }}>
+                            <i className="bi bi-arrow-clockwise"></i>
+                          </button>
+                        </div>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Nom *</label>
+                        <input type="text" className="form-control" required value={employeForm.nom || ''} onChange={e => setEmployeForm({...employeForm, nom: e.target.value})} />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Prénom *</label>
+                        <input type="text" className="form-control" value={employeForm.prenom || ''} onChange={e => setEmployeForm({...employeForm, prenom: e.target.value})} />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Poste Métier BTP *</label>
+                        <select className="form-select" required value={employeForm.poste || ''} onChange={e => setEmployeForm({...employeForm, poste: e.target.value})}>
+                          <option value="">Sélectionner un métier BTP...</option>
+                          {POSTES_BTP.map((p, i) => (
+                            <option key={i} value={p}>{p}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Type de Contrat</label>
+                        <select className="form-select" value={employeForm.type_contrat || 'CDI'} onChange={e => setEmployeForm({...employeForm, type_contrat: e.target.value as any})}>
+                          <option value="CDI">CDI (Permanent)</option>
+                          <option value="CDD">CDD (Projet/Chantier)</option>
+                          <option value="JOURNALIER">Journalier (Main d'œuvre Tâcheron)</option>
+                          <option value="INTERIM">Intérim / Sous-traitance</option>
+                          <option value="STAGE">Stage / Apprentissage</option>
+                        </select>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Salaire de Base (MGA)</label>
+                        <input type="number" className="form-control font-monospace" value={employeForm.salaire_base || 0} onChange={e => setEmployeForm({...employeForm, salaire_base: Number(e.target.value)})} />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Téléphone / Mobile Money</label>
+                        <input type="text" className="form-control" placeholder="+261 34 00 000 00" value={employeForm.telephone || ''} onChange={e => setEmployeForm({...employeForm, telephone: e.target.value})} />
+                      </div>
                     <div className="col-md-6">
                       <label className="form-label fw-semibold">Mode de Rémunération</label>
                       <select className="form-select" value={employeForm.mode_remuneration || 'mensuel'} onChange={e => setEmployeForm({...employeForm, mode_remuneration: e.target.value as any})}>

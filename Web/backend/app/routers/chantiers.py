@@ -18,6 +18,7 @@ from app.models.affectation_chantier import AffectationChantier
 from app.models.projet import Projet
 from app.models.devis import Devis
 from app.models.contrat import Contrat
+from app.models.rapport_journalier import RapportJournalier
 from app.schemas.chantier import (
     ChantierCreate,
     ChantierUpdate,
@@ -599,3 +600,69 @@ async def delete_affectation_chantier(
     affectation.is_deleted = True
     await db.flush()
     return None
+
+
+class RapportJournalierCreate(BaseModel):
+    date_rapport: date | None = None
+    travaux_realises: str | None = None
+    quantites: str | None = None
+    personnel_present: str | None = None
+    materiel_utilise: str | None = None
+    materiaux_utilises: str | None = None
+    incidents: str | None = None
+    difficultes: str | None = None
+    observations: str | None = None
+
+
+@router.get("/{id}/rapports")
+async def list_rapports_chantier(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+):
+    _require_permission(payload, "chantiers:read")
+    entreprise_id = payload.get("entreprise_id")
+    crud = ChantierCRUD()
+    chantier = await crud.get(db, id)
+    if not chantier or chantier.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chantier non trouvé")
+    if entreprise_id is not None and chantier.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    result = await db.execute(
+        select(RapportJournalier)
+        .where(RapportJournalier.chantier_id == id, RapportJournalier.is_deleted == False)
+        .order_by(RapportJournalier.date_rapport.desc())
+    )
+    rapports = result.scalars().all()
+    return {"items": rapports}
+
+
+@router.post("/{id}/rapports", status_code=status.HTTP_201_CREATED)
+async def create_rapport_chantier(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+    obj_in: RapportJournalierCreate,
+):
+    _require_permission(payload, "chantiers:write")
+    user = payload.get("user")
+    entreprise_id = payload.get("entreprise_id")
+    crud = ChantierCRUD()
+    chantier = await crud.get(db, id)
+    if not chantier or chantier.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chantier non trouvé")
+    if entreprise_id is not None and chantier.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    rapport = RapportJournalier(
+        chantier_id=id,
+        employe_id=user.id if user else None,
+        date_rapport=obj_in.date_rapport or date.today(),
+        **obj_in.model_dump(exclude={"date_rapport"}),
+    )
+    db.add(rapport)
+    await db.flush()
+    await db.refresh(rapport)
+    return {"id": rapport.id, "message": "Rapport journalier enregistré", "rapport": rapport}
+

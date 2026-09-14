@@ -127,6 +127,8 @@ class DashboardCRUD:
         delai_moyen_paiement = 0.0
         tresorerie_par_client = []
         rapports_disponibles = 0
+        budget_derive = []
+        risques = []
 
         if role_code in ("super_admin", "admin_entreprise", "directeur", "comptable"):
             result = await db.execute(select(func.coalesce(func.sum(Facture.montant_ttc), 0)).where(Facture.entreprise_id == entreprise_id, Facture.is_deleted == False))
@@ -298,6 +300,63 @@ class DashboardCRUD:
                 select(func.count(RapportFinancier.id)).where(RapportFinancier.entreprise_id == entreprise_id, RapportFinancier.is_deleted == False)
             )
             rapports_disponibles = rapports_result.scalar_one_or_none() or 0
+
+            # Dérives budgétaires : chantiers dont budget_reel > 0 et consommation > 60%
+            derive_result = await db.execute(
+                select(Chantier.nom, Chantier.budget_prevu, Chantier.budget_reel)
+                .where(
+                    Chantier.entreprise_id == entreprise_id,
+                    Chantier.is_deleted == False,
+                    Chantier.budget_prevu > 0,
+                    Chantier.budget_reel > 0,
+                    Chantier.statut.in_(["en_cours", "planification"]),
+                )
+                .order_by((Chantier.budget_reel / Chantier.budget_prevu).desc())
+                .limit(8)
+            )
+            for row in derive_result.all():
+                budget_prevu = float(row.budget_prevu or 1)
+                consomme = float(row.budget_reel or 0)
+                pct = round((consomme / budget_prevu) * 100, 1) if budget_prevu > 0 else 0
+                if pct >= 60:  # Afficher seulement à partir de 60%
+                    budget_derive.append({
+                        "chantier": row.nom,
+                        "budget_initial": int(budget_prevu),
+                        "consomme": int(consomme),
+                        "pct": pct,
+                    })
+
+            # Risques : chantiers en retard ou dépassement critique
+            from datetime import date
+            risques_result = await db.execute(
+                select(Chantier.nom, Chantier.date_fin_prevue, Chantier.budget_prevu, Chantier.budget_reel, Chantier.statut)
+                .where(
+                    Chantier.entreprise_id == entreprise_id,
+                    Chantier.is_deleted == False,
+                    Chantier.statut == "en_cours",
+                )
+                .limit(10)
+            )
+            today = date.today()
+            for row in risques_result.all():
+                bp = float(row.budget_prevu or 1)
+                br = float(row.budget_reel or 0)
+                pct_b = (br / bp * 100) if bp > 0 else 0
+                is_over_budget = pct_b > 100
+                is_late = row.date_fin_prevue and row.date_fin_prevue < today
+                if is_over_budget or is_late:
+                    niveau = "critique" if (is_over_budget and is_late) else ("elevé" if is_over_budget else "modéré")
+                    desc_parts = []
+                    if is_late:
+                        desc_parts.append(f"Retard de {(today - row.date_fin_prevue).days}j")
+                    if is_over_budget:
+                        desc_parts.append(f"Budget dépassé ({pct_b:.0f}%)")
+                    risques.append({
+                        "niveau": niveau,
+                        "chantier": row.nom,
+                        "description": " | ".join(desc_parts),
+                        "derive_pct": round(pct_b, 1),
+                    })
 
         if role_code == "chef_chantier":
             chef_chantier_id = user_id
@@ -515,4 +574,6 @@ class DashboardCRUD:
             "consommation_stock": round(consommation_stock, 2) if role_code == "chef_chantier" else 0.0,
             "ecart_stock": round(ecart_stock, 2) if role_code == "chef_chantier" else 0.0,
             "nb_alertes_chantier": nb_alertes_chantier if role_code == "chef_chantier" else 0,
+            "budget_derive": budget_derive if role_code in ("super_admin", "admin_entreprise", "directeur") else [],
+            "risques": risques if role_code in ("super_admin", "admin_entreprise", "directeur") else [],
         }
