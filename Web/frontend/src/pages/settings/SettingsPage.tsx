@@ -303,11 +303,129 @@ export function SettingsPage() {
     }
   };
 
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const isEmploye = user?.role_code === 'employe';
+
+  const handlePhotoUploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('fichier', file);
+      const res = await api.post<{ photo: string }>('/parametres/profile/photo', formData);
+      const newPhoto = res.data.photo;
+      setProfilForm(prev => ({ ...prev, photo: newPhoto }));
+      if (user) {
+        useAuthStore.getState().setUser({ ...user, photo: newPhoto });
+      }
+      useToastStore.getState().addToast({
+        type: 'success',
+        title: 'Photo mise à jour',
+        message: 'Votre photo de profil a été mise à jour avec succès.',
+        duration: 3000,
+      });
+    } catch (err) {
+      useToastStore.getState().addToast({
+        type: 'error',
+        title: 'Erreur',
+        message: formatErrorMessage(err, "Erreur lors de l'envoi de la photo."),
+        duration: 5000,
+      });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleDeletePhoto = async () => {
+    if (!confirm('Voulez-vous vraiment supprimer votre photo de profil ?')) return;
+    setUploadingPhoto(true);
+    try {
+      await api.delete('/parametres/profile/photo');
+      setProfilForm(prev => ({ ...prev, photo: '' }));
+      if (user) {
+        useAuthStore.getState().setUser({ ...user, photo: null });
+      }
+      useToastStore.getState().addToast({
+        type: 'success',
+        title: 'Photo supprimée',
+        message: 'Votre photo de profil a été supprimée.',
+        duration: 3000,
+      });
+    } catch (err) {
+      useToastStore.getState().addToast({
+        type: 'error',
+        title: 'Erreur',
+        message: formatErrorMessage(err, 'Erreur lors de la suppression de la photo.'),
+        duration: 5000,
+      });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleLogoUploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append('fichier', file);
+      const res = await api.post<{ logo: string }>('/parametres/entreprise/logo', formData);
+      const newLogo = res.data.logo;
+      setEntrepriseForm(prev => ({ ...prev, logo: newLogo }));
+      useToastStore.getState().addToast({
+        type: 'success',
+        title: 'Logo mis à jour',
+        message: "Le logo de l'entreprise a été téléversé avec succès.",
+        duration: 3000,
+      });
+    } catch (err) {
+      useToastStore.getState().addToast({
+        type: 'error',
+        title: 'Erreur',
+        message: formatErrorMessage(err, "Erreur lors du téléversement du logo."),
+        duration: 5000,
+      });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleDeleteLogo = async () => {
+    if (!confirm("Voulez-vous vraiment supprimer le logo de l'entreprise ?")) return;
+    setUploadingLogo(true);
+    try {
+      await api.delete('/parametres/entreprise/logo');
+      setEntrepriseForm(prev => ({ ...prev, logo: '' }));
+      useToastStore.getState().addToast({
+        type: 'success',
+        title: 'Logo supprimé',
+        message: "Le logo de l'entreprise a été supprimé.",
+        duration: 3000,
+      });
+    } catch (err) {
+      useToastStore.getState().addToast({
+        type: 'error',
+        title: 'Erreur',
+        message: formatErrorMessage(err, "Erreur lors de la suppression du logo."),
+        duration: 5000,
+      });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   const handleSaveProfil = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.put("/parametres/profile", profilForm);
+      const res = await api.put("/parametres/profile", profilForm);
+      if (res.data?.utilisateur && user) {
+        useAuthStore.getState().setUser({ ...user, ...res.data.utilisateur });
+      }
       useToastStore.getState().addToast({
         type: "success",
         title: "Profil mis à jour",
@@ -1001,19 +1119,39 @@ export function SettingsPage() {
                </h5>
                
                <div className="mb-4">
-                 <label className="form-label fw-semibold">URL du Logo d'Entreprise</label>
-                 <div className="input-group">
-                   <span className="input-group-text bg-light"><i className="bi bi-image"></i></span>
-                   <input
-                     type="text"
-                     className="form-control"
-                     placeholder="https://exemple.com/logo.png (ou data:image/...)"
-                     value={entrepriseForm.logo}
-                     onChange={(e) => setEntrepriseForm({ ...entrepriseForm, logo: e.target.value })}
-                   />
-                 </div>
-                 <div className="form-text">Ce logo apparaîtra sur tous les Badges QR, Devis, Factures et Contrats.</div>
-               </div>
+                  <label className="form-label fw-semibold d-block">Logo de l'Entreprise</label>
+                  <div className="d-flex align-items-center gap-3">
+                    {entrepriseForm.logo ? (
+                      <img
+                        src={entrepriseForm.logo}
+                        alt="Logo Entreprise"
+                        className="rounded-3 border p-1 bg-white shadow-sm"
+                        style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+                      />
+                    ) : (
+                      <div
+                        className="rounded-3 bg-light border d-flex align-items-center justify-content-center text-muted"
+                        style={{ width: '80px', height: '80px', fontSize: '1.8rem' }}
+                      >
+                        <i className="bi bi-building"></i>
+                      </div>
+                    )}
+                    <div>
+                      <div className="d-flex align-items-center gap-2 mb-1">
+                        <label className={`btn btn-sm btn-outline-primary mb-0 ${uploadingLogo ? 'disabled' : ''}`}>
+                          <i className="bi bi-upload me-1"></i>{uploadingLogo ? 'Chargement...' : 'Téléverser le logo'}
+                          <input type="file" accept="image/jpeg,image/png" hidden onChange={handleLogoUploadFile} disabled={uploadingLogo} />
+                        </label>
+                        {entrepriseForm.logo && (
+                          <button type="button" className="btn btn-sm btn-outline-danger mb-0" onClick={handleDeleteLogo} disabled={uploadingLogo}>
+                            <i className="bi bi-trash me-1"></i>Supprimer
+                          </button>
+                        )}
+                      </div>
+                      <div className="form-text" style={{ fontSize: '0.78rem' }}>Ce logo apparaîtra sur tous les Badges QR, Devis, Factures et Contrats.</div>
+                    </div>
+                  </div>
+                </div>
 
                <div className="mb-4">
                  <label className="form-label fw-semibold">En-tête des Badges QR de Pointage</label>
@@ -1163,15 +1301,28 @@ export function SettingsPage() {
               )}
             </div>
             <div className="flex-grow-1">
-              <label className="form-label fw-semibold">Photo de profil (URL ou Image)</label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="https://exemple.com/photo.jpg"
-                value={profilForm.photo}
-                onChange={(e) => setProfilForm({ ...profilForm, photo: e.target.value })}
-              />
-              <div className="form-text">Cette photo apparaîtra sur votre profil, votre badge et la plateforme.</div>
+              <label className="form-label fw-semibold">Photo de profil</label>
+              {isEmploye ? (
+                <div className="alert alert-info py-2 px-3 small d-flex align-items-center mb-0 border-0 bg-info-subtle text-info-emphasis rounded-3">
+                  <i className="bi bi-info-circle-fill me-2 fs-5"></i>
+                  <span>Votre photo de profil est gérée exclusivement par le service RH via votre badge professionnel.</span>
+                </div>
+              ) : (
+                <div>
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <label className={`btn btn-sm btn-outline-primary mb-0 ${uploadingPhoto ? 'disabled' : ''}`}>
+                      <i className="bi bi-upload me-1"></i>{uploadingPhoto ? 'Chargement...' : 'Téléverser une image'}
+                      <input type="file" accept="image/jpeg,image/png" hidden onChange={handlePhotoUploadFile} disabled={uploadingPhoto} />
+                    </label>
+                    {profilForm.photo && (
+                      <button type="button" className="btn btn-sm btn-outline-danger mb-0" onClick={handleDeletePhoto} disabled={uploadingPhoto}>
+                        <i className="bi bi-trash me-1"></i>Supprimer
+                      </button>
+                    )}
+                  </div>
+                  <div className="form-text mt-1" style={{ fontSize: '0.78rem' }}>Cette photo apparaîtra sur votre profil et l'ensemble de la plateforme.</div>
+                </div>
+              )}
             </div>
           </div>
 

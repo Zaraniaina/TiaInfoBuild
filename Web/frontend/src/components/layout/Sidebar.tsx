@@ -141,9 +141,13 @@ export function Sidebar() {
         <div className="sidebar-foot">
           {!collapsed && user && (
             <div className="user-info d-flex align-items-center gap-2 mb-2">
-              <div className="avatar-badge">
-                {user.prenom?.[0] || 'U'}{user.nom?.[0] || ''}
-              </div>
+              {user.photo ? (
+                <img src={user.photo} alt="Avatar" className="rounded-circle border" style={{ width: '36px', height: '36px', objectFit: 'cover' }} />
+              ) : (
+                <div className="avatar-badge">
+                  {user.prenom?.[0] || 'U'}{user.nom?.[0] || ''}
+                </div>
+              )}
               <div className="flex-grow-1 text-truncate">
                 <div className="small fw-semibold text-truncate" style={{ color: 'var(--tia-text-primary)' }}>{user.prenom} {user.nom}</div>
                 <small className="text-muted text-truncate d-block" style={{ fontSize: '0.72rem' }}>{user.email}</small>

@@ -9,6 +9,7 @@ export interface User {
   role_code: string;
   entreprise_id?: number;
   telephone?: string;
+  photo?: string | null;
   statut?: string;
   must_change_password?: boolean;
   date_creation?: string;

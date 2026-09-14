@@ -291,9 +291,13 @@ export function Topbar() {
             aria-label="Menu utilisateur"
             onClick={() => { setShowUserMenu(v => !v); setShowNotifMenu(false) }}
           >
-            <div className="user-avatar">
-              <i className="bi bi-person"></i>
-            </div>
+            {user?.photo ? (
+              <img src={user.photo} alt="Avatar" className="rounded-circle border me-1" style={{ width: '32px', height: '32px', objectFit: 'cover' }} />
+            ) : (
+              <div className="user-avatar">
+                <i className="bi bi-person"></i>
+              </div>
+            )}
             <span className="user-name d-none d-md-inline">
               {user?.prenom} {user?.nom}
             </span>

@@ -86,24 +86,13 @@ export function ForgotPasswordPage() {
           {successMessage ? (
             <div className="text-center py-4">
               <div className="mb-3 text-success">
-                <i className="bi bi-check-circle-fill display-4"></i>
+                <i className="bi bi-envelope-check-fill display-4 text-primary"></i>
               </div>
-              <h5 className="fw-bold mb-2">Demande prise en compte !</h5>
-              <p className="text-muted small mb-4">{successMessage}</p>
-              <div className="alert alert-info py-2 px-3 text-start small mb-4">
-                <i className="bi bi-info-circle me-2"></i>
-                <strong>Environnement de développement :</strong> Les emails sont interceptés en local via Mailpit.
-                Consultez l'interface Web Mailpit sur{' '}
-                <a
-                  href="http://localhost:8025"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="alert-link text-decoration-underline"
-                >
-                  http://localhost:8025
-                </a>{' '}
-                pour cliquer sur le lien de réinitialisation.
-              </div>
+              <h5 className="fw-bold mb-2">Vérifiez votre adresse email</h5>
+              <p className="text-muted small mb-4 fs-6">
+                Un email contenant les instructions et le lien de réinitialisation vous a été envoyé.
+                Veuillez consulter votre boîte de réception (et vos courriers indésirables).
+              </p>
               <Link to="/login" className="btn btn-auth-primary w-100 py-2.5 fw-bold">
                 <i className="bi bi-arrow-left me-2"></i>Retour à la connexion
               </Link>

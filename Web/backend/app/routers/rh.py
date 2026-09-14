@@ -2,7 +2,7 @@
 from datetime import date, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
 from fastapi.responses import StreamingResponse
 import csv
 import io
@@ -10,11 +10,13 @@ import io
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, func
 
+from app.core import file_storage
 from app.crud.employe import EmployeCRUD
 from app.crud.pointage import PointageCRUD
 from app.crud.equipe import EquipeCRUD
 from app.crud.base import BaseCRUD
 from app.models.employe import Employe
+from app.models.utilisateur import Utilisateur
 from app.models.pointage import Pointage
 from app.models.equipe import Equipe
 from app.models.membre_equipe import MembreEquipe
@@ -163,6 +165,20 @@ async def list_employes(
     }
 
 
+async def _sync_employe_user_photo(db, employe: Employe):
+    if employe and employe.email and employe.entreprise_id:
+        res = await db.execute(
+            select(Utilisateur).where(
+                func.lower(Utilisateur.email) == employe.email.strip().lower(),
+                Utilisateur.entreprise_id == employe.entreprise_id
+            )
+        )
+        user = res.scalar_one_or_none()
+        if user:
+            user.photo = employe.photo
+            await db.flush()
+
+
 @router.post("/employes", response_model=EmployeResponse, status_code=status.HTTP_201_CREATED)
 async def create_employe(
     payload: CurrentUserPayload,
@@ -176,6 +192,7 @@ async def create_employe(
         data["entreprise_id"] = entreprise_id
     crud = EmployeCRUD()
     employe = await crud.create(db, data)
+    await _sync_employe_user_photo(db, employe)
     await db.refresh(employe)
     return EmployeResponse.model_validate(employe)
 
@@ -219,8 +236,63 @@ async def update_employe(
 
     data = obj_in.model_dump(exclude_unset=True)
     updated = await crud.update(db, employe, data)
+    await _sync_employe_user_photo(db, updated)
     await db.refresh(updated)
     return EmployeResponse.model_validate(updated)
+
+
+@router.post("/employes/{id}/photo", response_model=dict)
+async def upload_employe_photo(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+    fichier: UploadFile = File(...)
+):
+    _require_permission(payload, "rh:write")
+    entreprise_id = payload.get("entreprise_id")
+    employe = await db.get(Employe, id)
+    if not employe or employe.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employé non trouvé")
+    if entreprise_id is not None and employe.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    try:
+        url = await file_storage.save_upload(
+            fichier, "badge-photos", file_storage.ALLOWED_PHOTO_EXT, file_storage.MAX_PHOTO_MB
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    if employe.photo and employe.photo.startswith("/api/uploads/"):
+        await file_storage.delete_upload(employe.photo)
+
+    employe.photo = url
+    await _sync_employe_user_photo(db, employe)
+    await db.flush()
+    return {"photo": url}
+
+
+@router.delete("/employes/{id}/photo", response_model=dict)
+async def delete_employe_photo(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+):
+    _require_permission(payload, "rh:write")
+    entreprise_id = payload.get("entreprise_id")
+    employe = await db.get(Employe, id)
+    if not employe or employe.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employé non trouvé")
+    if entreprise_id is not None and employe.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    if employe.photo and employe.photo.startswith("/api/uploads/"):
+        await file_storage.delete_upload(employe.photo)
+
+    employe.photo = None
+    await _sync_employe_user_photo(db, employe)
+    await db.flush()
+    return {"photo": None}
 
 
 @router.delete("/employes/{id}", status_code=status.HTTP_204_NO_CONTENT)

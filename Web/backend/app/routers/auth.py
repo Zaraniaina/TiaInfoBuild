@@ -41,6 +41,7 @@ from app.services.email import (
     send_welcome_entreprise_email,
     send_email_verification_email,
 )
+from app.services.user_service import resolve_user_photo
 from app.core.permissions import PERMISSION_MAP, Role
 
 router = APIRouter(tags=["auth"])
@@ -119,6 +120,7 @@ async def login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Une erreur est survenue lors de la connexion. Veuillez réessayer.",
         )
+    user_photo = await resolve_user_photo(user, db)
     return Token(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -132,6 +134,7 @@ async def login(
             "entreprise_id": user.entreprise_id,
             "statut": user.statut,
             "must_change_password": user.must_change_password,
+            "photo": user_photo,
         },
     )
 
@@ -434,10 +437,11 @@ async def change_password(payload: ChangePasswordRequest, db: DbSession, current
 
 
 @router.get("/me")
-async def get_me(current_user: CurrentUser):
+async def get_me(current_user: CurrentUser, db: DbSession):
     user = current_user.get("user")
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur non trouvé")
+    user_photo = await resolve_user_photo(user, db)
     return {
         "user": {
             "id": user.id,
@@ -448,6 +452,7 @@ async def get_me(current_user: CurrentUser):
             "entreprise_id": current_user.get("entreprise_id"),
             "statut": user.statut,
             "must_change_password": user.must_change_password,
+            "photo": user_photo,
             "date_creation": user.date_creation.isoformat() if user.date_creation else None,
             "derniere_connexion": user.derniere_connexion.isoformat() if user.derniere_connexion else None,
         }
