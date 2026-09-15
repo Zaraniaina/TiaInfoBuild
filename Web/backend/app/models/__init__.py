@@ -47,6 +47,8 @@ from app.models.situation_travaux import SituationTravaux, LigneSituation
 from app.models.subscription import Subscription
 from app.models.pointage import Pointage
 from app.models.preference import Preference
+from app.models.platform_settings import PlatformSettings
+from app.models.mail_settings import MailSettings
 from app.models.rapport_financier import RapportFinancier
 from app.models.rapport_journalier import RapportJournalier
 from app.models.refresh_token import RefreshToken
@@ -104,6 +106,8 @@ __all__ = [
     "Subscription",
     "Pointage",
     "Preference",
+    "PlatformSettings",
+    "MailSettings",
     "RapportFinancier",
     "RapportJournalier",
     "RefreshToken",

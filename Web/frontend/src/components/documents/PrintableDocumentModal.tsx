@@ -50,7 +50,7 @@ export interface PrintableDocumentData {
   }
   employes_list?: Array<{
     id: number
-    nom: str
+    nom: string
     prenom?: string
     matricule?: string
     poste?: string

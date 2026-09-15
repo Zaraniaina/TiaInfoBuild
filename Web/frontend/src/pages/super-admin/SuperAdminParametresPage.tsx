@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '@/services/api'
 import { PageSkeleton } from '@/components/ui/Skeleton'
+
+type Tab = 'general' | 'mail'
 
 interface PlatformSettings {
   nom_plateforme: string
@@ -22,6 +25,8 @@ export function SuperAdminParametresPage() {
   })
   const [saving, setSaving] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [tab, setTab] = useState<Tab>('general')
+  const [srcBadge, setSrcBadge] = useState<string>('env')
 
   useEffect(() => {
     api.get<PlatformSettings>('/super-admin/settings')
@@ -30,6 +35,9 @@ export function SuperAdminParametresPage() {
         setLoaded(true)
       })
       .catch(() => setLoaded(true))
+    api.get<{ effective_source: string }>('/super-admin/mail-settings/status')
+      .then(res => setSrcBadge(res.data.effective_source))
+      .catch(() => {})
   }, [])
 
   const handleSave = async (e: React.FormEvent) => {
@@ -57,9 +65,15 @@ export function SuperAdminParametresPage() {
     <div className="container-fluid py-4">
       <div className="mb-4">
         <h2 className="fw-bold mb-1 text-secondary"><i className="bi bi-gear me-2"></i>Paramètres Plateforme</h2>
-        <p className="text-secondary mb-0">Configuration globale du SaaS, intégrations et fonctionnalités.</p>
+        <p className="text-secondary mb-0">Configuration globale du SaaS, email transactionnel et fonctionnalités.</p>
       </div>
 
+      <ul className="nav nav-tabs mb-4">
+        <li className="nav-item"><button type="button" className={`nav-link ${tab === 'general' ? 'active fw-bold' : ''}`} onClick={() => setTab('general')}><i className="bi bi-sliders me-1"></i>Général</button></li>
+        <li className="nav-item"><button type="button" className={`nav-link ${tab === 'mail' ? 'active fw-bold' : ''}`} onClick={() => setTab('mail')}><i className="bi bi-envelope-gear me-1"></i>Email / SMTP<span className={`badge ms-2 ${srcBadge === 'database' ? 'bg-success' : 'bg-warning text-dark'}`}>{srcBadge === 'database' ? 'BDD' : '.env'}</span></button></li>
+      </ul>
+
+      {tab === 'general' && (
       <div className="card border-0 shadow-sm">
         <div className="card-body p-4">
           <form onSubmit={handleSave}>
@@ -110,6 +124,33 @@ export function SuperAdminParametresPage() {
           </form>
         </div>
       </div>
+      )}
+      {tab === 'mail' && (
+        <div className="card border-0 shadow-sm">
+          <div className="card-body p-4">
+            <div className="d-flex align-items-start gap-3 flex-wrap">
+              <div className="fs-1 text-secondary"><i className="bi bi-envelope-gear"></i></div>
+              <div className="flex-grow-1">
+                <h5 className="fw-bold mb-1">Configuration Email / SMTP</h5>
+                <p className="text-secondary mb-3">
+                  La configuration de l’email transactionnel dispose désormais de son
+                  <strong> interface dédiée</strong> : choix du fournisseur (Gmail, Outlook, Yahoo, SMTP
+                  personnalisé), test d’envoi réel <em>avant</em> sauvegarde, checklist de mise en
+                  production et retour immédiat au <code>.env</code> en cas d’incident.
+                </p>
+                <ul className="list-unstyled small text-secondary mb-4">
+                  <li><i className="bi bi-check2-circle me-2"></i>Application à chaud, sans redéploiement</li>
+                  <li><i className="bi bi-check2-circle me-2"></i>Mot de passe SMTP chiffré en base, jamais exposé</li>
+                  <li><i className="bi bi-check2-circle me-2"></i>Diagnostic « prêt pour la production » guidé pas à pas</li>
+                </ul>
+                <Link to="/super-admin/email" className="btn btn-outline-secondary fw-bold">
+                  <i className="bi bi-box-arrow-up-right me-2"></i>Ouvrir l’interface Email / SMTP
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

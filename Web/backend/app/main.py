@@ -172,12 +172,13 @@ async def root():
 
 
 # Inclusion des routers
-from app.routers import auth, super_admin, chantiers, rh, stocks, commercial, finance, materiels, alertes, dashboard, parametres, sync, utilisateurs, preferences, subscriptions, espace_client, employe_terrain
+from app.routers import auth, super_admin, super_admin_mail, chantiers, rh, stocks, commercial, finance, materiels, alertes, dashboard, parametres, sync, utilisateurs, preferences, subscriptions, espace_client, employe_terrain
 
 api_prefix = "/api"
 
 app.include_router(auth.router, prefix=f"{api_prefix}/auth", tags=["auth"])
 app.include_router(super_admin.router, prefix=f"{api_prefix}/super-admin", tags=["super-admin"])
+app.include_router(super_admin_mail.router, prefix=f"{api_prefix}/super-admin", tags=["super-admin-mail"])
 app.include_router(utilisateurs.router, prefix=f"{api_prefix}/utilisateurs", tags=["utilisateurs"])
 app.include_router(dashboard.router, prefix=f"{api_prefix}/dashboard", tags=["dashboard"])
 app.include_router(chantiers.router, prefix=f"{api_prefix}/chantiers", tags=["chantiers"])

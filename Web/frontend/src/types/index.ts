@@ -80,6 +80,7 @@ export interface Chantier {
   entreprise_id: number;
   client_id?: number;
   chef_chantier_id?: number;
+  chef_projet_id?: number;
   numero?: string;
   nom: string;
   adresse?: string;
@@ -345,6 +346,7 @@ export interface Fournisseur {
   id: number;
   entreprise_id: number;
   nom: string;
+  code?: string;
   contact?: string;
   email?: string;
   telephone?: string;

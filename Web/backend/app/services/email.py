@@ -1,6 +1,8 @@
-"""Service d'envoi d'emails SMTP (Mailpit en dev, SMTP configurable en prod).
+"""Service d'envoi d'emails SMTP (DB super-admin prioritaire, .env en fallback).
 
 Conforme aux principes Ponytail (stdlib smtplib + email.mime, zéro dépendances lourdes).
+La config effective est résolue via app.services.mail_config (DB > env) pour
+permettre une mise en production sans redéploiement.
 """
 import asyncio
 import logging
@@ -9,6 +11,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from app.config import settings
+from app.services.mail_config import EffectiveSmtpConfig, get_effective_smtp_config
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +21,12 @@ def _build_mime_message(
     subject: str,
     html_content: str,
     text_content: str = "",
+    from_email: str | None = None,
+    from_name: str | None = None,
 ) -> MIMEMultipart:
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = f"{settings.smtp_from_name} <{settings.smtp_from_email}>"
+    msg["From"] = f"{from_name or settings.smtp_from_name} <{from_email or settings.smtp_from_email}>"
     msg["To"] = to_email
 
     plain = text_content or "Veuillez afficher ce message au format HTML."
@@ -30,29 +35,53 @@ def _build_mime_message(
     return msg
 
 
+def _send_via_config(
+    cfg: EffectiveSmtpConfig,
+    to_email: str,
+    subject: str,
+    html_content: str,
+    text_content: str = "",
+) -> bool:
+    """Envoi synchrone avec une config SMTP explicite (testable)."""
+    msg = _build_mime_message(to_email, subject, html_content, text_content, cfg.from_email, cfg.from_name)
+    try:
+        if cfg.use_ssl:
+            server = smtplib.SMTP_SSL(cfg.host, cfg.port, timeout=15)
+        else:
+            server = smtplib.SMTP(cfg.host, cfg.port, timeout=15)
+            if cfg.use_tls:
+                server.starttls()
+
+        with server:
+            if cfg.user and cfg.password:
+                server.login(cfg.user, cfg.password)
+            server.send_message(msg)
+        logger.info(f"Email envoyé à {to_email} via {cfg.host}:{cfg.port} (source={cfg.source})")
+        return True
+    except Exception as exc:
+        logger.warning(f"Échec envoi email à {to_email} via {cfg.host}:{cfg.port} (source={cfg.source}): {exc}")
+        raise
+
+
 def send_email_sync(
     to_email: str,
     subject: str,
     html_content: str,
     text_content: str = "",
 ) -> bool:
-    """Envoie un email de manière synchrone via SMTP."""
-    msg = _build_mime_message(to_email, subject, html_content, text_content)
+    """Envoie un email de manière synchrone via SMTP (.env — chemin legacy)."""
+    cfg = EffectiveSmtpConfig(
+        host=settings.smtp_host, port=settings.smtp_port,
+        user=settings.smtp_user, password=settings.smtp_password,
+        use_tls=settings.smtp_tls, use_ssl=False,
+        from_email=settings.smtp_from_email, from_name=settings.smtp_from_name,
+        frontend_url=settings.frontend_url, source="env",
+    )
     try:
-        if settings.smtp_tls:
-            server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=10)
-        else:
-            server = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10)
-
-        with server:
-            if settings.smtp_user and settings.smtp_password:
-                server.login(settings.smtp_user, settings.smtp_password)
-            server.send_message(msg)
-        logger.info(f"Email envoyé avec succès à {to_email} (Sujet: {subject})")
-        return True
+        return _send_via_config(cfg, to_email, subject, html_content, text_content)
     except Exception as exc:
         logger.warning(
-            f"Impossible d'envoyer l'email à {to_email} via SMTP {settings.smtp_host}:{settings.smtp_port}. "
+            f"Impossible d'envoyer l'email à {to_email} via SMTP {cfg.host}:{cfg.port}. "
             f"Erreur: {exc}. (Note: En dev, assurez-vous que Mailpit tourne sur localhost:1025)"
         )
         return False
@@ -63,21 +92,62 @@ async def send_email_async(
     subject: str,
     html_content: str,
     text_content: str = "",
+    db=None,
+    smtp_config=None,
 ) -> bool:
-    """Envoie un email en arrière-plan sans bloquer la boucle d'événements FastAPI."""
-    return await asyncio.to_thread(
-        send_email_sync, to_email, subject, html_content, text_content
-    )
+    """Envoie un email sans bloquer la boucle FastAPI (config DB prioritaire)."""
+    cfg = smtp_config
+    if cfg is None:
+        try:
+            cfg = await get_effective_smtp_config(db)
+        except Exception:
+            cfg = await get_effective_smtp_config(None)
+    try:
+        return await asyncio.to_thread(_send_via_config, cfg, to_email, subject, html_content, text_content)
+    except Exception as exc:
+        logger.warning(f"Échec envoi async vers {to_email}: {exc}")
+        return False
+
+
+def build_test_email_content(from_name: str) -> tuple[str, str, str]:
+    subject = f"Test SMTP — {from_name} : configuration valide ✅"
+    html_content = f"""
+    <!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"></head>
+    <body style="font-family: 'Segoe UI', sans-serif; background:#f4f6f9; padding:20px;">
+      <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e1e8ed;">
+        <div style="background:#0f172a;color:#fff;padding:20px;text-align:center;">
+          <h2 style="margin:0;">{from_name}</h2><p style="margin:4px 0 0;">Test de configuration SMTP</p>
+        </div>
+        <div style="padding:24px;">
+          <p>✅ Votre configuration email est <strong>opérationnelle</strong>.</p>
+          <p style="color:#64748b;font-size:13px;">Les emails transactionnels (vérification, reset password, bienvenue) utiliseront désormais ce SMTP en production.</p>
+        </div>
+        <div style="background:#f8fafc;padding:12px;text-align:center;font-size:12px;color:#64748b;">&copy; {from_name}</div>
+      </div>
+    </body></html>
+    """
+    text_content = f"Test SMTP {from_name} : configuration valide. Les emails transactionnels utiliseront ce SMTP."
+    return subject, html_content, text_content
+
 
 
 async def send_reset_password_email(
     to_email: str,
     reset_token: str,
     user_name: str = "",
+    db=None,
+    smtp_config=None,
 ) -> bool:
     """Envoie l'email de réinitialisation de mot de passe."""
-    reset_link = f"{settings.frontend_url}/reset-password?token={reset_token}"
+    cfg = smtp_config
+    if cfg is None:
+        try:
+            cfg = await get_effective_smtp_config(db)
+        except Exception:
+            cfg = await get_effective_smtp_config(None)
+    reset_link = f"{cfg.frontend_url}/reset-password?token={reset_token}"
     greeting = f"Bonjour {user_name}," if user_name.strip() else "Bonjour,"
+    brand = cfg.from_name
 
     html_content = f"""
     <!DOCTYPE html>
@@ -136,6 +206,8 @@ async def send_reset_password_email(
         subject="Réinitialisation de votre mot de passe - TIA INFO BUILD",
         html_content=html_content,
         text_content=text_content,
+        db=db,
+        smtp_config=cfg,
     )
 
 
@@ -143,9 +215,17 @@ async def send_welcome_entreprise_email(
     to_email: str,
     entreprise_nom: str,
     admin_nom: str,
+    db=None,
+    smtp_config=None,
 ) -> bool:
     """Envoie un email de bienvenue suite à la création d'une entreprise."""
-    login_link = f"{settings.frontend_url}/login"
+    cfg = smtp_config
+    if cfg is None:
+        try:
+            cfg = await get_effective_smtp_config(db)
+        except Exception:
+            cfg = await get_effective_smtp_config(None)
+    login_link = f"{cfg.frontend_url}/login"
 
     html_content = f"""
     <!DOCTYPE html>
@@ -193,6 +273,8 @@ async def send_welcome_entreprise_email(
         subject=f"Bienvenue sur TIA INFO BUILD — {entreprise_nom}",
         html_content=html_content,
         text_content=f"Bienvenue {admin_nom} ! Votre entreprise {entreprise_nom} a été créée avec succès. Connectez-vous sur : {login_link}",
+        db=db,
+        smtp_config=cfg,
     )
 
 
@@ -202,10 +284,15 @@ async def send_email_verification_email(
     admin_nom: str = "",
     entreprise_nom: str = "",
     token: str | None = None,
+    db=None,
 ) -> bool:
     """Envoie l'email de confirmation d'adresse email après inscription entreprise."""
+    try:
+        cfg = await get_effective_smtp_config(db)
+    except Exception:
+        cfg = await get_effective_smtp_config(None)
     actual_token = verification_token or token or ""
-    verify_link = f"{settings.frontend_url}/verify-email?token={actual_token}"
+    verify_link = f"{cfg.frontend_url}/verify-email?token={actual_token}"
     greeting = f"Bonjour {admin_nom}," if admin_nom.strip() else "Bonjour,"
 
     html_content = f"""
@@ -282,4 +369,5 @@ async def send_email_verification_email(
         subject=f"Confirmez votre email — TIA INFO BUILD ({entreprise_nom})",
         html_content=html_content,
         text_content=text_content,
+        db=db,
     )

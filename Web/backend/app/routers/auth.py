@@ -277,14 +277,21 @@ async def register_entreprise(
         await db.commit()
 
         # Envoi de l'email de confirmation en tâche de fond (non bloquant)
+        # Config SMTP résolue AVANT la tâche (la session db est fermée dans BackgroundTasks)
+        from app.services.mail_config import get_effective_smtp_config
         verification_token = create_email_verification_token(admin_user.email)
         admin_fullname = f"{admin_user.prenom or ''} {admin_user.nom or ''}".strip()
+        try:
+            _smtp_cfg = await get_effective_smtp_config(db)
+        except Exception:
+            _smtp_cfg = await get_effective_smtp_config(None)
         background_tasks.add_task(
             send_email_verification_email,
             to_email=admin_user.email,
             verification_token=verification_token,
             admin_nom=admin_fullname,
             entreprise_nom=entreprise.nom,
+            smtp_config=_smtp_cfg,
         )
 
         return RegisterEntrepriseResponse(
@@ -332,11 +339,17 @@ async def forgot_password(payload: ForgotPasswordRequest, db: DbSession, backgro
 
     reset_token = create_password_reset_token(user.email)
     user_name = f"{user.prenom or ''} {user.nom or ''}".strip()
+    from app.services.mail_config import get_effective_smtp_config as _get_cfg
+    try:
+        _smtp_cfg2 = await _get_cfg(db)
+    except Exception:
+        _smtp_cfg2 = await _get_cfg(None)
     background_tasks.add_task(
         send_reset_password_email,
         to_email=user.email,
         reset_token=reset_token,
         user_name=user_name,
+        smtp_config=_smtp_cfg2,
     )
 
     return {

@@ -11,6 +11,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/super-admin/abonnements',
     '/super-admin/facturation',
     '/super-admin/logs',
+    '/super-admin/email',
     '/super-admin/parametres',
     '/dashboard',
   ],

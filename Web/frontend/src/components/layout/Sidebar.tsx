@@ -26,6 +26,7 @@ const MODULE_META: Record<string, { label: string; icon: string; section: string
   '/super-admin/abonnements': { label: 'Abonnements', icon: 'bi-credit-card', section: 'Plateforme SaaS' },
   '/super-admin/facturation': { label: 'Facturation SaaS', icon: 'bi-receipt', section: 'Plateforme SaaS' },
   '/super-admin/logs': { label: 'Logs & Supervision', icon: 'bi-activity', section: 'Plateforme SaaS' },
+  '/super-admin/email': { label: 'Configuration Email / SMTP', icon: 'bi-envelope-gear', section: 'Plateforme SaaS' },
   '/super-admin/parametres': { label: 'Paramètres Plateforme', icon: 'bi-gear', section: 'Plateforme SaaS' },
   '/chantiers': { label: 'Chantiers & Phases', icon: 'bi-building', section: 'Pilotage' },
   '/finance': { label: 'Finances & Dépenses', icon: 'bi-currency-exchange', section: 'Finances' },
