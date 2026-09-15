@@ -2,7 +2,7 @@
 from datetime import date, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 import csv
 import io
@@ -16,6 +16,7 @@ from app.crud.pointage import PointageCRUD
 from app.crud.equipe import EquipeCRUD
 from app.crud.base import BaseCRUD
 from app.models.employe import Employe
+from app.models.entreprise import Entreprise
 from app.models.utilisateur import Utilisateur
 from app.models.pointage import Pointage
 from app.models.equipe import Equipe
@@ -401,6 +402,16 @@ async def list_pointages(
     }
 
 
+async def _entreprise_infos(db: DbDep, entreprise_id: int | None) -> dict:
+    """Nom + logo de l'entreprise (affichés sur le badge QR de l'employé)."""
+    if entreprise_id is None:
+        return {"entreprise_nom": None, "entreprise_logo": None}
+    ent = await db.get(Entreprise, entreprise_id)
+    if not ent:
+        return {"entreprise_nom": None, "entreprise_logo": None}
+    return {"entreprise_nom": ent.nom, "entreprise_logo": ent.logo}
+
+
 @router.get("/employes/{id}/badge-qr", response_model=dict)
 async def get_employe_badge_qr(
     payload: CurrentUserPayload,
@@ -420,6 +431,7 @@ async def get_employe_badge_qr(
         employe.code_qr_badge = f"TIA-EMP-{employe.entreprise_id or 1}-{employe.id}-{uuid.uuid4().hex[:8].upper()}"
         await db.flush()
 
+    ent_infos = await _entreprise_infos(db, employe.entreprise_id)
     return {
         "id": employe.id,
         "matricule": employe.matricule or f"EMP-{employe.id:04d}",
@@ -428,6 +440,7 @@ async def get_employe_badge_qr(
         "poste": employe.poste,
         "photo": employe.photo,
         "code_qr_badge": employe.code_qr_badge,
+        **ent_infos,
         "date_generation": datetime.now().isoformat(),
     }
 
@@ -455,6 +468,7 @@ async def get_mon_badge(payload: CurrentUserPayload, db: DbDep):
         employe.code_qr_badge = f"TIA-EMP-{employe.entreprise_id or 1}-{employe.id}-{uuid.uuid4().hex[:8].upper()}"
         await db.flush()
 
+    ent_infos = await _entreprise_infos(db, employe.entreprise_id)
     return {
         "id": employe.id,
         "matricule": employe.matricule or f"EMP-{employe.id:04d}",
@@ -463,6 +477,7 @@ async def get_mon_badge(payload: CurrentUserPayload, db: DbDep):
         "poste": employe.poste,
         "photo": employe.photo,
         "code_qr_badge": employe.code_qr_badge,
+        **ent_infos,
         "date_generation": datetime.now().isoformat(),
     }
 
@@ -954,7 +969,11 @@ async def get_solde_conges(payload: CurrentUserPayload, db: DbDep, employe_id: i
 
 # --- Documents RH ---
 
-CATEGORIES_DOCUMENTS_RH = {"contrat_travail", "cnaps", "ostie", "certificat", "autre"}
+CATEGORIES_DOCUMENTS_RH = {
+    "contrat_travail", "cnaps", "ostie", "certificat", "autre",
+    # Dossiers administratifs d'embauche
+    "cv", "lettre_motivation", "diplome", "cni",
+}
 
 
 class DocumentRHCreate(BaseModel):
@@ -1015,6 +1034,50 @@ async def create_document_rh(
         categorie=obj_in.categorie,
         fichier_url=obj_in.fichier_url,
         description=obj_in.description,
+    )
+    db.add(doc)
+    await db.flush()
+    await db.refresh(doc)
+    return DocumentRHResponse.model_validate(doc)
+
+
+@router.post("/employes/{employe_id}/documents/upload", response_model=DocumentRHResponse, status_code=status.HTTP_201_CREATED)
+async def upload_document_rh(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    employe_id: int,
+    fichier: UploadFile = File(...),
+    nom: str | None = Form(default=None),
+    categorie: str = Form(default="autre"),
+    description: str | None = Form(default=None),
+):
+    """Upload d'un document administratif (CV, lettre de motivation, diplôme, CNI...).
+
+    Le fichier est stocké sur disque via file_storage ; la fiche Document
+    référence l'URL relative servie par l'API (/api/uploads/documents-rh/...).
+    """
+    _require_permission(payload, "rh:write")
+    if categorie not in CATEGORIES_DOCUMENTS_RH:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Catégorie invalide. Valeurs autorisées: {sorted(CATEGORIES_DOCUMENTS_RH)}",
+        )
+    employe = await _get_employe_rh(db, employe_id, payload.get("entreprise_id"))
+
+    try:
+        url = await file_storage.save_upload(
+            fichier, "documents-rh", file_storage.ALLOWED_DOC_EXT, file_storage.MAX_DOC_MB
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    doc = Document(
+        entreprise_id=employe.entreprise_id,
+        employe_id=employe.id,
+        nom=(nom or "").strip() or fichier.filename or f"Document {categorie}",
+        categorie=categorie,
+        fichier_url=url,
+        description=description,
     )
     db.add(doc)
     await db.flush()

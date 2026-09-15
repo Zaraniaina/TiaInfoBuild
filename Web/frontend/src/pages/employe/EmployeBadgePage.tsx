@@ -31,6 +31,7 @@ function initials(emp: Employe) {
 export function EmployeBadgePage() {
   const [employe, setEmploye] = useState<Employe | null>(null)
   const [codeQr, setCodeQr] = useState('')
+  const [entreprise, setEntreprise] = useState<{ nom?: string | null; logo?: string | null }>({})
   const [pointages, setPointages] = useState<Pointage[]>([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
@@ -40,6 +41,7 @@ export function EmployeBadgePage() {
       .then(([b, p]) => {
         setEmploye(b.employe)
         setCodeQr(b.code_qr)
+        setEntreprise({ nom: b.entreprise_nom, logo: b.entreprise_logo })
         setPointages(p)
       })
       .catch(() => setErr('Impossible de charger le badge'))
@@ -63,10 +65,18 @@ export function EmployeBadgePage() {
       {/* Carte badge imprimable */}
       <div id="badge-printable" className="m-3">
         <div className="badge-card shadow">
-          {/* En-tête société */}
+          {/* En-tête société : logo de l'entreprise de l'employé (badge-employé) */}
           <div className="px-3 pt-3 pb-2 d-flex justify-content-between align-items-center">
-            <div className="fw-bold small">TIA INFO BUILD</div>
-            <i className="bi bi-building fs-5"></i>
+            <div className="fw-bold small">{entreprise.nom || 'TIA INFO BUILD'}</div>
+            {entreprise.logo ? (
+              <img
+                src={entreprise.logo}
+                alt="Logo entreprise"
+                style={{ height: 28, maxWidth: 72, objectFit: 'contain', background: 'rgba(255,255,255,.85)', borderRadius: 6, padding: 2 }}
+              />
+            ) : (
+              <i className="bi bi-building fs-5"></i>
+            )}
           </div>
 
           {/* Photo + identité */}

@@ -60,7 +60,7 @@ export const employeTerrainService = {
 
   getDocuments: () => api.get<{ items: Document[] }>(`${BASE}/documents`).then((r) => r.data.items),
 
-  getMonBadge: () => api.get<{ employe: any; code_qr: string }>(`${BASE}/mon-badge`).then((r) => r.data),
+  getMonBadge: () => api.get<{ employe: any; code_qr: string; entreprise_nom?: string | null; entreprise_logo?: string | null }>(`${BASE}/mon-badge`).then((r) => r.data),
 
   getPointages: () => api.get<{ items: Pointage[] }>(`${BASE}/pointages`).then((r) => r.data.items),
 

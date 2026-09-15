@@ -30,6 +30,24 @@ const POSTES_BTP = [
   'Comptable / Gestionnaire RH',
 ]
 
+/** Catégories de documents administratifs RH (uploadables à la création). */
+const CATEGORIES_DOCS_RH = [
+  { value: 'cv', label: 'CV' },
+  { value: 'lettre_motivation', label: 'Lettre de motivation' },
+  { value: 'diplome', label: 'Diplôme' },
+  { value: 'cni', label: 'CNI / Passeport' },
+  { value: 'contrat', label: 'Contrat de travail' },
+  { value: 'certificat_medical', label: 'Certificat médical' },
+  { value: 'autre', label: 'Autre' },
+]
+
+/** Document administratif en attente d'upload (choisi dans le formulaire). */
+interface PendingDoc {
+  file: File
+  categorie: string
+  nom: string
+}
+
 export function RhPage() {
   const { user } = useAuthStore()
   const perms = getRolePermissions(user?.role_code || '')
@@ -78,6 +96,15 @@ export function RhPage() {
   const [docsEmployeId, setDocsEmployeId] = useState<number | null>(null)
   const [selectedEmploye, setSelectedEmploye] = useState<Employe | null>(null)
   const [employeForm, setEmployeForm] = useState<Partial<Employe>>({})
+  // Photo + documents administratifs (uploadés après la création de l'employé).
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string>('')
+  const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([])
+  const [docCategorie, setDocCategorie] = useState('cv')
+  const [docFile, setDocFile] = useState<File | null>(null)
+  const [savingEmploye, setSavingEmploye] = useState(false)
+  // Infos entreprise affichées sur le badge (nom + logo, depuis l'API badge).
+  const [badgeEntreprise, setBadgeEntreprise] = useState<{ nom?: string | null; logo?: string | null }>({})
   const [posteForm, setPosteForm] = useState({
     nouveau_poste: '',
     nouveau_salaire: 0,
@@ -100,7 +127,30 @@ export function RhPage() {
       solde_conges_annuel: 30,
       statut_declaration: 'cnaps_ostie',
     })
+    setPhotoFile(null)
+    setPhotoPreview('')
+    setPendingDocs([])
+    setDocCategorie('cv')
+    setDocFile(null)
     setShowEmployeModal(true)
+  }
+
+  /** Ouvre le badge : charge nom + logo de l'entreprise (affichés sur le badge). */
+  const openBadgeEmploye = async (emp: Employe) => {
+    setSelectedBadgeEmploye(emp)
+    setShowBadgeModal(true)
+    try {
+      const badge = await rhService.getEmployeBadgeQR(emp.id)
+      setBadgeEntreprise({ nom: badge.entreprise_nom, logo: badge.entreprise_logo })
+    } catch {
+      setBadgeEntreprise({})
+    }
+  }
+
+  /** Ajoute un document administratif en attente (uploadé à la sauvegarde). */
+  const addPendingDoc = (file: File | null, categorie: string) => {
+    if (!file) return
+    setPendingDocs(prev => [...prev, { file, categorie, nom: file.name }])
   }
 
   const loadData = async () => {
@@ -135,16 +185,45 @@ export function RhPage() {
 
   const handleSaveEmploye = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSavingEmploye(true)
     try {
+      let saved: Employe
       if (selectedEmploye) {
-        await rhService.updateEmploye(selectedEmploye.id, employeForm)
+        saved = await rhService.updateEmploye(selectedEmploye.id, employeForm)
       } else {
-        await rhService.createEmploye(employeForm)
+        saved = await rhService.createEmploye(employeForm)
       }
+
+      // Photo de l'employé : affichée sur son badge QR et son profil.
+      if (photoFile) {
+        try {
+          await rhService.uploadEmployePhoto(saved.id, photoFile)
+        } catch {
+          alert("L'employé est créé mais l'upload de la photo a échoué : vous pouvez la re-depuis son profil.")
+        }
+      }
+
+      // Documents administratifs : CV, lettre de motivation, diplôme, CNI...
+      for (const doc of pendingDocs) {
+        try {
+          await rhService.uploadEmployeDocument(saved.id, doc.file, {
+            categorie: doc.categorie,
+            nom: doc.nom,
+          })
+        } catch {
+          alert(`L'upload du document "${doc.nom}" a échoué : vous pouvez le re-depuis les documents de l'employé.`)
+        }
+      }
+
       setShowEmployeModal(false)
+      setPhotoFile(null)
+      setPhotoPreview('')
+      setPendingDocs([])
       loadData()
     } catch {
       alert('Erreur lors de l\'enregistrement de l\'employé.')
+    } finally {
+      setSavingEmploye(false)
     }
   }
 
@@ -336,13 +415,13 @@ export function RhPage() {
                           </span>
                         </td>
                         <td>
-                         <button className="btn btn-sm btn-outline-secondary btn-sm" onClick={() => { setSelectedBadgeEmploye(emp); setShowBadgeModal(true); }}>
+                         <button className="btn btn-sm btn-outline-secondary btn-sm" onClick={() => openBadgeEmploye(emp)}>
                            <i className="bi bi-qr-code"></i>
                          </button>
                          <button className="btn btn-sm btn-outline-secondary me-1" onClick={() => { setSelectedEmploye(emp); setPosteForm({ nouveau_poste: emp.poste || '', nouveau_salaire: emp.salaire_base || 0, date_effet: new Date().toISOString().split('T')[0], motif: '' }); setShowChangementPosteModal(true); }}>
                            <i className="bi bi-briefcase"></i>
                          </button>
-                         <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedEmploye(emp); setEmployeForm(emp); setShowEmployeModal(true); }}>
+                         <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedEmploye(emp); setEmployeForm(emp); setPhotoFile(null); setPhotoPreview(''); setPendingDocs([]); setDocCategorie('cv'); setDocFile(null); setShowEmployeModal(true); }}>
                            <i className="bi bi-pencil"></i>
                          </button>
                         </td>
@@ -582,6 +661,97 @@ export function RhPage() {
                         <option value="cnaps_ostie">CNAPS + OSTIE</option>
                       </select>
                     </div>
+
+                    {/* Photo de l'employé : affichée sur son badge QR et son profil. */}
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Photo de l'employé</label>
+                      <div className="d-flex align-items-center gap-3">
+                        {photoPreview ? (
+                          <img src={photoPreview} alt="Aperçu" className="rounded-circle border" style={{ width: 64, height: 64, objectFit: 'cover' }} />
+                        ) : (
+                          <div className="rounded-circle border bg-light d-flex align-items-center justify-content-center" style={{ width: 64, height: 64 }}>
+                            <i className="bi bi-person fs-4 text-secondary"></i>
+                          </div>
+                        )}
+                        <div className="flex-grow-1">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="form-control form-control-sm"
+                            onChange={e => {
+                              const f = e.target.files?.[0] || null
+                              setPhotoFile(f)
+                              setPhotoPreview(f ? URL.createObjectURL(f) : '')
+                            }}
+                          />
+                          <div className="form-text">Affichée sur son badge QR et son profil.</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Documents administratifs : CV, lettre de motivation, diplôme, CNI... */}
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">
+                        <i className="bi bi-folder2-open me-1"></i>Documents administratifs
+                      </label>
+                      <div className="row g-2 align-items-center">
+                        <div className="col-md-4">
+                          <select className="form-select form-select-sm" value={docCategorie} onChange={e => setDocCategorie(e.target.value)}>
+                            {CATEGORIES_DOCS_RH.map(c => (
+                              <option key={c.value} value={c.value}>{c.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-md-5">
+                          <input
+                            type="file"
+                            className="form-control form-control-sm"
+                            onChange={e => setDocFile(e.target.files?.[0] || null)}
+                          />
+                        </div>
+                        <div className="col-md-3">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-secondary w-100"
+                            onClick={() => {
+                              if (!docFile) {
+                                alert('Choisissez d’abord un fichier à ajouter.')
+                                return
+                              }
+                              addPendingDoc(docFile, docCategorie)
+                              setDocFile(null)
+                            }}
+                          >
+                            <i className="bi bi-plus-lg me-1"></i>Ajouter
+                          </button>
+                        </div>
+                      </div>
+                      {pendingDocs.length > 0 && (
+                        <ul className="list-group list-group-flush mt-2">
+                          {pendingDocs.map((d, i) => (
+                            <li key={i} className="list-group-item d-flex justify-content-between align-items-center px-2 py-1 small">
+                              <span>
+                                <i className="bi bi-file-earmark-text me-2"></i>
+                                {d.nom}
+                                <span className="badge bg-light text-dark border ms-2">
+                                  {CATEGORIES_DOCS_RH.find(c => c.value === d.categorie)?.label || d.categorie}
+                                </span>
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-link text-danger p-0"
+                                onClick={() => setPendingDocs(prev => prev.filter((_, j) => j !== i))}
+                              >
+                                <i className="bi bi-x-lg"></i>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <div className="form-text">
+                        CV, lettre de motivation, diplôme, CNI/passeport, contrat… uploadés à l'enregistrement de l'employé.
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="modal-footer bg-light">
@@ -640,7 +810,12 @@ export function RhPage() {
               <div className="d-flex justify-content-end mb-2">
                 <button type="button" className="btn-close btn-close-white fs-4" onClick={() => setShowBadgeModal(false)}></button>
               </div>
-              <WorkerBadgeCard employe={selectedBadgeEmploye} onPrint={() => window.print()} />
+              <WorkerBadgeCard
+                employe={selectedBadgeEmploye}
+                entrepriseLogo={badgeEntreprise.logo || undefined}
+                entrepriseNom={badgeEntreprise.nom || undefined}
+                onPrint={() => window.print()}
+              />
             </div>
           </div>
         </div>

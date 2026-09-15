@@ -12,6 +12,7 @@ from sqlalchemy import select, func
 
 from app.security import CurrentUserPayload, DbDep
 from app.models.employe import Employe
+from app.models.entreprise import Entreprise
 from app.models.chantier import Chantier
 from app.models.pointage import Pointage
 from app.models.tache import Tache
@@ -631,9 +632,13 @@ async def get_documents_terrain(payload: CurrentUserPayload, db: DbDep):
 async def get_mon_badge(payload: CurrentUserPayload, db: DbDep):
     _require_permission(payload, "employe_terrain:read")
     employe = await _get_employe(payload, db)
+    ent = await db.get(Entreprise, employe.entreprise_id) if employe.entreprise_id else None
     return {
         "employe": employe,
         "code_qr": employe.code_qr_badge or f"TIA-EMP-{employe.id}-1-0",
+        # Branding du badge : logo + nom de l'entreprise de l'employé.
+        "entreprise_nom": ent.nom if ent else None,
+        "entreprise_logo": ent.logo if ent else None,
     }
 
 
