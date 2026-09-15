@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Employe, Pointage, Equipe, HeureSupplementaire } from '@/types'
+import type { Document, Employe, Pointage, Equipe, HeureSupplementaire } from '@/types'
 import { rhService } from '@/services/rh.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRolePermissions } from '@/config/roles.config'
@@ -53,6 +53,9 @@ export function RhPage() {
   const perms = getRolePermissions(user?.role_code || '')
   const [activeTab, setActiveTab] = useState<'employes' | 'pointages' | 'equipes' | 'heures-sup' | 'conges' | 'paie'>('employes')
 
+  /** Normalise un champ numérique du formulaire : number conservé, sinon undefined. */
+  const numOrUndef = (v: unknown): number | undefined => (typeof v === 'number' && !Number.isNaN(v) ? v : undefined)
+
   // State
   const [employes, setEmployes] = useState<Employe[]>([])
   const [pointages, setPointages] = useState<Pointage[]>([])
@@ -99,6 +102,12 @@ export function RhPage() {
   // Photo + documents administratifs (uploadés après la création de l'employé).
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string>('')
+  /** Documents déjà enregistrés (édition) — affichés dans le modal, non re-uploadés. */
+  const [existingDocs, setExistingDocs] = useState<Document[]>([])
+  /** Bloque le bouton Enregistrer tant que le détail d'édition n'est pas chargé. */
+  const [editReady, setEditReady] = useState(true)
+  /** Charger le détail AVANT d'afficher le modal (évite un formulaire vide). */
+  const [editLoading, setEditLoading] = useState(false)
   const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([])
   const [docCategorie, setDocCategorie] = useState('cv')
   const [docFile, setDocFile] = useState<File | null>(null)
@@ -112,13 +121,12 @@ export function RhPage() {
     motif: ''
   })
 
+  /** Création : formulaire vierge, modal affiché immédiatement. */
   const openNewEmployeModal = () => {
-    const year = new Date().getFullYear()
-    const count = employes.length + 1
-    const prefix = employeForm.type_contrat === 'JOURNALIER' ? 'JRN' : 'EMP'
     setSelectedEmploye(null)
     setEmployeForm({
-      matricule: `${prefix}-${year}-${String(count).padStart(3, '0')}`,
+      // Matricule 100 % auto-généré par le backend : aucune saisie côté utilisateur.
+      matricule: '',
       type_contrat: 'CDI',
       statut: 'actif',
       salaire_base: 0,
@@ -130,9 +138,105 @@ export function RhPage() {
     setPhotoFile(null)
     setPhotoPreview('')
     setPendingDocs([])
+    setExistingDocs([])
+    setEditReady(true)
+    setEditLoading(false)
     setDocCategorie('cv')
     setDocFile(null)
     setShowEmployeModal(true)
+  }
+
+  const openEditEmploye = async (emp: Employe) => {
+    // 1) Pré-remplissage instantané depuis la ligne cliquée : nom+prénom visibles tout de suite.
+    setSelectedEmploye(emp)
+    setEmployeForm({
+      entreprise_id: emp.entreprise_id ?? '',
+      matricule: emp.matricule ?? '',
+      nom: emp.nom ?? '',
+      prenom: emp.prenom ?? '',
+      poste: emp.poste ?? POSTES_BTP[0],
+      date_embauche: emp.date_embauche ?? '',
+      type_contrat: emp.type_contrat ?? 'CDI',
+      date_debut_contrat: emp.date_debut_contrat ?? '',
+      date_fin_contrat: emp.date_fin_contrat ?? '',
+      salaire_base: Number(emp.salaire_base ?? 0),
+      mode_remuneration: emp.mode_remuneration ?? 'mensuel',
+      taux_journalier: numOrUndef(emp.taux_journalier),
+      taux_horaire: numOrUndef(emp.taux_horaire),
+      prix_tache: numOrUndef(emp.prix_tache),
+      numero_cnaps: emp.numero_cnaps ?? '',
+      numero_ostie: emp.numero_ostie ?? '',
+      statut_declaration: emp.statut_declaration ?? 'non_declare',
+      solde_conges_annuel: Number(emp.solde_conges_annuel ?? 30),
+      telephone: emp.telephone ?? '',
+      email: emp.email ?? '',
+      adresse: emp.adresse ?? '',
+      statut: emp.statut ?? 'actif',
+    })
+    setPhotoFile(null)
+    setPhotoPreview(emp.photo || '')
+    setPendingDocs([])
+    setExistingDocs([])
+    setDocCategorie('cv')
+    setDocFile(null)
+    setShowEmployeModal(true)
+    // 2) Puis enrichissement silencieux : détail complet + documents déjà enregistrés.
+    setEditLoading(true)
+    try {
+      const detail = await rhService.getEmploye(emp.id)
+      if (detail) {
+        const full: Employe = { ...emp, ...(detail as Employe) }
+        setSelectedEmploye(full)
+        setEmployeForm({
+          entreprise_id: full.entreprise_id ?? '',
+          matricule: full.matricule ?? '',
+          nom: full.nom ?? '',
+          prenom: full.prenom ?? '',
+          poste: full.poste ?? POSTES_BTP[0],
+          date_embauche: full.date_embauche ?? '',
+          type_contrat: full.type_contrat ?? 'CDI',
+          date_debut_contrat: full.date_debut_contrat ?? '',
+          date_fin_contrat: full.date_fin_contrat ?? '',
+          salaire_base: Number(full.salaire_base ?? 0),
+          mode_remuneration: full.mode_remuneration ?? 'mensuel',
+          taux_journalier: numOrUndef(full.taux_journalier),
+          taux_horaire: numOrUndef(full.taux_horaire),
+          prix_tache: numOrUndef(full.prix_tache),
+          numero_cnaps: full.numero_cnaps ?? '',
+          numero_ostie: full.numero_ostie ?? '',
+          statut_declaration: full.statut_declaration ?? 'non_declare',
+          solde_conges_annuel: Number(full.solde_conges_annuel ?? 30),
+          telephone: full.telephone ?? '',
+          email: full.email ?? '',
+          adresse: full.adresse ?? '',
+          statut: full.statut ?? 'actif',
+        })
+        setPhotoPreview((prev) => prev || full.photo || '')
+      }
+      try {
+        const docs = await rhService.getEmployeDocuments(emp.id)
+        setExistingDocs(docs ?? [])
+      } catch {
+        /* documents indisponibles : on garde le formulaire, sans bloquer */
+      }
+    } catch {
+      /* détail indisponible : le pré-remplissage de la ligne suffit */
+    } finally {
+      setEditLoading(false)
+      setEditReady(true)
+    }
+  }
+
+  /** Changement de poste : préremplit avec le poste actuel de l'employé. */
+  const openChangementPoste = (emp: Employe) => {
+    setSelectedEmploye(emp)
+    setPosteForm({
+      nouveau_poste: emp.poste || POSTES_BTP[0],
+      nouveau_salaire: Number(emp.salaire_base ?? 0),
+      date_effet: new Date().toISOString().split('T')[0],
+      motif: '',
+    })
+    setShowChangementPosteModal(true)
   }
 
   /** Ouvre le badge : charge nom + logo de l'entreprise (affichés sur le badge). */
@@ -394,7 +498,7 @@ export function RhPage() {
                         <i className="bi bi-person-x display-6 d-block mb-3"></i>
                         Aucun employé trouvé
                         <div className="mt-3">
-                         <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedEmploye(null); setEmployeForm({ type_contrat: 'CDI', statut: 'actif', salaire_base: 0 }); setShowEmployeModal(true); }}>
+                          <button className="btn btn-sm btn-outline-secondary" onClick={openNewEmployeModal}>
                            <i className="bi bi-person-plus me-1"></i>Nouvel employé
                          </button>
                         </div>
@@ -418,10 +522,10 @@ export function RhPage() {
                          <button className="btn btn-sm btn-outline-secondary btn-sm" onClick={() => openBadgeEmploye(emp)}>
                            <i className="bi bi-qr-code"></i>
                          </button>
-                         <button className="btn btn-sm btn-outline-secondary me-1" onClick={() => { setSelectedEmploye(emp); setPosteForm({ nouveau_poste: emp.poste || '', nouveau_salaire: emp.salaire_base || 0, date_effet: new Date().toISOString().split('T')[0], motif: '' }); setShowChangementPosteModal(true); }}>
+                         <button className="btn btn-sm btn-outline-secondary" onClick={() => openChangementPoste(emp)}>
                            <i className="bi bi-briefcase"></i>
                          </button>
-                         <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedEmploye(emp); setEmployeForm(emp); setPhotoFile(null); setPhotoPreview(''); setPendingDocs([]); setDocCategorie('cv'); setDocFile(null); setShowEmployeModal(true); }}>
+                         <button className="btn btn-sm btn-outline-secondary" onClick={() => openEditEmploye(emp)}>
                            <i className="bi bi-pencil"></i>
                          </button>
                         </td>
@@ -564,30 +668,66 @@ export function RhPage() {
       {/* Modal Add Employe */}
       {showEmployeModal && (
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-lg modal-dialog-centered">
+          <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title fw-bold">
-                  {selectedEmploye ? 'Éditer l\'employé' : 'Nouvel employé'}
-                </h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setShowEmployeModal(false)}></button>
-              </div>
+               <div className="modal-header">
+                  <div className="d-flex flex-column gap-1">
+                    <h5 className="modal-title fw-bold mb-0">
+                      {selectedEmploye ? "Éditer l'employé" : 'Nouvel employé'}
+                    </h5>
+                    {selectedEmploye ? (
+                      <span className="badge bg-primary-subtle text-primary-emphasis border align-self-start">
+                        <i className="bi bi-person-badge me-1"></i>
+                        {selectedEmploye.nom}{selectedEmploye.prenom ? ` ${selectedEmploye.prenom}` : ''}
+                        {selectedEmploye.poste ? ` · ${selectedEmploye.poste}` : ''}
+                      </span>
+                    ) : (
+                      <span className="text-muted small">Le matricule sera généré automatiquement à l'enregistrement.</span>
+                    )}
+                    {selectedEmploye && editLoading && (
+                      <span className="text-muted small">
+                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        Chargement des informations complètes…
+                      </span>
+                    )}
+                  </div>
+                  <button type="button" className="btn-close btn-close-white" onClick={() => setShowEmployeModal(false)}></button>
+                </div>
               <form onSubmit={handleSaveEmploye}>
-                <div className="modal-body">
+                <div className="modal-body" style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}>
+                  {/* Bandeau identité : nom + prénom toujours visibles en haut du formulaire */}
+                  {selectedEmploye && (
+                    <div className="alert alert-primary d-flex align-items-center gap-3 mb-3 py-2">
+                      {photoPreview ? (
+                        <img src={photoPreview} alt="Photo" className="rounded-circle border" style={{ width: 44, height: 44, objectFit: 'cover' }} />
+                      ) : (
+                        <span className="rounded-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center fw-bold" style={{ width: 44, height: 44 }}>
+                          {(selectedEmploye.nom?.[0] || '?').toUpperCase()}
+                        </span>
+                      )}
+                      <div>
+                        <div className="fw-bold">
+                          {selectedEmploye.nom}{selectedEmploye.prenom ? ` ${selectedEmploye.prenom}` : ''}
+                        </div>
+                        <div className="small">
+                          {employeForm.matricule || selectedEmploye.matricule || ''}
+                          {selectedEmploye.poste ? ` · ${selectedEmploye.poste}` : ''}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="row g-3">
                       <div className="col-md-6">
-                        <label className="form-label fw-semibold">Matricule (Auto-généré) *</label>
-                        <div className="input-group">
-                          <input type="text" className="form-control font-monospace fw-bold" required value={employeForm.matricule || ''} onChange={e => setEmployeForm({...employeForm, matricule: e.target.value})} />
-                          <button className="btn btn-outline-secondary" type="button" onClick={() => {
-                            const year = new Date().getFullYear()
-                            const count = employes.length + 1
-                            const prefix = employeForm.type_contrat === 'JOURNALIER' ? 'JRN' : 'EMP'
-                            setEmployeForm({...employeForm, matricule: `${prefix}-${year}-${String(count).padStart(3, '0')}`})
-                          }}>
-                            <i className="bi bi-arrow-clockwise"></i>
-                          </button>
-                        </div>
+                        {/* Matricule 100 % auto-généré par le backend : non modifiable. */}
+                        <label className="form-label fw-semibold">Matricule</label>
+                        <input
+                          type="text"
+                          className="form-control font-monospace fw-bold bg-body-secondary"
+                          value={selectedEmploye ? (employeForm.matricule || '') : 'Automatique à l\'enregistrement'}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                        <div className="form-text">Généré automatiquement (préfixe entreprise + année + séquence) — non modifiable.</div>
                       </div>
                       <div className="col-md-6">
                         <label className="form-label fw-semibold">Nom *</label>
@@ -726,6 +866,28 @@ export function RhPage() {
                           </button>
                         </div>
                       </div>
+                      {selectedEmploye && existingDocs.length > 0 && (
+                        <div className="alert alert-light border small mt-2 mb-0">
+                          <div className="fw-semibold mb-1">
+                            <i className="bi bi-folder-check me-1"></i>
+                            Documents déjà enregistrés ({existingDocs.length})
+                          </div>
+                          <ul className="list-unstyled mb-0 d-flex flex-column gap-1">
+                            {existingDocs.map((d) => (
+                              <li key={d.id} className="d-flex align-items-center gap-2">
+                                <i className="bi bi-file-earmark-text text-secondary"></i>
+                                <span className="text-truncate">{d.nom || d.titre}</span>
+                                <span className="badge bg-light text-dark border">{d.categorie}</span>
+                                {d.fichier_url ? (
+                                  <a href={d.fichier_url} target="_blank" rel="noreferrer" className="btn btn-sm btn-link p-0 ms-auto">
+                                    Voir
+                                  </a>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                       {pendingDocs.length > 0 && (
                         <ul className="list-group list-group-flush mt-2">
                           {pendingDocs.map((d, i) => (
@@ -754,9 +916,18 @@ export function RhPage() {
                     </div>
                   </div>
                 </div>
-                <div className="modal-footer bg-light">
+                <div className="modal-footer bg-light position-sticky bottom-0 border-top">
                   <button type="button" className="btn btn-outline-secondary" onClick={() => setShowEmployeModal(false)}>Annuler</button>
-                  <button type="submit" className="btn btn-outline-secondary fw-bold">Enregistrer</button>
+                  <button type="submit" className="btn btn-outline-secondary fw-bold" disabled={savingEmploye || (selectedEmploye !== null && editReady === false)}>
+                    {savingEmploye ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Enregistrement…
+                      </>
+                    ) : (
+                      'Enregistrer'
+                    )}
+                  </button>
                 </div>
               </form>
             </div>
@@ -777,7 +948,10 @@ export function RhPage() {
                 <div className="modal-body">
                   <div className="mb-3">
                     <label className="form-label fw-semibold">Nouveau Poste *</label>
-                    <input type="text" className="form-control" required value={posteForm.nouveau_poste} onChange={e => setPosteForm({ ...posteForm, nouveau_poste: e.target.value })} />
+                    {/* Même liste que le formulaire employé : une seule source de vérité. */}
+                    <select className="form-select" required value={posteForm.nouveau_poste} onChange={e => setPosteForm({ ...posteForm, nouveau_poste: e.target.value })}>
+                      {POSTES_BTP.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
                   </div>
                   <div className="mb-3">
                     <label className="form-label fw-semibold">Nouveau Salaire de Base (MGA)</label>

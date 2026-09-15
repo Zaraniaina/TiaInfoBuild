@@ -1,0 +1,63 @@
+import pathlib
+p = pathlib.Path('Web/frontend/src/pages/rh/RhPage.tsx')
+t = p.read_text(encoding='utf-8')
+start_marker = '  /** \u00c9dition : recharge le D\u00c9TAIL complet'
+end_marker = '  /** Changement de poste'
+i0 = t.index(start_marker)
+i1 = t.index(end_marker)
+Q = chr(39)
+lines = []
+lines.append('  /** Edition : recharge le DETAIL complet + documents AVANT le modal. */')
+lines.append('  const openEditEmploye = async (emp: Employe) => {')
+lines.append('    setEditLoading(true)')
+lines.append('    setEditReady(false)')
+lines.append('    try {')
+lines.append('      const detail = await rhService.getEmploye(emp.id)')
+lines.append('      let docs: Document[] = []')
+lines.append('      try {')
+lines.append('        docs = await rhService.getEmployeDocuments(emp.id)')
+lines.append('      } catch {')
+lines.append('        docs = []')
+lines.append('      }')
+lines.append('      const full = detail ?? emp')
+lines.append('      setSelectedEmploye(full)')
+lines.append('      setEmployeForm({')
+for f, d in [('entreprise_id', "''"), ('matricule', "''"), ('nom', "''"), ('prenom', "''"), ('poste', 'POSTES_BTP[0]'), ('date_embauche', "''"), ('type_contrat', Q+'CDI'+Q), ('date_debut_contrat', "''"), ('date_fin_contrat', "''"), ('salaire_base', '0'), ('mode_remuneration', Q+'mensuel'+Q), ('taux_journalier', "''"), ('taux_horaire', "''"), ('prix_tache', "''"), ('numero_cnaps', "''"), ('numero_ostie', "''"), ('statut_declaration', Q+'non_declare'+Q), ('solde_conges_annuel', '30'), ('telephone', "''"), ('email', "''"), ('adresse', "''"), ('statut', Q+'actif'+Q)]:
+    if f in ('salaire_base', 'solde_conges_annuel'):
+        lines.append('        ' + f + ': Number(full.' + f + ' ?? emp.' + f + ' ?? ' + d + '),')
+    else:
+        lines.append('        ' + f + ': full.' + f + ' ?? emp.' + f + ' ?? ' + d + ',')
+lines.append('      })')
+lines.append('      setPhotoFile(null)')
+lines.append('      setPhotoPreview(full.photo || emp.photo || ' + Q*2 + ')')
+lines.append('      setPendingDocs([])')
+lines.append('      setExistingDocs(docs)')
+lines.append('      setDocCategorie(' + Q + 'cv' + Q + ')')
+lines.append('      setDocFile(null)')
+lines.append('    } catch {')
+lines.append('      setSelectedEmploye(emp)')
+lines.append('      setEmployeForm({')
+for f, d in [('entreprise_id', "''"), ('matricule', "''"), ('nom', "''"), ('prenom', "''"), ('poste', 'POSTES_BTP[0]'), ('date_embauche', "''"), ('type_contrat', Q+'CDI'+Q), ('date_debut_contrat', "''"), ('date_fin_contrat', "''"), ('salaire_base', '0'), ('mode_remuneration', Q+'mensuel'+Q), ('taux_journalier', "''"), ('taux_horaire', "''"), ('prix_tache', "''"), ('numero_cnaps', "''"), ('numero_ostie', "''"), ('statut_declaration', Q+'non_declare'+Q), ('solde_conges_annuel', '30'), ('telephone', "''"), ('email', "''"), ('adresse', "''"), ('statut', Q+'actif'+Q)]:
+    if f in ('salaire_base', 'solde_conges_annuel'):
+        lines.append('        ' + f + ': Number(emp.' + f + ' ?? ' + d + '),')
+    else:
+        lines.append('        ' + f + ': emp.' + f + ' ?? ' + d + ',')
+lines.append('      })')
+lines.append('      setPhotoFile(null)')
+lines.append('      setPhotoPreview(emp.photo || ' + Q*2 + ')')
+lines.append('      setPendingDocs([])')
+lines.append('      setExistingDocs([])')
+lines.append('      setDocCategorie(' + Q + 'cv' + Q + ')')
+lines.append('      setDocFile(null)')
+lines.append('    } finally {')
+lines.append('      setEditReady(true)')
+lines.append('      setEditLoading(false)')
+lines.append('      setShowEmployeModal(true)')
+lines.append('    }')
+lines.append('  }')
+lines.append('')
+lines.append('')
+new_block = chr(10).join(lines)
+t = t[:i0] + new_block + t[i1:]
+p.write_text(t, encoding='utf-8')
+print('REWRITE OK len=' + str(len(t)))

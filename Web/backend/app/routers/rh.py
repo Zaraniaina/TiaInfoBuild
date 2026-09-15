@@ -180,6 +180,49 @@ async def _sync_employe_user_photo(db, employe: Employe):
             await db.flush()
 
 
+async def _generer_matricule(db: Any, entreprise_id: int | None, type_contrat: str | None) -> str:
+    """Génère le matricule automatiquement : PREFIXE-ANNÉE-NNN (ex. EMP-2026-001).
+
+    100 % backend : aucune saisie ni bouton côté utilisateur. Le préfixe est
+    configurable par entreprise (`prefixe_employe`, ou `prefixe_employe_journalier`
+    pour les JOURNALIER), sur le modèle des prefixes devis/facture/contrat.
+    La séquence repose sur le MAX des numéros existants (même préfixe/année) avec
+    une vérification d'unicité et un retry anti-collision.
+    """
+    prefixe = "EMP"
+    if entreprise_id is not None:
+        entreprise = await db.get(Entreprise, entreprise_id)
+        if entreprise:
+            prefixe = (
+                entreprise.prefixe_employe_journalier
+                if (type_contrat or "").upper() == "JOURNALIER"
+                else entreprise.prefixe_employe
+            ) or "EMP"
+    prefixe = (prefixe or "EMP").upper()[:10]
+    annee = datetime.now().year
+    motif = f"{prefixe}-{annee}-%"
+
+    res = await db.execute(
+        select(Employe.matricule).where(Employe.matricule.like(motif), Employe.is_deleted == False)  # noqa: E712
+    )
+    dernier_num = 0
+    for (mat,) in res.all():
+        try:
+            dernier_num = max(dernier_num, int(str(mat).rsplit("-", 1)[1]))
+        except (ValueError, IndexError):
+            continue
+
+    for num in range(dernier_num + 1, dernier_num + 51):
+        candidat = f"{prefixe}-{annee}-{num:03d}"
+        existant = await db.execute(
+            select(Employe.id).where(Employe.matricule == candidat, Employe.is_deleted == False)  # noqa: E712
+        )
+        if existant.scalar_one_or_none() is None:
+            return candidat
+    # Improbable (50 tentatives) : suffixe horodaté pour garantir l'unicité.
+    return f"{prefixe}-{annee}-{datetime.now().strftime('%H%M%S')}"
+
+
 @router.post("/employes", response_model=EmployeResponse, status_code=status.HTTP_201_CREATED)
 async def create_employe(
     payload: CurrentUserPayload,
@@ -191,6 +234,8 @@ async def create_employe(
     data = obj_in.model_dump(exclude_unset=True)
     if entreprise_id is not None and not data.get("entreprise_id"):
         data["entreprise_id"] = entreprise_id
+    # Matricule TOUJOURS auto-généré : toute valeur fournie est ignorée.
+    data["matricule"] = await _generer_matricule(db, data.get("entreprise_id"), data.get("type_contrat"))
     crud = EmployeCRUD()
     employe = await crud.create(db, data)
     await _sync_employe_user_photo(db, employe)
@@ -236,6 +281,8 @@ async def update_employe(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
 
     data = obj_in.model_dump(exclude_unset=True)
+    # Matricule verrouillé : identifiant auto-généré, jamais modifiable.
+    data.pop("matricule", None)
     updated = await crud.update(db, employe, data)
     await _sync_employe_user_photo(db, updated)
     await db.refresh(updated)

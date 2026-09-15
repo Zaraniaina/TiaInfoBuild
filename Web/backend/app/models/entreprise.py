@@ -28,6 +28,8 @@ class Entreprise(Base):
     prefixe_devis: Mapped[str] = mapped_column(String(10), server_default="DEV")
     prefixe_facture: Mapped[str] = mapped_column(String(10), server_default="FAC")
     prefixe_contrat: Mapped[str] = mapped_column(String(10), server_default="CTR")
+    prefixe_employe: Mapped[str] = mapped_column(String(10), server_default="EMP")
+    prefixe_employe_journalier: Mapped[str] = mapped_column(String(10), server_default="JRN")
     tva_defaut: Mapped[float] = mapped_column(Numeric(5, 2), server_default="20.00")
     delai_paiement_defaut: Mapped[int] = mapped_column(server_default="30")
     validite_devis: Mapped[int] = mapped_column(server_default="30")
