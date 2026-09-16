@@ -27,4 +27,8 @@ roles_tia_builds
 AGENTS.md
 outputs
 graphify-out
-docs
+/docs/
+.kilocode
+.superpowers
+.vscode
+.freebuff
