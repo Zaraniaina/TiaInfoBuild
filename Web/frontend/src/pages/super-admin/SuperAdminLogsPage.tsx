@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
 import { TableSkeleton } from '@/components/ui/Skeleton'
+import { downloadCsv } from '@/utils/csv'
 
 export function SuperAdminLogsPage() {
   const [logs, setLogs] = useState<any[]>([])
@@ -29,7 +30,11 @@ export function SuperAdminLogsPage() {
           <h2 className="fw-bold mb-1 text-secondary"><i className="bi bi-activity me-2"></i>Logs & Supervision</h2>
           <p className="text-secondary mb-0">Journal des événements techniques, incidents et activités système.</p>
         </div>
-        <button className="btn btn-outline-secondary fw-bold" onClick={() => alert('Export des logs disponible prochainement')}><i className="bi bi-download me-2"></i>Exporter logs</button>
+        <button
+          className="btn btn-outline-secondary fw-bold"
+          onClick={() => downloadCsv('logs-systeme.csv', logs, ['niveau', 'message', 'date', 'utilisateur'])}
+          disabled={!logs.length}
+        ><i className="bi bi-download me-2"></i>Exporter logs</button>
       </div>
 
       {loading ? (

@@ -232,6 +232,8 @@ async def get_planning(payload: CurrentUserPayload, db: DbDep):
 
 class PresenceRequest(BaseModel):
     action: str
+    # Traçabilité optionnelle de l'auto-déclaration (ex. "GPS: -18.91, 47.52").
+    notes: str | None = None
 
 
 @router.post("/presence")
@@ -255,7 +257,7 @@ async def enregistrer_presence(payload: CurrentUserPayload, db: DbDep, data: Pre
         pt = Pointage(
             entreprise_id=employe.entreprise_id, employe_id=employe.id,
             date_jour=aujourdhui, heure_debut=now_time, heures_total=0,
-            type="present", methode_pointage="auto_employe",
+            type="present", methode_pointage="auto_employe", notes=data.notes,
         )
         db.add(pt)
         await db.commit()

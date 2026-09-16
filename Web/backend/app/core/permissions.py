@@ -135,7 +135,9 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
         "alertes:read",
     ],
     Role.EMPLOYE: [
-        "rh:read",
+        # PAS de rh:read : la liste du personnel et les paies passent par
+        # /rh/* (usage interne RH). Le portail employé lit ses données via
+        # le routeur dédié employe_terrain.py (employe_terrain:*).
         "chantiers:read",
         "materiels:read",
         "stocks:read",

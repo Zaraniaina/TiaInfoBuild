@@ -21,6 +21,7 @@ import { ROLE_DASHBOARD_TITLE } from "@/config/roles.config";
 import { QRScannerModal } from "@/components/pointage/QRScannerModal";
 import { WorkerBadgeCard } from "@/components/pointage/WorkerBadgeCard";
 import { PageSkeleton } from "@/components/ui/Skeleton"
+import { employeTerrainService } from "@/services/employeTerrain.service";
 
 const ROLE_META: Record<
   string,
@@ -98,8 +99,43 @@ export function DashboardPage() {
   const roleCode = user?.role_code || "employe";
   const [loading, setLoading] = useState(true);
   const [showScannerModal, setShowScannerModal] = useState(false);
+  const [gpsState, setGpsState] = useState<"idle" | "locating" | "sending" | "done" | "error">("idle");
+  const [gpsMessage, setGpsMessage] = useState<string | null>(null);
   const [showBadgeModal, setShowBadgeModal] = useState(false);
   const [approvingId, setApprovingId] = useState<number | null>(null);
+
+  /** Auto-pointage GPS : enregistre l'entrée via POST /employe-terrain/presence
+   *  avec la position du navigateur en traçabilité (notes="GPS: lat, lon"). */
+  const handleAutoPointageGps = () => {
+    if (!navigator.geolocation) {
+      setGpsState("error");
+      setGpsMessage("Géolocalisation non disponible sur cet appareil.");
+      return;
+    }
+    setGpsState("locating");
+    setGpsMessage(null);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const notes = `GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+        setGpsState("sending");
+        try {
+          const res = await employeTerrainService.enregistrerPresence({ action: "entree", notes });
+          setGpsState("done");
+          setGpsMessage(res?.message || "Pointage d'entrée enregistré.");
+        } catch (e: any) {
+          setGpsState("error");
+          setGpsMessage(e?.response?.data?.detail || "Impossible d'enregistrer le pointage.");
+        }
+      },
+      (err) => {
+        setGpsState("error");
+        setGpsMessage(err.code === err.PERMISSION_DENIED
+          ? "Accès à la position refusé. Autorisez la géolocalisation pour pointer."
+          : "Position indisponible. Réessayez.");
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["dashboard", "stats"],
@@ -800,16 +836,23 @@ export function DashboardPage() {
             </button>
             <button
               className="btn btn-outline-secondary fw-bold"
-              onClick={() =>
-                alert(
-                  "Auto-déclaration GPS enregistrée pour le Chef de Chantier (Catégorie B).",
-                )
-              }
+              onClick={handleAutoPointageGps}
+              disabled={gpsState === "locating" || gpsState === "sending"}
             >
-              <i className="bi bi-geo-alt-fill me-2"></i>Mon Auto-Pointage GPS
+              <i className="bi bi-geo-alt-fill me-2"></i>
+              {gpsState === "locating" ? "Localisation…" : gpsState === "sending" ? "Enregistrement…" : "Mon Auto-Pointage GPS"}
             </button>
           </div>
         </div>
+        {gpsMessage && (
+          <div
+            role="status"
+            className={`alert-bar mb-4 border-0 small fw-semibold ${gpsState === "error" ? "bg-danger bg-opacity-10 text-danger" : "bg-success bg-opacity-10 text-success"}`}
+          >
+            <i className={`bi me-2 ${gpsState === "error" ? "bi-exclamation-triangle" : "bi-check-circle"}`}></i>
+            {gpsMessage}
+          </div>
+        )}
 
         <div className="row g-3 mb-4">
           {renderKpi(

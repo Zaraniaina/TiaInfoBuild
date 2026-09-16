@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
 import type { Utilisateur } from '@/types'
 import { TableSkeleton } from '@/components/ui/Skeleton'
+import { downloadCsv } from '@/utils/csv'
 
 export function SuperAdminUtilisateursPage() {
   const [users, setUsers] = useState<Utilisateur[]>([])
@@ -27,7 +28,15 @@ export function SuperAdminUtilisateursPage() {
           <h2 className="fw-bold mb-1 text-secondary"><i className="bi bi-people-fill me-2"></i>Utilisateurs Globaux Plateforme</h2>
           <p className="text-secondary mb-0">Tous les comptes utilisateurs créés sur l'ensemble des entreprises abonnées.</p>
         </div>
-        <button className="btn btn-outline-secondary fw-bold" onClick={() => alert('Export CSV disponible prochainement')}>
+        <button
+          className="btn btn-outline-secondary fw-bold"
+          onClick={() => downloadCsv(
+            'utilisateurs-plateforme.csv',
+            users.map((u) => ({ nom: `${u.nom} ${u.prenom}`, email: u.email, role: u.role?.nom, statut: u.statut })),
+            ['nom', 'email', 'role', 'statut'],
+          )}
+          disabled={!users.length}
+        >
           <i className="bi bi-download me-2"></i>Exporter CSV
         </button>
       </div>
