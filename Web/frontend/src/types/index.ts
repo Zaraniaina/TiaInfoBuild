@@ -255,6 +255,7 @@ export interface Pointage {
   heure_fin?: string;
   heures_total: number;
   type: TypePointage;
+  statut_validation?: 'valide' | 'en_attente' | 'refuse';
   notes?: string;
   is_deleted: boolean;
   methode_pointage?: string;

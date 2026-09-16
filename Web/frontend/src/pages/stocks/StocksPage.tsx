@@ -1796,7 +1796,7 @@ export function StocksPage() {
 
       {/* MODAL 1: CRÉER / ÉDITER UN ARTICLE MATÉRIAU */}
       {showArticleModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content border-0 shadow">
               <div className="modal-header border-bottom">
@@ -1959,7 +1959,7 @@ export function StocksPage() {
 
       {/* MODAL 2: CRÉER / ÉDITER UN DÉPÔT BTP */}
       {showDepotModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content border-0 shadow">
               <div className="modal-header border-bottom">
@@ -2084,7 +2084,7 @@ export function StocksPage() {
 
       {/* MODAL 3: MOUVEMENT DE STOCK / SORTIE CHANTIER INTELLIGENT */}
       {showMouvementModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content border-0 shadow">
               <div className="modal-header border-bottom">
@@ -2230,7 +2230,7 @@ export function StocksPage() {
 
       {/* MODAL 4: ÉTIQUETTE QR CODE DÉPÔT */}
       {showQrModal && qrArticle && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-sm modal-dialog-centered">
             <div className="modal-content border-0 shadow text-center p-3">
               <div className="modal-header border-0 pb-0 justify-content-end">
@@ -2272,7 +2272,7 @@ export function StocksPage() {
 
       {/* MODAL 5: BON DE SORTIE IMPRIMABLE */}
       {showPrintBonModal && selectedBonSortie && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content border-0 shadow">
               <div className="modal-header border-bottom bg-light">
@@ -2349,7 +2349,7 @@ export function StocksPage() {
 
       {/* MODAL 6: DÉCLARER UN PRÊT D'OUTILLAGE INTELLIGENT */}
       {showEmpruntModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content border-0 shadow">
               <div className="modal-header border-bottom">
@@ -2467,7 +2467,7 @@ export function StocksPage() {
 
       {/* MODAL 7: ENREGISTRER UNE RÉCEPTION FOURNISSEUR INTELLIGENTE */}
       {showReceptionModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content border-0 shadow">
               <div className="modal-header border-bottom">
@@ -2605,7 +2605,7 @@ export function StocksPage() {
 
       {/* MODAL 8: CRÉER UN FOURNISSEUR */}
       {showFournisseurModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content border-0 shadow">
               <div className="modal-header border-bottom">

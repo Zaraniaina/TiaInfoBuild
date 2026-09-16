@@ -222,7 +222,7 @@ export function SuperAdminEntreprisesPage() {
 
       {/* Modal Création Entreprise + Admin */}
       {showModal && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-dialog-centered modal-lg">
             <div className="modal-content border-0 shadow">
               <div className="modal-header bg-secondary text-white">
@@ -378,7 +378,7 @@ export function SuperAdminEntreprisesPage() {
       )}
 
       {showPlanModal && selectedEntreprise && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">

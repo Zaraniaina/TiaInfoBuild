@@ -25,7 +25,7 @@ export const employeTerrainService = {
   getTaches: () => api.get<{ items: TacheTerrain[] }>(`${BASE}/taches`).then((r) => r.data.items),
 
   updateTacheStatut: (id: number, statut: string) =>
-    api.put(`${BASE}/taches/${id}/statut`, { statut }).then((r) => r.data),
+    api.post(`${BASE}/taches/${id}/statut`, { statut }).then((r) => r.data),
 
   declarerTravail: (data: Partial<TravailRealise>) =>
     api.post(`${BASE}/travaux-realises`, data).then((r) => r.data),
@@ -60,7 +60,8 @@ export const employeTerrainService = {
 
   getDocuments: () => api.get<{ items: Document[] }>(`${BASE}/documents`).then((r) => r.data.items),
 
-  getMonBadge: () => api.get<{ employe: any; code_qr: string; entreprise_nom?: string | null; entreprise_logo?: string | null }>(`${BASE}/mon-badge`).then((r) => r.data),
+  // Réponse plate du backend : { id, matricule, nom, prenom, poste, photo, code_qr_badge, couleur_role, entete_badge, entreprise_nom, entreprise_logo }
+  getMonBadge: () => api.get<Record<string, any>>(`${BASE}/mon-badge`).then((r) => r.data),
 
   getPointages: () => api.get<{ items: Pointage[] }>(`${BASE}/pointages`).then((r) => r.data.items),
 

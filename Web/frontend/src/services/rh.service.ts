@@ -77,6 +77,16 @@ export const rhService = {
     return res.data
   },
 
+  async validerPointage(id: number) {
+    const res = await api.post<Pointage>(`/rh/pointages/${id}/valider`, {})
+    return res.data
+  },
+
+  async refuserPointage(id: number, commentaire?: string) {
+    const res = await api.post<Pointage>(`/rh/pointages/${id}/refuser`, { commentaire })
+    return res.data
+  },
+
   async qrCheckin(data: { employe_id: number; chantier_id?: number; qr_code_token: string; latitude?: number; longitude?: number; mode?: string }) {
     const res = await api.post<Pointage>('/rh/pointages/qr-checkin', data)
     return res.data

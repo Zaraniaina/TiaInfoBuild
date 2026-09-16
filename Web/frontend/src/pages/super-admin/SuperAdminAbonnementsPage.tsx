@@ -215,7 +215,7 @@ export function SuperAdminAbonnementsPage() {
       )}
 
       {showPlanModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -281,7 +281,7 @@ export function SuperAdminAbonnementsPage() {
       {showPlanModal && <div className="modal-backdrop fade show" onClick={() => setShowPlanModal(false)}></div>}
 
       {showSubModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">

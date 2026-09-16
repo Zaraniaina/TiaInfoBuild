@@ -7,6 +7,7 @@ import { useToastStore } from "@/stores/toast.store";
 import { ROLE_NAMES, getRolePermissions } from "@/config/roles.config";
 import { formatErrorMessage } from "@/utils/errorMessage";
 import { TableSkeleton } from '@/components/ui/Skeleton'
+import { WorkerBadgeCard } from '@/components/pointage/WorkerBadgeCard'
 
 type UserRole =
   | "admin_entreprise"
@@ -1239,48 +1240,26 @@ export function SettingsPage() {
            <div className="col-lg-5">
              <div className="card border-0 shadow-sm p-4 rounded-4 sticky-top" style={{ top: '90px' }}>
                <h6 className="fw-bold mb-3 text-muted text-uppercase tracking-wider">Aperçu en Direct du Badge QR</h6>
-               
-               <div
-                 className="card border-0 shadow-lg rounded-4 overflow-hidden text-white mx-auto p-3 text-center mb-3"
-                 style={{
-                   width: '100%',
-                   maxWidth: '340px',
-                   background: `linear-gradient(135deg, ${roleColors['chef_chantier'] || '#ea580c'} 0%, #0f172a 100%)`,
+
+               {/* Même composant que le badge réel imprimé (RH, planche, dashboard) : WYSIWYG */}
+               <WorkerBadgeCard
+                 employe={{
+                   id: 42,
+                   nom: 'Rakoto',
+                   prenom: 'Olona',
+                   poste: 'Chef de Chantier',
+                   matricule: 'EMP-042',
+                   code_qr_badge: 'TIA-EMP-042-SAMPLE',
+                   couleur_role: roleColors['chef_chantier'] || undefined,
                  }}
-               >
-                 <div className="pb-2 border-bottom border-white border-opacity-25 mb-2">
-                   {entrepriseForm.logo ? (
-                     <img src={entrepriseForm.logo} alt="Logo preview" style={{ maxHeight: '36px', maxWidth: '140px', objectFit: 'contain' }} className="d-block mx-auto mb-1" />
-                   ) : (
-                     <div className="fw-bold fs-6">{entrepriseForm.nom || 'TIA INFO BUILD'}</div>
-                   )}
-                   <div className="small font-monospace text-uppercase" style={{ fontSize: '0.68rem', color: '#38bdf8' }}>
-                     {entrepriseForm.entete_badge || 'BADGE OFFICIEL POINTAGE TERRAIN'}
-                   </div>
-                 </div>
+                 entrepriseLogo={entrepriseForm.logo || undefined}
+                 entrepriseNom={entrepriseForm.nom || undefined}
+                 enteteBadge={entrepriseForm.entete_badge || undefined}
+               />
 
-                 <div className="py-2">
-                   <div className="rounded-circle border border-2 border-white d-flex align-items-center justify-content-center fw-bold fs-3 bg-secondary text-white mx-auto mb-2" style={{ width: '80px', height: '80px' }}>
-                     R.O
-                   </div>
-                   <h5 className="fw-bold mb-0">Rakoto Olona</h5>
-                   <div className="badge bg-light text-dark fw-bold my-1 text-uppercase" style={{ fontSize: '0.75rem' }}>
-                     Chef de Chantier
-                   </div>
-                   <div className="small text-light text-opacity-75 mb-2">Matricule: <span className="font-monospace fw-bold">EMP-042</span></div>
-
-                   <div className="p-2 bg-white rounded-3 d-inline-block shadow-sm">
-                     <img
-                       src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=TIA-EMP-042-SAMPLE"
-                       alt="QR Preview"
-                       style={{ width: '130px', height: '130px', display: 'block' }}
-                     />
-                   </div>
-                   <div className="small text-light text-opacity-50 mt-2" style={{ fontSize: '0.68rem' }}>
-                     Logo & couleur appliqués automatiquement lors de l'impression.
-                   </div>
-                 </div>
-               </div>
+               <p className="small text-muted mt-3 mb-0 text-center">
+                 Aperçu identique au badge imprimé. Couleur, logo et en-tête appliqués automatiquement.
+               </p>
              </div>
            </div>
          </div>

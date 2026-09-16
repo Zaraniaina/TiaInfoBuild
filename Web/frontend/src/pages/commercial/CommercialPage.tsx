@@ -841,7 +841,7 @@ export function CommercialPage() {
 
       {/* Modal Devis Builder */}
       {showDevisModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -1011,7 +1011,7 @@ export function CommercialPage() {
           ? [champDef('SIRET', 'siret', clientForm.siret || ''), champDef('No TVA', 'numero_tva', clientForm.numero_tva || '')]
           : []
         return (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -1047,7 +1047,7 @@ export function CommercialPage() {
         )})()}
       {/* Modal Facture Builder */}
       {showFactureModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -1175,7 +1175,7 @@ export function CommercialPage() {
 
       {/* Modal Paiement Builder */}
       {showPaiementModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -1252,7 +1252,7 @@ export function CommercialPage() {
 
       {/* Modal Chantier Builder */}
       {showChantierModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -1322,7 +1322,7 @@ export function CommercialPage() {
       )}
       {/* Modal Avenant Builder */}
       {showAvenantModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">

@@ -118,7 +118,7 @@ export function RhCongesTab() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <div className="d-flex gap-2">
-          <select className="form-select bg-light" style={{ width: 200 }} value={statutFilter} onChange={(e) => setStatutFilter(e.target.value)}>
+          <select className="form-select bg-light" style={{ width: 'min(200px, 100%)' }} value={statutFilter} onChange={(e) => setStatutFilter(e.target.value)}>
             <option value="">Tous les statuts</option>
             <option value="en_attente">En attente</option>
             <option value="valide">Validés</option>
@@ -185,7 +185,7 @@ export function RhCongesTab() {
 
       {/* Modal création */}
       {showModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -240,7 +240,7 @@ export function RhCongesTab() {
 
       {/* Modal refus */}
       {refusComment !== null && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">

@@ -225,12 +225,12 @@ const handleSaveLigne = async (e: React.FormEvent) => {
           <input
             type="text"
             className="form-control form-control-sm"
-            style={{ width: 240 }}
+            style={{ width: 'min(240px, 100%)' }}
             placeholder="Rechercher..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <select className="form-select form-select-sm" style={{ width: 160 }} value={statutFilter} onChange={(e) => setStatutFilter(e.target.value)}>
+          <select className="form-select form-select-sm" style={{ width: 'min(160px, 100%)' }} value={statutFilter} onChange={(e) => setStatutFilter(e.target.value)}>
             <option value="tous">Tous statuts</option>
             {STATUTS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
           </select>
@@ -251,7 +251,7 @@ const handleSaveLigne = async (e: React.FormEvent) => {
                   <th>No </th>
                   <th>Période</th>
                   <th>Chantier</th>
-                  <th style={{ width: 180 }}>Avancement</th>
+                  <th style={{ width: 'min(180px, 100%)' }}>Avancement</th>
                   <th className="text-end">Montant</th>
                   <th>Statut</th>
                   <th className="text-end">Actions</th>
@@ -303,7 +303,7 @@ const handleSaveLigne = async (e: React.FormEvent) => {
       )}
 {/* Modal création / édition situation */}
       {showModal && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }} onClick={() => setShowModal(false)}>
+        <div className="modal show d-block" style={{ backgroundColor: 'var(--overlay)' }} onClick={() => setShowModal(false)}>
           <div className="modal-dialog modal-lg" onClick={(e) => e.stopPropagation()}>
             <div className="modal-content">
               <div className="modal-header">
@@ -376,7 +376,7 @@ const handleSaveLigne = async (e: React.FormEvent) => {
       )}
 {/* Modal lignes de situation */}
       {showLines && linesSituation && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }} onClick={() => setShowLines(false)}>
+        <div className="modal show d-block" style={{ backgroundColor: 'var(--overlay)' }} onClick={() => setShowLines(false)}>
           <div className="modal-dialog modal-xl" onClick={(e) => e.stopPropagation()}>
             <div className="modal-content">
               <div className="modal-header">
@@ -458,7 +458,7 @@ const handleSaveLigne = async (e: React.FormEvent) => {
       )}
 {/* Modal ligne de situation */}
       {showLigneModal && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }} onClick={() => setShowLigneModal(false)}>
+        <div className="modal show d-block" style={{ backgroundColor: 'var(--overlay)' }} onClick={() => setShowLigneModal(false)}>
           <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="modal-content">
               <div className="modal-header">

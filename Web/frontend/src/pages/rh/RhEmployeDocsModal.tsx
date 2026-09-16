@@ -64,7 +64,7 @@ export function RhEmployeDocsModal({ employeId, onClose }: Props) {
   const historique = employe?.historique_postes || []
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+    <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
       <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div className="modal-content">
           <div className="modal-header">
@@ -84,7 +84,7 @@ export function RhEmployeDocsModal({ employeId, onClose }: Props) {
                   {historique.length === 0 ? (
                     <div className="text-muted small">Aucun changement de poste enregistré.</div>
                   ) : (
-                    <ul className="timeline list-unstyled" style={{ borderLeft: '2px solid #dee2e6', paddingLeft: 16 }}>
+                    <ul className="timeline list-unstyled" style={{ borderLeft: '2px solid var(--tia-border-strong)', paddingLeft: 16 }}>
                       {historique.map((h, i) => (
                         <li key={h.id || i} className="mb-3" style={{ position: 'relative' }}>
                           <span className="position-absolute rounded-circle bg-primary" style={{ width: 10, height: 10, left: -21, top: 6 }} />

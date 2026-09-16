@@ -71,7 +71,8 @@ export function RhPage() {
     setPrintDoc({
       show: true,
       data: {
-        entreprise_nom: user?.nom || 'TIA INFO BUILD',
+        entreprise_nom: badgeEntreprise.nom || user?.nom || 'TIA INFO BUILD',
+        entreprise_logo: badgeEntreprise.logo,
         employes_list: employes.map(e => ({
           id: e.id,
           nom: e.nom,
@@ -114,6 +115,8 @@ export function RhPage() {
   const [savingEmploye, setSavingEmploye] = useState(false)
   // Infos entreprise affichées sur le badge (nom + logo, depuis l'API badge).
   const [badgeEntreprise, setBadgeEntreprise] = useState<{ nom?: string | null; logo?: string | null }>({})
+  // En-tête personnalisé de l'entreprise (charte badges, page Paramètres).
+  const [badgeEntete, setBadgeEntete] = useState<string | null>(null)
   const [posteForm, setPosteForm] = useState({
     nouveau_poste: '',
     nouveau_salaire: 0,
@@ -246,6 +249,11 @@ export function RhPage() {
     try {
       const badge = await rhService.getEmployeBadgeQR(emp.id)
       setBadgeEntreprise({ nom: badge.entreprise_nom, logo: badge.entreprise_logo })
+      // Charte appliquée : couleur par rôle + en-tête personnalisés de l'entreprise
+      if (badge.couleur_role || badge.entete_badge) {
+        setSelectedBadgeEmploye(prev => prev ? { ...prev, couleur_role: badge.couleur_role, code_qr_badge: badge.code_qr_badge ?? prev.code_qr_badge } : prev)
+        setBadgeEntete(badge.entete_badge || null)
+      }
     } catch {
       setBadgeEntreprise({})
     }
@@ -286,6 +294,15 @@ export function RhPage() {
   useEffect(() => {
     loadData()
   }, [activeTab, search, statutFilter, contratFilter])
+
+  const handleValiderPointage = async (pt: Pointage) => {
+    try {
+      await rhService.validerPointage(pt.id)
+      loadData()
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Erreur lors de la validation du pointage.')
+    }
+  }
 
   const handleSaveEmploye = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -566,6 +583,7 @@ export function RhPage() {
                     <th>Mode Pointage</th>
                     <th>Date & Heure</th>
                     <th>Heures Totales</th>
+                    <th>Type</th>
                     <th>Statut Validation</th>
                     <th className="text-end">Actions</th>
                   </tr>
@@ -584,11 +602,22 @@ export function RhPage() {
                       </td>
                       <td>{pt.date_jour}</td>
                        <td><span className="badge bg-primary bg-opacity-10 text-primary border">{pt.heures_total}h</span></td>
-                       <td><span className="badge bg-success bg-opacity-10 text-success border text-capitalize">{pt.type}</span></td>
+                       <td className="text-capitalize">{pt.type}</td>
+                       <td>
+                         {pt.statut_validation === 'valide' ? (
+                           <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">Validé</span>
+                         ) : pt.statut_validation === 'refuse' ? (
+                           <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">Refusé</span>
+                         ) : (
+                           <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">En attente</span>
+                         )}
+                       </td>
                       <td className="text-end">
-                        <button className="btn btn-sm btn-outline-success me-1" onClick={() => alert('Pointage validé par RH !')}>
-                          <i className="bi bi-check-lg"></i> Validé
-                        </button>
+                        {pt.statut_validation !== 'valide' && (
+                          <button className="btn btn-sm btn-outline-success me-1" onClick={() => handleValiderPointage(pt)}>
+                            <i className="bi bi-check-lg"></i> Valider
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -667,7 +696,7 @@ export function RhPage() {
 
       {/* Modal Add Employe */}
       {showEmployeModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content">
                <div className="modal-header">
@@ -937,7 +966,7 @@ export function RhPage() {
 
       {/* Modal Changement de Poste */}
       {showChangementPosteModal && selectedEmploye && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -978,7 +1007,7 @@ export function RhPage() {
 
       {/* Modal Badge QR Code */}
       {showBadgeModal && selectedBadgeEmploye && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} tabIndex={-1}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay-strong)' }} tabIndex={-1}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content border-0 bg-transparent shadow-none">
               <div className="d-flex justify-content-end mb-2">
@@ -988,6 +1017,7 @@ export function RhPage() {
                 employe={selectedBadgeEmploye}
                 entrepriseLogo={badgeEntreprise.logo || undefined}
                 entrepriseNom={badgeEntreprise.nom || undefined}
+                enteteBadge={badgeEntete || undefined}
                 onPrint={() => window.print()}
               />
             </div>
@@ -1006,7 +1036,7 @@ export function RhPage() {
         show={printDoc.show}
         onClose={() => setPrintDoc({ show: false, data: {} })}
         type="badge_grid"
-        data={printDoc.data}
+        data={{ ...printDoc.data, entreprise_nom: badgeEntreprise.nom || printDoc.data.entreprise_nom, entreprise_logo: badgeEntreprise.logo || printDoc.data.entreprise_logo }}
       />
     </div>
   )

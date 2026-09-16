@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile
 from fastapi.responses import StreamingResponse
 import csv
 import io
+import json
 
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, func
@@ -449,6 +450,52 @@ async def list_pointages(
     }
 
 
+STATUTS_POINTAGE = {"valide", "en_attente", "refuse"}
+
+
+class PointageValidation(BaseModel):
+    """Corps optionnel pour la validation/refus d'un pointage."""
+
+    commentaire: str | None = None
+
+
+@router.post("/pointages/{id}/valider", response_model=PointageResponse)
+async def valider_pointage(payload: CurrentUserPayload, db: DbDep, id: int,
+                           body: PointageValidation | None = None):
+    """RH valide un pointage : statut_validation passe à 'valide'."""
+    return await _decide_pointage(payload, db, id, "valide", (body or PointageValidation()).commentaire)
+
+
+@router.post("/pointages/{id}/refuser", response_model=PointageResponse)
+async def refuser_pointage(payload: CurrentUserPayload, db: DbDep, id: int,
+                           body: PointageValidation | None = None):
+    """RH refuse un pointage : statut_validation passe à 'refuse'."""
+    return await _decide_pointage(payload, db, id, "refuse", (body or PointageValidation()).commentaire)
+
+
+async def _decide_pointage(payload: CurrentUserPayload, db: DbDep, id: int,
+                           statut_validation: str, commentaire: str | None) -> PointageResponse:
+    _require_permission(payload, "rh:write")
+    if statut_validation not in STATUTS_POINTAGE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Statut invalide. Valeurs: {sorted(STATUTS_POINTAGE)}")
+    entreprise_id = payload.get("entreprise_id")
+    pt = await db.get(Pointage, id)
+    if not pt or pt.is_deleted or (entreprise_id is not None and pt.entreprise_id != entreprise_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pointage non trouvé")
+    if pt.statut_validation == statut_validation:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail=f"Pointage déjà {statut_validation}")
+    pt.statut_validation = statut_validation
+    if commentaire:
+        pt.notes = commentaire
+    user = payload.get("user")
+    pt.scanne_par_id = getattr(user, "id", None)  # traçabilité de la décision
+    await db.commit()
+    await db.refresh(pt)
+    return PointageResponse.model_validate(pt)
+
+
 async def _entreprise_infos(db: DbDep, entreprise_id: int | None) -> dict:
     """Nom + logo de l'entreprise (affichés sur le badge QR de l'employé)."""
     if entreprise_id is None:
@@ -479,6 +526,28 @@ async def get_employe_badge_qr(
         await db.flush()
 
     ent_infos = await _entreprise_infos(db, employe.entreprise_id)
+
+    # Couleur thématique du badge : charte `couleurs_roles` de l'entreprise,
+    # résolue via le rôle du compte Utilisateur lié à l'employé (par email).
+    ent = await db.get(Entreprise, employe.entreprise_id) if employe.entreprise_id else None
+    couleur_role = None
+    if ent is not None and ent.couleurs_roles:
+        try:
+            charte = json.loads(ent.couleurs_roles) if isinstance(ent.couleurs_roles, str) else ent.couleurs_roles
+            if employe.email:
+                u = (await db.execute(
+                    select(Utilisateur).where(
+                        func.lower(Utilisateur.email) == employe.email.strip().lower(),
+                        Utilisateur.entreprise_id == employe.entreprise_id,
+                        Utilisateur.is_deleted == False,
+                    )
+                )).scalar_one_or_none()
+                role_code = getattr(u, "role_code", None)
+                if role_code:
+                    couleur_role = charte.get(role_code)
+        except (ValueError, TypeError):
+            couleur_role = None
+
     return {
         "id": employe.id,
         "matricule": employe.matricule or f"EMP-{employe.id:04d}",
@@ -487,6 +556,8 @@ async def get_employe_badge_qr(
         "poste": employe.poste,
         "photo": employe.photo,
         "code_qr_badge": employe.code_qr_badge,
+        "couleur_role": couleur_role,
+        "entete_badge": ent.entete_badge if ent else None,
         **ent_infos,
         "date_generation": datetime.now().isoformat(),
     }
@@ -516,6 +587,28 @@ async def get_mon_badge(payload: CurrentUserPayload, db: DbDep):
         await db.flush()
 
     ent_infos = await _entreprise_infos(db, employe.entreprise_id)
+
+    # Couleur thématique du badge : charte `couleurs_roles` de l'entreprise,
+    # résolue via le rôle du compte Utilisateur lié à l'employé (par email).
+    ent = await db.get(Entreprise, employe.entreprise_id) if employe.entreprise_id else None
+    couleur_role = None
+    if ent is not None and ent.couleurs_roles:
+        try:
+            charte = json.loads(ent.couleurs_roles) if isinstance(ent.couleurs_roles, str) else ent.couleurs_roles
+            if employe.email:
+                u = (await db.execute(
+                    select(Utilisateur).where(
+                        func.lower(Utilisateur.email) == employe.email.strip().lower(),
+                        Utilisateur.entreprise_id == employe.entreprise_id,
+                        Utilisateur.is_deleted == False,
+                    )
+                )).scalar_one_or_none()
+                role_code = getattr(u, "role_code", None)
+                if role_code:
+                    couleur_role = charte.get(role_code)
+        except (ValueError, TypeError):
+            couleur_role = None
+
     return {
         "id": employe.id,
         "matricule": employe.matricule or f"EMP-{employe.id:04d}",
@@ -524,6 +617,8 @@ async def get_mon_badge(payload: CurrentUserPayload, db: DbDep):
         "poste": employe.poste,
         "photo": employe.photo,
         "code_qr_badge": employe.code_qr_badge,
+        "couleur_role": couleur_role,
+        "entete_badge": ent.entete_badge if ent else None,
         **ent_infos,
         "date_generation": datetime.now().isoformat(),
     }

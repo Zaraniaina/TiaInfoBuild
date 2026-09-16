@@ -1,4 +1,5 @@
 import React from 'react'
+import { WorkerBadgeCard } from '@/components/pointage/WorkerBadgeCard'
 
 export type DocumentType = 'devis' | 'facture' | 'contrat' | 'badge' | 'badge_grid'
 
@@ -82,20 +83,6 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
 
   const devise = data.devise || 'MGA'
   const logo = data.entreprise_logo
-  const roleColorMap: Record<string, string> = {
-    super_admin: '#dc2626',
-    admin_entreprise: '#2563eb',
-    directeur: '#1e3a8a',
-    comptable: '#0d9488',
-    chef_projet: '#4338ca',
-    chef_chantier: '#ea580c',
-    rh: '#7e22ce',
-    materiel: '#475569',
-    magasinier: '#d97706',
-    commercial: '#059669',
-    employe: '#2563eb',
-    client: '#6d28d9',
-  }
 
   return (
     <>
@@ -126,7 +113,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
         }
       `}</style>
 
-      <div className="modal fade show d-block no-print" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1060 }}>
+      <div className="modal fade show d-block no-print" tabIndex={-1} style={{ backgroundColor: 'var(--overlay-strong)', zIndex: 1060 }}>
         <div className="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
           <div className="modal-content border-0 shadow-lg rounded-4">
             <div className="modal-header bg-dark text-white border-0 py-3">
@@ -281,104 +268,30 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                   </div>
                 )}
 
-                {/* 2. DOCUMENT TYPE: BADGE INDIVIDUEL */}
+                {/* 2. DOCUMENT TYPE: BADGE INDIVIDUEL — même rendu que le modal RH (WorkerBadgeCard) */}
                 {type === 'badge' && data.employe && (
-                  <div className="text-center py-3">
-                    <div
-                      className="card border-0 shadow-lg rounded-4 overflow-hidden mx-auto text-white"
-                      style={{
-                        maxWidth: '380px',
-                        background: `linear-gradient(135deg, ${data.employe.couleur_role || roleColorMap[data.employe.role_code || 'employe'] || '#1e293b'} 0%, #0f172a 100%)`,
-                      }}
-                    >
-                      <div className="p-3 text-center border-bottom border-secondary border-opacity-25" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                        {logo ? (
-                          <img src={logo} alt="Logo" style={{ maxHeight: '36px', maxWidth: '160px', objectFit: 'contain' }} className="mb-1 d-block mx-auto" />
-                        ) : (
-                          <div className="fw-bold fs-5 text-uppercase">{data.entreprise_nom || 'TIA INFO BUILD'}</div>
-                        )}
-                        <span className="fw-bold tracking-wider text-uppercase" style={{ fontSize: '0.75rem', color: '#38bdf8' }}>BADGE OFFICIEL POINTAGE TERRAIN</span>
-                      </div>
-
-                      <div className="p-4 text-center">
-                        <div className="position-relative d-inline-block mb-3">
-                          {data.employe.photo ? (
-                            <img
-                              src={data.employe.photo}
-                              alt={data.employe.nom}
-                              className="rounded-circle border border-3 border-white shadow"
-                              style={{ width: '96px', height: '96px', objectFit: 'cover' }}
-                            />
-                          ) : (
-                            <div className="rounded-circle border border-3 border-white shadow d-flex align-items-center justify-content-center fw-bold fs-2 text-white bg-secondary mx-auto" style={{ width: '96px', height: '96px' }}>
-                              {data.employe.prenom?.[0] || 'O'}{data.employe.nom?.[0] || 'U'}
-                            </div>
-                          )}
-                        </div>
-
-                        <h4 className="fw-bold mb-1 text-white">{data.employe.prenom} {data.employe.nom}</h4>
-                        <div className="badge bg-light text-dark fw-bold mb-3 px-3 py-1 text-uppercase" style={{ fontSize: '0.8rem' }}>
-                          {data.employe.poste || 'Ouvrier'}
-                        </div>
-
-                        <div className="small text-light text-opacity-75 mb-3">
-                          Matricule: <strong className="text-white">{data.employe.matricule || `EMP-${data.employe.id}`}</strong>
-                        </div>
-
-                        <div className="p-3 bg-white rounded-3 d-inline-block shadow-sm mb-2">
-                          <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(data.employe.code_qr_badge || `TIA-EMP-${data.employe.id}`)}`}
-                            alt="QR Badge"
-                            style={{ width: '160px', height: '160px', display: 'block' }}
-                          />
-                        </div>
-
-                        <div className="small text-light text-opacity-50 mt-2" style={{ fontSize: '0.7rem' }}>
-                          Ce badge permet l'émargement et le pointage sur les chantiers.
-                        </div>
-                      </div>
-                    </div>
+                  <div className="py-3 d-flex justify-content-center">
+                    <WorkerBadgeCard
+                      employe={data.employe}
+                      entrepriseLogo={logo || undefined}
+                      entrepriseNom={data.entreprise_nom || undefined}
+                    />
                   </div>
                 )}
 
-                {/* 3. DOCUMENT TYPE: GRILLE DE BADGES (IMPRESSION PAR LOTS) */}
+                {/* 3. DOCUMENT TYPE: GRILLE DE BADGES — mêmes cartes que le badge individuel */}
                 {type === 'badge_grid' && data.employes_list && (
                   <div>
                     <h5 className="fw-bold mb-3 border-bottom pb-2 no-print">Planche de Badges QR - {data.employes_list.length} Employés</h5>
                     <div className="row g-3">
                       {data.employes_list.map((emp, idx) => (
-                        <div className="col-6 col-md-4" key={emp.id || idx}>
-                          <div
-                            className="card border-0 shadow-sm rounded-3 overflow-hidden text-white p-2 text-center"
-                            style={{
-                              background: `linear-gradient(135deg, ${emp.couleur_role || roleColorMap[emp.role_code || 'employe'] || '#1e293b'} 0%, #0f172a 100%)`,
-                              fontSize: '0.8rem',
-                            }}
-                          >
-                            <div className="fw-bold text-uppercase" style={{ fontSize: '0.7rem', color: '#38bdf8' }}>
-                              {data.entreprise_nom || 'TIA BUILD'}
-                            </div>
-                            <div className="my-1">
-                              {emp.photo ? (
-                                <img src={emp.photo} alt={emp.nom} className="rounded-circle border border-2 border-white" style={{ width: '48px', height: '48px', objectFit: 'cover' }} />
-                              ) : (
-                                <div className="rounded-circle border border-2 border-white d-flex align-items-center justify-content-center fw-bold bg-secondary mx-auto" style={{ width: '48px', height: '48px' }}>
-                                  {emp.prenom?.[0] || 'E'}{emp.nom?.[0] || ''}
-                                </div>
-                              )}
-                            </div>
-                            <div className="fw-bold text-truncate">{emp.prenom} {emp.nom}</div>
-                            <div className="text-light text-opacity-75 small text-truncate">{emp.poste || 'Employé'}</div>
-                            <div className="bg-white rounded-2 p-1 d-inline-block my-1">
-                              <img
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(emp.code_qr_badge || `TIA-EMP-${emp.id}`)}`}
-                                alt="QR"
-                                style={{ width: '80px', height: '80px', display: 'block' }}
-                              />
-                            </div>
-                            <div className="font-monospace text-light opacity-75" style={{ fontSize: '0.65rem' }}>
-                              {emp.matricule || `EMP-${emp.id}`}
-                            </div>
+                        <div className="col-12 col-md-6 col-lg-4" key={emp.id || idx}>
+                          <div className="mx-auto" style={{ width: '100%', maxWidth: 360 }}>
+                            <WorkerBadgeCard
+                              employe={emp}
+                              entrepriseLogo={logo || undefined}
+                              entrepriseNom={data.entreprise_nom || undefined}
+                            />
                           </div>
                         </div>
                       ))}

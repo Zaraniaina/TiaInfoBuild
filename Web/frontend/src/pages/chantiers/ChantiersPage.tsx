@@ -413,7 +413,7 @@ export function ChantiersPage() {
 
       {/* Modale Nouveau/Édition Chantier avec onglets */}
       {showModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content">
               <div className="modal-header">
@@ -710,7 +710,7 @@ export function ChantiersPage() {
 
       {/* Modal Detail Multi-Tabs */}
       {showDetailModal && selectedChantier && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-xl modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -862,7 +862,7 @@ export function ChantiersPage() {
 
       {/* Modal QR Pointage */}
       {showQRModal && qrData && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content text-center">
               <div className="modal-header">

@@ -83,7 +83,7 @@ export function EmployeProfilPage() {
                 <div className="fw-semibold">{profil.prenom} {profil.nom}</div>
                 <div className="text-muted small">{profil.matricule}</div>
                 <div className="text-muted small">{profil.poste}</div>
-                <div className="mt-2" style={{ width: 120, height: 120, margin: '0 auto', background: '#f8f9fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem' }}>
+                <div className="mt-2 rounded-3" style={{ width: 'min(120px, 100%)', height: 120, margin: '0 auto', background: 'var(--tia-bg-raised)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem' }}>
                   <i className="bi bi-qr-code"></i>
                 </div>
                 <div className="small text-muted mt-1">QR: {profil.badge_qr}</div>

@@ -1223,7 +1223,7 @@ export function DashboardPage() {
       {showBadgeModal && (
         <div
           className="modal fade show d-block"
-          style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+          style={{ backgroundColor: "var(--overlay-strong)" }}
           tabIndex={-1}
         >
           <div className="modal-dialog modal-dialog-centered">

@@ -308,12 +308,6 @@ Le Super Admin n'a pas d'entreprise_id, la route échouait.
 
 ---
 
----
-
-
-
----
-
 ## ⚡ Bonnes pratiques de performance (pour les agents IA)
 
 ### 1. Requêtes SQL : éviter le N+1
@@ -398,33 +392,6 @@ result = await db.execute(
     select(Entreprise).options(selectinload(Entreprise.utilisateurs))
 )
 ```
-
-
-### Erreur : `Can't connect to MySQL`
-- Vérifier que **MySQL est démarré** (XAMPP / WAMP / service)
-- Vérifier le `DATABASE_URL` dans `.env`
-- Vérifier que la base `tia_build_db` existe
-
-### Erreur : `CORS` côté frontend
-- Vérifier que `CORS_ORIGINS` dans `.env` contient l'URL exacte du frontend (ex: `http://localhost:5174`)
-
-### Port 8000 déjà occupé
-- Changer `APP_PORT` dans `.env` ET adapter le frontend (`VITE_API_URL`)
-
-### Réinitialisation complète
-```powershell
-# 1. Supprimer la base
-DROP DATABASE tia_build_db;
-# 2. Recréer
-CREATE DATABASE tia_build_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-# 3. Migrations
-alembic upgrade head
-# 4. Init données
-python app/scripts/init_db.py
-```
-
-### 404 sur les routes
-Vérifier que le backend a bien redémarré après les correctifs de préfixes de routes.
 
 ---
 
