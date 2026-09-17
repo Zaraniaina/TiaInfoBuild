@@ -231,6 +231,8 @@ async def create_employe(
     db: DbDep,
 ):
     _require_permission(payload, "rh:write")
+    from app.services.subscription_state import assert_quota_utilisateurs
+    await assert_quota_utilisateurs(db, payload)
     entreprise_id = payload.get("entreprise_id")
     data = obj_in.model_dump(exclude_unset=True)
     if entreprise_id is not None and not data.get("entreprise_id"):

@@ -295,15 +295,9 @@ async def list_logs(payload: CurrentUser, db: DbSession, size: int = Query(defau
 async def list_abonnements(payload: CurrentUser, db: DbSession):
     result = await db.execute(select(Entreprise.abonnement, func.count(Entreprise.id)).where(Entreprise.is_deleted == False).group_by(Entreprise.abonnement))
     abonnements = [
-        {"id": 1, "nom": k or "gratuit", "prix": 0, "utilisateurs_max": 5, "chantiers_max": 3, "stockage_go": 5, "actif": True, "count": v}
+        {"id": 1, "nom": k or "gratuit", "prix": 0, "utilisateurs_max": None, "chantiers_max": None, "actif": True, "count": v}
         for k, v in result.all()
     ]
-    if not abonnements:
-        abonnements = [
-            {"id": 1, "nom": "Pro", "prix": 150000, "utilisateurs_max": 10, "chantiers_max": 5, "stockage_go": 10, "actif": True, "count": 0},
-            {"id": 2, "nom": "Premium", "prix": 350000, "utilisateurs_max": 25, "chantiers_max": 15, "stockage_go": 50, "actif": True, "count": 0},
-            {"id": 3, "nom": "Enterprise", "prix": 750000, "utilisateurs_max": 999, "chantiers_max": 999, "stockage_go": 200, "actif": True, "count": 0},
-        ]
     return abonnements
 
 

@@ -1300,10 +1300,12 @@ export interface Plan {
   description?: string;
   prix_mensuel: number;
   prix_annuel: number;
-  utilisateurs_max: number;
-  chantiers_max: number;
-  stockage_go: number;
+  /** Limite d'EMPLOYÉS actifs. null = illimité (les clients portail sont toujours illimités). */
+  utilisateurs_max: number | null;
+  chantiers_max: number | null;
   duree_essai_jours: number;
+  /** @deprecated plus utilisé — le quota de stockage a été retiré de la stratégie */
+  stockage_go?: number;
   actif: boolean;
   created_at?: string;
   updated_at?: string;

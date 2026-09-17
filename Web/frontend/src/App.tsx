@@ -30,6 +30,7 @@ const SuperAdminFacturationPage = lazy(() => import('@/pages/super-admin/SuperAd
 const SuperAdminLogsPage = lazy(() => import('@/pages/super-admin/SuperAdminLogsPage').then((m) => ({ default: m.SuperAdminLogsPage })))
 const SuperAdminParametresPage = lazy(() => import('@/pages/super-admin/SuperAdminParametresPage').then((m) => ({ default: m.SuperAdminParametresPage })))
 const SuperAdminMailPage = lazy(() => import('@/pages/super-admin/SuperAdminMailPage').then((m) => ({ default: m.SuperAdminMailPage })))
+const SuperAdminPaiementPage = lazy(() => import('@/pages/super-admin/SuperAdminPaiementPage').then((m) => ({ default: m.SuperAdminPaiementPage })))
 const ClientLayout = lazy(() => import('@/pages/client/ClientLayout').then((m) => ({ default: m.ClientLayout })))
 const EmployeLayout = lazy(() => import('@/pages/employe/EmployeLayout').then((m) => ({ default: m.EmployeLayout })))
 const EmployeDashboard = lazy(() => import('@/pages/employe/EmployePage').then((m) => ({ default: m.EmployePage })))
@@ -147,6 +148,7 @@ function App() {
           <Route path="logs" element={<Suspense fallback={<PageFallback />}><SuperAdminLogsPage /></Suspense>} />
           <Route path="parametres" element={<Suspense fallback={<PageFallback />}><SuperAdminParametresPage /></Suspense>} />
           <Route path="email" element={<Suspense fallback={<PageFallback />}><SuperAdminMailPage /></Suspense>} />
+          <Route path="paiement" element={<Suspense fallback={<PageFallback />}><SuperAdminPaiementPage /></Suspense>} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />

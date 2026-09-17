@@ -15,9 +15,14 @@ class Plan(Base):
     description: Mapped[str | None] = mapped_column(Text)
     prix_mensuel: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     prix_annuel: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
-    utilisateurs_max: Mapped[int] = mapped_column(server_default="5")
-    chantiers_max: Mapped[int] = mapped_column(server_default="3")
-    stockage_go: Mapped[int] = mapped_column(server_default="5")
+    # null = illimité (métrique : employés actifs ; clients portail toujours illimités).
+    # PAS de server_default : avec un default serveur, SQLAlchemy ignore un None
+    # explicite à l'INSERT et laisse le serveur poser la valeur — le null ne persisterait jamais.
+    utilisateurs_max: Mapped[int | None] = mapped_column(nullable=True)
+    chantiers_max: Mapped[int | None] = mapped_column(nullable=True)
+    # Conservé en base pour compat (colonnes existantes) mais retiré de la stratégie :
+    # plus aucune UI ni logique métier ne le lit.
+    stockage_go: Mapped[int | None] = mapped_column(server_default="5")
     duree_essai_jours: Mapped[int] = mapped_column(server_default="30")
     actif: Mapped[bool] = mapped_column(Boolean, server_default="1")
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)

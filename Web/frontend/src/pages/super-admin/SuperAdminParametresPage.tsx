@@ -70,7 +70,7 @@ export function SuperAdminParametresPage() {
 
       <ul className="nav nav-tabs mb-4">
         <li className="nav-item"><button type="button" className={`nav-link ${tab === 'general' ? 'active fw-bold' : ''}`} onClick={() => setTab('general')}><i className="bi bi-sliders me-1"></i>Général</button></li>
-        <li className="nav-item"><button type="button" className={`nav-link ${tab === 'mail' ? 'active fw-bold' : ''}`} onClick={() => setTab('mail')}><i className="bi bi-envelope-gear me-1"></i>Email / SMTP<span className={`badge ms-2 ${srcBadge === 'database' ? 'bg-success' : 'bg-warning text-dark'}`}>{srcBadge === 'database' ? 'BDD' : '.env'}</span></button></li>
+        <li className="nav-item"><button type="button" className={`nav-link ${tab === 'mail' ? 'active fw-bold' : ''}`} onClick={() => setTab('mail')}><i className="bi bi-envelope-paper me-1"></i>Email / SMTP<span className={`badge ms-2 ${srcBadge === 'database' ? 'bg-success' : 'bg-warning text-dark'}`}>{srcBadge === 'database' ? 'BDD' : '.env'}</span></button></li>
       </ul>
 
       {tab === 'general' && (
@@ -129,7 +129,7 @@ export function SuperAdminParametresPage() {
         <div className="card border-0 shadow-sm">
           <div className="card-body p-4">
             <div className="d-flex align-items-start gap-3 flex-wrap">
-              <div className="fs-1 text-secondary"><i className="bi bi-envelope-gear"></i></div>
+              <div className="fs-1 text-secondary"><i className="bi bi-envelope-paper"></i></div>
               <div className="flex-grow-1">
                 <h5 className="fw-bold mb-1">Configuration Email / SMTP</h5>
                 <p className="text-secondary mb-3">

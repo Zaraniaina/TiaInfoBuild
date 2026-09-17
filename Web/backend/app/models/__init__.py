@@ -39,6 +39,7 @@ from app.models.metre import Metre
 from app.models.mouvement_stock import MouvementStock
 from app.models.notification import Notification
 from app.models.paiement import Paiement
+from app.models.parametre_paiement import ParametrePaiement
 from app.models.phase import Phase
 from app.models.photo_chantier import PhotoChantier
 from app.models.plan import Plan
@@ -95,8 +96,10 @@ __all__ = [
     "MouvementMateriel",
     "MembreEquipe",
     "Metre",
-    "MouvementStock",
-    "Notification",
+    "MouvementStock",    "Notification",
+    "ParametrePaiement",
+
+
     "Paiement",
     "Phase",
     "PhotoChantier",

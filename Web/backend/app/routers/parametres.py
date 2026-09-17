@@ -338,18 +338,51 @@ async def list_audit_logs(
     result = await db.execute(query.order_by(HistoriqueConnexion.date_connexion.desc()).offset(skip).limit(size))
     logs = result.scalars().all()
 
-    return {
-        "items": [
+    # Identité réelle des comptes : nom/prénom + rôle depuis utilisateurs,
+    # poste depuis la fiche employé liée par email (employé de terrain).
+    ids = {log.utilisateur_id for log in logs if log.utilisateur_id}
+    users_by_id: dict[int, Utilisateur] = {}
+    if ids:
+        users = (await db.execute(select(Utilisateur).where(Utilisateur.id.in_(ids)))).scalars().all()
+        users_by_id = {u.id: u for u in users}
+        emails = {(u.email or "").strip().lower() for u in users if u.email}
+        employes_by_email: dict[str, Employe] = {}
+        if emails:
+            fiches = (await db.execute(select(Employe).where(Employe.is_deleted == False))).scalars().all()
+            employes_by_email = {(e.email or "").strip().lower(): e for e in fiches if e.email}
+    else:
+        emails = set()
+        employes_by_email = {}
+
+    role_ids = {u.role_id for u in users_by_id.values() if u.role_id}
+    roles_by_id: dict[int, RoleModel] = {}
+    if role_ids:
+        roles = (await db.execute(select(RoleModel).where(RoleModel.id.in_(role_ids)))).scalars().all()
+        roles_by_id = {r.id: r for r in roles}
+
+    items = []
+    for log in logs:
+        user = users_by_id.get(log.utilisateur_id)
+        fiche = employes_by_email.get((user.email if user else "").strip().lower() if user and user.email else "")
+        role = roles_by_id.get(user.role_id) if user and user.role_id else None
+        items.append(
             {
                 "id": log.id,
                 "utilisateur_id": log.utilisateur_id,
+                "nom": user.nom if user else None,
+                "prenom": user.prenom if user else None,
+                "email": user.email if user else None,
+                "role": role.nom if role else None,
+                "poste": fiche.poste if fiche else None,
                 "ip_address": log.ip_address,
                 "user_agent": log.user_agent,
                 "reussi": log.reussi,
                 "date_connexion": log.date_connexion.isoformat() if log.date_connexion else None,
             }
-            for log in logs
-        ],
+        )
+
+    return {
+        "items": items,
         "total": total,
         "page": page,
         "size": size,

@@ -19,6 +19,23 @@ SuperAdmin = Annotated[dict[str, Any], Depends(require_super_admin)]
 CurrentUser = Annotated[dict[str, Any], Depends(get_current_user)]
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 
+# Plans « système » : leur suppression/désactivation casserait l'essai automatique
+# des nouvelles inscriptions (demarrer_essai cherchera plan code='essai') ou le
+# fallback gratuit des entreprises sans abonnement.
+CODES_PLAN_SYSTEME = ("essai", "gratuit")
+
+
+def _assert_plan_non_systeme(plan: Plan, action: str) -> None:
+    if plan.code in CODES_PLAN_SYSTEME:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "plan_systeme_protege",
+                "message": f"Le plan « {plan.nom} » est un plan système : il ne peut pas être {action}.",
+                "action": None,
+            },
+        )
+
 
 # ============================================================
 # Plans (CRUD Super Admin)
@@ -26,9 +43,22 @@ DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 @router.get("/plans", response_model=list[PlanResponse])
 async def list_plans(payload: SuperAdmin, db: DbSession):
-    """Liste tous les plans d'abonnement."""
-    result = await db.execute(select(Plan).where(Plan.is_deleted == False).order_by(Plan.prix_mensuel.asc()))
-    return result.scalars().all()
+    """Liste tous les plans d'abonnement, avec le nombre d'entreprises abonnées."""
+    plans = (await db.execute(select(Plan).where(Plan.is_deleted == False).order_by(Plan.prix_mensuel.asc()))).scalars().all()
+    counts = dict(
+        (await db.execute(
+            select(Subscription.plan_id, func.count(Subscription.id)).where(
+                Subscription.is_deleted == False,
+                Subscription.statut.in_(["actif", "essai"]),
+            ).group_by(Subscription.plan_id)
+        )).all()
+    )
+    out = []
+    for plan in plans:
+        data = PlanResponse.model_validate(plan)
+        data.entreprises_actives = int(counts.get(plan.id, 0))
+        out.append(data)
+    return out
 
 
 @router.post("/plans", response_model=PlanResponse, status_code=status.HTTP_201_CREATED)
@@ -67,6 +97,9 @@ async def toggle_plan(payload: SuperAdmin, db: DbSession, plan_id: int):
     plan = await db.get(Plan, plan_id)
     if not plan or plan.is_deleted:
         raise HTTPException(status_code=404, detail="Plan non trouvé.")
+    # Désactiver « essai » tuerait l'essai automatique ; « gratuit » est le filet de
+    # sécurité des entreprises sans abonnement.
+    _assert_plan_non_systeme(plan, "désactivé")
 
     plan.actif = not plan.actif
     await db.flush()
@@ -80,6 +113,8 @@ async def delete_plan(payload: SuperAdmin, db: DbSession, plan_id: int):
     plan = await db.get(Plan, plan_id)
     if not plan or plan.is_deleted:
         raise HTTPException(status_code=404, detail="Plan non trouvé.")
+
+    _assert_plan_non_systeme(plan, "supprimé")
 
     plan.is_deleted = True
     plan.actif = False
@@ -114,7 +149,9 @@ async def list_subscriptions(payload: SuperAdmin, db: DbSession, entreprise_id: 
 
 @router.post("/subscriptions", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED)
 async def create_subscription(payload: SuperAdmin, db: DbSession, sub_in: SubscriptionCreate):
-    """Crée un abonnement pour une entreprise."""
+    """Crée un abonnement pour une entreprise (super-admin)."""
+    if not sub_in.entreprise_id:
+        raise HTTPException(status_code=422, detail="entreprise_id requis.")
     entreprise = await db.get(Entreprise, sub_in.entreprise_id)
     if not entreprise or entreprise.is_deleted:
         raise HTTPException(status_code=404, detail="Entreprise non trouvée.")
@@ -187,9 +224,30 @@ async def cancel_subscription(payload: SuperAdmin, db: DbSession, sub_id: int):
 
 @router.get("/public/plans", response_model=list[PlanResponse])
 async def list_public_plans(db: DbSession):
-    """Liste publique des plans actifs (pour la page tarifs)."""
-    result = await db.execute(select(Plan).where(Plan.actif == True, Plan.is_deleted == False).order_by(Plan.prix_mensuel.asc()))
+    """Liste publique des plans actifs (pour la page tarifs).
+
+    Le plan `essai` est exclu : c'est un mécanisme interne attribué
+    automatiquement à l'inscription (30 jours), pas une formule souscribable —
+    l'afficher créerait un doublon « Gratuit » trompeur sur /pricing.
+    """
+    result = await db.execute(
+        select(Plan)
+        .where(
+            Plan.actif == True,
+            Plan.is_deleted == False,
+            Plan.code != "essai",
+        )
+        .order_by(Plan.prix_mensuel.asc())
+    )
     return result.scalars().all()
+
+
+@router.get("/entreprise/subscription/state")
+async def get_my_subscription_state(payload: CurrentUser, db: DbSession):
+    """État léger de l'abonnement de l'entreprise (essai/actif/expire/sans)
+    + jours restants — pour la bannière de compte à rebours."""
+    from app.services.subscription_state import get_entreprise_state
+    return await get_entreprise_state(db, payload.get("entreprise_id"))
 
 
 @router.get("/entreprise/subscription", response_model=SubscriptionWithPlan | None)
@@ -223,9 +281,15 @@ async def create_my_subscription(payload: CurrentUser, db: DbSession, sub_in: Su
         raise HTTPException(status_code=400, detail="Utilisateur sans entreprise.")
 
     entreprise_id = payload["entreprise_id"]
+
     plan = await db.get(Plan, sub_in.plan_id)
     if not plan or plan.is_deleted or not plan.actif:
         raise HTTPException(status_code=404, detail="Plan non trouvé ou inactif.")
+
+    # Anti-essai infini : un plan d'essai ne peut pas être (re)pris après consommation.
+    from app.services.subscription_state import a_deja_fait_essai
+    if plan.code == "essai" and await a_deja_fait_essai(db, entreprise_id):
+        raise HTTPException(status_code=403, detail="L'essai gratuit a déjà été utilisé pour cette entreprise.")
 
     from app.crud.subscription import SubscriptionCRUD
     existing = await SubscriptionCRUD().get_active_by_entreprise(db, entreprise_id)
@@ -254,6 +318,12 @@ async def create_my_subscription(payload: CurrentUser, db: DbSession, sub_in: Su
         periode=sub_in.periode,
     )
     db.add(sub)
+
+    # Synchronise le champ vitrine Entreprise.abonnement avec le vrai plan.
+    entreprise = await db.get(Entreprise, entreprise_id)
+    if entreprise:
+        entreprise.abonnement = plan.code
+
     await db.flush()
     await db.refresh(sub)
     return sub

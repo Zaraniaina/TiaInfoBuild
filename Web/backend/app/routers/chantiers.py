@@ -112,6 +112,8 @@ async def create_chantier(
     db: DbDep,
 ):
     _require_permission(payload, "chantiers:write")
+    from app.services.subscription_state import assert_quota_chantiers
+    await assert_quota_chantiers(db, payload)
     entreprise_id = payload.get("entreprise_id")
     user = payload.get("user")
     data = obj_in.model_dump(exclude_unset=True)

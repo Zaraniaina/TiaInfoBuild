@@ -7,6 +7,14 @@ import { useEffect, useState } from 'react'
 import { subscriptionsService } from '@/services/subscriptions.service'
 import type { SubscriptionWithPlan } from '@/types'
 
+interface SubscriptionState {
+  state: 'essai' | 'actif' | 'expire' | 'sans'
+  days_remaining: number | null
+  date_fin: string | null
+  plan_code: string | null
+  plan_nom: string | null
+}
+
 export function Layout() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen)
   const toggleSidebar = useUIStore((s) => s.toggleSidebar)
@@ -27,32 +35,32 @@ export function Layout() {
     hydrateThemeFromBackend()
   }, [hydrateThemeFromBackend])
 
+  const canViewAbonnement = user?.role_code === 'admin_entreprise' || user?.role_code === 'super_admin'
+  const [subState, setSubState] = useState<SubscriptionState | null>(null)
+
+  useEffect(() => {
+    if (!canViewAbonnement || !user?.entreprise_id) {
+      setSubState(null)
+      setSubLoading(false)
+      return
+    }
+    subscriptionsService
+      .getMySubscriptionState()
+      .then(setSubState)
+      .catch(() => setSubState(null))
+      .finally(() => setSubLoading(false))
+  }, [canViewAbonnement, user?.entreprise_id])
+
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 992)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-    const canViewAbonnement = user?.role_code === 'admin_entreprise' || user?.role_code === 'super_admin'
-
-  useEffect(() => {
-    if (!canViewAbonnement || !user?.entreprise_id) {
-      setSubLoading(false)
-      return
-    }
-    subscriptionsService.getMySubscription()
-      .then(setSubscription)
-      .catch(() => setSubscription(null))
-      .finally(() => setSubLoading(false))
-  }, [canViewAbonnement, user?.entreprise_id])
-
-  const isExpiringSoon = now > 0 && subscription?.date_prochain_renouvellement
-    ? new Date(subscription.date_prochain_renouvellement) <= new Date(now + 7 * 24 * 60 * 60 * 1000)
-    : false
-
-  const isExpired = now > 0 && subscription?.date_fin
-    ? new Date(subscription.date_fin) < new Date(now)
-    : false
+  const isExpiringSoon = subState?.state === 'essai' && subState.days_remaining !== null && subState.days_remaining <= 7
+  const isExpired = subState?.state === 'expire'
+  const isTrial = subState?.state === 'essai' && (subState.days_remaining === null || subState.days_remaining > 7)
+  const joursRestants = subState?.days_remaining ?? null
 
   return (
     <div className="app-shell">
@@ -80,22 +88,47 @@ export function Layout() {
             </button>
           </div>
         )}
-        {!subLoading && subscription && isExpired && (
+        {!subLoading && subState && isTrial && (
+          <div className="alert alert-info border-0 rounded-0 mb-0 d-flex align-items-center justify-content-between px-4 py-2" style={{ zIndex: 100 }}>
+            <div className="d-flex align-items-center">
+              <i className="bi bi-gift me-2 fs-5"></i>
+              <span>
+                <strong>Essai gratuit {subState.plan_nom ? `— plan ${subState.plan_nom}` : ''}</strong> : accédez à toutes les fonctionnalités pendant encore{' '}
+                <strong>{joursRestants} jour{joursRestants !== null && joursRestants !== 1 ? 's' : ''}</strong>.
+              </span>
+            </div>
+            <a href="/pricing" className="btn btn-sm btn-info fw-bold ms-3">Voir les formules</a>
+          </div>
+        )}
+        {!subLoading && subState && isExpiringSoon && (
+          <div className="alert alert-warning border-0 rounded-0 mb-0 d-flex align-items-center justify-content-between px-4 py-2" style={{ zIndex: 100 }}>
+            <div className="d-flex align-items-center">
+              <i className="bi bi-hourglass-split me-2 fs-5"></i>
+              <span>
+                <strong>Plus que {joursRestants} jour{joursRestants !== null && joursRestants !== 1 ? 's' : ''}</strong> d'essai gratuit. Choisissez votre formule pour ne rien perdre de vos données.
+              </span>
+            </div>
+            <a href="/pricing" className="btn btn-sm btn-warning fw-bold ms-3">Choisir une formule</a>
+          </div>
+        )}
+        {!subLoading && subState && isExpired && (
+          <div className="alert alert-danger border-0 rounded-0 mb-0 d-flex align-items-center justify-content-between px-4 py-2" style={{ zIndex: 100 }}>
+            <div className="d-flex align-items-center">
+              <i className="bi bi-pause-circle me-2 fs-5"></i>
+              <span>
+                <strong>Votre essai est terminé.</strong> L'accès est en lecture seule : consultez vos données, mais les modifications sont désactivées.
+              </span>
+            </div>
+            <a href="/pricing" className="btn btn-sm btn-danger fw-bold ms-3">Réactiver l'écriture</a>
+          </div>
+        )}
+        {!subLoading && subscription && !subState && isExpired && (
           <div className="alert alert-danger border-0 rounded-0 mb-0 d-flex align-items-center justify-content-between px-4 py-2" style={{ zIndex: 100 }}>
             <div className="d-flex align-items-center">
               <i className="bi bi-x-circle me-2 fs-5"></i>
               <span>Votre abonnement a expiré. Veuillez renouveler votre formule pour continuer à utiliser la plateforme.</span>
             </div>
             <a href="/pricing" className="btn btn-sm btn-danger fw-bold ms-3">Voir les formules</a>
-          </div>
-        )}
-        {!subLoading && subscription && isExpiringSoon && !isExpired && (
-          <div className="alert alert-warning border-0 rounded-0 mb-0 d-flex align-items-center justify-content-between px-4 py-2" style={{ zIndex: 100 }}>
-            <div className="d-flex align-items-center">
-              <i className="bi bi-exclamation-triangle me-2 fs-5"></i>
-              <span>Votre abonnement expire bientôt (le {subscription.date_fin ? new Date(subscription.date_fin).toLocaleDateString() : 'prochainement'}). Pensez à renouveler.</span>
-            </div>
-            <a href="/pricing" className="btn btn-sm btn-warning fw-bold ms-3">Renouveler</a>
           </div>
         )}
         <main className="flex-grow-1">

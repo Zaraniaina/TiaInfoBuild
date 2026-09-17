@@ -85,6 +85,16 @@ async def lifespan(app: FastAPI):
         await _verifier_derive_schema()
     except Exception as exc:
         print(f" Schema drift check failed: {exc}")
+    # Startup: marquer les abonnements (essai/actif) dont la date est passee.
+    try:
+        from app.database import AsyncSessionLocal
+        from app.services.subscription_state import marquer_expirations
+        async with AsyncSessionLocal() as session:
+            n = await marquer_expirations(session)
+            if n:
+                print(f" {n} abonnement(s) expiré(s) marqué(s) en lecture seule")
+    except Exception as exc:
+        print(f" Subscription expiry check failed: {exc}")
     yield
     # Shutdown: fermer le pool
     await engine.dispose()
@@ -172,7 +182,7 @@ async def root():
 
 
 # Inclusion des routers
-from app.routers import auth, super_admin, super_admin_mail, chantiers, rh, stocks, commercial, finance, materiels, alertes, dashboard, parametres, sync, utilisateurs, preferences, subscriptions, espace_client, employe_terrain
+from app.routers import auth, super_admin, super_admin_mail, chantiers, rh, stocks, commercial, finance, materiels, alertes, dashboard, parametres, sync, utilisateurs, preferences, subscriptions, espace_client, employe_terrain, paiement_config, paiements
 
 api_prefix = "/api"
 
@@ -194,6 +204,8 @@ app.include_router(sync.router, prefix=f"{api_prefix}/sync", tags=["sync"])
 app.include_router(subscriptions.router, prefix=f"{api_prefix}/subscriptions", tags=["subscriptions"])
 app.include_router(espace_client.router, prefix=f"{api_prefix}/espace-client", tags=["espace-client"])
 app.include_router(employe_terrain.router, prefix=f"{api_prefix}/employe-terrain", tags=["employe-terrain"])
+app.include_router(paiement_config.router, prefix=f"{api_prefix}/paiement-config", tags=["paiement-config"])
+app.include_router(paiements.router, prefix=f"{api_prefix}/paiements", tags=["paiements"])
 
 
 # --- Handlers d'exceptions globaux ---

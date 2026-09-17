@@ -250,7 +250,7 @@ export function SuperAdminMailPage() {
     <div className="container-fluid py-4">
       <div className="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
         <div>
-          <h2 className="fw-bold mb-1 text-secondary"><i className="bi bi-envelope-gear me-2"></i>Configuration Email &amp; SMTP</h2>
+          <h2 className="fw-bold mb-1 text-secondary"><i className="bi bi-envelope-paper me-2"></i>Configuration Email &amp; SMTP</h2>
           <p className="text-secondary mb-0">Interface dédiée de mise en production : testez, activez et dépannez l’envoi des emails transactionnels.</p>
         </div>
         <div className="d-flex align-items-center gap-2 flex-wrap">

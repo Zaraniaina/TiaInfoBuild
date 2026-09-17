@@ -242,9 +242,15 @@ async def register_entreprise(
             email=data.entreprise_email or data.admin_email,
             adresse=data.adresse,
             telephone=data.telephone,
+            abonnement="essai",
         )
         db.add(entreprise)
         await db.flush()
+
+        # Essai gratuit automatique (30 jours, accès complet) — anti-essai infini
+        # intégré : une entreprise ne repart jamais un 2e essai.
+        from app.services.subscription_state import demarrer_essai
+        await demarrer_essai(db, entreprise.id)
 
         role_crud = RoleCRUD()
         admin_role = await role_crud.get_by_code(db, Role.ADMIN_ENTREPRISE)
