@@ -262,7 +262,7 @@ export function SuperAdminMailPage() {
             <i className={`bi ${diagnostics?.ready ? 'bi-check-circle' : 'bi-exclamation-triangle'} me-1`}></i>
             {diagnostics?.ready ? 'Prêt pour la production' : 'Configuration incomplète'}
           </span>
-          <Link to="/super-admin/parametres" className="btn btn-outline-secondary fw-bold">
+          <Link to="/app/super-admin/parametres" className="btn btn-outline-secondary fw-bold">
             <i className="bi bi-arrow-left me-1"></i>Paramètres plateforme
           </Link>
         </div>

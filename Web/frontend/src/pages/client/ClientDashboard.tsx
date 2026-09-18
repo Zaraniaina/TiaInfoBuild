@@ -54,7 +54,7 @@ export function ClientDashboard() {
 
       <div className="row g-3 mb-4">
         <div className="col-md-3">
-          <Link to="/client/demandes" className="text-decoration-none">
+          <Link to="/appclient/demandes" className="text-decoration-none">
             <div className="card h-100 border-0 shadow-sm">
               <div className="card-body text-center">
                 <div className="text-muted small mb-1">Mes demandes</div>
@@ -67,7 +67,7 @@ export function ClientDashboard() {
           </Link>
         </div>
         <div className="col-md-3">
-          <Link to="/client/projets" className="text-decoration-none">
+          <Link to="/appclient/projets" className="text-decoration-none">
             <div className="card h-100 border-0 shadow-sm">
               <div className="card-body text-center">
                 <div className="text-muted small mb-1">Mes projets</div>
@@ -78,7 +78,7 @@ export function ClientDashboard() {
           </Link>
         </div>
         <div className="col-md-3">
-          <Link to="/client/devis" className="text-decoration-none">
+          <Link to="/appclient/devis" className="text-decoration-none">
             <div className="card h-100 border-0 shadow-sm">
               <div className="card-body text-center">
                 <div className="text-muted small mb-1">Mes devis</div>
@@ -91,7 +91,7 @@ export function ClientDashboard() {
           </Link>
         </div>
         <div className="col-md-3">
-          <Link to="/client/factures" className="text-decoration-none">
+          <Link to="/appclient/factures" className="text-decoration-none">
             <div className="card h-100 border-0 shadow-sm">
               <div className="card-body text-center">
                 <div className="text-muted small mb-1">Factures à payer</div>
@@ -107,7 +107,7 @@ export function ClientDashboard() {
 
       <div className="row g-3 mb-4">
         <div className="col-md-6">
-          <Link to="/client/contrats" className="text-decoration-none">
+          <Link to="/appclient/contrats" className="text-decoration-none">
             <div className="card h-100 border-0 shadow-sm">
               <div className="card-body text-center">
                 <div className="text-muted small mb-1">Mes contrats</div>
@@ -118,7 +118,7 @@ export function ClientDashboard() {
           </Link>
         </div>
         <div className="col-md-6">
-          <Link to="/client/chantiers" className="text-decoration-none">
+          <Link to="/appclient/chantiers" className="text-decoration-none">
             <div className="card h-100 border-0 shadow-sm">
               <div className="card-body text-center">
                 <div className="text-muted small mb-1">Mes chantiers</div>

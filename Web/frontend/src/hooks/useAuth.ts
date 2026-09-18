@@ -38,7 +38,7 @@ export function useAuth() {
       must_change_password: data.user.must_change_password ?? false,
     }
     login(data.access_token, data.refresh_token, userToStore);
-    navigate('/', { replace: true });
+    navigate('/app', { replace: true });
     return data;
   };
 

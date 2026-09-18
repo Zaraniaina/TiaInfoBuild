@@ -68,7 +68,7 @@ export function PricingPage() {
           clearInterval(id)
           setRefEnCours(null)
           showToast('success', 'Paiement confirmé', 'Votre abonnement est actif. Bonne exploitation !')
-          navigate('/dashboard')
+          navigate('/app/dashboard')
         }
       } catch {
         /* on retente au prochain tick */
@@ -95,11 +95,11 @@ export function PricingPage() {
         plan_id: planId,
         periode,
       })
-      navigate('/dashboard', { state: { toast: { type: 'success', title: 'Abonnement activé', message: 'Votre nouvelle formule est active. Bonne exploitation !' } } })
+      navigate('/app/dashboard', { state: { toast: { type: 'success', title: 'Abonnement activé', message: 'Votre nouvelle formule est active. Bonne exploitation !' } } })
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: { message?: string } | string } } })?.response?.data?.detail
       const message = typeof detail === 'object' && detail?.message ? detail.message : 'Erreur lors de la sélection du plan. Vérifiez votre connexion et réessayez.'
-      navigate('/dashboard', { state: { toast: { type: 'error', title: 'Sélection impossible', message } } })
+      navigate('/app/dashboard', { state: { toast: { type: 'error', title: 'Sélection impossible', message } } })
     } finally {
       setSelecting(false)
     }
@@ -138,7 +138,7 @@ export function PricingPage() {
         title="Retour a la page precedente"
         onClick={() => {
           if (user?.entreprise_id) {
-            navigate('/dashboard')
+            navigate('/app/dashboard')
           } else {
             navigate(-1)
           }
@@ -213,7 +213,7 @@ export function PricingPage() {
                     </ul>
                     <div className="mt-auto d-grid gap-2">
                       {isSurDevis(plan, 'mensuel') ? (
-                        <button className="btn btn-outline-secondary" onClick={() => navigate('/dashboard', { state: { toast: { type: 'info', title: 'Offre sur mesure', message: 'Contactez notre équipe pour une offre adaptée à votre volume.' } } })}>
+                        <button className="btn btn-outline-secondary" onClick={() => navigate('/app/dashboard', { state: { toast: { type: 'info', title: 'Offre sur mesure', message: 'Contactez notre équipe pour une offre adaptée à votre volume.' } } })}>
                           Contactez-nous
                         </button>
                       ) : isSysteme ? (

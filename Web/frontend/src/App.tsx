@@ -1,5 +1,5 @@
 import { useEffect, lazy, Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { scheduleTokenRefresh, cancelTokenRefresh } from '@/services/api'
 import { useAuthStore } from '@/stores/auth.store'
@@ -11,6 +11,8 @@ import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
 import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage'
 import { RoleRedirect } from '@/components/auth/RoleRedirect'
 import { PricingPage } from '@/pages/pricing/PricingPage'
+
+const LandingPage = lazy(() => import('@/pages/landing/LandingPage').then((m) => ({ default: m.LandingPage })))
 
 const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const ChantiersPage = lazy(() => import('@/pages/chantiers/ChantiersPage').then((m) => ({ default: m.ChantiersPage })))
@@ -75,6 +77,21 @@ function PageFallback() {
   )
 }
 
+/* Anciennes URLs de l'app (ex. /dashboard) -> /app/dashboard.
+   Préserve les favoris et liens partagés d'avant la vitrine. */
+const LEGACY_APP_PREFIXES = [
+  '/dashboard', '/chantiers', '/rh', '/stocks', '/commercial', '/finance',
+  '/materiels', '/alertes', '/historique-logins', '/settings', '/super-admin',
+  '/employe', '/client',
+]
+
+function LegacyAppRedirect() {
+  const { pathname } = useLocation()
+  const isAppPath = LEGACY_APP_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))
+  if (isAppPath) return <Navigate to={`/app${pathname}`} replace />
+  return <Navigate to="/" replace />
+}
+
 function App() {
   const token = useAuthStore((s) => s.token)
 
@@ -85,6 +102,8 @@ function App() {
 
   return (
     <Routes>
+      {/* ===== Site vitrine public ===== */}
+      <Route path="/" element={<Suspense fallback={<PageFallback />}><LandingPage /></Suspense>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/client-login" element={<ClientLoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
@@ -93,7 +112,7 @@ function App() {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/pricing" element={<PricingPage />} />
-      <Route path="/" element={<ProtectedRoute />}>
+      <Route path="/app" element={<ProtectedRoute />}>
         <Route index element={<RoleRedirect />} />
         <Route path="dashboard" element={<Suspense fallback={<PageFallback />}><DashboardPage /></Suspense>} />
         <Route path="chantiers" element={<Suspense fallback={<PageFallback />}><ChantiersPage /></Suspense>} />
@@ -151,7 +170,7 @@ function App() {
           <Route path="paiement" element={<Suspense fallback={<PageFallback />}><SuperAdminPaiementPage /></Suspense>} />
         </Route>
       </Route>
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<LegacyAppRedirect />} />
     </Routes>
   )
 }

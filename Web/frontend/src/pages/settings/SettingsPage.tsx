@@ -790,7 +790,7 @@ export function SettingsPage() {
               </div>
               <div>
                 {perms.canManageSubscription ? (
-                  <button className="btn btn-outline-secondary" onClick={() => navigate('/pricing')}>
+                  <button className="btn btn-outline-secondary" onClick={() => navigate('/app/pricing')}>
                     Gérer l'abonnement
                   </button>
                 ) : (

@@ -70,7 +70,7 @@ export function SuperAdminDashboardPage() {
           >
             <i className="bi bi-download me-1"></i>Exporter
           </button>
-          <button className="btn btn-outline-secondary fw-bold" onClick={() => navigate('/super-admin/entreprises')}>
+          <button className="btn btn-outline-secondary fw-bold" onClick={() => navigate('/app/super-admin/entreprises')}>
             <i className="bi bi-plus-circle me-1"></i>Nouvelle Entreprise
           </button>
         </div>
@@ -243,7 +243,7 @@ export function SuperAdminDashboardPage() {
           </h5>
           <button
             className="btn btn-sm btn-outline-secondary"
-            onClick={() => navigate('/super-admin/entreprises')}
+            onClick={() => navigate('/app/super-admin/entreprises')}
           >
             Voir tout
           </button>

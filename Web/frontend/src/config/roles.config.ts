@@ -12,10 +12,10 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/super-admin/facturation',
     '/super-admin/logs',
     '/super-admin/email',
-  '/super-admin/paiement',
+    '/super-admin/paiement',
     '/super-admin/parametres',
     '/dashboard',
-  ],
+  ].map((p) => `/app${p}`),
   admin_entreprise: [
     // Restreint selon roles_tia_builds/01_admin_entreprise.md :
     // accès uniquement à l'administration (utilisateurs, paramètres), KPI/dashboard,
@@ -24,7 +24,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/historique-logins',
     '/settings',
     '/pricing',
-  ],
+  ].map((p) => `/app${p}`),
   directeur: [
     '/dashboard',
     '/chantiers',
@@ -34,7 +34,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/materiels',
     '/stocks',
     '/alertes',
-  ],
+  ].map((p) => `/app${p}`),
   comptable: [
     '/dashboard',
     '/finance',
@@ -42,7 +42,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/chantiers',
     '/rh',
     '/alertes',
-  ],
+  ].map((p) => `/app${p}`),
   chef_projet: [
     '/dashboard',
     '/chantiers',
@@ -50,7 +50,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/materiels',
     '/stocks',
     '/alertes',
-  ],
+  ].map((p) => `/app${p}`),
   chef_chantier: [
     '/dashboard',
     '/chantiers',
@@ -58,31 +58,31 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/materiels',
     '/stocks',
     '/alertes',
-  ],
+  ].map((p) => `/app${p}`),
   rh: [
     '/dashboard',
     '/rh',
     '/chantiers',
     '/alertes',
-  ],
+  ].map((p) => `/app${p}`),
   materiel: [
     '/dashboard',
     '/materiels',
     '/chantiers',
     '/alertes',
-  ],
+  ].map((p) => `/app${p}`),
   magasinier: [
     '/dashboard',
     '/stocks',
     '/chantiers',
     '/alertes',
-  ],
+  ].map((p) => `/app${p}`),
   commercial: [
     '/dashboard',
     '/commercial',
     '/chantiers',
     '/alertes',
-  ],
+  ].map((p) => `/app${p}`),
   employe: [
     '/employe',
     '/employe/profil',
@@ -92,12 +92,12 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/employe/rapports',
     '/employe/photos',
     '/employe/signalements',
-        '/employe/notifications',
+    '/employe/notifications',
     '/employe/planning',
     '/employe/documents',
     '/employe/badge',
     '/employe/conges',
-  ],
+  ].map((p) => `/app${p}`),
   client: [
     '/client',
     '/client/profil',
@@ -114,7 +114,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/client/documents',
     '/client/notifications',
     '/client/parametres',
-  ],
+  ].map((p) => `/app${p}`),
 }
 
 export const ROLE_NAMES: Record<string, string> = {

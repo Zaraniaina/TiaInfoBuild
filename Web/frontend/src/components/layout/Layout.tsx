@@ -97,7 +97,7 @@ export function Layout() {
                 <strong>{joursRestants} jour{joursRestants !== null && joursRestants !== 1 ? 's' : ''}</strong>.
               </span>
             </div>
-            <a href="/pricing" className="btn btn-sm btn-info fw-bold ms-3">Voir les formules</a>
+            <a href="/app/pricing" className="btn btn-sm btn-info fw-bold ms-3">Voir les formules</a>
           </div>
         )}
         {!subLoading && subState && isExpiringSoon && (
@@ -108,7 +108,7 @@ export function Layout() {
                 <strong>Plus que {joursRestants} jour{joursRestants !== null && joursRestants !== 1 ? 's' : ''}</strong> d'essai gratuit. Choisissez votre formule pour ne rien perdre de vos données.
               </span>
             </div>
-            <a href="/pricing" className="btn btn-sm btn-warning fw-bold ms-3">Choisir une formule</a>
+            <a href="/app/pricing" className="btn btn-sm btn-warning fw-bold ms-3">Choisir une formule</a>
           </div>
         )}
         {!subLoading && subState && isExpired && (
@@ -119,7 +119,7 @@ export function Layout() {
                 <strong>Votre essai est terminé.</strong> L'accès est en lecture seule : consultez vos données, mais les modifications sont désactivées.
               </span>
             </div>
-            <a href="/pricing" className="btn btn-sm btn-danger fw-bold ms-3">Réactiver l'écriture</a>
+            <a href="/app/pricing" className="btn btn-sm btn-danger fw-bold ms-3">Réactiver l'écriture</a>
           </div>
         )}
         {!subLoading && subscription && !subState && isExpired && (
@@ -128,7 +128,7 @@ export function Layout() {
               <i className="bi bi-x-circle me-2 fs-5"></i>
               <span>Votre abonnement a expiré. Veuillez renouveler votre formule pour continuer à utiliser la plateforme.</span>
             </div>
-            <a href="/pricing" className="btn btn-sm btn-danger fw-bold ms-3">Voir les formules</a>
+            <a href="/app/pricing" className="btn btn-sm btn-danger fw-bold ms-3">Voir les formules</a>
           </div>
         )}
         <main className="flex-grow-1">

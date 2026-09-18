@@ -7,7 +7,7 @@ export function RoleRedirect() {
   const navigate = useNavigate()
   const roleCode = useAuthStore((s) => s.user?.role_code) || 'employe'
   const allowed = ROLE_MODULES[roleCode] || []
-  const target = allowed[0] || '/employe'
+  const target = allowed[0] || '/app/employe'
 
   useEffect(() => {
     navigate(target, { replace: true })

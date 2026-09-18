@@ -143,7 +143,7 @@ export function SuperAdminParametresPage() {
                   <li><i className="bi bi-check2-circle me-2"></i>Mot de passe SMTP chiffré en base, jamais exposé</li>
                   <li><i className="bi bi-check2-circle me-2"></i>Diagnostic « prêt pour la production » guidé pas à pas</li>
                 </ul>
-                <Link to="/super-admin/email" className="btn btn-outline-secondary fw-bold">
+                <Link to="/app/super-admin/email" className="btn btn-outline-secondary fw-bold">
                   <i className="bi bi-box-arrow-up-right me-2"></i>Ouvrir l’interface Email / SMTP
                 </Link>
               </div>

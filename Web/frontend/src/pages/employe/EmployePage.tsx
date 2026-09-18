@@ -43,7 +43,7 @@ export function EmployePage() {
 
       <div className="row g-2 mb-3">
         <div className="col-6 col-md-3">
-          <Link to="/employe/chantiers" className="card text-decoration-none border-0 shadow-sm h-100">
+          <Link to="/appemploye/chantiers" className="card text-decoration-none border-0 shadow-sm h-100">
             <div className="card-body text-center">
               <div className="display-6 fw-bold text-primary">{dash.nb_chantiers}</div>
               <small className="text-muted">Mes chantiers</small>
@@ -51,7 +51,7 @@ export function EmployePage() {
           </Link>
         </div>
         <div className="col-6 col-md-3">
-          <Link to="/employe/taches" className="card text-decoration-none border-0 shadow-sm h-100">
+          <Link to="/appemploye/taches" className="card text-decoration-none border-0 shadow-sm h-100">
             <div className="card-body text-center">
               <div className="display-6 fw-bold text-warning">{dash.taches_du_jour.restantes}</div>
               <small className="text-muted">Tâches restantes</small>
@@ -59,7 +59,7 @@ export function EmployePage() {
           </Link>
         </div>
         <div className="col-6 col-md-3">
-          <Link to="/employe/travaux" className="card text-decoration-none border-0 shadow-sm h-100">
+          <Link to="/appemploye/travaux" className="card text-decoration-none border-0 shadow-sm h-100">
             <div className="card-body text-center">
               <div className="display-6 fw-bold text-success">{dash.taches_du_jour.terminees}</div>
               <small className="text-muted">Tâches terminées</small>
@@ -67,7 +67,7 @@ export function EmployePage() {
           </Link>
         </div>
         <div className="col-6 col-md-3">
-          <Link to="/employe/notifications" className="card text-decoration-none border-0 shadow-sm h-100">
+          <Link to="/appemploye/notifications" className="card text-decoration-none border-0 shadow-sm h-100">
             <div className="card-body text-center">
               <div className="display-6 fw-bold text-danger">{p.heures_total.toFixed(1)}h</div>
               <small className="text-muted">Heures aujourd'hui</small>
@@ -92,11 +92,11 @@ export function EmployePage() {
         <div className="card-body">
           <h6 className="mb-2">Actions rapides</h6>
           <div className="d-flex flex-wrap gap-2">
-            <Link to="/employe/rapports" className="btn btn-primary btn-sm"><i className="bi bi-file-earmark-text"></i> Rapport</Link>
-            <Link to="/employe/travaux" className="btn btn-success btn-sm"><i className="bi bi-bar-chart"></i> Travail</Link>
-            <Link to="/employe/photos" className="btn btn-info btn-sm text-white"><i className="bi bi-camera"></i> Photo</Link>
-            <Link to="/employe/signalements" className="btn btn-warning btn-sm"><i className="bi bi-exclamation-triangle"></i> Signaler</Link>
-            <Link to="/employe/profil" className="btn btn-secondary btn-sm"><i className="bi bi-person"></i> Mon profil</Link>
+            <Link to="/appemploye/rapports" className="btn btn-primary btn-sm"><i className="bi bi-file-earmark-text"></i> Rapport</Link>
+            <Link to="/appemploye/travaux" className="btn btn-success btn-sm"><i className="bi bi-bar-chart"></i> Travail</Link>
+            <Link to="/appemploye/photos" className="btn btn-info btn-sm text-white"><i className="bi bi-camera"></i> Photo</Link>
+            <Link to="/appemploye/signalements" className="btn btn-warning btn-sm"><i className="bi bi-exclamation-triangle"></i> Signaler</Link>
+            <Link to="/appemploye/profil" className="btn btn-secondary btn-sm"><i className="bi bi-person"></i> Mon profil</Link>
           </div>
         </div>
       </div>

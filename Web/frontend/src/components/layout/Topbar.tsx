@@ -325,9 +325,9 @@ export function Topbar() {
                   onClick={() => {
                     setShowUserMenu(false)
                     if (user?.role_code === 'super_admin') {
-                      navigate('/super-admin/parametres')
+                      navigate('/app/super-admin/parametres')
                     } else {
-                      navigate('/settings')
+                      navigate('/app/settings')
                     }
                   }}
                 >
