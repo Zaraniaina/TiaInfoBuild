@@ -16,8 +16,10 @@ const LandingPage = lazy(() => import('@/pages/landing/LandingPage').then((m) =>
 
 const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const ChantiersPage = lazy(() => import('@/pages/chantiers/ChantiersPage').then((m) => ({ default: m.ChantiersPage })))
+const RisquesClimatiquesPage = lazy(() => import('@/pages/chantiers/RisquesClimatiquesPage').then((m) => ({ default: m.RisquesClimatiquesPage })))
 const RhPage = lazy(() => import('@/pages/rh/RhPage').then((m) => ({ default: m.RhPage })))
 const StocksPage = lazy(() => import('@/pages/stocks/StocksPage').then((m) => ({ default: m.StocksPage })))
+const AchatsPage = lazy(() => import('@/pages/achats/AchatsPage').then((m) => ({ default: m.AchatsPage })))
 const CommercialPage = lazy(() => import('@/pages/commercial/CommercialPage').then((m) => ({ default: m.CommercialPage })))
 const FinancePage = lazy(() => import('@/pages/finance/FinancePage').then((m) => ({ default: m.FinancePage })))
 const MaterielsPage = lazy(() => import('@/pages/materiels/MaterielsPage').then((m) => ({ default: m.MaterielsPage })))
@@ -122,6 +124,8 @@ function App() {
         <Route path="finance" element={<Suspense fallback={<PageFallback />}><FinancePage /></Suspense>} />
         <Route path="materiels" element={<Suspense fallback={<PageFallback />}><MaterielsPage /></Suspense>} />
         <Route path="alertes" element={<Suspense fallback={<PageFallback />}><AlertesPage /></Suspense>} />
+        <Route path="risques-climatiques" element={<Suspense fallback={<PageFallback />}><RisquesClimatiquesPage /></Suspense>} />
+        <Route path="achats" element={<Suspense fallback={<PageFallback />}><AchatsPage /></Suspense>} />
         <Route path="historique-logins" element={<Suspense fallback={<PageFallback />}><HistoriqueLoginsPage /></Suspense>} />
         <Route path="settings" element={<Suspense fallback={<PageFallback />}><SettingsPage /></Suspense>} />
         <Route path="client" element={<Suspense fallback={<PageFallback />}><ClientLayout /></Suspense>}>

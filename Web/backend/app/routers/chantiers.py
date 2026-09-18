@@ -4,7 +4,7 @@ from typing import Any
 from typing_extensions import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +19,8 @@ from app.models.projet import Projet
 from app.models.devis import Devis
 from app.models.contrat import Contrat
 from app.models.rapport_journalier import RapportJournalier
+from app.models.periode_risque_climatique import PeriodeRisqueClimatique
+from app.routers.aleas_climatiques import calculer_impact_climatique, notifier_alea_climatique
 from app.schemas.chantier import (
     ChantierCreate,
     ChantierUpdate,
@@ -52,11 +54,40 @@ class PhaseCreate(BaseModel):
     ordre: int = Field(default=0, ge=0)
 
 
+TYPES_ALEA = {
+    "cyclone",
+    "inondation",
+    "pluies_intenses",
+    "secheresse",
+    "route_coupee",
+    "coupure_electricite",
+    "autre",
+}
+IMPUTABILITES = {"climatique", "entreprise", "client", "indetermine"}
+
+
 class IncidentCreate(BaseModel):
     titre: str = Field(..., min_length=1, max_length=255)
     description: str | None = None
     gravite: str = Field(default="moyenne", max_length=20)
     statut: str = Field(default="signale", max_length=20)
+    # Aléa climatique (optionnel)
+    type_alea: str | None = Field(default=None, max_length=30)
+    date_fin: date | None = None
+    impact_arret_jours: int | None = Field(default=None, ge=0)
+    imputabilite: str | None = Field(default=None, max_length=20)
+
+    @field_validator("type_alea", "imputabilite")
+    @classmethod
+    def validate_alea_fields(cls, v: str | None, info) -> str | None:
+        if v is None or v == "":
+            return None
+        v = v.strip()
+        if info.field_name == "type_alea" and v not in TYPES_ALEA:
+            raise ValueError(f"Type d'aléa invalide. Valeurs autorisées: {sorted(TYPES_ALEA)}")
+        if info.field_name == "imputabilite" and v not in IMPUTABILITES:
+            raise ValueError(f"Imputabilité invalide. Valeurs autorisées: {sorted(IMPUTABILITES)}")
+        return v
 
 
 @router.get("")
@@ -284,6 +315,16 @@ async def get_chantier(
     response.phases = [{c.name: getattr(p, c.name) for c in p.__table__.columns} for p in phases]
     response.incidents = [{c.name: getattr(i, c.name) for c in i.__table__.columns} for i in incidents]
     response.affectations = [{c.name: getattr(a, c.name) for c in a.__table__.columns} for a in affectations]
+
+    # Impact climatique : jours d'arrêt documentés + retard net (négociable vs
+    # imputable à l'entreprise).
+    response.impact_climatique = calculer_impact_climatique(
+        list(incidents),
+        chantier.date_debut,
+        chantier.date_fin_prevue,
+        chantier.date_fin_reelle,
+        date.today(),
+    )
     return response
 
 
@@ -380,6 +421,10 @@ async def add_incident(
     db.add(incident)
     await db.flush()
     await db.refresh(incident)
+    # Aléa climatique critique -> alerte plateforme (best effort, ne fait jamais
+    # échouer le signalement).
+    if incident.type_alea and incident.gravite == "critique":
+        await notifier_alea_climatique(db, chantier, incident)
     return {"id": incident.id, "message": "Incident ajouté"}
 
 

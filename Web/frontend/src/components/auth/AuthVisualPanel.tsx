@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { BrandLogo } from '@/components/brand/BrandLogo'
 
 interface StatItem {
   value: string
@@ -83,14 +84,8 @@ export function AuthVisualPanel({
       />
 
       <div className="auth-visual-content">
-        <div className="auth-visual-logo">
-          <div className="auth-visual-logo-badge">
-            <i className="bi bi-building" />
-          </div>
-          <div>
-            <div className="auth-visual-brand-name">TIA INFO BUILD</div>
-            <div className="auth-visual-brand-sub">Plateforme BTP</div>
-          </div>
+        <div className="auth-visual-logo on-brand-surface">
+          <BrandLogo size={44} withName />
         </div>
 
         <div>

@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/stores/toast.store'
+import { BrandLogo } from '@/components/brand/BrandLogo'
 
 const loginSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -60,9 +61,9 @@ export function LoginForm() {
       <div className="login-card">
         <div className="login-header">
           <div className="login-logo">
-            <i className="bi bi-building"></i>
+            <BrandLogo size={72} />
           </div>
-          <h1>TIA INFO BUILD</h1>
+          <h1 className="visually-hidden">TIA INFO BUILD</h1>
           <p className="text-muted">Gestion BTP</p>
         </div>
 

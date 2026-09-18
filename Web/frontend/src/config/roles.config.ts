@@ -15,12 +15,18 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/super-admin/paiement',
     '/super-admin/parametres',
     '/dashboard',
+    // NB : pas de '/risques-climatiques' — donnée métier des entreprises BTP,
+    // gérée par leurs rôles responsables (directeur, chef_projet, chef_chantier,
+    // admin_entreprise). Le super admin est propriétaire du SaaS, pas du chantier.
   ].map((p) => `/app${p}`),
   admin_entreprise: [
     // Restreint selon roles_tia_builds/01_admin_entreprise.md :
     // accès uniquement à l'administration (utilisateurs, paramètres), KPI/dashboard,
     // historique de connexion et page tarifs (pricing).
+    // + Risques climatiques : responsable de l'entreprise (pénalités de retard
+    // contractuelles liées aux aléas — sujet de direction).
     '/dashboard',
+    '/risques-climatiques',
     '/historique-logins',
     '/settings',
     '/pricing',
@@ -28,6 +34,8 @@ export const ROLE_MODULES: Record<string, string[]> = {
   directeur: [
     '/dashboard',
     '/chantiers',
+    '/risques-climatiques',
+    '/achats',
     '/finance',
     '/commercial',
     '/rh',
@@ -40,12 +48,15 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/finance',
     '/commercial',
     '/chantiers',
+    '/achats',
     '/rh',
     '/alertes',
   ].map((p) => `/app${p}`),
   chef_projet: [
     '/dashboard',
     '/chantiers',
+    '/risques-climatiques',
+    '/achats',
     '/rh',
     '/materiels',
     '/stocks',
@@ -54,6 +65,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
   chef_chantier: [
     '/dashboard',
     '/chantiers',
+    '/risques-climatiques',
     '/rh',
     '/materiels',
     '/stocks',
@@ -74,6 +86,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
   magasinier: [
     '/dashboard',
     '/stocks',
+    '/achats',
     '/chantiers',
     '/alertes',
   ].map((p) => `/app${p}`),

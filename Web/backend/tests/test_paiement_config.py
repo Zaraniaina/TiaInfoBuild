@@ -126,6 +126,25 @@ async def test_super_admin_lit_config_secrets_masques(db_session):
 
 
 @pytest.mark.asyncio
+async def test_super_admin_premiere_lecture_table_vide(db_session):
+    """Table vide (déploiement initial) : le GET crée le singleton et répond 200.
+
+    Régression : sans refresh après flush dans _get_config, la première
+    ouverture de la page super admin levait MissingGreenlet (500).
+    """
+    client = await _client(db_session, SuperAdminPayload)
+    async with client:
+        resp = await client.get("/api/paiement-config")
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["est_configure"] is False
+    assert data["environment"] == "sandbox"
+    assert data["api_key_masquee"] is None
+    # Le singleton est bien persisté
+    assert await db_session.get(ParametrePaiement, 1) is not None
+
+
+@pytest.mark.asyncio
 async def test_super_admin_ne_souscrit_pas_dabonnement(db_session):
     client = await _client(db_session, SuperAdminPayload)
     async with client:

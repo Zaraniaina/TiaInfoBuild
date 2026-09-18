@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { employeTerrainService } from '@/services/employeTerrain.service'
 import type { ProfilTerrain } from '@/types'
+import { BrandLogo } from '@/components/brand/BrandLogo'
 
 export function EmployeProfilPage() {
   const [profil, setProfil] = useState<ProfilTerrain | null>(null)
@@ -79,7 +80,7 @@ export function EmployeProfilPage() {
           {profil.badge_qr ? (
             <div className="text-center">
               <div className="border rounded p-3 d-inline-block bg-white">
-                <div className="fw-bold small">TIA INFO BUILD</div>
+                <div className="fw-bold small d-flex align-items-center justify-content-center gap-1"><BrandLogo size={16} /> TIA INFO BUILD</div>
                 <div className="fw-semibold">{profil.prenom} {profil.nom}</div>
                 <div className="text-muted small">{profil.matricule}</div>
                 <div className="text-muted small">{profil.poste}</div>

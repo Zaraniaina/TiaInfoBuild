@@ -45,6 +45,11 @@ async def _get_config(db) -> ParametrePaiement:
         cfg = ParametrePaiement(id=1)
         db.add(cfg)
         await db.flush()
+        # Recharge les valeurs générées par le serveur (environment, is_test_mode,
+        # created_at...) : sans refresh, y accéder ensuite lève MissingGreenlet
+        # (lazy-load synchrone interdit en async) => 500 sur la première ouverture
+        # de la page quand la table est encore vide.
+        await db.refresh(cfg)
     return cfg
 
 

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUIStore } from '@/stores/ui.store'
 import { ROLE_MODULES, ROLE_NAMES } from '@/config/roles.config'
+import { BrandLogo } from '@/components/brand/BrandLogo'
 
 const MODULE_META: Record<string, { label: string; icon: string; section: string }> = {
   '/app/employe': { label: 'Mon Espace Terrain', icon: 'bi-person-badge', section: 'Principal' },
@@ -30,10 +31,12 @@ const MODULE_META: Record<string, { label: string; icon: string; section: string
   '/app/super-admin/paiement': { label: 'Passerelle de Paiement', icon: 'bi-router', section: 'Plateforme SaaS' },
   '/app/super-admin/parametres': { label: 'Paramètres Plateforme', icon: 'bi-gear', section: 'Plateforme SaaS' },
   '/app/chantiers': { label: 'Chantiers & Phases', icon: 'bi-building', section: 'Pilotage' },
+  '/app/risques-climatiques': { label: 'Risques climatiques', icon: 'bi-cloud-lightning-rain', section: 'Pilotage' },
   '/app/finance': { label: 'Finances & Dépenses', icon: 'bi-currency-exchange', section: 'Finances' },
   '/app/rh': { label: 'Employés & Pointages', icon: 'bi-people', section: 'Ressources Humaines' },
   '/app/materiels': { label: 'Matériels & Engins', icon: 'bi-tools', section: 'Matériel & Parc' },
   '/app/stocks': { label: 'Articles & Inventaire', icon: 'bi-box-seam', section: 'Stocks & Logistique' },
+  '/app/achats': { label: 'Achats fournisseurs', icon: 'bi-cart-check', section: 'Stocks & Logistique' },
   '/app/commercial': { label: 'Clients & Devis', icon: 'bi-cart', section: 'Commercial' },
   '/app/alertes': { label: 'Alertes Système', icon: 'bi-bell', section: 'Administration' },
   '/app/historique-logins': { label: 'Audit Connexions', icon: 'bi-clock-history', section: 'Administration' },
@@ -93,13 +96,7 @@ export function Sidebar() {
     <>
       <aside className={`sidebar${collapsed ? ' collapsed' : ''}${showMobile ? ' show' : ''}`}>
         <div className="sidebar-brand">
-          <div className="mark">TB</div>
-          {!collapsed && !showMobile && (
-            <div>
-              <div className="brand-name">TIA INFO BUILD</div>
-              <div className="brand-sub">Gestion BTP</div>
-            </div>
-          )}
+          <BrandLogo size={34} withName={!collapsed && !showMobile} />
         </div>
 
         {!collapsed && (

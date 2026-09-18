@@ -72,7 +72,7 @@ export function RhPage() {
       show: true,
       data: {
         entreprise_nom: badgeEntreprise.nom || user?.nom || 'TIA INFO BUILD',
-        entreprise_logo: badgeEntreprise.logo,
+        entreprise_logo: badgeEntreprise.logo || undefined,
         employes_list: employes.map(e => ({
           id: e.id,
           nom: e.nom,

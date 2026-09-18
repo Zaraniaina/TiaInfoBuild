@@ -182,7 +182,7 @@ async def root():
 
 
 # Inclusion des routers
-from app.routers import auth, super_admin, super_admin_mail, chantiers, rh, stocks, commercial, finance, materiels, alertes, dashboard, parametres, sync, utilisateurs, preferences, subscriptions, espace_client, employe_terrain, paiement_config, paiements
+from app.routers import auth, super_admin, super_admin_mail, chantiers, rh, stocks, commercial, finance, materiels, alertes, dashboard, parametres, sync, utilisateurs, preferences, subscriptions, espace_client, employe_terrain, paiement_config, paiements, aleas_climatiques, achats
 
 api_prefix = "/api"
 
@@ -206,6 +206,8 @@ app.include_router(espace_client.router, prefix=f"{api_prefix}/espace-client", t
 app.include_router(employe_terrain.router, prefix=f"{api_prefix}/employe-terrain", tags=["employe-terrain"])
 app.include_router(paiement_config.router, prefix=f"{api_prefix}/paiement-config", tags=["paiement-config"])
 app.include_router(paiements.router, prefix=f"{api_prefix}/paiements", tags=["paiements"])
+app.include_router(aleas_climatiques.router, prefix=f"{api_prefix}/aleas-climatiques", tags=["aleas-climatiques"])
+app.include_router(achats.router, prefix=f"{api_prefix}/achats", tags=["achats"])
 
 
 # --- Handlers d'exceptions globaux ---

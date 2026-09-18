@@ -239,7 +239,6 @@ export function Topbar() {
         >
           <i className={`bi ${sidebarOpen ? 'bi-chevron-double-left' : 'bi-list'}`}></i>
         </button>
-        <h4 className="topbar-title">TIA INFO BUILD</h4>
       </div>
 
       <div className="topbar-right">

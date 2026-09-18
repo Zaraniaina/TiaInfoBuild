@@ -7,6 +7,14 @@ from app.models.affectation_ressource import AffectationRessource
 from app.models.alerte import Alerte
 from app.models.alerte_materiel import AlerteMateriel
 from app.models.article import Article
+from app.models.achats import (
+    CommandeFournisseur,
+    LigneCommandeFournisseur,
+    ReceptionFournisseur,
+    LigneReceptionFournisseur,
+    FactureFournisseur,
+    PaiementFournisseur,
+)
 from app.models.avenant import Avenant
 from app.models.chantier import Chantier
 from app.models.client import Client
@@ -40,6 +48,7 @@ from app.models.mouvement_stock import MouvementStock
 from app.models.notification import Notification
 from app.models.paiement import Paiement
 from app.models.parametre_paiement import ParametrePaiement
+from app.models.periode_risque_climatique import PeriodeRisqueClimatique
 from app.models.phase import Phase
 from app.models.photo_chantier import PhotoChantier
 from app.models.plan import Plan
@@ -68,6 +77,12 @@ __all__ = [
     "AlerteMateriel",
     "Article",
     "Avenant",
+    "CommandeFournisseur",
+    "LigneCommandeFournisseur",
+    "ReceptionFournisseur",
+    "LigneReceptionFournisseur",
+    "FactureFournisseur",
+    "PaiementFournisseur",
     "Chantier",
     "Client",
     "ClientAdresse",
@@ -98,6 +113,7 @@ __all__ = [
     "Metre",
     "MouvementStock",    "Notification",
     "ParametrePaiement",
+    "PeriodeRisqueClimatique",
 
 
     "Paiement",

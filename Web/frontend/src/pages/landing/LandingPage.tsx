@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '@/services/api'
 import type { Plan } from '@/types'
+import { BrandLogo } from '@/components/brand/BrandLogo'
+import { useUIStore } from '@/stores/ui.store'
 import './landing.css'
 
 /* ============================================================
@@ -142,6 +144,19 @@ export function LandingPage() {
   const [loadingPlans, setLoadingPlans] = useState(true)
   const rootRef = useReveal(loadingPlans)
 
+  const theme = useUIStore((s) => s.theme)
+  const setTheme = useUIStore((s) => s.setTheme)
+
+  // La vitrine est publique (pas de <Topbar>) : applique le thème sur <html>
+  // comme index.html le fait au premier paint, à partir de localStorage.
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
+
+  const cycleTheme = () => {
+    setTheme(theme === 'light' ? 'dark' : 'light')
+  }
+
   useEffect(() => {
     api.get('/subscriptions/public/plans')
       .then((res) => setPlans((res.data as Plan[]).filter((p) => p.actif)))
@@ -159,7 +174,7 @@ export function LandingPage() {
       <header className="lp-nav">
         <div className="lp-container lp-nav-inner">
           <Link to="/" className="lp-brand" aria-label="TIA INFO BUILD — accueil">
-            <span className="lp-brand-badge" aria-hidden="true">TB</span>
+            <BrandLogo size={38} />
             <span className="lp-brand-name">TIA INFO <span>BUILD</span></span>
           </Link>
           <nav className={`lp-links ${menuOpen ? 'lp-open' : ''}`} aria-label="Navigation principale">
@@ -433,7 +448,7 @@ export function LandingPage() {
       <footer className="lp-footer">
         <div className="lp-container lp-footer-grid">
           <div>
-            <span className="lp-brand"><span className="lp-brand-badge" aria-hidden="true">TB</span> TIA INFO BUILD</span>
+            <span className="lp-brand"><BrandLogo size={32} /> TIA INFO BUILD</span>
             <p className="lp-footer-desc">
               La plateforme de gestion tout-en-un pour les entreprises BTP de Madagascar :
               chantiers, équipes, matériels, stocks et finances — du bureau au terrain.
@@ -464,6 +479,18 @@ export function LandingPage() {
           <Link to="/login">Espace de gestion →</Link>
         </div>
       </footer>
+
+      {/* ============ BOUTON FLOTTANT THÈME ============ */}
+      <button
+        type="button"
+        className="lp-theme-toggle"
+        onClick={cycleTheme}
+        aria-label={theme === 'light' ? 'Activer le mode sombre' : 'Activer le mode clair'}
+        title={theme === 'light' ? 'Activer le mode sombre' : 'Activer le mode clair'}
+      >
+        <i className={`bi ${theme === 'light' ? 'bi-moon-stars' : 'bi-sun'}`} aria-hidden="true"></i>
+        <span>Mode {theme === 'light' ? 'sombre' : 'clair'}</span>
+      </button>
     </div>
   )
 }

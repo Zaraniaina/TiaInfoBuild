@@ -166,8 +166,19 @@ export function ChantiersPage() {
     const form = e.target as HTMLFormElement
     const titre = (form.elements.namedItem('incident_titre') as HTMLInputElement).value
     const gravite = (form.elements.namedItem('incident_gravite') as HTMLSelectElement).value as any
+    const typeAlea = (form.elements.namedItem('incident_type_alea') as HTMLSelectElement).value || undefined
+    const imputabilite = (form.elements.namedItem('incident_imputabilite') as HTMLSelectElement).value || undefined
+    const joursStr = (form.elements.namedItem('incident_jours') as HTMLInputElement).value
+    const impactArretJours = joursStr ? parseInt(joursStr, 10) : undefined
     try {
-      await chantiersService.addIncident(selectedChantier.id, { titre, gravite, statut: 'signale' })
+      await chantiersService.addIncident(selectedChantier.id, {
+        titre,
+        gravite,
+        statut: 'signale',
+        type_alea: typeAlea,
+        imputabilite: typeAlea ? imputabilite : undefined,
+        impact_arret_jours: typeAlea ? impactArretJours : undefined,
+      })
       alert('Incident signalé')
       setShowDetailModal(false)
       setShowDetailModal(true)
@@ -654,8 +665,18 @@ export function ChantiersPage() {
                           {selectedChantier.incidents.map(inc => (
                             <div key={inc.id} className="list-group-item d-flex justify-content-between align-items-center">
                               <div>
-                                 <h6 className="mb-0 fw-semibold text-secondary">{inc.titre}</h6>
-                                <small className="text-muted">Date: {inc.date_incident}</small>
+                                 <h6 className="mb-0 fw-semibold text-secondary">
+                                   {inc.type_alea && <span className="badge bg-info bg-opacity-10 text-info border me-1" title="Aléa climatique">🌤️</span>}
+                                   {inc.titre}
+                                 </h6>
+                                <small className="text-muted">
+                                  Date: {inc.date_incident}
+                                  {inc.date_fin && ` → ${inc.date_fin}`}
+                                  {inc.impact_arret_jours ? ` · ${inc.impact_arret_jours} j d'arrêt` : ''}
+                                  {inc.imputabilite === 'climatique' && ' · climatique (négociable)'}
+                                  {inc.imputabilite === 'entreprise' && ' · imputable entreprise'}
+                                  {inc.imputabilite === 'client' && ' · imputable client'}
+                                </small>
                               </div>
                                  <span className={`badge ${inc.statut === 'resolu' ? 'bg-success bg-opacity-10 text-success border' : 'bg-warning bg-opacity-10 text-dark border'}`}>
                                    {inc.statut === 'resolu' ? 'Résolu' : 'En cours'}
@@ -683,6 +704,34 @@ export function ChantiersPage() {
                             </div>
                             <div className="col-md-3">
                               <button type="submit" className="btn btn-outline-secondary w-100">Signaler</button>
+                            </div>
+                          </div>
+                          <div className="row g-2 mt-1">
+                            <div className="col-md-3">
+                              <select className="form-select" name="incident_type_alea" defaultValue="">
+                                <option value="">Type d'aléa (optionnel)</option>
+                                <option value="cyclone">🌪️ Cyclone</option>
+                                <option value="inondation">💧 Inondation</option>
+                                <option value="pluies_intenses">🌧️ Pluies intenses</option>
+                                <option value="secheresse">☀️ Sécheresse</option>
+                                <option value="route_coupee">🚧 Route coupée</option>
+                                <option value="coupure_electricite">⚡ Coupure d'électricité</option>
+                                <option value="autre">Autre aléa climatique</option>
+                              </select>
+                            </div>
+                            <div className="col-md-4">
+                              <select className="form-select" name="incident_imputabilite" defaultValue="climatique">
+                                <option value="climatique">Imputabilité : climatique (négociable)</option>
+                                <option value="entreprise">Imputabilité : entreprise</option>
+                                <option value="client">Imputabilité : client</option>
+                                <option value="indetermine">Imputabilité : indéterminée</option>
+                              </select>
+                            </div>
+                            <div className="col-md-3">
+                              <input type="number" className="form-control" name="incident_jours" min={0} placeholder="Jours d'arrêt" />
+                            </div>
+                            <div className="col-md-2 d-flex align-items-center">
+                              <small className="text-muted">Aléa climatique documenté → retard négociable</small>
                             </div>
                           </div>
                         </form>
@@ -758,6 +807,31 @@ export function ChantiersPage() {
 
                 <div className="p-4">
                   {activeDetailTab === 'general' && (
+                    <>
+                    <div className="row g-3 mb-2">
+                      {(selectedChantier as any).impact_climatique && (
+                        <>
+                        <div className="col-md-4">
+                          <div className="p-3 bg-light rounded text-center border-start border-warning border-4">
+                            <small className="text-muted d-block">Jours d'arrêt climatique documentés</small>
+                            <h4 className="fw-bold text-secondary mb-0">{(selectedChantier as any).impact_climatique.jours_arret_climatique} j</h4>
+                          </div>
+                        </div>
+                        <div className="col-md-4">
+                          <div className="p-3 bg-light rounded text-center border-start border-danger border-4">
+                            <small className="text-muted d-block">Retard brut</small>
+                            <h4 className="fw-bold text-secondary mb-0">{(selectedChantier as any).impact_climatique.retard_brut_jours} j</h4>
+                          </div>
+                        </div>
+                        <div className="col-md-4">
+                          <div className="p-3 bg-light rounded text-center border-start border-success border-4">
+                            <small className="text-muted d-block">Retard net (après aléas négociables)</small>
+                            <h4 className="fw-bold text-secondary mb-0">{(selectedChantier as any).impact_climatique.retard_net_jours} j</h4>
+                          </div>
+                        </div>
+                        </>
+                      )}
+                    </div>
                     <div className="row g-3">
                       <div className="col-md-6">
                         <p><strong>Description:</strong> {selectedChantier.description || '-'}</p>
@@ -770,6 +844,7 @@ export function ChantiersPage() {
                         <p><strong>Marge cible:</strong> {selectedChantier.marge_cible}%</p>
                       </div>
                     </div>
+                    </>
                   )}
 
                   {activeDetailTab === 'phases' && (
@@ -806,8 +881,18 @@ export function ChantiersPage() {
                           {selectedChantier.incidents.map(inc => (
                             <div key={inc.id} className="list-group-item d-flex justify-content-between align-items-center">
                               <div>
-                                 <h6 className="mb-0 fw-semibold text-secondary">{inc.titre}</h6>
-                                <small className="text-muted">Date: {inc.date_incident}</small>
+                                 <h6 className="mb-0 fw-semibold text-secondary">
+                                   {inc.type_alea && <span className="badge bg-info bg-opacity-10 text-info border me-1" title="Aléa climatique">🌤️</span>}
+                                   {inc.titre}
+                                 </h6>
+                                <small className="text-muted">
+                                  Date: {inc.date_incident}
+                                  {inc.date_fin && ` → ${inc.date_fin}`}
+                                  {inc.impact_arret_jours ? ` · ${inc.impact_arret_jours} j d'arrêt` : ''}
+                                  {inc.imputabilite === 'climatique' && ' · climatique (négociable)'}
+                                  {inc.imputabilite === 'entreprise' && ' · imputable entreprise'}
+                                  {inc.imputabilite === 'client' && ' · imputable client'}
+                                </small>
                               </div>
                                <span className={`badge ${inc.statut === 'resolu' ? 'bg-success bg-opacity-10 text-success border' : 'bg-warning bg-opacity-10 text-dark border'}`}>
                                  {inc.statut === 'resolu' ? 'Résolu' : 'En cours'}

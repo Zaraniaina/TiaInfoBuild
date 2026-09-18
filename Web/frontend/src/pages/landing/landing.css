@@ -7,8 +7,9 @@
 .lp-root {
   --lp-accent: var(--tia-accent, #2563eb);
   --lp-accent-dark: var(--tia-accent-hover, #1d4ed8);
-  --lp-ink: #0f172a;
-  --lp-ink-soft: #475569;
+  --lp-accent-text: var(--tia-accent-text, #ffffff);
+  --lp-ink: var(--tia-text-primary, #0f172a);
+  --lp-ink-soft: var(--tia-text-secondary, #475569);
   --lp-bg: var(--tia-bg-base, #f8fafc);
   --lp-surface: var(--tia-bg-surface, #ffffff);
   --lp-border: var(--tia-border, #e2e8f0);
@@ -63,10 +64,10 @@
 .lp-btn:focus-visible { outline: 3px solid var(--lp-accent); outline-offset: 2px; }
 .lp-btn-primary {
   background: var(--lp-accent);
-  color: #fff;
+  color: var(--lp-accent-text);
   box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
 }
-.lp-btn-primary:hover { background: var(--lp-accent-dark); color: #fff; transform: translateY(-1px); }
+.lp-btn-primary:hover { background: var(--lp-accent-dark); color: var(--lp-accent-text); transform: translateY(-1px); }
 .lp-btn-ghost {
   background: transparent;
   color: var(--lp-ink);
@@ -103,6 +104,11 @@
   text-decoration: none;
   white-space: nowrap;
 }
+
+/* Logo officiel (BrandLogo) dans la navbar : léger retrait vertical */
+.lp-brand .brand-logo img {
+  margin: -0.35rem 0;
+}
 .lp-brand-badge {
   display: inline-grid;
   place-items: center;
@@ -110,7 +116,7 @@
   height: 34px;
   border-radius: 9px;
   background: var(--lp-accent);
-  color: #fff;
+  color: var(--lp-accent-text);
   font-size: 0.82rem;
   font-weight: 800;
 }
@@ -170,8 +176,8 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--lp-accent);
-  background: rgba(37, 99, 235, 0.09);
-  border: 1px solid rgba(37, 99, 235, 0.22);
+  background: var(--tia-accent-soft, rgba(37, 99, 235, 0.09));
+  border: 1px solid color-mix(in srgb, var(--lp-accent) 24%, transparent);
   padding: 0.3rem 0.75rem;
   border-radius: 999px;
   margin-bottom: 1rem;
@@ -193,7 +199,7 @@
   font-size: 0.88rem;
   color: var(--lp-ink-soft);
 }
-.lp-hero-note i { color: #16a34a; margin-right: 0.4rem; }
+.lp-hero-note i { color: var(--tia-success, #16a34a); margin-right: 0.4rem; }
 
 /* Visuel hero : cartes convergentes */
 .lp-hero-visual { position: relative; min-height: 380px; }
@@ -213,7 +219,7 @@
   margin-bottom: 1.1rem;
 }
 .lp-hero-kpis div {
-  background: rgba(37, 99, 235, 0.06);
+  background: var(--tia-accent-soft, rgba(37, 99, 235, 0.06));
   border-radius: 10px;
   padding: 0.6rem 0.5rem;
   text-align: center;
@@ -229,7 +235,7 @@
 .lp-hero-bars span {
   flex: 1;
   border-radius: 7px 7px 3px 3px;
-  background: rgba(15, 23, 42, 0.12);
+  background: var(--tia-bg-raised, rgba(15, 23, 42, 0.12));
 }
 .lp-hero-bars .lp-bar-accent { background: var(--lp-accent); }
 
@@ -247,7 +253,7 @@
 .lp-hero-card-float span { color: var(--lp-ink-soft); }
 .lp-hero-card-qr { top: -18px; right: 6%; }
 .lp-hero-card-alert { bottom: 8px; left: -4%; animation-delay: 2.6s; }
-.lp-hero-card-alert i { color: #16a34a; }
+.lp-hero-card-alert i { color: var(--tia-success, #16a34a); }
 @keyframes lp-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-9px); }
@@ -319,7 +325,7 @@
 .lp-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--lp-shadow);
-  border-color: rgba(37, 99, 235, 0.4);
+  border-color: color-mix(in srgb, var(--lp-accent) 40%, transparent);
 }
 .lp-card-icon {
   width: 46px;
@@ -327,7 +333,7 @@
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: rgba(37, 99, 235, 0.1);
+  background: var(--tia-accent-soft, rgba(37, 99, 235, 0.1));
   color: var(--lp-accent);
   font-size: 1.3rem;
   margin-bottom: 0.9rem;
@@ -359,7 +365,7 @@
   height: 40px;
   border-radius: 50%;
   background: var(--lp-accent);
-  color: #fff;
+  color: var(--lp-accent-text);
   font-weight: 800;
   font-size: 1.05rem;
   margin-bottom: 0.8rem;
@@ -420,7 +426,7 @@
   left: 50%;
   transform: translateX(-50%);
   background: var(--lp-accent);
-  color: #fff;
+  color: var(--lp-accent-text);
   font-size: 0.72rem;
   font-weight: 700;
   padding: 0.28rem 0.8rem;
@@ -438,7 +444,7 @@
 }
 .lp-tarif ul { list-style: none; margin: 0.4rem 0 1rem; padding: 0; flex: 1; }
 .lp-tarif li { font-size: 0.88rem; margin-bottom: 0.45rem; color: var(--lp-ink); }
-.lp-tarif li i { color: #16a34a; margin-right: 0.45rem; }
+.lp-tarif li i { color: var(--tia-success, #16a34a); margin-right: 0.45rem; }
 .lp-tarifs-lien { margin-top: 1.6rem; }
 .lp-tarifs-lien a { color: var(--lp-accent); font-weight: 600; }
 .lp-tarifs-vide {
@@ -521,6 +527,9 @@
   padding-bottom: 2.4rem;
 }
 .lp-footer .lp-brand { color: #fff; margin-bottom: 0.8rem; display: inline-flex; }
+/* Sur le fond sombre du footer, toujours la variante blanche du logo */
+.lp-footer .brand-logo-dark { display: inline-block !important; }
+.lp-footer .brand-logo-light { display: none !important; }
 .lp-footer-desc { font-size: 0.88rem; color: #94a3b8; margin-top: 0.7rem; }
 .lp-footer a {
   display: block;
@@ -541,6 +550,77 @@
   font-size: 0.84rem;
 }
 .lp-footer-bottom a { color: #93c5fd; display: inline; margin: 0; }
+
+/* ---------- Bouton flottant thème ---------- */
+/* Fab discret, réutilise les tokens --lp-* (s'adapte donc au thème) */
+.lp-theme-toggle {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.72rem 1.05rem;
+  border-radius: 999px;
+  border: 1px solid var(--lp-border);
+  background: var(--lp-surface);
+  color: var(--lp-ink);
+  font-size: 0.88rem;
+  font-weight: 600;
+  box-shadow: var(--lp-shadow);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.lp-theme-toggle i { font-size: 1.15rem; color: var(--lp-accent); }
+.lp-theme-toggle:hover {
+  transform: translateY(-2px);
+  border-color: var(--lp-accent);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+.lp-theme-toggle:focus-visible { outline: 3px solid var(--lp-accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .lp-theme-toggle, .lp-theme-toggle:hover { transition: none; transform: none; }
+}
+@media (max-width: 620px) {
+  .lp-theme-toggle { padding: 0.72rem; }
+  .lp-theme-toggle span { display: none; }
+}
+
+/* ---------- Mode sombre ---------- */
+/* Les tokens --lp-* s'appuient sur le design system (--tia-*), qui bascule
+   avec data-theme. Ici : les valeurs qui restaient codées pour le thème clair. */
+[data-theme="dark"] .lp-root {
+  --lp-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+}
+
+/* Glow du hero : bleu accent allégé pour être lisible sur fond sombre */
+[data-theme="dark"] .lp-hero-rays {
+  background:
+    radial-gradient(600px 320px at 18% 20%, rgba(96, 165, 250, 0.16), transparent 65%),
+    radial-gradient(520px 300px at 82% 12%, rgba(129, 140, 248, 0.14), transparent 65%);
+}
+
+/* Ombre de la carte populaire : accent clair sur fond sombre */
+[data-theme="dark"] .lp-tarif-populaire {
+  box-shadow: 0 12px 34px rgba(96, 165, 250, 0.28);
+}
+
+[data-theme="dark"] .lp-btn-primary {
+  box-shadow: 0 6px 18px rgba(96, 165, 250, 0.32);
+}
+
+/* Bouton blanc : garder un texte sombre en toutes circonstances
+   (le CTA final reste lui-même sombre en mode sombre pour garder le blanc) */
+[data-theme="dark"] .lp-btn-light {
+  color: #0f172a;
+}
+
+/* CTA final : dégradé bleu nuit en mode sombre pour préserver le contraste
+   du titre/blanc, sinon le dégradé clair rendrait le blanc illisible */
+[data-theme="dark"] .lp-cta-final {
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+}
 
 /* ---------- Responsive ---------- */
 @media (max-width: 991px) {

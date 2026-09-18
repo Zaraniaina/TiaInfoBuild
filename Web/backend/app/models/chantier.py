@@ -29,6 +29,9 @@ class Chantier(Base):
     tva: Mapped[float] = mapped_column(Numeric(5, 2), server_default="20.00")
     statut: Mapped[str] = mapped_column(String(20), server_default="planification")
     description: Mapped[str | None] = mapped_column(Text)
+    # Zone géographique du chantier (ex: "Côte Est", "Antananarivo", "Sud") —
+    # sert à croiser avec les périodes à risque climatique.
+    region: Mapped[str | None] = mapped_column(String(80))
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
