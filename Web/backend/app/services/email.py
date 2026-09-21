@@ -7,6 +7,7 @@ permettre une mise en production sans redéploiement.
 import asyncio
 import logging
 import smtplib
+from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -14,6 +15,19 @@ from app.config import settings
 from app.services.mail_config import EffectiveSmtpConfig, get_effective_smtp_config
 
 logger = logging.getLogger(__name__)
+
+# Pièce jointe : (nom du fichier, contenu binaire, type MIME)
+Attachment = tuple[str, bytes, str]
+
+__all__ = [
+    "Attachment",
+    "send_email_sync",
+    "send_email_async",
+    "send_reset_password_email",
+    "send_welcome_entreprise_email",
+    "send_email_verification_email",
+    "send_client_credentials_email",
+]
 
 
 def _build_mime_message(
@@ -23,15 +37,32 @@ def _build_mime_message(
     text_content: str = "",
     from_email: str | None = None,
     from_name: str | None = None,
+    attachments: list[Attachment] | None = None,
 ) -> MIMEMultipart:
-    msg = MIMEMultipart("alternative")
+    """Construit le message MIME.
+
+    Sans pièce jointe, la structure reste un simple `multipart/alternative`
+    (comportement historique inchangé). Avec pièces jointes, on encapsule le
+    corps (plain + HTML) dans un `multipart/alternative` imbriqué puis on
+    attache chaque fichier encodé en base64.
+    """
+    msg = MIMEMultipart("mixed") if attachments else MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = f"{from_name or settings.smtp_from_name} <{from_email or settings.smtp_from_email}>"
     msg["To"] = to_email
 
     plain = text_content or "Veuillez afficher ce message au format HTML."
-    msg.attach(MIMEText(plain, "plain", "utf-8"))
-    msg.attach(MIMEText(html_content, "html", "utf-8"))
+    body = MIMEMultipart("alternative") if attachments else msg
+    body.attach(MIMEText(plain, "plain", "utf-8"))
+    body.attach(MIMEText(html_content, "html", "utf-8"))
+
+    if attachments:
+        msg.attach(body)
+        for filename, content, mime_type in attachments:
+            subtype = (mime_type.split("/")[-1] or "octet-stream").strip() or "octet-stream"
+            part = MIMEApplication(content, _subtype=subtype)
+            part.add_header("Content-Disposition", "attachment", filename=filename)
+            msg.attach(part)
     return msg
 
 
@@ -41,9 +72,12 @@ def _send_via_config(
     subject: str,
     html_content: str,
     text_content: str = "",
+    attachments: list[Attachment] | None = None,
 ) -> bool:
     """Envoi synchrone avec une config SMTP explicite (testable)."""
-    msg = _build_mime_message(to_email, subject, html_content, text_content, cfg.from_email, cfg.from_name)
+    msg = _build_mime_message(
+        to_email, subject, html_content, text_content, cfg.from_email, cfg.from_name, attachments
+    )
     try:
         if cfg.use_ssl:
             server = smtplib.SMTP_SSL(cfg.host, cfg.port, timeout=15)
@@ -68,6 +102,7 @@ def send_email_sync(
     subject: str,
     html_content: str,
     text_content: str = "",
+    attachments: list[Attachment] | None = None,
 ) -> bool:
     """Envoie un email de manière synchrone via SMTP (.env — chemin legacy)."""
     cfg = EffectiveSmtpConfig(
@@ -78,6 +113,8 @@ def send_email_sync(
         frontend_url=settings.frontend_url, source="env",
     )
     try:
+        if attachments:
+            return _send_via_config(cfg, to_email, subject, html_content, text_content, attachments)
         return _send_via_config(cfg, to_email, subject, html_content, text_content)
     except Exception as exc:
         logger.warning(
@@ -94,6 +131,7 @@ async def send_email_async(
     text_content: str = "",
     db=None,
     smtp_config=None,
+    attachments: list[Attachment] | None = None,
 ) -> bool:
     """Envoie un email sans bloquer la boucle FastAPI (config DB prioritaire)."""
     cfg = smtp_config
@@ -103,6 +141,12 @@ async def send_email_async(
         except Exception:
             cfg = await get_effective_smtp_config(None)
     try:
+        # Appel positionnel historique quand il n'y a pas de pièce jointe : des
+        # doubles de test (tests/test_mail_settings.py) n'acceptent que 5 arguments.
+        if attachments:
+            return await asyncio.to_thread(
+                _send_via_config, cfg, to_email, subject, html_content, text_content, attachments
+            )
         return await asyncio.to_thread(_send_via_config, cfg, to_email, subject, html_content, text_content)
     except Exception as exc:
         logger.warning(f"Échec envoi async vers {to_email}: {exc}")
@@ -371,3 +415,107 @@ async def send_email_verification_email(
         text_content=text_content,
         db=db,
     )
+
+
+async def send_client_credentials_email(
+    to_email: str,
+    *,
+    nom_client: str = "",
+    login: str = "",
+    login_url: str,
+    pdf_bytes: bytes,
+    pdf_filename: str = "fiche-acces.pdf",
+    entreprise_nom: str = "",
+    db=None,
+    smtp_config=None,
+) -> bool:
+    """Envoie au client ses identifiants d'accès (fiche PDF en pièce jointe).
+
+    Le mot de passe temporaire n'apparaît JAMAIS dans le corps de l'email :
+    il vit uniquement dans le PDF joint, que le client peut imprimer.
+    """
+    cfg = smtp_config
+    if cfg is None:
+        try:
+            cfg = await get_effective_smtp_config(db)
+        except Exception:
+            cfg = await get_effective_smtp_config(None)
+    greeting = f"Bonjour {nom_client}," if nom_client.strip() else "Bonjour,"
+    brand = entreprise_nom or cfg.from_name
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }}
+            .container {{ max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e1e8ed; }}
+            .header {{ background-color: #0f172a; color: #ffffff; padding: 24px; text-align: center; }}
+            .header h1 {{ margin: 0; font-size: 22px; font-weight: 700; color: #f8fafc; letter-spacing: 0.5px; }}
+            .header p {{ margin: 6px 0 0; font-size: 13px; color: #94a3b8; }}
+            .content {{ padding: 32px 24px; line-height: 1.6; }}
+            .btn {{ display: inline-block; background-color: #059669; color: #ffffff !important; text-decoration: none; padding: 13px 30px; border-radius: 6px; font-weight: 700; margin: 18px 0; font-size: 15px; box-shadow: 0 2px 6px rgba(5,150,105,0.3); }}
+            .info-box {{ background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 12px 16px; margin: 20px 0; font-size: 13px; color: #92400e; }}
+            .link-alt {{ word-break: break-all; font-size: 12px; color: #059669; background: #f0fdf4; padding: 10px 14px; border-radius: 4px; display: block; margin-top: 12px; border: 1px dashed #86efac; }}
+            .row {{ font-size: 14px; margin: 4px 0; }}
+            .footer {{ background-color: #f8fafc; padding: 16px 24px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>TIA INFO BUILD</h1>
+                <p>Espace Client</p>
+            </div>
+            <div class="content">
+                <p><strong>{greeting}</strong></p>
+                <p>Votre accès à l'Espace Client a été créé par <strong>{brand}</strong>. Cet espace vous permet de suivre vos chantiers, devis, contrats, factures et paiements en temps réel.</p>
+                <p class="row"><strong>Identifiant (login) :</strong> {login}</p>
+                <p class="row"><strong>Entreprise :</strong> {brand}</p>
+                <div class="info-box">
+                    🔒 Votre <strong>mot de passe temporaire</strong> se trouve dans le document PDF joint à cet e-mail
+                    (<strong>{pdf_filename}</strong>). Il vous sera demandé de le modifier lors de votre première connexion.
+                </div>
+                <div style="text-align: center;">
+                    <a href="{login_url}" class="btn">Accéder à mon Espace Client</a>
+                </div>
+                <p style="font-size: 13px; color: #475569;">Si le bouton ne fonctionne pas, copiez-collez ce lien dans votre navigateur :</p>
+                <span class="link-alt">{login_url}</span>
+                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0 16px;">
+                <p style="font-size: 12px; color: #64748b;">Ce message contient vos identifiants personnels : ne le transférez à personne. Si vous n'êtes pas à l'origine de cette demande, contactez votre interlocuteur commercial.</p>
+            </div>
+            <div class="footer">
+                &copy; {cfg.from_name} — Logiciel de Gestion BTP &amp; Multi-chantiers.
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+    text_content = f"""
+    {greeting}
+
+    Votre acces a l'Espace Client a ete cree par {brand}.
+
+    Identifiant (login) : {login}
+    Entreprise : {brand}
+    Lien de connexion : {login_url}
+
+    Votre mot de passe temporaire se trouve dans le document PDF joint a cet email
+    ({pdf_filename}). Il vous sera demande de le modifier lors de votre premiere connexion.
+
+    Ce message contient vos identifiants personnels : ne le transferez a personne.
+    """
+
+    renomme = pdf_filename or "fiche-acces.pdf"
+    return await send_email_async(
+        to_email=to_email,
+        subject=f"Vos identifiants d'accès - Espace Client {brand}".strip(),
+        html_content=html_content,
+        text_content=text_content,
+        db=db,
+        smtp_config=cfg,
+        attachments=[(renomme, pdf_bytes, "application/pdf")],
+    )
+

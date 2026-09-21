@@ -668,6 +668,15 @@ export interface ClientAdresse {
   updated_at: string;
 }
 
+/** Réponse de l'envoi (ou renvoi) des identifiants d'accès au client. */
+export interface ClientIdentifiantsEnvoi {
+  client_id: number;
+  email?: string;
+  email_envoye: boolean;
+  utilisateur_id?: number;
+  message: string;
+}
+
 export interface Devis {
   id: number;
   entreprise_id: number;

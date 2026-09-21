@@ -218,3 +218,14 @@ class ClientList(BaseModel):
     encours_max: float | None = None
     is_deleted: bool | None = None
     created_at: datetime | None = None
+
+
+class ClientIdentifiantsEnvoiResponse(BaseModel):
+    """Réponse de l'envoi (ou renvoi) des identifiants d'accès au client."""
+
+    client_id: int
+    email: str | None = None
+    email_envoye: bool = False
+    utilisateur_id: int | None = None
+    message: str
+
