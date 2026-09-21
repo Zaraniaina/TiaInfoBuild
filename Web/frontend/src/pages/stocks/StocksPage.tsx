@@ -366,6 +366,7 @@ export function StocksPage() {
   const [showArticleModal, setShowArticleModal] = useState(false)
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null)
   const [articleForm, setArticleForm] = useState<Partial<Article>>({})
+  const [restitutionOpenId, setRestitutionOpenId] = useState<number | null>(null)
 
   // Modal Dépôt
   const [showDepotModal, setShowDepotModal] = useState(false)
@@ -483,11 +484,6 @@ export function StocksPage() {
   const generateNumeroBonSortie = () => `BS-2026-${Math.floor(1000 + Math.random() * 9000)}`
   const generateNumeroBL = () => `BL-2026-${Math.floor(1000 + Math.random() * 9000)}`
   const generateCodeOutil = () => `EQP-OUT-${Math.floor(10 + Math.random() * 90)}`
-  const generateCodeDepot = () => `DEP-${Math.floor(10 + Math.random() * 90)}`
-  const generateReferenceArticle = (cat?: string) => {
-    const prefix = cat ? cat.slice(0, 3).toUpperCase() : 'MAT'
-    return `MAT-${prefix}-${Math.floor(100 + Math.random() * 900)}`
-  }
 
   // KPIs Calculés
   const totalStockValueMGA = useMemo(() => {
@@ -517,7 +513,6 @@ export function StocksPage() {
       } else {
         const newArt = await stocksService.createArticle({
           ...articleForm,
-          reference: articleForm.reference || generateReferenceArticle(articleForm.categorie),
           stock_actuel: Number(articleForm.stock_actuel || 0),
           stock_mini: Number(articleForm.stock_mini || 10),
           seuil_alerte: Number(articleForm.seuil_alerte || 15),
@@ -542,7 +537,6 @@ export function StocksPage() {
       } else {
         const newDepot = await stocksService.createDepot({
           ...depotForm,
-          code: depotForm.code || generateCodeDepot(),
           type: depotForm.type || 'magasin_principal',
         })
         setDepots(prev => [newDepot, ...prev])
@@ -788,7 +782,6 @@ export function StocksPage() {
                 setSelectedArticle(null)
                 const cat = 'Liants & Ciments'
                 setArticleForm({
-                  reference: generateReferenceArticle(cat),
                   stock_actuel: 0,
                   stock_mini: 20,
                   seuil_alerte: 15,
@@ -1283,7 +1276,6 @@ export function StocksPage() {
                     onClick={() => {
                       setSelectedDepot(null)
                       setDepotForm({
-                        code: generateCodeDepot(),
                         type: 'magasin_principal',
                         capacite_m2: 500,
                       })
@@ -1596,15 +1588,17 @@ export function StocksPage() {
                                 <button
                                   className="btn btn-sm btn-outline-success dropdown-toggle"
                                   type="button"
-                                  data-bs-toggle="dropdown"
+                                  aria-haspopup="true"
+                                  aria-expanded={restitutionOpenId === emp.id}
+                                  onClick={() => setRestitutionOpenId(restitutionOpenId === emp.id ? null : emp.id)}
                                 >
                                   Restituer
                                 </button>
-                                <ul className="dropdown-menu dropdown-menu-end shadow border-0">
+                                <ul className={`dropdown-menu dropdown-menu-end shadow border-0${restitutionOpenId === emp.id ? ' show' : ''}`}>
                                   <li>
                                     <button
                                       className="dropdown-item small"
-                                      onClick={() => handleRestituerOutil(emp.id, 'conforme')}
+                                      onClick={() => { setRestitutionOpenId(null); handleRestituerOutil(emp.id, 'conforme') }}
                                     >
                                       <i className="bi bi-check-circle text-success me-2"></i>Conforme / Bon état
                                     </button>
@@ -1612,7 +1606,7 @@ export function StocksPage() {
                                   <li>
                                     <button
                                       className="dropdown-item small"
-                                      onClick={() => handleRestituerOutil(emp.id, 'nettoyage_requis')}
+                                      onClick={() => { setRestitutionOpenId(null); handleRestituerOutil(emp.id, 'nettoyage_requis') }}
                                     >
                                       <i className="bi bi-droplet text-warning me-2"></i>À nettoyer
                                     </button>
@@ -1620,7 +1614,7 @@ export function StocksPage() {
                                   <li>
                                     <button
                                       className="dropdown-item small text-danger"
-                                      onClick={() => handleRestituerOutil(emp.id, 'a_reparer')}
+                                      onClick={() => { setRestitutionOpenId(null); handleRestituerOutil(emp.id, 'a_reparer') }}
                                     >
                                       <i className="bi bi-wrench text-danger me-2"></i>Endommagé / À réparer
                                     </button>
@@ -1811,20 +1805,12 @@ export function StocksPage() {
                   <div className="row g-3">
                     <div className="col-12 col-md-4">
                       <div className="d-flex justify-content-between align-items-center mb-1">
-                        <label className="form-label fw-semibold mb-0">Référence BTP *</label>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-link p-0 text-decoration-none fs-8"
-                          onClick={() => setArticleForm({ ...articleForm, reference: generateReferenceArticle(articleForm.categorie) })}
-                        >
-                          <i className="bi bi-arrow-clockwise me-1"></i>Auto
-                        </button>
+                        <label className="form-label fw-semibold mb-0">Référence BTP (auto)</label>
                       </div>
                       <input
                         type="text"
                         className="form-control font-mono"
-                        required
-                        placeholder="ex: MAT-CIM-50"
+                        placeholder="Auto si vide (ex: ART-0001)"
                         value={articleForm.reference || ''}
                         onChange={e => setArticleForm({ ...articleForm, reference: e.target.value })}
                       />
@@ -1851,7 +1837,6 @@ export function StocksPage() {
                           setArticleForm({
                             ...articleForm,
                             categorie: newCat,
-                            reference: selectedArticle ? articleForm.reference : generateReferenceArticle(newCat),
                           })
                         }}
                       >
@@ -1974,20 +1959,12 @@ export function StocksPage() {
                   <div className="row g-3">
                     <div className="col-12 col-md-4">
                       <div className="d-flex justify-content-between align-items-center mb-1">
-                        <label className="form-label fw-semibold mb-0">Code Dépôt *</label>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-link p-0 text-decoration-none fs-8"
-                          onClick={() => setDepotForm({ ...depotForm, code: generateCodeDepot() })}
-                        >
-                          <i className="bi bi-arrow-clockwise me-1"></i>Auto
-                        </button>
+                        <label className="form-label fw-semibold mb-0">Code Dépôt (auto)</label>
                       </div>
                       <input
                         type="text"
                         className="form-control font-mono"
-                        required
-                        placeholder="ex: DEP-TANJO"
+                        placeholder="Auto si vide (ex: DEP-0001)"
                         value={depotForm.code || ''}
                         onChange={e => setDepotForm({ ...depotForm, code: e.target.value })}
                       />
@@ -2492,8 +2469,7 @@ export function StocksPage() {
                     <input
                       type="text"
                       className="form-control font-mono"
-                      required
-                      placeholder="ex: BL-2026-0955"
+                      placeholder="Auto si vide (ex: BL-2026-0955)"
                       value={receptionForm.numero_bl}
                       onChange={e => setReceptionForm({ ...receptionForm, numero_bl: e.target.value })}
                     />
