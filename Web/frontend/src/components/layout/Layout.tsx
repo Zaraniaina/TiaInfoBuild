@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
+import { NoIndex } from '@/components/seo/NoIndex'
 import { useUIStore } from '@/stores/ui.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useEffect, useState } from 'react'
@@ -64,6 +65,8 @@ export function Layout() {
 
   return (
     <div className="app-shell">
+      {/* Pages privées : jamais indexées (la vitrine gère son propre SEO). */}
+      <NoIndex />
       <Sidebar />
       {sidebarOpen && !isDesktop && (
         <div

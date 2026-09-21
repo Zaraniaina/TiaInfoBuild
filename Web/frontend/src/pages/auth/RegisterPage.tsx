@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -7,6 +7,8 @@ import { api } from '@/services/api'
 import { useToastStore } from '@/stores/toast.store'
 import { formatErrorMessage } from '@/utils/errorMessage'
 import { AuthVisualPanel } from '@/components/auth/AuthVisualPanel'
+import { useSeo } from '@/hooks/useSeo'
+import { registerSeo } from '@/utils/seo'
 
 const passwordPolicy = z
   .string()
@@ -42,6 +44,9 @@ function normalizePayload(data: RegisterFormData) {
 }
 
 export function RegisterPage() {
+  // SEO vitrine : page publique indexable (le formulaire reste fonctionnel, inchangé).
+  useSeo(useMemo(() => registerSeo(), []))
+
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

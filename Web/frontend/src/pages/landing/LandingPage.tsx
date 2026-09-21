@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '@/services/api'
 import type { Plan } from '@/types'
 import { BrandLogo } from '@/components/brand/BrandLogo'
 import { useUIStore } from '@/stores/ui.store'
+import { useJsonLd, useSeo } from '@/hooks/useSeo'
+import { buildFaqJsonLd, buildOrganizationJsonLd, landingSeo } from '@/utils/seo'
 import './landing.css'
 
 /* ============================================================
@@ -139,6 +141,11 @@ function useReveal(dep: unknown) {
 }
 
 export function LandingPage() {
+  // SEO vitrine : index,follow + métas OG/Twitter (index.html pose noindex par défaut).
+  useSeo(useMemo(() => landingSeo(), []))
+  useJsonLd('org', useMemo(() => buildOrganizationJsonLd(), []))
+  useJsonLd('faq', useMemo(() => buildFaqJsonLd(FAQ), []))
+
   const [menuOpen, setMenuOpen] = useState(false)
   const [plans, setPlans] = useState<Plan[]>([])
   const [loadingPlans, setLoadingPlans] = useState(true)

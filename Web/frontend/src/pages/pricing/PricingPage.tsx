@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { subscriptionsService } from '@/services/subscriptions.service'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth.store'
@@ -6,6 +6,12 @@ import { useToast } from '@/stores/toast.store'
 import type { Plan } from '@/types'
 import { useNavigate } from 'react-router-dom'
 import { TableSkeleton } from '@/components/ui/Skeleton'
+import { useJsonLd, useSeo } from '@/hooks/useSeo'
+import {
+  buildOrganizationJsonLd,
+  buildProductJsonLd,
+  pricingSeo,
+} from '@/utils/seo'
 
 // Plans système : jamais "sur devis", jamais mis en avant comme payants.
 const CODES_SYSTEME = ['essai', 'gratuit']
@@ -19,6 +25,16 @@ export function PricingPage() {
   const { user } = useAuthStore()
   const navigate = useNavigate()
   const { showToast } = useToast()
+
+  // SEO vitrine : page publique indexable (métas + canonical /pricing).
+  const metaSeo = useMemo(() => pricingSeo(), [])
+  const orgJsonLd = useMemo(() => buildOrganizationJsonLd(), [])
+  const plansJsonLd = useMemo(() => buildProductJsonLd(plans), [plans])
+  useSeo(metaSeo)
+  // JSON-LD : Organization toujours ; Product/Offers depuis les plans RÉELS
+  // chargés de l'API (jamais de tarifs fictifs — `null` si aucun plan).
+  useJsonLd('org-pricing', orgJsonLd)
+  useJsonLd('plans', plansJsonLd)
 
   useEffect(() => {
     subscriptionsService.getPlans()
