@@ -270,3 +270,37 @@ async def test_push_entite_inconnue_rejectee_sans_echec_global(db_session, clien
         await db_session.execute(select(Article).where(Article.client_ref == REF_ARTICLE))
     ).scalar_one()
     assert row.nom == "Rond à béton"
+
+
+# ------------------------------------------------------------
+# 6. incident créé côté web → tenantisé (sinon jamais tiré par le pull)
+# ------------------------------------------------------------
+
+async def test_add_incident_cote_web_port_entreprise_id(db_session, client_factory):
+    """Régression : `POST chantiers/{id}/incidents` doit renseigner
+    `incident.entreprise_id` (hérité du chantier mère). Sans cela la colonne
+    reste NULL et `sync_pull` (filtre tenant) ne livre JAMAIS l'incident au
+    desktop — entité canonique `incident` donc sync silencieusement cassée.
+    """
+    from app.models.chantier import Chantier
+    from app.models.incident import Incident
+
+    ent = await _entreprise(db_session)
+    chantier = Chantier(entreprise_id=ent.id, nom="Chantier Incident")
+    db_session.add(chantier)
+    await db_session.flush()
+
+    # chef_chantier : rôle détenteur de chantiers:write (le directeur n'a
+    # que chantiers:read — voir app/core/permissions.py).
+    async with await client_factory("chef_chantier", entreprise_id=ent.id) as client:
+        resp = await client.post(
+            f"/api/chantiers/{chantier.id}/incidents",
+            json={"titre": "Chute de matériel", "description": "Rupture d'échafaudage"},
+        )
+
+    assert resp.status_code == 201, resp.text
+    incident = await db_session.get(Incident, resp.json()["id"])
+    assert incident is not None
+    assert incident.entreprise_id == ent.id, (
+        "l'incident web doit porter l'entreprise du chantier pour être tirable"
+    )

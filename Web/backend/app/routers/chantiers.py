@@ -414,6 +414,10 @@ async def add_incident(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
 
     incident = Incident(
+        # Tenantissé via le chantier mère (vérifié contre le JWT ci-dessus) :
+        # sans cela, le pull desktop (filtre `entreprise_id`) ne voit jamais
+        # les incidents créés côté web — voir app/routers/sync.py.
+        entreprise_id=chantier.entreprise_id,
         chantier_id=id,
         declare_par=user.id if user else None,
         **obj_in.model_dump(),
