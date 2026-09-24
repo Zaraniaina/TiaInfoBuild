@@ -1,8 +1,9 @@
 """Hooks SQLAlchemy génériques pour les colonnes de synchronisation desktop.
 
-Positionnés sur les 3 tables synchronisées (pointages, chantiers, employes),
-ils garantissent que TOUTE écriture serveur — insert/update émis par le sync
-desktop comme par le web (React) — met à jour les colonnes de sync :
+Positionnés sur les tables synchronisées (pointages, chantiers, employes +
+les 13 entités métier de la PHASE 4), ils garantissent que TOUTE écriture
+serveur — insert/update émis par le sync desktop comme par le web (React) —
+met à jour les colonnes de sync :
 
 - ``sync_created_at`` : positionné à l'insertion (s'il était encore vide).
 - ``sync_updated_at``  : remis à jour à chaque update → c'est le filtre du
@@ -20,15 +21,49 @@ from datetime import datetime, timezone
 
 from sqlalchemy import event
 
+from app.models.achats import CommandeFournisseur
+from app.models.article import Article
 from app.models.chantier import Chantier
+from app.models.client import Client
+from app.models.conge import Conge
+from app.models.depense import Depense
+from app.models.devis import Devis
 from app.models.employe import Employe
+from app.models.facture import Facture
+from app.models.heure_supplementaire import HeureSupplementaire
+from app.models.incident import Incident
+from app.models.maintenance import Maintenance
+from app.models.materiel import Materiel
+from app.models.mouvement_stock import MouvementStock
 from app.models.pointage import Pointage
+from app.models.tache import Tache
 
-# PHASE 4 : ajouter ici les modèles supplémentaires branchés à la sync.
+# PHASE 4 : les 13 entités métier étendues sont ci-dessus — toute entité
+# supplémentaire branchée à la sync s'ajoute ici (et dans ENTITES_SYNC du
+# router app/routers/sync.py, qui doit rester en miroir).
 
 # Les modèles cibles (importés ci-dessus) : n'importe quel import de modèle
 # charge ce module via app.models.__init__ — donc les hooks sont toujours actifs.
-SYNC_MODELS = (Pointage, Chantier, Employe)
+SYNC_MODELS = (
+    # --- PHASE 1 (base desktop) ---
+    Pointage,
+    Chantier,
+    Employe,
+    # --- PHASE 4 (entités métier étendues) ---
+    Article,
+    MouvementStock,
+    CommandeFournisseur,
+    Depense,
+    Client,
+    Devis,
+    Facture,
+    Conge,
+    HeureSupplementaire,
+    Materiel,
+    Maintenance,
+    Tache,
+    Incident,
+)
 
 
 def _maintenant_utc() -> datetime:

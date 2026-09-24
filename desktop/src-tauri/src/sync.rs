@@ -34,14 +34,32 @@ const TIMEOUT_TCP: Duration = Duration::from_secs(2);
 
 /// Traduit une `entity` de sync vers sa table SQLite locale.
 ///
-/// **PHASE 4 : ajouter les entités restantes** (stocks, articles, achats,
-/// finance, commercial, RH, matériel, rapports, alertes…). Toute entité
-/// absente de ce `match` est refusée proprement sans perdre l'opération.
+/// PHASE 4 : les 13 entités des modules étendus (stocks, achats, finance,
+/// commercial, RH, matériel, chantier) sont branchées — listes CANONIQUES
+/// partagées avec `Web/backend/app/routers/sync.py` (`ENTITES_SYNC`) et les
+/// routes locales frontend (`local/*.routes.ts`). Toute entité absente de ce
+/// `match` est refusée proprement (`ENTITE_NON_PRISE_EN_CHARGE`) sans perdre
+/// l'opération : elle reste dans l'outbox. Les colonnes de sync des tables
+/// sont garanties par `db::ajouter_colonnes_sync`.
 fn table_pour_entite(entity: &str) -> Option<&'static str> {
     match entity {
         "pointage" => Some("pointages"),
         "chantier" => Some("chantiers"),
         "employe" => Some("employes"),
+        // Modules étendus (Phase 4)
+        "article" => Some("articles"),
+        "mouvement_stock" => Some("mouvements_stock"),
+        "achat" => Some("commandes_fournisseur"),
+        "depense" => Some("depenses"),
+        "client" => Some("clients"),
+        "devis" => Some("devis"),
+        "facture" => Some("factures"),
+        "conge" => Some("conges"),
+        "heure_supplementaire" => Some("heures_supplementaires"),
+        "materiel" => Some("materiaux"),
+        "maintenance" => Some("maintenances"),
+        "tache" => Some("taches"),
+        "incident" => Some("incidents"),
         _ => None,
     }
 }

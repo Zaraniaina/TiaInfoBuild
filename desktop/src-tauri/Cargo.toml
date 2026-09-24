@@ -13,13 +13,21 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-rusqlite = { version = "0.31", features = ["bundled"] }
+# Base locale CHIFFRÉE au repos (SQLCipher, plan §5) : `PRAGMA key` appliqué à
+# l'ouverture dans `db::ouvrir_connexion`, clé au keyring OS (`secret.rs`).
+# `bundled-sqlcipher` simple exige OPENSSL_DIR ; `vendored-openssl` compile
+# OpenSSL depuis les sources (REQUIERT perl dans le PATH — XAMPP :
+# C:\xampp\perl\bin — voir README / instructions de build).
+rusqlite = { version = "0.31", features = ["bundled-sqlcipher-vendored-openssl"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 keyring = { version = "3", default-features = false, features = ["windows-native"] }
 argon2 = "0.5"
 # Sel Argon2id (`SaltString::generate(OsRng)`) : active `rand_core/getrandom`,
 # feature que argon2 n'expose pas lui-même (déjà présent en 0.5.0 dans le lock).
 password-hash = { version = "0.5", features = ["getrandom"] }
+# Génération de la clé de chiffrement (32 octets) pour `secret.rs` — déjà
+# présent dans le lock via password-hash (getrandom) : aucun nouveau compile.
+getrandom = "0.2"
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2"
 

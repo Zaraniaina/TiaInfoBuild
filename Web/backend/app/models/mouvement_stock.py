@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, String, Text, Boolean, Numeric, DateTime, Date, ForeignKey, Index, func
+from sqlalchemy import BigInteger, String, Text, Boolean, Numeric, DateTime, Date, ForeignKey, Index, Integer, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -23,11 +23,18 @@ class MouvementStock(Base):
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    # --- Sync desktop (offline-first, web = maître) — voir app.core.sync_cols ---
+    client_ref: Mapped[str | None] = mapped_column(Text)
+    sync_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    sync_updated_at: Mapped[datetime | None] = mapped_column(DateTime, server_default=func.now())
+    sync_created_at: Mapped[datetime | None] = mapped_column(DateTime, server_default=func.now())
 
     __table_args__ = (
         Index("idx_mouvements_stock_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
         Index("idx_mouvements_stock_article_id", "article_id"),
         Index("idx_mouvements_stock_date_mouvement", "date_mouvement"),
+        Index("idx_mouvements_stock_client_ref", "client_ref"),
+        Index("idx_mouvements_stock_sync_updated_at", "sync_updated_at"),
     )
 
     entreprise: Mapped["Entreprise"] = relationship("Entreprise", back_populates="mouvements_stock", lazy="selectin")

@@ -135,17 +135,117 @@ pub fn chemin_base(app: &tauri::AppHandle) -> Result<PathBuf, CmdError> {
     Ok(dossier.join("tia.db"))
 }
 
-/// Ouvre (ou crée) la connexion : WAL, foreign_keys ON, busy_timeout 10 s.
+/// Ouvre (ou crée) la connexion : chiffrement SQLCipher, WAL, foreign_keys
+/// ON, busy_timeout 10 s.
+///
+/// L'ordre est contractuel : conversion éventuelle d'une base héritée
+/// non chiffrée, puis `PRAGMA key` DOIT précéder tout accès aux pages,
+/// sinon SQLCipher ne peut pas déchiffrer l'en-tête.
 pub fn ouvrir_connexion(path: &Path) -> Result<Connection, CmdError> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
+    // Base héritée non chiffrée → conversion en place (une fois) avant ouverture.
+    migrer_si_claire(path)?;
     let conn = Connection::open(path)?;
+    conn.busy_timeout(TIMEOUT_REQUETE)?;
+    // La clé précède tout accès aux données (elle-même réglage non paginé).
+    appliquer_cle(&conn)?;
     // journal_mode renvoie une ligne -> query_row et non execute_batch
     conn.query_row("PRAGMA journal_mode = WAL", [], |_| Ok(()))?;
     conn.execute_batch("PRAGMA foreign_keys = ON;")?;
-    conn.busy_timeout(TIMEOUT_REQUETE)?;
     Ok(conn)
+}
+
+/// Applique `PRAGMA key` puis contrôle d'accès (`sqlite_master`) : mauvaise
+/// clé → erreur explicite, jamais un « file is not a database » muet.
+fn appliquer_cle(conn: &Connection) -> Result<(), CmdError> {
+    let cle = crate::secret::cle_db()?;
+    // Hex pur validé en amont (64 car.) → littéral `x'…'` sûr, sans apostrophe.
+    conn.pragma_update(None, "key", format!("x'{cle}'"))?;
+    if let Err(erreur) = conn.query_row("SELECT COUNT(*) FROM sqlite_master", [], |_| Ok(())) {
+        return Err(CmdError::Interne(format!(
+            "déchiffrement de la base impossible (clé incorrecte ou fichier corrompu) : {erreur}"
+        )));
+    }
+    Ok(())
+}
+
+/// Convertit en place, UNE fois, une base héritée non chiffrée (versions
+/// antérieures de l'app) vers SQLCipher.
+///
+/// `PRAGMA rekey` ne chiffre PAS une base dont aucune clé n'a jamais été
+/// posée (codec inactif → no-op silencieux, constaté en test) : on utilise
+/// donc le chemin officiel SQLCipher `sqlcipher_export` — `ATTACH … KEY`,
+/// export schema+données, contrôle de lisibilité avec la clé, puis
+/// remplacement du fichier. En cas d'échec quelconque, **la base d'origine
+/// est conservée intacte** (seul un fichier `.chiffre` de travail est créé).
+fn migrer_si_claire(path: &Path) -> Result<(), CmdError> {
+    if !base_est_claire(path)? {
+        return Ok(());
+    }
+    let cle = crate::secret::cle_db()?;
+    let mut nom_cible = path.as_os_str().to_os_string();
+    nom_cible.push(".chiffre");
+    let cible = PathBuf::from(nom_cible);
+    let _ = std::fs::remove_file(&cible); // tentative interrompue éventuelle
+
+    // 1. Export de la base claire vers une base chiffrée (même clé que les
+    //    ouvertures normales : même littéral `x'…'` → même dérivation).
+    let user_version: i64;
+    {
+        let claire = Connection::open(path)?;
+        user_version = claire.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+        let chemin_cible = cible.to_string_lossy().replace('\'', "''");
+        claire.execute_batch(&format!(
+            "ATTACH DATABASE '{chemin_cible}' AS chiffre KEY 'x''{cle}''';"
+        ))?;
+        claire.query_row("SELECT sqlcipher_export('chiffre')", [], |_| Ok(()))?;
+        claire.pragma_update(
+            Some(rusqlite::DatabaseName::Attached("chiffre")),
+            "user_version",
+            user_version,
+        )?;
+        claire.execute_batch("DETACH DATABASE chiffre;")?;
+    }
+
+    // 2. Contrôle : le chiffré doit s'ouvrir avec la clé AVANT tout remplacement.
+    if let Err(erreur) = (|| -> Result<(), CmdError> {
+        let controle = Connection::open(&cible)?;
+        controle.pragma_update(None, "key", format!("x'{cle}'"))?;
+        controle.query_row("SELECT COUNT(*) FROM sqlite_master", [], |_| Ok(()))?;
+        Ok(())
+    })() {
+        let _ = std::fs::remove_file(&cible);
+        return Err(CmdError::Interne(format!(
+            "conversion de la base claire impossible (base d'origine conservée) : {erreur}"
+        )));
+    }
+
+    // 3. Remplacement : on purge les fichiers voisins de l'ancienne base.
+    std::fs::remove_file(path)?;
+    for suffixe in ["-wal", "-shm", "-journal"] {
+        let mut voisin = path.as_os_str().to_os_string();
+        voisin.push(suffixe);
+        let _ = std::fs::remove_file(voisin);
+    }
+    std::fs::rename(&cible, path)?;
+    Ok(())
+}
+
+/// Lit l'en-tête du fichier : `SQLite format 3\0` → base NON chiffrée
+/// (héritage d'une version antérieure). Fichier absent ou vide → `false`
+/// (base à créer : la clé est posée avant la première écriture).
+fn base_est_claire(path: &Path) -> Result<bool, CmdError> {
+    use std::io::Read;
+    let mut fichier = match std::fs::File::open(path) {
+        Ok(f) => f,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(e) => return Err(e.into()),
+    };
+    let mut entete = [0u8; 16];
+    let lus = fichier.read(&mut entete)?;
+    Ok(lus == 16 && &entete == b"SQLite format 3\0")
 }
 
 /// Dossier des migrations desktop (`desktop/migrations`, relatif au crate).
@@ -211,7 +311,78 @@ pub fn boot(conn: &mut Connection) -> Result<i64, CmdError> {
             let _ = nom; // nom utile en debug/trace
         }
     }
+    // Colonnes de sync garanties sur TOUTES les tables synchronisées, quel que
+    // soit l'état du `schema_init.sql` embarqué (il ne les contient pas tous).
+    ajouter_colonnes_sync(conn)?;
     Ok(version)
+}
+
+/// Tables synchronisées — aligné sur `sync::table_pour_entite` (v1 + Phase 4).
+const TABLES_SYNC: &[&str] = &[
+    // Entités de la v1 (migration desktop 0001)
+    "pointages",
+    "chantiers",
+    "employes",
+    // Phase 4 — modules étendus (listes canoniques partagées backend/frontend)
+    "articles",
+    "mouvements_stock",
+    "commandes_fournisseur",
+    "depenses",
+    "clients",
+    "devis",
+    "factures",
+    "conges",
+    "heures_supplementaires",
+    "materiaux",
+    "maintenances",
+    "taches",
+    "incidents",
+];
+
+/// Colonnes de sync ajoutées manquantes (mêmes noms que backend 034/035).
+const COLONNES_SYNC: &[(&str, &str)] = &[
+    ("client_ref", "TEXT"),
+    ("sync_version", "INTEGER NOT NULL DEFAULT 1"),
+    ("sync_updated_at", "TEXT"),
+    ("sync_created_at", "TEXT"),
+];
+
+/// Garantit les colonnes + index de sync sur chaque table synchronisée.
+///
+/// Idempotent (contrôle via `PRAGMA table_info`) et tolérant à une future
+/// régénération de `schema_init.sql` : seules les colonnes réellement
+/// absentes sont créées, puis deux index de couverture (`client_ref`,
+/// `sync_updated_at`) sont assurés (`IF NOT EXISTS`).
+fn ajouter_colonnes_sync(conn: &Connection) -> Result<(), CmdError> {
+    for table in TABLES_SYNC {
+        let mut stmt = conn.prepare(&format!("PRAGMA table_info({})", identifier(table)))?;
+        let existantes: Vec<String> = stmt
+            .query_map([], |r| r.get::<_, String>(1))?
+            .filter_map(|colonne| colonne.ok())
+            .collect();
+        drop(stmt);
+        if existantes.is_empty() {
+            continue; // table absente du schéma local : rien à faire
+        }
+        for (colonne, ddl) in COLONNES_SYNC {
+            if !existantes.iter().any(|c| c == colonne) {
+                conn.execute_batch(&format!(
+                    "ALTER TABLE {} ADD COLUMN {} {}",
+                    identifier(table),
+                    colonne,
+                    ddl
+                ))?;
+            }
+        }
+        let table_q = identifier(table);
+        conn.execute_batch(&format!(
+            "CREATE INDEX IF NOT EXISTS \"idx_{table}_client_ref\" \
+             ON {table_q} (\"client_ref\");\n\
+             CREATE INDEX IF NOT EXISTS \"idx_{table}_sync_updated_at\" \
+             ON {table_q} (\"sync_updated_at\");"
+        ))?;
+    }
+    Ok(())
 }
 
 /// `activated` = existence d'une ligne dans `local_session`.
@@ -264,7 +435,6 @@ pub fn db_boot(
 /// Vérifie qu'une requête est bien lecture seule (SELECT / CTE / EXPLAIN).
 fn est_lecture_seule(sql: &str) -> bool {
     let mot = sql
-        .trim_start()
         .split_whitespace()
         .next()
         .unwrap_or("")
@@ -625,6 +795,33 @@ pub fn supprimer_ligne(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Mutex, MutexGuard, Once};
+
+    // L'environnement (`TIA_DB_KEY`) est global au process : clé posée une
+    // seule fois puis tests sérialisés — jamais de mutation en cours de route.
+    static INIT_CLE: Once = Once::new();
+    static VERROU_TESTS: Mutex<()> = Mutex::new(());
+
+    /// Pose la clé de test (une fois) puis sérialise les tests de base.
+    fn verrou_cle() -> MutexGuard<'static, ()> {
+        INIT_CLE.call_once(|| {
+            // Constante de TEST uniquement : 32 octets `1a` (64 hex car.) —
+            // la production lit le keyring OS (secret.rs).
+            std::env::set_var("TIA_DB_KEY", "1a".repeat(32));
+        });
+        VERROU_TESTS.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// En-tête du fichier (16 premiers octets), `None` si fichier trop court.
+    fn entete(path: &Path) -> Option<[u8; 16]> {
+        use std::io::Read;
+        let mut fichier = std::fs::File::open(path).ok()?;
+        let mut octets = [0u8; 16];
+        match fichier.read(&mut octets) {
+            Ok(16) => Some(octets),
+            _ => None,
+        }
+    }
 
     fn chemin_temp(nom: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!(
@@ -634,11 +831,15 @@ mod tests {
         ));
         let _ = std::fs::remove_file(&dir);
         let _ = std::fs::remove_file(dir.with_extension("db-wal"));
+        // Dossier créé ici : certains tests ouvrent le fichier BRUT avant
+        // `ouvrir_connexion` (dont c'est le rôle de créer les parents).
+        let _ = std::fs::create_dir_all(&dir);
         dir.join("tia.db")
     }
 
     #[test]
     fn boot_cree_le_schema_complet() {
+        let _g = verrou_cle();
         let path = chemin_temp("boot");
         let (conn, version, activee) = ouvrir_et_boot(&path).expect("boot");
 
@@ -666,6 +867,7 @@ mod tests {
 
     #[test]
     fn boot_est_idempotent() {
+        let _g = verrou_cle();
         let path = chemin_temp("idem");
         let (_, v1, _) = ouvrir_et_boot(&path).expect("1er boot");
         let (_, v2, _) = ouvrir_et_boot(&path).expect("2e boot");
@@ -674,7 +876,29 @@ mod tests {
     }
 
     #[test]
+    fn colonnes_sync_sur_toutes_les_tables() {
+        let _g = verrou_cle();
+        // Toute table de la map `table_pour_entite` doit pouvoir stocker
+        // client_ref / sync_version / sync_*_at (push + pull de la Phase 4).
+        let path = chemin_temp("sync_cols");
+        let (conn, _, _) = ouvrir_et_boot(&path).expect("boot");
+
+        for table in TABLES_SYNC {
+            let cols = colonnes_table(&conn, table);
+            assert!(!cols.is_empty(), "table {table} absente du schéma local");
+            for (colonne, _) in COLONNES_SYNC {
+                assert!(
+                    cols.contains(*colonne),
+                    "{table}.{colonne} manquante après boot"
+                );
+            }
+        }
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
     fn exec_batch_rollback_sur_erreur() {
+        let _g = verrou_cle();
         let path = chemin_temp("rollback");
         let (conn, _, _) = ouvrir_et_boot(&path).expect("boot");
 
@@ -699,6 +923,7 @@ mod tests {
 
     #[test]
     fn exec_batch_renvoie_last_id() {
+        let _g = verrou_cle();
         let path = chemin_temp("lastid");
         let (conn, _, _) = ouvrir_et_boot(&path).expect("boot");
         let ins = ExecStatement {
@@ -721,5 +946,79 @@ mod tests {
 
     fn resultit_est_erreur<T>(r: &Result<T, CmdError>) -> bool {
         r.is_err()
+    }
+
+    // -----------------------------------------------------------------------
+    // Chiffrement de la base (plan §5) — SQLCipher / `PRAGMA key`
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn base_chiffree_apres_boot() {
+        let _g = verrou_cle();
+        let path = chemin_temp("chiffre");
+        drop(ouvrir_et_boot(&path).expect("boot"));
+
+        let entete = entete(&path).expect("en-tête lisible");
+        assert_ne!(
+            &entete,
+            b"SQLite format 3\0",
+            "la base doit être chiffrée au repos (SQLCipher)"
+        );
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(path.with_extension("db-wal"));
+    }
+
+    #[test]
+    fn migration_base_claire_vers_chiffree() {
+        let _g = verrou_cle();
+        let path = chemin_temp("rekey");
+        {
+            // Base héritée NON chiffrée (créée par une version antérieure).
+            let claire = Connection::open(&path).expect("base claire");
+            claire
+                .execute_batch(
+                    "CREATE TABLE heritage (x INTEGER); INSERT INTO heritage VALUES (42);",
+                )
+                .expect("écriture en clair");
+        }
+        let (conn, _, _) = ouvrir_et_boot(&path).expect("boot + rekey");
+
+        assert_ne!(
+            entete(&path),
+            Some(*b"SQLite format 3\0"),
+            "le rekey doit avoir chiffré la base héritée"
+        );
+        let x: i64 = conn
+            .query_row("SELECT x FROM heritage", [], |r| r.get(0))
+            .expect("données lisibles après rekey");
+        assert_eq!(x, 42, "le rekey doit préserver les données existantes");
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(path.with_extension("db-wal"));
+    }
+
+    #[test]
+    fn mauvaise_cle_rejetee() {
+        let _g = verrou_cle();
+        let path = chemin_temp("mauvaise_cle");
+        {
+            // Base chiffrée avec une AUTRE clé (0x02 × 32), hors environnement.
+            let etrangere = Connection::open(&path).expect("ouverture");
+            etrangere
+                .pragma_update(None, "key", format!("x'{}'", "02".repeat(32)))
+                .expect("clé étrangère");
+            etrangere
+                .execute_batch("CREATE TABLE cache (x INTEGER);")
+                .expect("base chiffrée étrangère");
+        }
+        let erreur = match ouvrir_connexion(&path) {
+            Ok(_) => panic!("la mauvaise clé doit être rejetée"),
+            Err(e) => e,
+        };
+        assert!(
+            erreur.to_string().contains("déchiffrement"),
+            "message d'erreur attendu, obtenu : {erreur}"
+        );
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(path.with_extension("db-wal"));
     }
 }

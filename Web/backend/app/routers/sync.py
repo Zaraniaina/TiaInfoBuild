@@ -28,10 +28,23 @@ import sqlalchemy as sa
 from app.core.serializers import model_to_dict
 from app.database import get_db
 from app.dependencies.auth import get_current_active_user
+from app.models.achats import CommandeFournisseur
+from app.models.article import Article
 from app.models.chantier import Chantier
+from app.models.client import Client
+from app.models.conge import Conge
+from app.models.depense import Depense
+from app.models.devis import Devis
 from app.models.employe import Employe
+from app.models.facture import Facture
+from app.models.heure_supplementaire import HeureSupplementaire
+from app.models.incident import Incident
+from app.models.maintenance import Maintenance
+from app.models.materiel import Materiel
+from app.models.mouvement_stock import MouvementStock
 from app.models.pointage import Pointage
 from app.models.sync_applied import SyncApplied
+from app.models.tache import Tache
 from app.security import get_current_user
 
 router = APIRouter(tags=["sync"])
@@ -49,13 +62,32 @@ logger = logging.getLogger("tia")
 # ============================================================
 
 # --- Table des entités synchronisées (singular → modèle) ---
-# PHASE 4 : ajouter les entités restantes ici (stocks, tâches, finance,
-# commercial, achats, RH complet, alertes, …). Le reste du moteur (push/pull)
-# est déjà générique : il n'y a rien d'autre à toucher.
+# PHASE 4 : les 13 entités métier étendues sont ci-dessous (stocks, achats,
+# commercial, RH, matériel, tâches, aléas). Le reste du moteur (push/pull)
+# est générique : il n'y a rien d'autre à toucher. Toute nouvelle entité
+# doit aussi être ajoutée à SYNC_MODELS (app/core/sync_cols.py) et recevoir
+# les colonnes de sync (migration dédiée + modèle SQLAlchemy).
 ENTITES_SYNC: dict[str, type] = {
     "pointage": Pointage,
     "chantier": Chantier,
     "employe": Employe,
+    # --- Stocks / achats / dépenses ---
+    "article": Article,
+    "mouvement_stock": MouvementStock,
+    "achat": CommandeFournisseur,
+    "depense": Depense,
+    # --- Commercial (clients / devis / factures) ---
+    "client": Client,
+    "devis": Devis,
+    "facture": Facture,
+    # --- RH ---
+    "conge": Conge,
+    "heure_supplementaire": HeureSupplementaire,
+    # --- Matériel / chantier ---
+    "materiel": Materiel,
+    "maintenance": Maintenance,
+    "tache": Tache,
+    "incident": Incident,
 }
 
 # Colonnes que le client desktop ne fournit JAMAIS : gérées par le serveur

@@ -11,6 +11,7 @@ import { ClientLoginPage } from '@/pages/auth/ClientLoginPage'
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
 import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage'
+import { OnlineRequiredGate } from '@/components/auth/OnlineRequiredGate'
 import { RoleRedirect } from '@/components/auth/RoleRedirect'
 import { PricingPage } from '@/pages/pricing/PricingPage'
 
@@ -149,11 +150,46 @@ function App() {
         />
       )}
       <Route path="/client-login" element={<ClientLoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/register-entreprise" element={<RegisterPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route
+        path="/register"
+        element={
+          <OnlineRequiredGate>
+            <RegisterPage />
+          </OnlineRequiredGate>
+        }
+      />
+      <Route
+        path="/register-entreprise"
+        element={
+          <OnlineRequiredGate>
+            <RegisterPage />
+          </OnlineRequiredGate>
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          <OnlineRequiredGate>
+            <ForgotPasswordPage />
+          </OnlineRequiredGate>
+        }
+      />
+      <Route
+        path="/reset-password"
+        element={
+          <OnlineRequiredGate>
+            <ResetPasswordPage />
+          </OnlineRequiredGate>
+        }
+      />
+      <Route
+        path="/verify-email"
+        element={
+          <OnlineRequiredGate>
+            <VerifyEmailPage />
+          </OnlineRequiredGate>
+        }
+      />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/app" element={<ProtectedRoute />}>
         <Route index element={<RoleRedirect />} />

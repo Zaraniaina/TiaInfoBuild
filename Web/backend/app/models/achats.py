@@ -1,7 +1,7 @@
 """Modèles du module Achats fournisseurs (cycle commande → réception → facture → paiement)."""
 from datetime import datetime
 
-from sqlalchemy import BigInteger, String, Text, Boolean, Numeric, DateTime, Date, ForeignKey, Index, func
+from sqlalchemy import BigInteger, String, Text, Boolean, Numeric, DateTime, Date, ForeignKey, Index, Integer, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -28,6 +28,11 @@ class CommandeFournisseur(Base):
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    # --- Sync desktop (offline-first, web = maître) — voir app.core.sync_cols ---
+    client_ref: Mapped[str | None] = mapped_column(Text)
+    sync_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    sync_updated_at: Mapped[datetime | None] = mapped_column(DateTime, server_default=func.now())
+    sync_created_at: Mapped[datetime | None] = mapped_column(DateTime, server_default=func.now())
 
     __table_args__ = (
         Index("idx_cf_entreprise_id", "entreprise_id"),
@@ -35,6 +40,8 @@ class CommandeFournisseur(Base):
         Index("idx_cf_fournisseur_id", "fournisseur_id"),
         Index("idx_cf_chantier_id", "chantier_id"),
         Index("idx_cf_statut", "statut"),
+        Index("idx_cf_client_ref", "client_ref"),
+        Index("idx_cf_sync_updated_at", "sync_updated_at"),
     )
 
     entreprise: Mapped["Entreprise"] = relationship("Entreprise", lazy="selectin")

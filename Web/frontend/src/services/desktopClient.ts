@@ -12,223 +12,87 @@
  * - RÈGLE D'OR : toute écriture locale = UNE SEULE `db_exec_batch` contenant
  *   l'écriture métier ET sa ligne `_sync_outbox` (transaction atomique).
  */
-import { invoke } from '@tauri-apps/api/core'
-import { AxiosError } from 'axios'
-import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios'
-import { useAuthStore } from '@/stores/auth.store'
+// ---------------------------------------------------------------------------
+// Socle partagé des routes locales (`local/*`) + API publique conservée pour
+// le reste de l'app (Topbar, syncEngine, pages) : les importations descendent
+// de ce module comme avant.
+// ---------------------------------------------------------------------------
+import type { InternalAxiosRequestConfig } from 'axios'
+import { localError, lookupLocalRoute, matchLocalPattern, type LocalHandler, type LocalRequest } from './local/registry'
+import {
+  boolSql,
+  currentEntrepriseId,
+  currentUser,
+  currentUserId,
+  dateLocale,
+  dbExecBatch,
+  dbQuery,
+  floatOrNull,
+  formatHeures,
+  heureCourte,
+  heureLocale,
+  horodatageLocal,
+  int,
+  intOrNull,
+  normaliserHeure,
+  pagination,
+  serializerBooleens,
+  str,
+  strOrNull,
+  uuid,
+  type JsonValue,
+  type LocalRow,
+  type SqlArg,
+} from './local/helpers'
+import { checkOnline } from './local/ipc'
+
+// Enregistrement des modules hors-ligne (Phase 4) — effets de bord uniquement :
+import './local/stocks.routes'
+import './local/commercial.routes'
+import './local/finance.routes'
+import './local/rh.routes'
+import './local/materiels.routes'
+import './local/chantiers.routes'
+import './local/alertes.routes'
+import './local/terrain.routes'
+
+export {
+  bootDesktop,
+  checkOnline,
+  dbExecBatch,
+  dbQuery,
+  defaultServerUrl,
+  getSyncStatus,
+  syncNow,
+} from './local/ipc'
+export { localError } from './local/registry'
+export type {
+  DbBootResult,
+  DbExecResult,
+  JsonValue,
+  LocalRow,
+  SyncRunResult,
+  SyncStatusResult,
+} from './local/ipc'
+export type { LocalHandler, LocalRequest } from './local/registry'
+
 
 // ---------------------------------------------------------------------------
-// Types du contrat Rust (volet desktop/src-tauri)
+// Types du contrat Rust : déplacés dans `local/ipc.ts` (re-exportés ci-dessus).
 // ---------------------------------------------------------------------------
-
-export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | { [key: string]: JsonValue }
-
-export type LocalRow = Record<string, unknown>
-
-export interface DbBootResult {
-  db_path: string
-  schema_version: number
-  activated: boolean
-}
-
-export interface SyncStatusResult {
-  online: boolean
-  pending: number
-  last_sync_at: string | null
-  conflicts: number
-}
-
-export interface SyncRunResult {
-  pushed: number
-  pulled: number
-  conflicts: number
-  cursor?: string | null
-  error?: string | null
-}
-
-interface DbExecResult {
-  rows_changed: number
-  last_id: number | null
-}
 
 /** Message affiché aux pages pour toute route non implémentée en local. */
 export const MESSAGE_HORS_LIGNE = 'Non disponible hors-ligne (module à venir — Phase 4 du plan)'
 
 // ---------------------------------------------------------------------------
-// Invocations Tauri (inertes hors Tauri : isDesktop() les conditionne)
+// Invocations Tauri : déplacées dans `local/ipc.ts` (re-exportées ci-dessus).
 // ---------------------------------------------------------------------------
 
-export async function dbQuery(sql: string, args: JsonValue[] = []): Promise<LocalRow[]> {
-  return invoke<LocalRow[]>('db_query', { sql, args })
-}
-
-async function dbExecBatch(statements: Array<{ sql: string; args: JsonValue[] }>): Promise<DbExecResult> {
-  return invoke<DbExecResult>('db_exec_batch', { statements })
-}
-
-/** Amorce la base locale SQLite (schéma + seed) au démarrage de l'app. */
-export async function bootDesktop(): Promise<DbBootResult> {
-  return invoke<DbBootResult>('db_boot')
-}
-
-/** Déclenche un cycle complet de synchronisation (push outbox → pull). */
-export async function syncNow(serverUrl: string = defaultServerUrl()): Promise<SyncRunResult> {
-  return invoke<SyncRunResult>('sync_run', { serverUrl })
-}
-
-/** État courant de la synchronisation (online, en attente, dernier sync, conflits). */
-export async function getSyncStatus(): Promise<SyncStatusResult> {
-  return invoke<SyncStatusResult>('sync_status')
-}
-
-/** URL du serveur transmise aux commandes desktop (activation / sync). */
-export function defaultServerUrl(): string {
-  return import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
-}
-
-/** true/false selon l'état réseau perçu par Tauri ; en cas de doute → en ligne. */
-async function isOnline(): Promise<boolean> {
-  try {
-    return await invoke<boolean>('net_online')
-  } catch {
-    return true
-  }
-}
-
 // ---------------------------------------------------------------------------
-// Erreurs « forme Axios »
+// Erreurs « forme Axios » : déplacées dans `local/registry.ts` (re-exportées).
 // ---------------------------------------------------------------------------
 
-/** Construit une erreur de la forme attendue par `formatErrorMessage` / les pages. */
-export function localError(status: number, detail: string, config?: InternalAxiosRequestConfig): AxiosError {
-  const response: AxiosResponse = {
-    data: { detail },
-    status,
-    statusText: 'Erreur locale',
-    headers: {},
-    config: config ?? ({} as InternalAxiosRequestConfig),
-  }
-  return new AxiosError(detail, `ERR_${status}`, config, undefined, response)
-}
-
-// ---------------------------------------------------------------------------
-// Petit socle SQLite / dates locales
-// ---------------------------------------------------------------------------
-
-type SqlArg = string | number | null
-
-function pad(n: number): string {
-  return String(n).padStart(2, '0')
-}
-
-/** Date locale AAAA-MM-JJ (identique au format `date` de FastAPI). */
-function dateLocale(d: Date = new Date()): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-
-/** Heure locale HH:MM:SS (identique à `datetime.now().strftime('%H:%M:%S')`). */
-function heureLocale(d: Date = new Date()): string {
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-}
-
-function heureCourte(d: Date = new Date()): string {
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-/** Horodatage local AAAA-MM-JJTHH:MM:SS (serialisation pydantic, sans timezone). */
-function horodatageLocal(d: Date = new Date()): string {
-  return `${dateLocale(d)}T${heureLocale(d)}`
-}
-
-/** UUID client (client_ref) — `crypto.randomUUID` avec repli sécurisé. */
-function uuid(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
-
-function str(v: unknown): string {
-  return typeof v === 'string' ? v : v === null || v === undefined ? '' : String(v)
-}
-
-function strOrNull(v: unknown): string | null {
-  if (v === null || v === undefined || v === '') return null
-  return str(v)
-}
-
-function int(v: unknown, def: number): number {
-  const n = typeof v === 'string' ? Number(v) : typeof v === 'number' ? v : NaN
-  return Number.isFinite(n) ? Math.trunc(n) : def
-}
-
-function intOrNull(v: unknown): number | null {
-  if (v === null || v === undefined || v === '') return null
-  return int(v, 0)
-}
-
-function floatOrNull(v: unknown): number | null {
-  if (v === null || v === undefined || v === '') return null
-  const n = typeof v === 'string' ? Number(v) : typeof v === 'number' ? v : NaN
-  return Number.isFinite(n) ? n : null
-}
-
-function boolSql(v: unknown): boolean {
-  return v === 1 || v === true || v === '1'
-}
-
-/** Normalise un champ horaire vers HH:MM:SS (le backend renvoie toujours `%H:%M:%S`). */
-function normaliserHeure(v: unknown): string | null {
-  const s = strOrNull(v)
-  if (!s) return null
-  const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(s)
-  if (!m) return s
-  return `${pad(int(m[1], 0))}:${m[2]}:${m[3] ?? '00'}`
-}
-
-/** Format Python `str(float)` : 8 → « 8.0 », 7.5 → « 7.5 ». */
-function formatHeures(h: number): string {
-  return Number.isInteger(h) ? `${h}.0` : String(h)
-}
-
-function pagination(params: Record<string, unknown>): { page: number; size: number; offset: number } {
-  const page = Math.max(1, int(params.page, 1))
-  const size = Math.min(100, Math.max(1, int(params.size, 25)))
-  return { page, size, offset: (page - 1) * size }
-}
-
-function currentUser() {
-  return useAuthStore.getState().user
-}
-
-function currentEntrepriseId(): number | null {
-  const id = currentUser()?.entreprise_id
-  return id === undefined || id === null ? null : int(id, 0)
-}
-
-function currentUserId(): number | null {
-  const id = currentUser()?.id
-  return id === undefined || id === null ? null : int(id, 0)
-}
-
-/** Réponses locales : les booléens SQLite (0/1) sont sérialisés comme FastAPI. */
-function serializerBooleens(row: LocalRow, colonnes: string[]): LocalRow {
-  const out: LocalRow = { ...row }
-  for (const c of colonnes) {
-    if (c in out) out[c] = boolSql(out[c])
-  }
-  return out
-}
+// Petit socle SQLite / dates locales : déplacé dans `local/helpers.ts`.
 
 // ---------------------------------------------------------------------------
 // Shapes des réponses (calées sur Web/backend/app/schemas/*)
@@ -277,16 +141,8 @@ const TYPES_POINTAGE = ['present', 'absent', 'retard', 'congé', 'maladie']
 // Registre des routes locales
 // ---------------------------------------------------------------------------
 
-export interface LocalRequest {
-  method: string
-  /** Chemin sans `/api` ni slash initial, ex. `rh/pointages`. */
-  path: string
-  params: Record<string, unknown>
-  data: Record<string, unknown>
-  pathParams: string[]
-}
-
-type LocalHandler = (req: LocalRequest) => Promise<unknown>
+/* Types `LocalRequest` / `LocalHandler` : importés depuis `local/registry.ts`
+   (partagés avec les modules `local/*.routes.ts`). */
 
 /** Comptes HTTP renvoyés pour les routes locales (FastAPI utilise 201 sur POST). */
 const LOCAL_STATUS: Record<string, number> = {
@@ -908,8 +764,19 @@ export async function handleLocalRequest(config: InternalAxiosRequestConfig): Pr
     }
   }
 
+  // Registre partagé des modules hors-ligne (`local/*.routes.ts`, Phase 4)
+  const registre = lookupLocalRoute(cle)
+  if (registre) {
+    return { passThrough: false, data: await registre.handler(req), status: registre.status }
+  }
+  const patron = matchLocalPattern(cle)
+  if (patron) {
+    req.pathParams = patron.m.slice(1)
+    return { passThrough: false, data: await patron.route.handler(req), status: patron.route.status }
+  }
+
   // Route non locale : relais online (comportement web actuel), sinon message clair.
-  if (!(await isOnline())) {
+  if (!(await checkOnline())) {
     throw localError(503, MESSAGE_HORS_LIGNE, config)
   }
   return { passThrough: true }

@@ -16,13 +16,14 @@ desktop/
 ├── migrations/
 │   └── 0001_initial.sql    # colonnes sync_version (suivies via PRAGMA user_version)
 └── src-tauri/
-    ├── Cargo.toml          # tauri 2, rusqlite (bundled), reqwest (rustls), keyring 3, argon2
+    ├── Cargo.toml          # tauri 2, rusqlite bundled SQLCipher (OpenSSL vendored), reqwest (rustls), keyring 3, argon2
     ├── tauri.conf.json     # fenêtre 1440×900, dev sur :5199, bundle NSIS
     ├── capabilities/       # core:default (les commandes custom n'exigent aucune permission)
     ├── generate_icons.py   # icônes placeholder (PNG 256 + ICO) — Phase 5 : vraies icônes
     └── src/
         ├── main.rs         # builder Tauri + handler des 8 commandes
-        ├── db.rs           # connexion unique, boot/schéma/migrations, query/exec
+        ├── db.rs           # connexion unique chiffrée (PRAGMA key/rekey), boot/schéma/migrations, query/exec
+        ├── secret.rs       # clé de chiffrement : TIA_DB_KEY ou keyring OS (32 octets, générée au 1er lancement)
         ├── auth.rs         # activation online, login online→offline (Argon2id, keyring)
         └── sync.rs         # outbox push / curseur pull / conflits « web gagne »
 ```
@@ -41,9 +42,15 @@ cd desktop ; npm run dev
 
 # Vérifications Rust
 cd desktop\src-tauri
+$env:PATH = 'C:\xampp\perl\bin;' + $env:PATH   # Perl requis par OpenSSL vendored (SQLCipher)
 cargo check        # première exécution longue (dépendances compilées)
-cargo test         # tests de boot/schéma/transactions
+cargo test         # tests de boot/schéma/transactions/chiffrement
 ```
+
+> **Perl / OpenSSL vendored** : la feature `bundled-sqlcipher-vendored-openssl`
+> compile OpenSSL depuis les sources — `C:\xampp\perl\bin` doit être dans le
+> PATH à chaque (re)compilation d'`openssl-sys`. Une fois compilé (cache
+> cargo), Perl n'est plus requis pour les builds suivants.
 
 > Note `beforeDevCommand` : il est lancé par la CLI Tauri ; si le prefix
 > `../Web/frontend` n'est pas résolu depuis le bon répertoire de travail sur
@@ -81,6 +88,24 @@ Erreurs : `RESEAU_REQUIS: …`, `IDENTIFIANTS_INVALIDES: …`, `EMAIL_NON_LIE: �
 3. 401/403 serveur → `IDENTIFIANTS_INVALIDES` (**sans** repli offline) ;
 4. aucune session locale → `ACTIVATION_REQUISE`.
 
+## Base locale chiffrée (SQLCipher)
+
+* Feature rusqlite `bundled-sqlcipher-vendored-openssl` : SQLCipher + OpenSSL
+  **compilés depuis les sources** — voir l'encadré Perl ci-dessus.
+* **Clé** (32 octets, 64 hex) — `src/secret.rs` :
+  1. `TIA_DB_KEY` (environnement) si définie — tests / CI / usage expert ;
+  2. sinon **keyring Windows** (service `tia-info-build`, entrée `db-key`) —
+     clé générée paresseusement au 1ʳᵉ lancement (`getrandom`), jamais en dur.
+* **Ouverture** (`db::ouvrir_connexion`) :
+  * base **claire** (version antérieure non chiffrée) → conversion en place par
+    `sqlcipher_export` (officiel SQLCipher ; `PRAGMA rekey` ne chiffre pas une
+    base jamais keyée) : export chiffré → **contrôle d'ouverture avec la clé**
+    → remplacement du fichier. Échec = base d'origine conservée intacte ;
+  * base vide ou **chiffrée** → `PRAGMA key` + contrôle `sqlite_master` :
+    mauvaise clé → « déchiffrement de la base impossible… » explicite.
+* **Tests** : `cargo test` couvre base chiffrée au repos, migration
+  clair → chiffré et rejet de la mauvaise clé (clé pilotée par `TIA_DB_KEY`).
+
 ## Synchronisation (web = maître)
 
 * **Écritures locales** : toujours via `db_exec_batch([...])` — **une seule
@@ -91,8 +116,11 @@ Erreurs : `RESEAU_REQUIS: …`, `IDENTIFIANTS_INVALIDES: …`, `EMAIL_NON_LIE: �
   `_sync_conflicts` et le record serveur est réappliqué localement (transaction).
 * **Curseur** : `_sync_state.cursor` n'avance que si tout le lot est applicable —
   une entité non mappée bloque l'avancée (rien n'est perdu, upserts idempotents).
-* Entités mappées aujourd'hui : `pointage`, `chantier`, `employe`
-  (**PHASE 4** : voir `table_pour_entite()` dans `src/sync.rs`).
+* Entités mappées aujourd'hui : les **16** du contrat PHASE 4 — `pointage`,
+  `chantier`, `employe` + les 13 étendues (`article`, `mouvement_stock`,
+  `achat`, `depense`, `client`, `devis`, `facture`, `conge`,
+  `heure_supplementaire`, `materiel`, `maintenance`, `tache`, `incident`) —
+  voir `table_pour_entite()` dans `src/sync.rs`.
 * `sync_status()` : `{ online, pending, last_sync_at, conflicts }` pour le badge hors-ligne.
 
 ## Commandes exposées (`invoke`)
@@ -129,4 +157,6 @@ Puis **incrémenter** une migration dans `desktop/migrations/` (jamais éditer
 | `RESEAU_REQUIS` pendant `sync_run` | normal hors ligne : l'outbox est intacte, la synchro reprend au retour du réseau |
 | `TOKEN_EXPIRE` en sync | JWT expiré → re-login en ligne (le refresh n'est pas encore branché, Phase 4) |
 | `ENTITE_NON_PRISE_EN_CHARGE` | entité absente de `table_pour_entite()` → Phase 4 |
+| `déchiffrement de la base impossible` | `TIA_DB_KEY` différente de la clé du keyring (ou fichier corrompu) |
+| build échoue sur OpenSSL / SQLCipher | Perl absent du PATH → `$env:PATH='C:\xampp\perl\bin;'+$env:PATH` puis relancer |
 | `cargo check` échoue sur les icônes | `python src-tauri/generate_icons.py` |

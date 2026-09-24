@@ -11,6 +11,7 @@
 
 mod auth;
 mod db;
+mod secret;
 mod sync;
 
 fn main() {
