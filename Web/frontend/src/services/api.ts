@@ -1,5 +1,8 @@
 import axios from 'axios';
+import type { AxiosResponse } from 'axios'
 import { useAuthStore } from '@/stores/auth.store'
+import { isDesktop } from '@/utils/buildMode'
+import { handleLocalRequest } from './desktopClient'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
@@ -58,6 +61,32 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+/* Pont desktop (volet Tauri, plan §2) : UNIQUEMENT si l'app tourne dans la
+   WebView Tauri — sans isDesktop(), zéro comportement nouveau pour le web.
+   - route locale (registre desktopClient) → réponse SQLite servie directement
+     via un adaptateur axios synthétique {data, status, statusText, headers,
+     config} : TanStack Query et les services ne voient aucune différence ;
+   - route non locale online → on laisse passer (config inchangée = relais axios
+     existant, mode hybride) ;
+   - route non locale hors-ligne → rejet avec `response.data.detail` explicite
+     (les `catch` des pages existantes l'affichent tels quels). */
+if (isDesktop()) {
+  api.interceptors.request.use(async (config) => {
+    const local = await handleLocalRequest(config);
+    if (local.passThrough) return config;
+
+    const response: AxiosResponse = {
+      data: local.data,
+      status: local.status ?? 200,
+      statusText: 'OK',
+      headers: {},
+      config,
+    };
+    config.adapter = async () => response;
+    return config;
+  });
+}
 
 api.interceptors.response.use(
   (response) => response,

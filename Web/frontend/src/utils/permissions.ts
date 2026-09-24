@@ -172,6 +172,7 @@ export const PERMISSION_MAP: Record<RoleCode, Record<string, string>> = {
     phases: "read,write",
     incidents: "read,write",
     employes: "read",
+    pointages: "read,write",
     equipes: "read",
     affectations: "read,write",
     clients: "read",
@@ -223,6 +224,7 @@ export const PERMISSION_MAP: Record<RoleCode, Record<string, string>> = {
     mouvements_stock: "read,write",
     fournisseurs: "read,write",
     chantiers: "read",
+    pointages: "read",
     alertes: "read",
     depenses: "read",
     rapport_financier: "read",
@@ -246,7 +248,9 @@ export const PERMISSION_MAP: Record<RoleCode, Record<string, string>> = {
     employe_terrain: "read,write",
     rh: "read",
     chantiers: "read",
-    pointages: "read,write",
+    // L'employé ne se pointe plus lui-même : le pointage est fait par le chef de
+    // chantier / le RH (scan du badge) ou en saisie manuelle → lecture seule.
+    pointages: "read",
     heures_sup: "read,write",
   },
   client: {

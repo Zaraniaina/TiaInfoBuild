@@ -41,6 +41,15 @@ const CATEGORIES_DOCS_RH = [
   { value: 'autre', label: 'Autre' },
 ]
 
+/** Libellés de la méthode de pointage : scan du badge par le chef de chantier / RH, ou saisie manuelle. */
+const METHODES_POINTAGE: Record<string, string> = {
+  manuel: 'Manuel',
+  scan_badge_par_chef: 'Scan badge',
+}
+
+const libelleMethodePointage = (methode?: string) =>
+  (methode && METHODES_POINTAGE[methode]) || methode || '-'
+
 /** Document administratif en attente d'upload (choisi dans le formulaire). */
 interface PendingDoc {
   file: File
@@ -392,7 +401,7 @@ export function RhPage() {
                 <button className="btn btn-outline-primary fw-bold" onClick={openBatchBadges} title="Imprimer la planche de badges pour le chantier">
                   <i className="bi bi-printer me-2"></i>Imprimer Badges QR ({employes.length})
                 </button>
-                {perms.canGenerateQR && (
+                {perms.canValidatePointage && (
                   <button className="btn btn-outline-secondary fw-bold" onClick={() => setShowScannerModal(true)}>
                     <i className="bi bi-qr-code-scan me-2"></i>Scanner Pointage
                   </button>
@@ -559,15 +568,7 @@ export function RhPage() {
           <div className="d-flex justify-content-between align-items-center mb-3">
             <div>
               <h5 className="mb-1 fw-bold"><i className="bi bi-calendar-check me-2"></i>Journal & Validation des Pointages</h5>
-              <p className="text-muted small mb-0">Pointages QR Code, Auto-déclarations GPS & Régularisations (Politique transverse v2.0)</p>
-            </div>
-            <div className="d-flex gap-2">
-              <button className="btn btn-outline-secondary fw-bold" onClick={() => alert('Génération du QR Code Chantier du Jour:\n\nCode: CHT-QR-2026-0822\nValide pour: Chantier Anosy\nHeure: ' + new Date().toLocaleTimeString())}>
-                <i className="bi bi-qr-code me-2"></i>Générer QR Code Chantier
-              </button>
-              <button className="btn btn-outline-secondary fw-bold" onClick={() => alert('Pointage Enregistré avec Succès !\n\nMode: Scan QR Code Site\nHeure: ' + new Date().toLocaleTimeString() + '\nStatut: En attente validation RH')}>
-                <i className="bi bi-qr-code-scan me-2"></i>Simuler Scan Ouvrier
-              </button>
+              <p className="text-muted small mb-0">Pointages par scan de badge (chef de chantier / RH) & Régularisations manuelles (Politique transverse v2.0)</p>
             </div>
           </div>
           <div className="card border-0 shadow-sm">
@@ -597,7 +598,8 @@ export function RhPage() {
                       </td>
                       <td>
                            <span className="badge bg-light text-dark border">
-                             <i className="bi bi-qr-code-scan me-1 text-muted"></i>QR Code Site
+                             <i className={`bi me-1 text-muted ${pt.methode_pointage === 'scan_badge_par_chef' ? 'bi-qr-code-scan' : 'bi-pencil'}`}></i>
+                             {libelleMethodePointage(pt.methode_pointage)}
                            </span>
                       </td>
                       <td>{pt.date_jour}</td>

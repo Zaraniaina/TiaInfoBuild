@@ -21,17 +21,24 @@ function isTokenExpired(token: string | null): boolean {
 }
 
 export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
-  const { isAuthenticated, user, token, refreshToken } = useAuthStore()
+  const { isAuthenticated, user, token, refreshToken, offline } = useAuthStore()
   const location = useLocation()
   const storedRefreshToken = refreshToken || localStorage.getItem('refresh_token')
 
-  const expired = isTokenExpired(token)
-  if (!isAuthenticated && !storedRefreshToken) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />
-  }
+  // Session locale desktop (offline) : aucun JWT serveur à valider.
+  if (offline) {
+    if (!isAuthenticated || !user) {
+      return <Navigate to="/login" replace state={{ from: location.pathname }} />
+    }
+  } else {
+    const expired = isTokenExpired(token)
+    if (!isAuthenticated && !storedRefreshToken) {
+      return <Navigate to="/login" replace state={{ from: location.pathname }} />
+    }
 
-  if (expired && !storedRefreshToken) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+    if (expired && !storedRefreshToken) {
+      return <Navigate to="/login" replace state={{ from: location.pathname }} />
+    }
   }
 
   // Par défaut on applique le rôle le moins privilégié (employé) afin de ne jamais

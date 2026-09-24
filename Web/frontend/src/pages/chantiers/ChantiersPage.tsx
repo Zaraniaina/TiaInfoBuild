@@ -22,8 +22,6 @@ export function ChantiersPage() {
   const [selectedChantier, setSelectedChantier] = useState<Chantier | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
-  const [showQRModal, setShowQRModal] = useState(false)
-  const [qrData, setQrData] = useState<{ qr_token: string; chantier_nom: string; date_validite: string } | null>(null)
   const [showScannerModal, setShowScannerModal] = useState(false)
   const [showTransformModal, setShowTransformModal] = useState(false)
   const [projetsTransformables, setProjetsTransformables] = useState<ProjetTransformable[]>([])
@@ -132,16 +130,6 @@ export function ChantiersPage() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-  }
-
-  const handleGenerateQR = async (chantierId: number) => {
-    try {
-      const data = await chantiersService.generateQR(chantierId)
-      setQrData({ qr_token: data.qr_token, chantier_nom: data.chantier_nom, date_validite: data.date_validite })
-      setShowQRModal(true)
-    } catch {
-      alert('Erreur lors de la génération du QR code')
-    }
   }
 
   const handleAddPhase = async (e: React.FormEvent) => {
@@ -350,15 +338,10 @@ export function ChantiersPage() {
                     <i className="bi bi-eye me-1"></i> Voir détails
                   </button>
                   <div className="d-flex gap-1">
-                   {perms.canGenerateQR && (
-                     <>
-                       <button className="btn btn-sm btn-outline-secondary" onClick={() => handleGenerateQR(c.id)} title="Générer QR Chantier">
-                         <i className="bi bi-qr-code-scan"></i>
-                       </button>
-                       <button className="btn btn-sm btn-outline-secondary" onClick={() => { setShowScannerModal(true); setSelectedChantier(c); }} title="Scanner badge employé">
-                         <i className="bi bi-phone-vibrate"></i>
-                       </button>
-                     </>
+                   {perms.canValidatePointage && (
+                     <button className="btn btn-sm btn-outline-secondary" onClick={() => { setShowScannerModal(true); setSelectedChantier(c); }} title="Scanner badge employé">
+                       <i className="bi bi-phone-vibrate"></i>
+                     </button>
                    )}
                    {perms.canEditChantier && (
                      <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setFormData(c); setShowModal(true); }}>
@@ -399,11 +382,6 @@ export function ChantiersPage() {
                     <td>{getStatutBadge(c.statut)}</td>
                     <td className="text-end">
                       <div className="d-inline-flex gap-1 align-items-center justify-content-end">
-                           {perms.canGenerateQR && (
-                             <button className="btn btn-sm btn-outline-secondary" onClick={() => handleGenerateQR(c.id)} title="QR Pointage">
-                               <i className="bi bi-qr-code-scan"></i>
-                             </button>
-                           )}
                          <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedChantier(c); setShowDetailModal(true); }}>
                            <i className="bi bi-eye"></i>
                          </button>
@@ -943,33 +921,6 @@ export function ChantiersPage() {
       {/* QR Scanner Modal (pour scanner badges employés depuis un chantier) */}
       {showScannerModal && selectedChantier && (
         <QRScannerModal isOpen={showScannerModal} onClose={() => setShowScannerModal(false)} chantierId={selectedChantier.id} onPointageSuccess={() => { setShowScannerModal(false); loadChantiers(); }} />
-      )}
-
-      {/* Modal QR Pointage */}
-      {showQRModal && qrData && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content text-center">
-              <div className="modal-header">
-                <h5 className="modal-title fw-bold">QR Code Pointage</h5>
-                <button type="button" className="btn-close" onClick={() => setShowQRModal(false)}></button>
-              </div>
-              <div className="modal-body py-4">
-                <div className="p-4 rounded d-inline-block mb-3" style={{ background: 'var(--tia-bg-surface)' }}>
-                  <div style={{ width: '200px', height: '200px', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.8rem' }}>
-                    QR TOKEN:<br/>{qrData.qr_token.slice(0, 20)}...
-                  </div>
-                </div>
-                <p className="mb-1 fw-bold">{qrData.chantier_nom}</p>
-                <p className="text-muted small">Valide pour la journée du {qrData.date_validite}</p>
-                <p className="text-muted small font-monospace">Token: {qrData.qr_token}</p>
-              </div>
-              <div className="modal-footer justify-content-center">
-                <button className="btn btn-outline-secondary" onClick={() => setShowQRModal(false)}>Fermer</button>
-              </div>
-            </div>
-          </div>
-        </div>
       )}
 
       {showTransformModal && (

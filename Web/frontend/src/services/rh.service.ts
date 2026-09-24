@@ -87,11 +87,6 @@ export const rhService = {
     return res.data
   },
 
-  async qrCheckin(data: { employe_id: number; chantier_id?: number; qr_code_token: string; latitude?: number; longitude?: number; mode?: string }) {
-    const res = await api.post<Pointage>('/rh/pointages/qr-checkin', data)
-    return res.data
-  },
-
   // Équipes
   async getEquipes() {
     const res = await api.get('/rh/equipes')

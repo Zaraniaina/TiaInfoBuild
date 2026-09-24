@@ -17,17 +17,17 @@ Guide complet pour installer, initialiser la base de données MySQL via XAMPP, e
      3. **Direction Générale / DAF** (`directeur`) : Pilotage P&L consolidé, marges réelles, validation des budgets & devis > 50M MGA.
      4. **Comptable / Responsable Financier** (`comptable`) : Saisie dépenses, calcul des marges automatiques, facturation et impayés.
      5. **Chef de Projet / Directeur Technique** (`chef_projet`) : Supervision multi-chantiers, arbitrage des ressources inter-chantiers.
-     6. **Chef de Chantier / Conducteur** (`chef_chantier`) : Avancement physique (%), **génération QR Code pointage chantier**, auto-déclaration GPS, incidents.
-     7. **Responsable RH** (`rh`) : Fiches salariés, grille de validation des pointages QR/GPS, validation des heures sup, habilitations.
+     6. **Chef de Chantier / Conducteur** (`chef_chantier`) : Avancement physique (%), **pointage de l'équipe via scan des badges QR des ouvriers**, incidents.
+     7. **Responsable RH** (`rh`) : Fiches salariés, grille de validation des pointages (scan de badge / manuels), validation des heures sup, habilitations.
      8. **Responsable Matériel** (`materiel`) : Parc d'engins (*Disponible, En Utilisation, En Maintenance, Hors Service*), plannings de maintenance.
      9. **Magasinier / Stocks** (`magasinier`) : Mouvements de stock, alertes stock minimum/rupture, fournisseurs.
      10. **Responsable Commercial** (`commercial`) : Devis avec calcul de marge théorique, conversion devis ➔ contrat, suivi facturation.
-     11. **Ouvrier / Employé Terrain** (`employe`) : **Scan mobile du QR Code pointage site**, checklist des tâches du jour.
+     11. **Ouvrier / Employé Terrain** (`employe`) : **Pointage effectué par le chef de chantier / RH via scan de badge**, checklist des tâches du jour.
      12. **Client** (`client`) : Accès lecture devis/factures, suivi chantiers.
 
 3. **Politique de Pointage Anti-Fraude (`11_politique_pointage.md`)** :
-   - Endpoint API : `POST /api/rh/pointages/qr-checkin`
-   - Pointage QR Code dynamically generated on site by Chef de Chantier (Catégorie A), auto-déclaration GPS (Catégorie B), QR Code fixe dépôt (Catégorie D).
+   - Le pointage des ouvriers est enregistré par le **chef de chantier ou un RH sur site**, via **scan du badge QR de l'employé** (`POST /api/rh/pointages/scan-badge`) ou en **saisie manuelle**.
+   - L'employé ne se pointe pas lui-même : il présente simplement son badge QR employé.
 
 ---
 
@@ -116,7 +116,7 @@ Après avoir lancé `python app/scripts/init_db.py`, les comptes suivants sont d
 | **Responsable Matériel** | `materiel@btppro.mg` | Matériels, chantiers, alertes |
 | **Magasinier** | `magasinier@btppro.mg` | Stocks, chantiers, alertes, pointage |
 | **Commercial** | `commercial@btppro.mg` | Commercial, chantiers, finance, alertes |
-| **Ouvrier / Terrain** | `employe@btppro.mg` | RH, chantiers, matériels, stocks, alertes, pointage |
+| **Ouvrier / Terrain** | `employe@btppro.mg` | RH, chantiers, matériels, stocks, alertes, pointage (lecture seule) |
 | **Client** | `client@btppro.mg` | Dashboard, commercial, chantiers |
 
 ---

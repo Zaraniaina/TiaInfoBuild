@@ -735,42 +735,6 @@ async def scan_badge_pointage(
         }
 
 
-class QRPointageCheckinRequest(BaseModel):
-    employe_id: int
-    chantier_id: int | None = None
-    qr_code_token: str
-    latitude: float | None = None
-    longitude: float | None = None
-    mode: str = Field(default="qr_scan", description="qr_scan | gps_auto | fixed_qr")
-
-
-@router.post("/pointages/qr-checkin", response_model=PointageResponse, status_code=status.HTTP_201_CREATED)
-async def qr_pointage_checkin(
-    payload: CurrentUserPayload,
-    obj_in: QRPointageCheckinRequest,
-    db: DbDep,
-):
-    _require_permission(payload, "rh:write")
-    entreprise_id = payload.get("entreprise_id")
-    pointage_data = {
-        "entreprise_id": entreprise_id,
-        "employe_id": obj_in.employe_id,
-        "chantier_id": obj_in.chantier_id,
-        "date_jour": date.today(),
-        "heure_debut": datetime.now().time(),
-        "heures_total": 8.0,
-        "type": "present",
-        "methode_pointage": obj_in.mode,
-        "latitude": obj_in.latitude,
-        "longitude": obj_in.longitude,
-        "notes": f"Pointage {obj_in.mode} (Token: {obj_in.qr_code_token[:10]}... Lat: {obj_in.latitude or 'N/A'}, Lon: {obj_in.longitude or 'N/A'})",
-    }
-    crud = PointageCRUD()
-    pointage = await crud.create(db, pointage_data)
-    await db.refresh(pointage)
-    return PointageResponse.model_validate(pointage)
-
-
 @router.post("/pointages", response_model=PointageResponse, status_code=status.HTTP_201_CREATED)
 async def create_pointage(
     payload: CurrentUserPayload,

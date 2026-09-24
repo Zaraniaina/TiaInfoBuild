@@ -64,6 +64,7 @@ from app.models.rapport_journalier import RapportJournalier
 from app.models.refresh_token import RefreshToken
 from app.models.role import Role
 from app.models.signalement import Signalement
+from app.models.sync_applied import SyncApplied
 from app.models.sync_queue import SyncQueue
 from app.models.tache import Tache
 from app.models.travail_realise import TravailRealise
@@ -132,8 +133,14 @@ __all__ = [
     "RefreshToken",
     "Role",
     "Signalement",
+    "SyncApplied",
     "SyncQueue",
     "Tache",
     "TravailRealise",
     "Utilisateur",
 ]
+
+# Hooks d'horodatage/version de sync (pointages, chantiers, employes) :
+# importés EN DERNIER pour que tous les modèles soient chargés.
+# Toute écriture serveur (insert/update) met à jour sync_updated_at/sync_version.
+from app.core.sync_cols import SYNC_MODELS as _SYNC_MODELS  # noqa: E402, F401

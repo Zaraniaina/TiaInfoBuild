@@ -21,6 +21,21 @@ class LoginRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
 
+class DesktopActivateRequest(BaseModel):
+    """Corps de la requête d'activation d'un poste desktop (offline-first).
+
+    Endpoint PUBLIC : les identifiants sont vérifiés contre la table
+    utilisateurs, exactement comme POST /login (mêmes messages d'erreur pour
+    éviter toute énumération d'adresses email).
+    """
+
+    email: EmailStr
+    password: str = Field(..., min_length=1)
+    device_id: str = Field(..., min_length=1, max_length=128)
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+
 class RegisterRequest(BaseModel):
     """Corps de la requête pour l'inscription d'un utilisateur."""
 

@@ -187,11 +187,9 @@ export interface RolePermissions {
   canEditEmploye: boolean
   canDeleteEmploye: boolean
   canValidatePointage: boolean
-  canScanQR: boolean
   // Actions terrain & tâches
   canReportTask: boolean
   canDeclareConsumption: boolean
-  canGenerateQR: boolean
 
   // Finance & Dépenses
   canCreateDepense: boolean
@@ -246,7 +244,6 @@ export function getRolePermissions(roleCode: string): RolePermissions {
       canEditEmploye: false,
       canDeleteEmploye: false,
       canValidatePointage: false,
-      canScanQR: false,
 
       // Finance & Dépenses
       canCreateDepense: false,
@@ -285,7 +282,6 @@ export function getRolePermissions(roleCode: string): RolePermissions {
       // Actions terrain non autorisées
       canReportTask: false,
       canDeclareConsumption: false,
-      canGenerateQR: false,
     }
   }
   const isAdmin = ['super_admin'].includes(role)
@@ -312,12 +308,9 @@ export function getRolePermissions(roleCode: string): RolePermissions {
     canEditEmploye: isAdmin || isRH,
     canDeleteEmploye: isAdmin || isRH,
     canValidatePointage: isAdmin || isRH || isChefProjet || isChefChantier,
-    // L'ouvrier doit pouvoir scanner le QR code depuis son mobile
-    canScanQR: isEmploye || isAdmin || isRH || isChefChantier || isChefProjet,
     // Actions terrain & tâches
     canReportTask: isChefChantier || isChefProjet || isEmploye,
     canDeclareConsumption: isChefChantier || isMagasinier || isEmploye,
-    canGenerateQR: isChefChantier || isMagasinier || isChefProjet || isAdmin,
 
     // Finance
     // Saisie opérationnelle : Comptable, Chef de Chantier et Chef de Projet peuvent créer

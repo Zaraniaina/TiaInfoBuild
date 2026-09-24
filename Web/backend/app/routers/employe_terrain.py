@@ -4,7 +4,7 @@ Securite (referentiel Espace Employe Terrain, section 20) : l'employe ne voit
 que les donnees liees a ses affectations. La fiche employe est resolue par
 l'email du compte connecte.
 """
-from datetime import datetime, date
+from datetime import date
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -229,77 +229,9 @@ async def get_planning(payload: CurrentUserPayload, db: DbDep):
 
 
 # ==================== PRESENCE / ACTIVITE ====================
-
-class PresenceRequest(BaseModel):
-    action: str
-    # Traçabilité optionnelle de l'auto-déclaration (ex. "GPS: -18.91, 47.52").
-    notes: str | None = None
-
-
-@router.post("/presence")
-async def enregistrer_presence(payload: CurrentUserPayload, db: DbDep, data: PresenceRequest):
-    _require_permission(payload, "pointage:write")
-    employe = await _get_employe(payload, db)
-    aujourdhui = date.today()
-    now_time = datetime.now().time()
-    existing_pt = (await db.execute(
-        select(Pointage).where(
-            Pointage.employe_id == employe.id,
-            Pointage.date_jour == aujourdhui,
-            Pointage.is_deleted == False,
-        )
-    )).scalar_one_or_none()
-    action = data.action
-
-    if action == "entree":
-        if existing_pt:
-            return {"message": "Presence deja enregistree aujourd'hui", "pointage": existing_pt}
-        pt = Pointage(
-            entreprise_id=employe.entreprise_id, employe_id=employe.id,
-            date_jour=aujourdhui, heure_debut=now_time, heures_total=0,
-            type="present", methode_pointage="auto_employe", notes=data.notes,
-        )
-        db.add(pt)
-        await db.commit()
-        return {"message": f"Entree enregistree a {now_time.strftime('%H:%M')}", "pointage": pt}
-
-    if not existing_pt:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Aucune presence enregistree. Commencez par pointer l'entree.")
-
-    if action == "pause_debut":
-        if existing_pt.heure_pause_debut:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Pause deja en cours")
-        existing_pt.heure_pause_debut = now_time
-        await db.commit()
-        return {"message": f"Debut de pause a {now_time.strftime('%H:%M')}", "pointage": existing_pt}
-
-    if action == "pause_fin":
-        if not existing_pt.heure_pause_debut:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Aucune pause en cours")
-        existing_pt.heure_pause_fin = now_time
-        await db.commit()
-        return {"message": f"Fin de pause a {now_time.strftime('%H:%M')}", "pointage": existing_pt}
-
-    if action == "sortie":
-        if existing_pt.heure_fin:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sortie deja enregistree")
-        existing_pt.heure_fin = now_time
-        if existing_pt.heure_debut:
-            h_start = existing_pt.heure_debut.hour + existing_pt.heure_debut.minute / 60.0
-            h_end = now_time.hour + now_time.minute / 60.0
-            pause_ded = 0.0
-            if existing_pt.heure_pause_debut and existing_pt.heure_pause_fin:
-                hp_s = existing_pt.heure_pause_debut.hour + existing_pt.heure_pause_debut.minute / 60.0
-                hp_f = existing_pt.heure_pause_fin.hour + existing_pt.heure_pause_fin.minute / 60.0
-                pause_ded = max(0, hp_f - hp_s)
-            existing_pt.heures_total = max(0.0, round(h_end - h_start - pause_ded, 2))
-        else:
-            existing_pt.heures_total = 8.0
-        await db.commit()
-        return {"message": f"Sortie enregistree a {now_time.strftime('%H:%M')} ({existing_pt.heures_total}h)", "pointage": existing_pt}
-
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Action invalide")
-
+# Le pointage est enregistré par un chef de chantier ou un RH sur place
+# (scan du badge QR de l'employé) : ici l'employé ne fait que consulter
+# sa présence du jour.
 
 @router.get("/presence")
 async def get_ma_presence(payload: CurrentUserPayload, db: DbDep):

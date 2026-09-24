@@ -7,6 +7,8 @@ import { settingsService } from '@/services/settings.service'
 import { api } from '@/services/api'
 import { ROLE_MODULES } from '@/config/roles.config'
 import { formatErrorMessage } from '@/utils/errorMessage'
+import { isDesktopBuild } from '@/utils/buildMode'
+import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge'
 
 export function Topbar() {
   const navigate = useNavigate()
@@ -251,6 +253,9 @@ export function Topbar() {
           <i className={`bi ${themeIcon}`}></i>
           <span className="theme-indicator" aria-hidden="true"></span>
         </button>
+
+        {/* Badge de synchronisation — desktop uniquement (Tauri) */}
+        {isDesktopBuild() && <SyncStatusBadge />}
 
         {/* Notifications - dropdown React */}
         {canViewAlertes && (

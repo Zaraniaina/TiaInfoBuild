@@ -3,6 +3,8 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { scheduleTokenRefresh, cancelTokenRefresh } from '@/services/api'
 import { useAuthStore } from '@/stores/auth.store'
+import { isDesktop } from '@/utils/buildMode'
+import { startSyncEngine, stopSyncEngine } from '@/services/syncEngine'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { ClientLoginPage } from '@/pages/auth/ClientLoginPage'
@@ -12,7 +14,23 @@ import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage'
 import { RoleRedirect } from '@/components/auth/RoleRedirect'
 import { PricingPage } from '@/pages/pricing/PricingPage'
 
-const LandingPage = lazy(() => import('@/pages/landing/LandingPage').then((m) => ({ default: m.LandingPage })))
+/* Condition de build PURE (VITE_BUILD_TARGET), testée uniquement à la
+   compilation : en build desktop, la LandingPage n'est jamais importée →
+   absente du bundle (règle « pas de vitrine », plan §8) ; en build web,
+   ActivationPage suit la règle inverse.
+   NOTE : expression littérale (et non `isDesktopBuild()`) pour que Vite la
+   remplace statiquement et que Rollup élimine l'import dynamique inutilisé. */
+const IS_DESKTOP_BUILD = import.meta.env.VITE_BUILD_TARGET === 'desktop'
+
+const LandingPage = IS_DESKTOP_BUILD
+  ? null
+  : lazy(() => import('@/pages/landing/LandingPage').then((m) => ({ default: m.LandingPage })))
+
+/* ActivationPage n'existe QUE dans le build desktop (règle inverse de la
+   vitrine) : en build web, l'import dynamique est éliminé à la compilation. */
+const ActivationPage = IS_DESKTOP_BUILD
+  ? lazy(() => import('@/pages/auth/ActivationPage').then((m) => ({ default: m.ActivationPage })))
+  : null
 
 const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const ChantiersPage = lazy(() => import('@/pages/chantiers/ChantiersPage').then((m) => ({ default: m.ChantiersPage })))
@@ -102,11 +120,34 @@ function App() {
     return () => cancelTokenRefresh()
   }, [token])
 
+  // Moteur de synchronisation : démarrage uniquement dans la WebView Tauri.
+  useEffect(() => {
+    if (isDesktop()) startSyncEngine()
+    return () => stopSyncEngine()
+  }, [])
+
   return (
     <Routes>
-      {/* ===== Site vitrine public ===== */}
-      <Route path="/" element={<Suspense fallback={<PageFallback />}><LandingPage /></Suspense>} />
+      {/* ===== Site vitrine public (web) / connexion directe (desktop) ===== */}
+      <Route
+        path="/"
+        element={
+          IS_DESKTOP_BUILD ? (
+            <Navigate to="/login" replace />
+          ) : (
+            <Suspense fallback={<PageFallback />}>{LandingPage ? <LandingPage /> : null}</Suspense>
+          )
+        }
+      />
       <Route path="/login" element={<LoginPage />} />
+      {IS_DESKTOP_BUILD && (
+        <Route
+          path="/activation"
+          element={
+            <Suspense fallback={<PageFallback />}>{ActivationPage ? <ActivationPage /> : null}</Suspense>
+          }
+        />
+      )}
       <Route path="/client-login" element={<ClientLoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/register-entreprise" element={<RegisterPage />} />

@@ -32,7 +32,7 @@ ROLES_SYSTEME = [
     {"id": 8, "nom": "Responsable Matériel", "code": "materiel", "description": "Gestion du parc engins et maintenance", "is_system": True},
     {"id": 9, "nom": "Magasinier", "code": "magasinier", "description": "Gestion des stocks et entrepôts", "is_system": True},
     {"id": 10, "nom": "Commercial", "code": "commercial", "description": "Gestion clients et rédaction des devis", "is_system": True},
-    {"id": 11, "nom": "Employé / Ouvrier", "code": "employe", "description": "Exécution terrain, tâches et pointage", "is_system": True},
+    {"id": 11, "nom": "Employé / Ouvrier", "code": "employe", "description": "Exécution terrain et tâches", "is_system": True},
     {"id": 12, "nom": "Client", "code": "client", "description": "Accès lecture devis/factures", "is_system": True},
 ]
 
@@ -199,8 +199,9 @@ async def seed():
         await db.commit()
         print("    Role_id comptable/chef_corriges si necessaire")
 
-        # 4c-bis. Fiches employes de demo (badge QR / pointage des comptes employe,
-        # rattachees aux comptes utilisateurs par email)
+        # 4c-bis. Fiches employes de demo (badge QR d'identite rattache aux comptes
+        # utilisateurs par email ; le pointage est fait par le chef de chantier / RH
+        # via le scan de ce badge)
         print("    Seed fiches employes demo...")
         EMPLOYES_DEMO = [
             ("ouvrier@btppro.mg", "Ouvrier", "Gilbert", "Ouvrier polyvalent"),

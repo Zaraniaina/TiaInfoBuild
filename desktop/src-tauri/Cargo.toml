@@ -1,0 +1,28 @@
+[package]
+name = "tia-desktop"
+version = "0.1.0"
+description = "TIA INFO BUILD — application desktop offline-first (Tauri 2 + SQLite locale)"
+authors = ["TIA Info Builds"]
+edition = "2021"
+rust-version = "1.77"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.31", features = ["bundled"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+keyring = { version = "3", default-features = false, features = ["windows-native"] }
+argon2 = "0.5"
+# Sel Argon2id (`SaltString::generate(OsRng)`) : active `rand_core/getrandom`,
+# feature que argon2 n'expose pas lui-même (déjà présent en 0.5.0 dans le lock).
+password-hash = { version = "0.5", features = ["getrandom"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+
+[profile.dev]
+# Dev plus rapide : les dépendances ne sont pas optimisées
+opt-level = 0

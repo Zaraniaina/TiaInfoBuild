@@ -69,9 +69,6 @@ export const employeTerrainService = {
 
   getPresence: () => api.get<{ items: any[] }>(`${BASE}/presence`).then((r) => r.data.items),
 
-  enregistrerPresence: (data: Record<string, any>) =>
-    api.post(`${BASE}/presence`, data).then((r) => r.data),
-
   getCommentaires: (objetType: string, objetId: number) =>
     api.get<{ items: any[] }>(`${BASE}/commentaires/${objetType}/${objetId}`).then((r) => r.data.items),
 

@@ -1,0 +1,8 @@
+# Dépendances Node (npm install dans desktop/)
+node_modules/
+
+# Artefacts de compilation Rust/Tauri (poids : plusieurs centaines de Mo)
+src-tauri/target/
+
+# Fichiers générés localement
+*.log

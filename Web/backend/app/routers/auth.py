@@ -1,5 +1,5 @@
 """Router pour l'authentification et la gestion des tokens."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status, BackgroundTasks
@@ -24,8 +24,10 @@ from app.security import (
 from app.models.utilisateur import Utilisateur
 from app.models.historique_connexion import HistoriqueConnexion
 from app.models.refresh_token import RefreshToken
+from app.models.role import Role as RoleModel
 from app.schemas.auth import (
     LoginRequest,
+    DesktopActivateRequest,
     RegisterRequest,
     RefreshRequest,
     Token,
@@ -42,7 +44,7 @@ from app.services.email import (
     send_email_verification_email,
 )
 from app.services.user_service import resolve_user_photo
-from app.core.permissions import PERMISSION_MAP, Role
+from app.core.permissions import PERMISSION_MAP, ROLE_NAMES, Role
 
 router = APIRouter(tags=["auth"])
 CurrentUser = Annotated[dict[str, Any], Depends(get_current_user)]
@@ -137,6 +139,141 @@ async def login(
             "photo": user_photo,
         },
     )
+
+
+@router.post("/desktop/activate")
+async def desktop_activate(
+    credentials: DesktopActivateRequest,
+    db: DbSession,
+    request: Request,
+):
+    """Active un poste desktop (offline-first) — voir docs/plan-desktop-tauri.md §5.2.
+
+    Vérifie email/mot de passe contre la table utilisateurs (logique de hash et
+    messages identiques à POST /login pour empêcher l'énumération d'adresses),
+    puis renvoie les mêmes tokens que le login normal, le profil minimal de
+    l'utilisateur, l'heure serveur (source de vérité temporelle du desktop) et
+    un petit référentiel (rôles + permissions) pour le premier seed local.
+
+    Endpoint PUBLIC (aucun JWT requis) : la seule protection est la vérification
+    des identifiants ; aucun noms d'utilisateurs n'est exposé en cas d'échec.
+    """
+    # 1. Recherche du compte (même requête que /login).
+    try:
+        result = await db.execute(
+            select(Utilisateur).where(
+                Utilisateur.email == credentials.email,
+                Utilisateur.is_deleted == False,
+            )
+        )
+        user = result.scalar_one_or_none()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Email ou mot de passe incorrect",
+        )
+
+    # 2. Identifiants invalides (email inconnu OU mauvais mot de passe) → 401,
+    #    message strictement identique au login : aucune énumération possible.
+    if not user or not verify_password(credentials.password, user.mot_de_passe_hash):
+        try:
+            await db.execute(
+                HistoriqueConnexion.__table__.insert().values(
+                    utilisateur_id=None,
+                    ip_address=request.client.host if request.client else None,
+                    user_agent=request.headers.get("user-agent"),
+                    reussi=False,
+                    date_connexion=datetime.now(),
+                )
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email ou mot de passe incorrect",
+        )
+
+    # 3. Le compte existe et le mot de passe est bon mais le compte n'est pas
+    #    actif (désactivé ou email non confirmé) → 409. Accessible uniquement
+    #    avec le bon mot de passe : pas d'énumération.
+    if user.statut != "actif" or user.is_email_verified is False:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Aucun compte actif n'est lié à cette adresse email. Veuillez contacter votre administrateur.",
+        )
+
+    # 4. Tokens identiques au login normal (mêmes fonctions de création).
+    try:
+        role_code = user.role.code if user.role else Role.EMPLOYE
+        permissions = PERMISSION_MAP.get(role_code, [])
+        access_token = create_access_token(
+            subject=user.id,
+            role_code=role_code,
+            entreprise_id=user.entreprise_id,
+            permissions=permissions,
+        )
+        refresh_token = create_refresh_token(user.id)
+        db.add(
+            RefreshToken(
+                utilisateur_id=user.id,
+                token_hash=hash_password(refresh_token),
+                expires_at=datetime.now() + timedelta(days=settings.refresh_token_expire_days),
+            )
+        )
+        user.derniere_connexion = datetime.now()
+        await db.execute(
+            HistoriqueConnexion.__table__.insert().values(
+                utilisateur_id=user.id,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+                reussi=True,
+                date_connexion=datetime.now(),
+            )
+        )
+        await db.commit()
+    except HTTPException:
+        raise
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Une erreur est survenue lors de la connexion. Veuillez réessayer.",
+        )
+
+    # 5. Référentiel minimal pour le seed local (optionnel côté client : en cas
+    #    de souci, l'activation reste OK et `referentiel` est simplement null).
+    try:
+        roles_rows = (
+            await db.execute(select(RoleModel).where(RoleModel.is_deleted == False).order_by(RoleModel.id))
+        ).scalars().all()
+        referentiel: dict[str, Any] | None = {
+            "roles": [
+                {"code": r.code, "nom": r.nom, "description": r.description}
+                for r in roles_rows
+                if r.code != Role.SUPER_ADMIN
+            ],
+            "permissions": PERMISSION_MAP,
+            "role_names": ROLE_NAMES,
+        }
+    except Exception:
+        referentiel = None
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "Bearer",
+        "entreprise_id": user.entreprise_id,
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "nom": user.nom,
+            "prenom": user.prenom,
+            "role": role_code,
+        },
+        "server_time": datetime.now(timezone.utc).isoformat(),
+        "referentiel": referentiel,
+    }
 
 
 @router.post("/refresh", response_model=Token)

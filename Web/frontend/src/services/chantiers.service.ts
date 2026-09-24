@@ -42,16 +42,6 @@ export const chantiersService = {
     return res.data
   },
 
-  async generateQR(id: number) {
-    const res = await api.post(`/chantiers/${id}/qr-pointage`)
-    return res.data
-  },
-
-  async getQR(id: number) {
-    const res = await api.get(`/chantiers/${id}/qr-pointage`)
-    return res.data
-  },
-
   async getAffectations(id: number) {
     const res = await api.get(`/chantiers/${id}/affectations`)
     return res.data
