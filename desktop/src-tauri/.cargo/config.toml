@@ -1,0 +1,3 @@
+# Configuration Cargo standard pour Windows MSVC
+[env]
+CARGO_BUILD_JOBS = "8"

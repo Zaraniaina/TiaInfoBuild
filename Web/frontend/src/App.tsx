@@ -88,7 +88,12 @@ const ClientNotificationsPage = lazy(() => import('@/pages/client/ClientNotifica
 const ClientParametresPage = lazy(() => import('@/pages/client/ClientParametresPage').then((m) => ({ default: m.ClientParametresPage })))
 
 
+import { DesktopLoadingScreen } from '@/components/desktop/DesktopLoadingScreen'
+
 function PageFallback() {
+  if (IS_DESKTOP_BUILD) {
+    return <DesktopLoadingScreen />
+  }
   return (
     <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
       <div className="spinner-border text-primary" role="status">

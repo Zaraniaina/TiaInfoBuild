@@ -15,6 +15,6 @@
 -- PHASE 4 : ajouter les entités restantes ici (stocks, achats, finance…).
 -- ============================================================================
 
-ALTER TABLE pointages ADD COLUMN sync_version INTEGER;
-ALTER TABLE chantiers ADD COLUMN sync_version INTEGER;
-ALTER TABLE employes ADD COLUMN sync_version INTEGER;
+-- Migrations 0001 : les colonnes sync_version sont gérées de manière idempotente par db::ajouter_colonnes_sync
+-- dans db.rs et incluses directement dans schema_init.sql.
+

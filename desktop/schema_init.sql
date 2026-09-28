@@ -1,6 +1,6 @@
 -- Généré par tools/gen_sqlite_schema.py — source de vérité : Web/backend app/models. Ne pas éditer à la main.
--- Date de génération : 24/09/2026 09:09
--- Tables backend : 65 · Tables sync desktop : 4 (UNION manuelle, voir la fin du fichier)
+-- Date de génération : 25/09/2026 07:59
+-- Tables backend : 66 · Tables sync desktop : 4 (UNION manuelle, voir la fin du fichier)
 -- Régénérer : python tools/gen_sqlite_schema.py --out desktop/schema_init.sql --force
 -- Note : cycles de FK non ordonnables (clients ↔ utilisateurs) — sans impact sous SQLite, qui ne valide les FK qu'à l'INSERT.
 
@@ -38,12 +38,18 @@ CREATE TABLE IF NOT EXISTS "clients" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("commercial_id") REFERENCES "utilisateurs" ("id"),
-    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
+    "client_ref" TEXT,
+    "sync_version" INTEGER NOT NULL DEFAULT 1,
+    "sync_updated_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "sync_created_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
+    FOREIGN KEY ("commercial_id") REFERENCES "utilisateurs" ("id")
 );
+CREATE INDEX IF NOT EXISTS "idx_clients_client_ref" ON "clients" ("client_ref");
 CREATE INDEX IF NOT EXISTS "idx_clients_commercial_id" ON "clients" ("commercial_id");
 CREATE INDEX IF NOT EXISTS "idx_clients_entreprise_id" ON "clients" ("entreprise_id");
 CREATE INDEX IF NOT EXISTS "idx_clients_entreprise_id_is_deleted" ON "clients" ("entreprise_id", "is_deleted");
+CREATE INDEX IF NOT EXISTS "idx_clients_sync_updated_at" ON "clients" ("sync_updated_at");
 CREATE INDEX IF NOT EXISTS "idx_clients_type" ON "clients" ("type");
 
 -- Table « entreprises »
@@ -163,6 +169,14 @@ CREATE TABLE IF NOT EXISTS "roles" (
 );
 CREATE INDEX IF NOT EXISTS "idx_roles_code" ON "roles" ("code");
 
+-- Table « sync_applied »
+CREATE TABLE IF NOT EXISTS "sync_applied" (
+    "device_id" TEXT NOT NULL,
+    "seq" INTEGER NOT NULL,
+    "applied_at" TEXT NOT NULL,
+    PRIMARY KEY ("device_id", "seq")
+);
+
 -- Table « sync_queue »
 CREATE TABLE IF NOT EXISTS "sync_queue" (
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -199,9 +213,9 @@ CREATE TABLE IF NOT EXISTS "utilisateurs" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("role_id") REFERENCES "roles" ("id"),
     FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE SET NULL,
-    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
+    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
+    FOREIGN KEY ("role_id") REFERENCES "roles" ("id")
 );
 CREATE INDEX IF NOT EXISTS "idx_utilisateurs_client_id" ON "utilisateurs" ("client_id");
 CREATE INDEX IF NOT EXISTS "idx_utilisateurs_entreprise_id" ON "utilisateurs" ("entreprise_id");
@@ -268,9 +282,9 @@ CREATE TABLE IF NOT EXISTS "demandes_travaux" (
     "is_deleted" INTEGER,
     "created_at" TEXT,
     "updated_at" TEXT,
-    FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE SET NULL,
     FOREIGN KEY ("commercial_id") REFERENCES "utilisateurs" ("id") ON DELETE SET NULL,
-    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
+    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
+    FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE SET NULL
 );
 
 -- Table « depots »
@@ -326,11 +340,17 @@ CREATE TABLE IF NOT EXISTS "employes" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "client_ref" TEXT,
+    "sync_version" INTEGER NOT NULL DEFAULT 1,
+    "sync_updated_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "sync_created_at" TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
 );
+CREATE INDEX IF NOT EXISTS "idx_employes_client_ref" ON "employes" ("client_ref");
 CREATE INDEX IF NOT EXISTS "idx_employes_entreprise_id" ON "employes" ("entreprise_id");
 CREATE INDEX IF NOT EXISTS "idx_employes_entreprise_id_is_deleted" ON "employes" ("entreprise_id", "is_deleted");
 CREATE INDEX IF NOT EXISTS "idx_employes_nom_prenom" ON "employes" ("nom", "prenom");
+CREATE INDEX IF NOT EXISTS "idx_employes_sync_updated_at" ON "employes" ("sync_updated_at");
 
 -- Table « fournisseurs »
 CREATE TABLE IF NOT EXISTS "fournisseurs" (
@@ -401,11 +421,17 @@ CREATE TABLE IF NOT EXISTS "materiaux" (
     "organisme_vgp" TEXT,
     "certificat_vgp_url" TEXT,
     "qr_code_key" TEXT,
+    "client_ref" TEXT,
+    "sync_version" INTEGER NOT NULL DEFAULT 1,
+    "sync_updated_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "sync_created_at" TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
 );
+CREATE INDEX IF NOT EXISTS "idx_materiaux_client_ref" ON "materiaux" ("client_ref");
 CREATE INDEX IF NOT EXISTS "idx_materiaux_entreprise_id" ON "materiaux" ("entreprise_id");
 CREATE INDEX IF NOT EXISTS "idx_materiaux_statut" ON "materiaux" ("statut");
 CREATE INDEX IF NOT EXISTS "idx_materiaux_statut_vgp" ON "materiaux" ("statut_vgp");
+CREATE INDEX IF NOT EXISTS "idx_materiaux_sync_updated_at" ON "materiaux" ("sync_updated_at");
 
 -- Table « notifications »
 CREATE TABLE IF NOT EXISTS "notifications" (
@@ -422,8 +448,8 @@ CREATE TABLE IF NOT EXISTS "notifications" (
     "envoye_email" INTEGER NOT NULL DEFAULT 0,
     "lu" INTEGER NOT NULL DEFAULT 0,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("utilisateur_id") REFERENCES "utilisateurs" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE CASCADE,
+    FOREIGN KEY ("utilisateur_id") REFERENCES "utilisateurs" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "idx_notifications_client_id" ON "notifications" ("client_id");
@@ -494,8 +520,8 @@ CREATE TABLE IF NOT EXISTS "subscriptions" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
-    FOREIGN KEY ("plan_id") REFERENCES "plans" ("id")
+    FOREIGN KEY ("plan_id") REFERENCES "plans" ("id"),
+    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "idx_subscription_entreprise" ON "subscriptions" ("entreprise_id");
 CREATE INDEX IF NOT EXISTS "idx_subscription_plan" ON "subscriptions" ("plan_id");
@@ -542,12 +568,18 @@ CREATE TABLE IF NOT EXISTS "articles" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
-    FOREIGN KEY ("fournisseur_id") REFERENCES "fournisseurs" ("id")
+    "client_ref" TEXT,
+    "sync_version" INTEGER NOT NULL DEFAULT 1,
+    "sync_updated_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "sync_created_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("fournisseur_id") REFERENCES "fournisseurs" ("id"),
+    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "idx_articles_categorie" ON "articles" ("categorie");
+CREATE INDEX IF NOT EXISTS "idx_articles_client_ref" ON "articles" ("client_ref");
 CREATE INDEX IF NOT EXISTS "idx_articles_entreprise_id" ON "articles" ("entreprise_id");
 CREATE INDEX IF NOT EXISTS "idx_articles_entreprise_id_is_deleted" ON "articles" ("entreprise_id", "is_deleted");
+CREATE INDEX IF NOT EXISTS "idx_articles_sync_updated_at" ON "articles" ("sync_updated_at");
 
 -- Table « conges »
 CREATE TABLE IF NOT EXISTS "conges" (
@@ -566,13 +598,19 @@ CREATE TABLE IF NOT EXISTS "conges" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "client_ref" TEXT,
+    "sync_version" INTEGER NOT NULL DEFAULT 1,
+    "sync_updated_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "sync_created_at" TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("valide_par") REFERENCES "utilisateurs" ("id") ON DELETE SET NULL,
     FOREIGN KEY ("employe_id") REFERENCES "employes" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
 );
+CREATE INDEX IF NOT EXISTS "idx_conges_client_ref" ON "conges" ("client_ref");
 CREATE INDEX IF NOT EXISTS "idx_conges_employe_id" ON "conges" ("employe_id");
 CREATE INDEX IF NOT EXISTS "idx_conges_entreprise_id" ON "conges" ("entreprise_id");
 CREATE INDEX IF NOT EXISTS "idx_conges_statut" ON "conges" ("statut");
+CREATE INDEX IF NOT EXISTS "idx_conges_sync_updated_at" ON "conges" ("sync_updated_at");
 
 -- Table « equipes »
 CREATE TABLE IF NOT EXISTS "equipes" (
@@ -626,11 +664,17 @@ CREATE TABLE IF NOT EXISTS "maintenances" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
-    FOREIGN KEY ("materiel_id") REFERENCES "materiaux" ("id") ON DELETE CASCADE
+    "client_ref" TEXT,
+    "sync_version" INTEGER NOT NULL DEFAULT 1,
+    "sync_updated_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "sync_created_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("materiel_id") REFERENCES "materiaux" ("id") ON DELETE CASCADE,
+    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
 );
+CREATE INDEX IF NOT EXISTS "idx_maintenances_client_ref" ON "maintenances" ("client_ref");
 CREATE INDEX IF NOT EXISTS "idx_maintenances_entreprise_id_is_deleted" ON "maintenances" ("entreprise_id", "is_deleted");
 CREATE INDEX IF NOT EXISTS "idx_maintenances_materiel_id" ON "maintenances" ("materiel_id");
+CREATE INDEX IF NOT EXISTS "idx_maintenances_sync_updated_at" ON "maintenances" ("sync_updated_at");
 
 -- Table « projets »
 CREATE TABLE IF NOT EXISTS "projets" (
@@ -657,10 +701,10 @@ CREATE TABLE IF NOT EXISTS "projets" (
     "is_deleted" INTEGER,
     "created_at" TEXT,
     "updated_at" TEXT,
+    FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE SET NULL,
     FOREIGN KEY ("demande_id") REFERENCES "demandes_travaux" ("id") ON DELETE SET NULL,
     FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
-    FOREIGN KEY ("responsable_id") REFERENCES "utilisateurs" ("id") ON DELETE SET NULL,
-    FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE SET NULL
+    FOREIGN KEY ("responsable_id") REFERENCES "utilisateurs" ("id") ON DELETE SET NULL
 );
 
 -- Table « chantiers »
@@ -689,6 +733,10 @@ CREATE TABLE IF NOT EXISTS "chantiers" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "client_ref" TEXT,
+    "sync_version" INTEGER NOT NULL DEFAULT 1,
+    "sync_updated_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "sync_created_at" TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("chef_chantier_id") REFERENCES "utilisateurs" ("id"),
     FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("projet_id") REFERENCES "projets" ("id") ON DELETE SET NULL,
@@ -696,9 +744,11 @@ CREATE TABLE IF NOT EXISTS "chantiers" (
 );
 CREATE INDEX IF NOT EXISTS "idx_chantiers_chef_chantier_id" ON "chantiers" ("chef_chantier_id");
 CREATE INDEX IF NOT EXISTS "idx_chantiers_client_id" ON "chantiers" ("client_id");
+CREATE INDEX IF NOT EXISTS "idx_chantiers_client_ref" ON "chantiers" ("client_ref");
 CREATE INDEX IF NOT EXISTS "idx_chantiers_entreprise_id" ON "chantiers" ("entreprise_id");
 CREATE INDEX IF NOT EXISTS "idx_chantiers_entreprise_id_is_deleted" ON "chantiers" ("entreprise_id", "is_deleted");
 CREATE INDEX IF NOT EXISTS "idx_chantiers_projet_id" ON "chantiers" ("projet_id");
+CREATE INDEX IF NOT EXISTS "idx_chantiers_sync_updated_at" ON "chantiers" ("sync_updated_at");
 
 -- Table « devis »
 CREATE TABLE IF NOT EXISTS "devis" (
@@ -723,14 +773,20 @@ CREATE TABLE IF NOT EXISTS "devis" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "client_ref" TEXT,
+    "sync_version" INTEGER NOT NULL DEFAULT 1,
+    "sync_updated_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "sync_created_at" TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("projet_id") REFERENCES "projets" ("id") ON DELETE SET NULL,
     FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("reponse_par_id") REFERENCES "utilisateurs" ("id") ON DELETE SET NULL,
     FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE CASCADE
 );
+CREATE INDEX IF NOT EXISTS "idx_devis_client_ref" ON "devis" ("client_ref");
 CREATE INDEX IF NOT EXISTS "idx_devis_entreprise_id" ON "devis" ("entreprise_id");
 CREATE INDEX IF NOT EXISTS "idx_devis_entreprise_id_is_deleted" ON "devis" ("entreprise_id", "is_deleted");
 CREATE INDEX IF NOT EXISTS "idx_devis_statut" ON "devis" ("statut");
+CREATE INDEX IF NOT EXISTS "idx_devis_sync_updated_at" ON "devis" ("sync_updated_at");
 
 -- Table « membres_equipe »
 CREATE TABLE IF NOT EXISTS "membres_equipe" (
@@ -839,16 +895,22 @@ CREATE TABLE IF NOT EXISTS "commandes_fournisseur" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id"),
-    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
+    "client_ref" TEXT,
+    "sync_version" INTEGER NOT NULL DEFAULT 1,
+    "sync_updated_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "sync_created_at" TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("created_by") REFERENCES "utilisateurs" ("id"),
-    FOREIGN KEY ("fournisseur_id") REFERENCES "fournisseurs" ("id")
+    FOREIGN KEY ("fournisseur_id") REFERENCES "fournisseurs" ("id"),
+    FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id"),
+    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "idx_cf_chantier_id" ON "commandes_fournisseur" ("chantier_id");
+CREATE INDEX IF NOT EXISTS "idx_cf_client_ref" ON "commandes_fournisseur" ("client_ref");
 CREATE INDEX IF NOT EXISTS "idx_cf_entreprise_id" ON "commandes_fournisseur" ("entreprise_id");
 CREATE INDEX IF NOT EXISTS "idx_cf_entreprise_id_is_deleted" ON "commandes_fournisseur" ("entreprise_id", "is_deleted");
 CREATE INDEX IF NOT EXISTS "idx_cf_fournisseur_id" ON "commandes_fournisseur" ("fournisseur_id");
 CREATE INDEX IF NOT EXISTS "idx_cf_statut" ON "commandes_fournisseur" ("statut");
+CREATE INDEX IF NOT EXISTS "idx_cf_sync_updated_at" ON "commandes_fournisseur" ("sync_updated_at");
 
 -- Table « commentaires »
 CREATE TABLE IF NOT EXISTS "commentaires" (
@@ -862,10 +924,10 @@ CREATE TABLE IF NOT EXISTS "commentaires" (
     "message" TEXT NOT NULL,
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("employe_id") REFERENCES "employes" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("utilisateur_id") REFERENCES "utilisateurs" ("id") ON DELETE CASCADE,
-    FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id") ON DELETE CASCADE
+    FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id") ON DELETE CASCADE,
+    FOREIGN KEY ("employe_id") REFERENCES "employes" ("id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "idx_commentaires_employe_id" ON "commentaires" ("employe_id");
 CREATE INDEX IF NOT EXISTS "idx_commentaires_objet" ON "commentaires" ("objet_type", "objet_id");
@@ -891,10 +953,10 @@ CREATE TABLE IF NOT EXISTS "contrats" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id"),
-    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("devis_id") REFERENCES "devis" ("id"),
-    FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE CASCADE
+    FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE CASCADE,
+    FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id"),
+    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "idx_contrats_client_id" ON "contrats" ("client_id");
 CREATE INDEX IF NOT EXISTS "idx_contrats_entreprise_id" ON "contrats" ("entreprise_id");
@@ -919,14 +981,20 @@ CREATE TABLE IF NOT EXISTS "depenses" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "client_ref" TEXT,
+    "sync_version" INTEGER NOT NULL DEFAULT 1,
+    "sync_updated_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "sync_created_at" TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("validee_par") REFERENCES "utilisateurs" ("id"),
     FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id"),
     FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "idx_depenses_chantier_id" ON "depenses" ("chantier_id");
+CREATE INDEX IF NOT EXISTS "idx_depenses_client_ref" ON "depenses" ("client_ref");
 CREATE INDEX IF NOT EXISTS "idx_depenses_date_depense" ON "depenses" ("date_depense");
 CREATE INDEX IF NOT EXISTS "idx_depenses_entreprise_id" ON "depenses" ("entreprise_id");
 CREATE INDEX IF NOT EXISTS "idx_depenses_entreprise_id_is_deleted" ON "depenses" ("entreprise_id", "is_deleted");
+CREATE INDEX IF NOT EXISTS "idx_depenses_sync_updated_at" ON "depenses" ("sync_updated_at");
 
 -- Table « documents »
 CREATE TABLE IF NOT EXISTS "documents" (
@@ -945,11 +1013,11 @@ CREATE TABLE IF NOT EXISTS "documents" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE CASCADE,
-    FOREIGN KEY ("projet_id") REFERENCES "projets" ("id") ON DELETE CASCADE,
+    FOREIGN KEY ("employe_id") REFERENCES "employes" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
-    FOREIGN KEY ("employe_id") REFERENCES "employes" ("id") ON DELETE CASCADE
+    FOREIGN KEY ("projet_id") REFERENCES "projets" ("id") ON DELETE CASCADE,
+    FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "idx_documents_client_id" ON "documents" ("client_id");
 CREATE INDEX IF NOT EXISTS "idx_documents_employe_id" ON "documents" ("employe_id");
@@ -970,15 +1038,22 @@ CREATE TABLE IF NOT EXISTS "heures_supplementaires" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
+    "client_ref" TEXT,
+    "sync_version" INTEGER NOT NULL DEFAULT 1,
+    "sync_updated_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "sync_created_at" TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id"),
-    FOREIGN KEY ("employe_id") REFERENCES "employes" ("id") ON DELETE CASCADE
+    FOREIGN KEY ("employe_id") REFERENCES "employes" ("id") ON DELETE CASCADE,
+    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
 );
+CREATE INDEX IF NOT EXISTS "idx_heures_supplementaires_client_ref" ON "heures_supplementaires" ("client_ref");
 CREATE INDEX IF NOT EXISTS "idx_heures_supplementaires_employe_id" ON "heures_supplementaires" ("employe_id");
+CREATE INDEX IF NOT EXISTS "idx_heures_supplementaires_sync_updated_at" ON "heures_supplementaires" ("sync_updated_at");
 
 -- Table « incidents »
 CREATE TABLE IF NOT EXISTS "incidents" (
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "entreprise_id" INTEGER,
     "chantier_id" INTEGER NOT NULL,
     "declare_par" INTEGER,
     "titre" TEXT NOT NULL,
@@ -993,10 +1068,18 @@ CREATE TABLE IF NOT EXISTS "incidents" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "client_ref" TEXT,
+    "sync_version" INTEGER NOT NULL DEFAULT 1,
+    "sync_updated_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "sync_created_at" TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("declare_par") REFERENCES "utilisateurs" ("id"),
-    FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id") ON DELETE CASCADE
+    FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id") ON DELETE CASCADE,
+    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "idx_incidents_chantier_id" ON "incidents" ("chantier_id");
+CREATE INDEX IF NOT EXISTS "idx_incidents_client_ref" ON "incidents" ("client_ref");
+CREATE INDEX IF NOT EXISTS "idx_incidents_entreprise_id" ON "incidents" ("entreprise_id");
+CREATE INDEX IF NOT EXISTS "idx_incidents_sync_updated_at" ON "incidents" ("sync_updated_at");
 
 -- Table « lignes_devis »
 CREATE TABLE IF NOT EXISTS "lignes_devis" (
@@ -1038,10 +1121,10 @@ CREATE TABLE IF NOT EXISTS "mouvements_materiel" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("chantier_destination_id") REFERENCES "chantiers" ("id") ON DELETE SET NULL,
     FOREIGN KEY ("materiel_id") REFERENCES "materiaux" ("id") ON DELETE CASCADE,
-    FOREIGN KEY ("chantier_origine_id") REFERENCES "chantiers" ("id") ON DELETE SET NULL
+    FOREIGN KEY ("chantier_origine_id") REFERENCES "chantiers" ("id") ON DELETE SET NULL,
+    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "idx_mouvements_materiel_entreprise" ON "mouvements_materiel" ("entreprise_id");
 CREATE INDEX IF NOT EXISTS "idx_mouvements_materiel_materiel" ON "mouvements_materiel" ("materiel_id");
@@ -1063,14 +1146,20 @@ CREATE TABLE IF NOT EXISTS "mouvements_stock" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "client_ref" TEXT,
+    "sync_version" INTEGER NOT NULL DEFAULT 1,
+    "sync_updated_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "sync_created_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("fournisseur_id") REFERENCES "fournisseurs" ("id"),
     FOREIGN KEY ("article_id") REFERENCES "articles" ("id") ON DELETE CASCADE,
-    FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id"),
-    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
+    FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id")
 );
 CREATE INDEX IF NOT EXISTS "idx_mouvements_stock_article_id" ON "mouvements_stock" ("article_id");
+CREATE INDEX IF NOT EXISTS "idx_mouvements_stock_client_ref" ON "mouvements_stock" ("client_ref");
 CREATE INDEX IF NOT EXISTS "idx_mouvements_stock_date_mouvement" ON "mouvements_stock" ("date_mouvement");
 CREATE INDEX IF NOT EXISTS "idx_mouvements_stock_entreprise_id_is_deleted" ON "mouvements_stock" ("entreprise_id", "is_deleted");
+CREATE INDEX IF NOT EXISTS "idx_mouvements_stock_sync_updated_at" ON "mouvements_stock" ("sync_updated_at");
 
 -- Table « phases »
 CREATE TABLE IF NOT EXISTS "phases" (
@@ -1113,16 +1202,22 @@ CREATE TABLE IF NOT EXISTS "pointages" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("employe_id") REFERENCES "employes" ("id") ON DELETE CASCADE,
+    "client_ref" TEXT,
+    "sync_version" INTEGER NOT NULL DEFAULT 1,
+    "sync_updated_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "sync_created_at" TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id"),
     FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("scanne_par_id") REFERENCES "utilisateurs" ("id"),
+    FOREIGN KEY ("employe_id") REFERENCES "employes" ("id") ON DELETE CASCADE,
     CONSTRAINT "uq_pointages_employe_date_jour" UNIQUE ("employe_id", "date_jour")
 );
 CREATE INDEX IF NOT EXISTS "idx_pointages_chantier_id" ON "pointages" ("chantier_id");
+CREATE INDEX IF NOT EXISTS "idx_pointages_client_ref" ON "pointages" ("client_ref");
 CREATE INDEX IF NOT EXISTS "idx_pointages_date_jour" ON "pointages" ("date_jour");
 CREATE INDEX IF NOT EXISTS "idx_pointages_employe_id" ON "pointages" ("employe_id");
 CREATE INDEX IF NOT EXISTS "idx_pointages_entreprise_id_is_deleted" ON "pointages" ("entreprise_id", "is_deleted");
+CREATE INDEX IF NOT EXISTS "idx_pointages_sync_updated_at" ON "pointages" ("sync_updated_at");
 
 -- Table « rapports_financiers »
 CREATE TABLE IF NOT EXISTS "rapports_financiers" (
@@ -1205,13 +1300,19 @@ CREATE TABLE IF NOT EXISTS "taches" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "client_ref" TEXT,
+    "sync_version" INTEGER NOT NULL DEFAULT 1,
+    "sync_updated_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "sync_created_at" TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("employe_id") REFERENCES "employes" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "idx_taches_chantier_id" ON "taches" ("chantier_id");
+CREATE INDEX IF NOT EXISTS "idx_taches_client_ref" ON "taches" ("client_ref");
 CREATE INDEX IF NOT EXISTS "idx_taches_employe_id" ON "taches" ("employe_id");
 CREATE INDEX IF NOT EXISTS "idx_taches_entreprise_id" ON "taches" ("entreprise_id");
+CREATE INDEX IF NOT EXISTS "idx_taches_sync_updated_at" ON "taches" ("sync_updated_at");
 
 -- Table « avenants »
 CREATE TABLE IF NOT EXISTS "avenants" (
@@ -1279,8 +1380,8 @@ CREATE TABLE IF NOT EXISTS "lignes_commande_fournisseur" (
     "notes" TEXT,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("article_id") REFERENCES "articles" ("id"),
-    FOREIGN KEY ("commande_id") REFERENCES "commandes_fournisseur" ("id") ON DELETE CASCADE
+    FOREIGN KEY ("commande_id") REFERENCES "commandes_fournisseur" ("id") ON DELETE CASCADE,
+    FOREIGN KEY ("article_id") REFERENCES "articles" ("id")
 );
 CREATE INDEX IF NOT EXISTS "idx_lcf_article_id" ON "lignes_commande_fournisseur" ("article_id");
 CREATE INDEX IF NOT EXISTS "idx_lcf_commande_id" ON "lignes_commande_fournisseur" ("commande_id");
@@ -1299,10 +1400,10 @@ CREATE TABLE IF NOT EXISTS "photos_chantier" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("employe_id") REFERENCES "employes" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
-    FOREIGN KEY ("tache_id") REFERENCES "taches" ("id") ON DELETE SET NULL
+    FOREIGN KEY ("tache_id") REFERENCES "taches" ("id") ON DELETE SET NULL,
+    FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "idx_photos_chantier_chantier_id" ON "photos_chantier" ("chantier_id");
 CREATE INDEX IF NOT EXISTS "idx_photos_chantier_employe_id" ON "photos_chantier" ("employe_id");
@@ -1322,11 +1423,11 @@ CREATE TABLE IF NOT EXISTS "receptions_fournisseur" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id"),
+    FOREIGN KEY ("commande_id") REFERENCES "commandes_fournisseur" ("id"),
     FOREIGN KEY ("received_by") REFERENCES "utilisateurs" ("id"),
     FOREIGN KEY ("depot_id") REFERENCES "depots" ("id"),
-    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
-    FOREIGN KEY ("chantier_id") REFERENCES "chantiers" ("id"),
-    FOREIGN KEY ("commande_id") REFERENCES "commandes_fournisseur" ("id")
+    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "idx_rf_commande_id" ON "receptions_fournisseur" ("commande_id");
 CREATE INDEX IF NOT EXISTS "idx_rf_entreprise_id" ON "receptions_fournisseur" ("entreprise_id");
@@ -1403,15 +1504,21 @@ CREATE TABLE IF NOT EXISTS "factures" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("situation_id") REFERENCES "situations_travaux" ("id") ON DELETE SET NULL,
-    FOREIGN KEY ("contrat_id") REFERENCES "contrats" ("id"),
+    "client_ref" TEXT,
+    "sync_version" INTEGER NOT NULL DEFAULT 1,
+    "sync_updated_at" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "sync_created_at" TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE CASCADE,
-    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
+    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
+    FOREIGN KEY ("situation_id") REFERENCES "situations_travaux" ("id") ON DELETE SET NULL,
+    FOREIGN KEY ("contrat_id") REFERENCES "contrats" ("id")
 );
 CREATE INDEX IF NOT EXISTS "idx_factures_client_id" ON "factures" ("client_id");
+CREATE INDEX IF NOT EXISTS "idx_factures_client_ref" ON "factures" ("client_ref");
 CREATE INDEX IF NOT EXISTS "idx_factures_entreprise_id" ON "factures" ("entreprise_id");
 CREATE INDEX IF NOT EXISTS "idx_factures_entreprise_id_is_deleted" ON "factures" ("entreprise_id", "is_deleted");
 CREATE INDEX IF NOT EXISTS "idx_factures_numero" ON "factures" ("numero");
+CREATE INDEX IF NOT EXISTS "idx_factures_sync_updated_at" ON "factures" ("sync_updated_at");
 
 -- Table « lignes_reception_fournisseur »
 CREATE TABLE IF NOT EXISTS "lignes_reception_fournisseur" (
@@ -1422,8 +1529,8 @@ CREATE TABLE IF NOT EXISTS "lignes_reception_fournisseur" (
     "conforme" INTEGER NOT NULL DEFAULT 1,
     "notes" TEXT,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("reception_id") REFERENCES "receptions_fournisseur" ("id") ON DELETE CASCADE,
-    FOREIGN KEY ("ligne_commande_id") REFERENCES "lignes_commande_fournisseur" ("id")
+    FOREIGN KEY ("ligne_commande_id") REFERENCES "lignes_commande_fournisseur" ("id"),
+    FOREIGN KEY ("reception_id") REFERENCES "receptions_fournisseur" ("id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "idx_lrf_reception_id" ON "lignes_reception_fournisseur" ("reception_id");
 
@@ -1458,9 +1565,9 @@ CREATE TABLE IF NOT EXISTS "paiements_fournisseur" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
     FOREIGN KEY ("created_by") REFERENCES "utilisateurs" ("id"),
-    FOREIGN KEY ("facture_id") REFERENCES "factures_fournisseur" ("id"),
-    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
+    FOREIGN KEY ("facture_id") REFERENCES "factures_fournisseur" ("id")
 );
 CREATE INDEX IF NOT EXISTS "idx_pf_entreprise_id" ON "paiements_fournisseur" ("entreprise_id");
 CREATE INDEX IF NOT EXISTS "idx_pf_facture_id" ON "paiements_fournisseur" ("facture_id");
@@ -1504,8 +1611,8 @@ CREATE TABLE IF NOT EXISTS "paiements" (
     "is_deleted" INTEGER NOT NULL,
     "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE,
-    FOREIGN KEY ("facture_id") REFERENCES "factures" ("id") ON DELETE CASCADE
+    FOREIGN KEY ("facture_id") REFERENCES "factures" ("id") ON DELETE CASCADE,
+    FOREIGN KEY ("entreprise_id") REFERENCES "entreprises" ("id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "idx_paiements_entreprise_id_is_deleted" ON "paiements" ("entreprise_id", "is_deleted");
 CREATE INDEX IF NOT EXISTS "idx_paiements_facture_id" ON "paiements" ("facture_id");
