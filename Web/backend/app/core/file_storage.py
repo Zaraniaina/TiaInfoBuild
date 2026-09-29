@@ -10,8 +10,10 @@ from fastapi import UploadFile
 UPLOAD_DIR: Path = Path(__file__).resolve().parent.parent / "uploads"
 MAX_PHOTO_MB: int = 5
 MAX_MANUEL_MB: int = 10
+MAX_DOC_MB: int = 10
 ALLOWED_PHOTO_EXT: set[str] = {".jpg", ".jpeg", ".png"}
 ALLOWED_MANUEL_EXT: set[str] = {".pdf"}
+ALLOWED_DOC_EXT: set[str] = {".pdf", ".jpg", ".jpeg", ".png"}
 
 
 def _ext(filename: str) -> str:

@@ -1,0 +1,13 @@
+{
+  "name": "tia-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "TIA INFO BUILD — application desktop offline-first (Tauri 2 + SQLite locale)",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

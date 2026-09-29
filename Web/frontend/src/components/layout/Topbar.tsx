@@ -7,6 +7,8 @@ import { settingsService } from '@/services/settings.service'
 import { api } from '@/services/api'
 import { ROLE_MODULES } from '@/config/roles.config'
 import { formatErrorMessage } from '@/utils/errorMessage'
+import { isDesktopBuild } from '@/utils/buildMode'
+import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge'
 
 export function Topbar() {
   const navigate = useNavigate()
@@ -239,7 +241,6 @@ export function Topbar() {
         >
           <i className={`bi ${sidebarOpen ? 'bi-chevron-double-left' : 'bi-list'}`}></i>
         </button>
-        <h4 className="topbar-title">TIA INFO BUILD</h4>
       </div>
 
       <div className="topbar-right">
@@ -252,6 +253,9 @@ export function Topbar() {
           <i className={`bi ${themeIcon}`}></i>
           <span className="theme-indicator" aria-hidden="true"></span>
         </button>
+
+        {/* Badge de synchronisation — desktop uniquement (Tauri) */}
+        {isDesktopBuild() && <SyncStatusBadge />}
 
         {/* Notifications - dropdown React */}
         {canViewAlertes && (
@@ -291,9 +295,13 @@ export function Topbar() {
             aria-label="Menu utilisateur"
             onClick={() => { setShowUserMenu(v => !v); setShowNotifMenu(false) }}
           >
-            <div className="user-avatar">
-              <i className="bi bi-person"></i>
-            </div>
+            {user?.photo ? (
+              <img src={user.photo} alt="Avatar" className="rounded-circle border me-1" style={{ width: '32px', height: '32px', objectFit: 'cover' }} />
+            ) : (
+              <div className="user-avatar">
+                <i className="bi bi-person"></i>
+              </div>
+            )}
             <span className="user-name d-none d-md-inline">
               {user?.prenom} {user?.nom}
             </span>
@@ -321,9 +329,9 @@ export function Topbar() {
                   onClick={() => {
                     setShowUserMenu(false)
                     if (user?.role_code === 'super_admin') {
-                      navigate('/super-admin/parametres')
+                      navigate('/app/super-admin/parametres')
                     } else {
-                      navigate('/settings')
+                      navigate('/app/settings')
                     }
                   }}
                 >

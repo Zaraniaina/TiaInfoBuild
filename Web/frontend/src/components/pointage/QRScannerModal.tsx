@@ -49,13 +49,14 @@ export function QRScannerModal({
       el.style.opacity = '1'
       el.style.transform = 'translateY(0)'
       if (type === 'success') {
-        el.style.background = '#1e7e34'
+        // ponytail: tokens inline (toast injecté hors React) ; #15803d = vert sobre, contraste AA sur blanc.
+        el.style.background = '#15803d'
         el.style.color = '#fff'
       } else if (type === 'danger') {
-        el.style.background = '#c82333'
+        el.style.background = '#B91C1C'
         el.style.color = '#fff'
       } else {
-        el.style.background = '#0d6efd'
+        el.style.background = 'var(--tia-accent)'
         el.style.color = '#fff'
       }
       el.textContent = text

@@ -849,7 +849,7 @@ export function MaterielsPage() {
 
       {/* MODAL NOUVEAU MATÉRIEL BTP */}
       {showCreateModal && (
-        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex={-1}>
+        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'var(--overlay)' }} tabIndex={-1}>
           <div className="modal-dialog modal-lg">
             <div className="modal-content border-0 shadow-lg">
               <form onSubmit={handleCreate}>
@@ -929,7 +929,7 @@ export function MaterielsPage() {
 
       {/* MODAL FICHE DÉTAILLÉE MATÉRIEL */}
       {showDetailModal && detailMateriel && (
-        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex={-1}>
+        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'var(--overlay)' }} tabIndex={-1}>
           <div className="modal-dialog modal-xl">
             <div className="modal-content border-0 shadow-lg">
               <div className="modal-header bg-dark text-white">
@@ -1069,7 +1069,7 @@ export function MaterielsPage() {
 
       {/* MODAL CRÉATION BON DE TRANSFERT */}
       {showTransfertModal && (
-        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex={-1}>
+        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'var(--overlay)' }} tabIndex={-1}>
           <div className="modal-dialog">
             <div className="modal-content border-0 shadow-lg">
               <form onSubmit={handleCreateTransfert}>
@@ -1128,7 +1128,7 @@ export function MaterielsPage() {
 
       {/* MODAL MISE À JOUR HORAMÈTRE */}
       {showHorametreModal && detailMateriel && (
-        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex={-1}>
+        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'var(--overlay)' }} tabIndex={-1}>
           <div className="modal-dialog">
             <div className="modal-content border-0 shadow-lg">
               <form onSubmit={handleSaveHorametre}>
@@ -1160,7 +1160,7 @@ export function MaterielsPage() {
 
       {/* MODAL NOUVELLE MAINTENANCE */}
       {showMaintenanceModal && detailMateriel && (
-        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex={-1}>
+        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'var(--overlay)' }} tabIndex={-1}>
           <div className="modal-dialog">
             <div className="modal-content border-0 shadow-lg">
               <form onSubmit={handleAddMaintenance}>
@@ -1208,7 +1208,7 @@ export function MaterielsPage() {
 
       {/* MODAL IMPRESSION QR CODE */}
       {showQrModal && qrCodeData && (
-        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex={-1}>
+        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'var(--overlay)' }} tabIndex={-1}>
           <div className="modal-dialog">
             <div className="modal-content border-0 shadow-lg text-center">
               <div className="modal-header bg-dark text-white">

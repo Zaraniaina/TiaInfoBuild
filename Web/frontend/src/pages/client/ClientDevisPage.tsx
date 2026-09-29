@@ -4,6 +4,7 @@ import {
   EtatChargement, EtatErreur, Vide, fmtDate, fmtMontant,
 } from './shared'
 import { useState } from 'react'
+import { PrintableDocumentModal, PrintableDocumentData } from '@/components/documents/PrintableDocumentModal'
 
 export function ClientDevisPage() {
   const { items, loading, error, recharger } = useListePage<Devis>(
@@ -14,6 +15,32 @@ export function ClientDevisPage() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [actionEnCours, setActionEnCours] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [printDoc, setPrintDoc] = useState<{ show: boolean; data: PrintableDocumentData }>({
+    show: false,
+    data: {},
+  })
+
+  const ouvrirPrint = (devis: Devis, detailLignes: LigneDevis[] = []) => {
+    setPrintDoc({
+      show: true,
+      data: {
+        numero: devis.numero,
+        date: fmtDate(devis.date_creation),
+        date_echeance: fmtDate(devis.date_validite),
+        total_ht: devis.montant_ht || 0,
+        tva_montant: (devis.montant_ttc || 0) - (devis.montant_ht || 0),
+        total_ttc: devis.montant_ttc || 0,
+        conditions_paiement: devis.conditions_paiement || 'Validité 30 jours',
+        lignes: detailLignes.map(l => ({
+          designation: l.designation,
+          quantite: l.quantite,
+          unite: l.unite,
+          prix_unitaire: l.prix_unitaire,
+          montant_ht: l.montant,
+        })),
+      },
+    })
+  }
 
   const ouvrirDetail = async (devis: Devis) => {
     setSelection(devis)
@@ -70,7 +97,7 @@ export function ClientDevisPage() {
                   <th className="text-end">Montant HT</th>
                   <th className="text-end">Montant TTC</th>
                   <th>Statut</th>
-                  <th></th>
+                  <th className="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -82,10 +109,15 @@ export function ClientDevisPage() {
                     <td className="text-end">{fmtMontant(d.montant_ht)}</td>
                     <td className="text-end fw-semibold">{fmtMontant(d.montant_ttc)}</td>
                     <td><StatutBadge statut={d.statut} /></td>
-                    <td>
-                      <button className="btn btn-sm btn-outline-primary" onClick={() => ouvrirDetail(d)}>
-                        <i className="bi bi-eye"></i>
-                      </button>
+                    <td className="text-end">
+                      <div className="d-flex gap-1 justify-content-end">
+                        <button className="btn btn-sm btn-outline-primary" title="Détails" onClick={() => ouvrirDetail(d)}>
+                          <i className="bi bi-eye"></i>
+                        </button>
+                        <button className="btn btn-sm btn-outline-secondary" title="Imprimer / Télécharger PDF" onClick={() => ouvrirPrint(d)}>
+                          <i className="bi bi-printer"></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -100,16 +132,25 @@ export function ClientDevisPage() {
         onClose={() => setSelection(null)}
         title={selection ? `Devis ${selection.numero}` : ''}
         footer={
-          repondrePossible ? (
-            <>
-              <button className="btn btn-outline-danger" disabled={actionEnCours} onClick={() => repondre('refuser')}>
-                Refuser
+          <div className="d-flex justify-content-between w-100 align-items-center">
+            {selection && (
+              <button className="btn btn-outline-secondary" onClick={() => ouvrirPrint(selection, lignes)}>
+                <i className="bi bi-printer me-2"></i>Imprimer / PDF
               </button>
-              <button className="btn btn-success" disabled={actionEnCours} onClick={() => repondre('accepter')}>
-                {actionEnCours ? 'En cours...' : 'Accepter le devis'}
-              </button>
-            </>
-          ) : null
+            )}
+            <div className="d-flex gap-2">
+              {repondrePossible && (
+                <>
+                  <button className="btn btn-outline-danger" disabled={actionEnCours} onClick={() => repondre('refuser')}>
+                    Refuser
+                  </button>
+                  <button className="btn btn-success" disabled={actionEnCours} onClick={() => repondre('accepter')}>
+                    {actionEnCours ? 'En cours...' : 'Accepter le devis'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
         }
       >
         {selection && (
@@ -169,6 +210,13 @@ export function ClientDevisPage() {
           </>
         )}
       </DetailModal>
+
+      <PrintableDocumentModal
+        show={printDoc.show}
+        onClose={() => setPrintDoc({ show: false, data: {} })}
+        type="devis"
+        data={printDoc.data}
+      />
     </div>
   )
 }

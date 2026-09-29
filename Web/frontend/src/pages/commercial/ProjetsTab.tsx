@@ -163,12 +163,12 @@ return (
           <input
             type="text"
             className="form-control form-control-sm"
-            style={{ width: 240 }}
+            style={{ width: 'min(240px, 100%)' }}
             placeholder="Rechercher..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <select className="form-select form-select-sm" style={{ width: 160 }} value={statutFilter} onChange={(e) => setStatutFilter(e.target.value)}>
+          <select className="form-select form-select-sm" style={{ width: 'min(160px, 100%)' }} value={statutFilter} onChange={(e) => setStatutFilter(e.target.value)}>
             <option value="tous">Tous statuts</option>
             {STATUTS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
           </select>
@@ -235,7 +235,7 @@ return (
       )}
 {/* Modal création / édition */}
       {showModal && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }} onClick={() => setShowModal(false)}>
+        <div className="modal show d-block" style={{ backgroundColor: 'var(--overlay)' }} onClick={() => setShowModal(false)}>
           <div className="modal-dialog modal-lg" onClick={(e) => e.stopPropagation()}>
             <div className="modal-content">
               <div className="modal-header">

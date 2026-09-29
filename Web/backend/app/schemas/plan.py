@@ -10,9 +10,10 @@ class PlanBase(BaseModel):
     description: str | None = None
     prix_mensuel: float = Field(..., ge=0)
     prix_annuel: float = Field(..., ge=0)
-    utilisateurs_max: int = Field(default=5, ge=1)
+    # null = illimité (généreux par défaut) ; la métrique est le nombre d'EMPLOYÉS
+    # (les clients portail sont toujours illimités)
+    utilisateurs_max: int | None = Field(default=None, ge=1)
     chantiers_max: int = Field(default=3, ge=1)
-    stockage_go: int = Field(default=5, ge=1)
     duree_essai_jours: int = Field(default=30, ge=0)
     actif: bool = True
 
@@ -27,9 +28,9 @@ class PlanUpdate(BaseModel):
     description: str | None = None
     prix_mensuel: float | None = Field(default=None, ge=0)
     prix_annuel: float | None = Field(default=None, ge=0)
+    # null = illimité
     utilisateurs_max: int | None = Field(default=None, ge=1)
     chantiers_max: int | None = Field(default=None, ge=1)
-    stockage_go: int | None = Field(default=None, ge=1)
     duree_essai_jours: int | None = Field(default=None, ge=0)
     actif: bool | None = None
 
@@ -38,16 +39,23 @@ class PlanResponse(PlanBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    # Nombre d'abonnements actifs/essai liés à ce plan (renseigné uniquement
+    # sur l'endpoint super-admin GET /plans ; None ailleurs).
+    entreprises_actives: int | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
 
 class SubscriptionBase(BaseModel):
-    entreprise_id: int = Field(..., gt=0)
+    # entreprise_id requis pour l'endpoint super-admin ; l'endpoint self-service
+    # /entreprise/subscription le déduit du token (le rend optionnel évite un 422
+    # côté entreprise qui ne doit JAMAIS pouvoir spécifier l'entreprise d'un autre).
+    entreprise_id: int | None = Field(default=None, gt=0)
     plan_id: int = Field(..., gt=0)
     statut: str | None = "actif"
     mode_paiement: str | None = None
-    prix_paye: float | None = Field(default=None, gt=0)
+    # ge=0 (et non gt=0) : les essais et le plan gratuit ont prix_paye = 0
+    prix_paye: float | None = Field(default=None, ge=0)
     periode: str | None = None
 
 
@@ -77,7 +85,7 @@ class SubscriptionUpdate(BaseModel):
     date_prochain_renouvellement: datetime | None = None
     statut: str | None = None
     mode_paiement: str | None = None
-    prix_paye: float | None = Field(default=None, gt=0)
+    prix_paye: float | None = Field(default=None, ge=0)
     periode: str | None = None
 
     @field_validator("periode")

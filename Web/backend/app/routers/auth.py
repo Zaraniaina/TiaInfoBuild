@@ -1,8 +1,8 @@
 """Router pour l'authentification et la gestion des tokens."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status, BackgroundTasks
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing_extensions import Annotated
@@ -16,12 +16,18 @@ from app.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    create_password_reset_token,
+    verify_password_reset_token,
+    create_email_verification_token,
+    verify_email_verification_token,
 )
 from app.models.utilisateur import Utilisateur
 from app.models.historique_connexion import HistoriqueConnexion
 from app.models.refresh_token import RefreshToken
+from app.models.role import Role as RoleModel
 from app.schemas.auth import (
     LoginRequest,
+    DesktopActivateRequest,
     RegisterRequest,
     RefreshRequest,
     Token,
@@ -29,8 +35,16 @@ from app.schemas.auth import (
     PermissionResponse,
     RegisterEntrepriseRequest,
     RegisterEntrepriseResponse,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
 )
-from app.core.permissions import PERMISSION_MAP, Role
+from app.services.email import (
+    send_reset_password_email,
+    send_welcome_entreprise_email,
+    send_email_verification_email,
+)
+from app.services.user_service import resolve_user_photo
+from app.core.permissions import PERMISSION_MAP, ROLE_NAMES, Role
 
 router = APIRouter(tags=["auth"])
 CurrentUser = Annotated[dict[str, Any], Depends(get_current_user)]
@@ -71,6 +85,12 @@ async def login(
             detail="Email ou mot de passe incorrect",
         )
 
+    if user.is_email_verified is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Veuillez confirmer votre adresse email avant de vous connecter. Un email de confirmation vous a été envoyé par email.",
+        )
+
     try:
         role_code = user.role.code if user.role else Role.EMPLOYE
         permissions = PERMISSION_MAP.get(role_code, [])
@@ -102,6 +122,7 @@ async def login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Une erreur est survenue lors de la connexion. Veuillez réessayer.",
         )
+    user_photo = await resolve_user_photo(user, db)
     return Token(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -115,8 +136,144 @@ async def login(
             "entreprise_id": user.entreprise_id,
             "statut": user.statut,
             "must_change_password": user.must_change_password,
+            "photo": user_photo,
         },
     )
+
+
+@router.post("/desktop/activate")
+async def desktop_activate(
+    credentials: DesktopActivateRequest,
+    db: DbSession,
+    request: Request,
+):
+    """Active un poste desktop (offline-first) — voir docs/plan-desktop-tauri.md §5.2.
+
+    Vérifie email/mot de passe contre la table utilisateurs (logique de hash et
+    messages identiques à POST /login pour empêcher l'énumération d'adresses),
+    puis renvoie les mêmes tokens que le login normal, le profil minimal de
+    l'utilisateur, l'heure serveur (source de vérité temporelle du desktop) et
+    un petit référentiel (rôles + permissions) pour le premier seed local.
+
+    Endpoint PUBLIC (aucun JWT requis) : la seule protection est la vérification
+    des identifiants ; aucun noms d'utilisateurs n'est exposé en cas d'échec.
+    """
+    # 1. Recherche du compte (même requête que /login).
+    try:
+        result = await db.execute(
+            select(Utilisateur).where(
+                Utilisateur.email == credentials.email,
+                Utilisateur.is_deleted == False,
+            )
+        )
+        user = result.scalar_one_or_none()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Email ou mot de passe incorrect",
+        )
+
+    # 2. Identifiants invalides (email inconnu OU mauvais mot de passe) → 401,
+    #    message strictement identique au login : aucune énumération possible.
+    if not user or not verify_password(credentials.password, user.mot_de_passe_hash):
+        try:
+            await db.execute(
+                HistoriqueConnexion.__table__.insert().values(
+                    utilisateur_id=None,
+                    ip_address=request.client.host if request.client else None,
+                    user_agent=request.headers.get("user-agent"),
+                    reussi=False,
+                    date_connexion=datetime.now(),
+                )
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email ou mot de passe incorrect",
+        )
+
+    # 3. Le compte existe et le mot de passe est bon mais le compte n'est pas
+    #    actif (désactivé ou email non confirmé) → 409. Accessible uniquement
+    #    avec le bon mot de passe : pas d'énumération.
+    if user.statut != "actif" or user.is_email_verified is False:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Aucun compte actif n'est lié à cette adresse email. Veuillez contacter votre administrateur.",
+        )
+
+    # 4. Tokens identiques au login normal (mêmes fonctions de création).
+    try:
+        role_code = user.role.code if user.role else Role.EMPLOYE
+        permissions = PERMISSION_MAP.get(role_code, [])
+        access_token = create_access_token(
+            subject=user.id,
+            role_code=role_code,
+            entreprise_id=user.entreprise_id,
+            permissions=permissions,
+        )
+        refresh_token = create_refresh_token(user.id)
+        db.add(
+            RefreshToken(
+                utilisateur_id=user.id,
+                token_hash=hash_password(refresh_token),
+                expires_at=datetime.now() + timedelta(days=settings.refresh_token_expire_days),
+            )
+        )
+        user.derniere_connexion = datetime.now()
+        await db.execute(
+            HistoriqueConnexion.__table__.insert().values(
+                utilisateur_id=user.id,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+                reussi=True,
+                date_connexion=datetime.now(),
+            )
+        )
+        await db.commit()
+    except HTTPException:
+        raise
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Une erreur est survenue lors de la connexion. Veuillez réessayer.",
+        )
+
+    # 5. Référentiel minimal pour le seed local (optionnel côté client : en cas
+    #    de souci, l'activation reste OK et `referentiel` est simplement null).
+    try:
+        roles_rows = (
+            await db.execute(select(RoleModel).where(RoleModel.is_deleted == False).order_by(RoleModel.id))
+        ).scalars().all()
+        referentiel: dict[str, Any] | None = {
+            "roles": [
+                {"code": r.code, "nom": r.nom, "description": r.description}
+                for r in roles_rows
+                if r.code != Role.SUPER_ADMIN
+            ],
+            "permissions": PERMISSION_MAP,
+            "role_names": ROLE_NAMES,
+        }
+    except Exception:
+        referentiel = None
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "Bearer",
+        "entreprise_id": user.entreprise_id,
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "nom": user.nom,
+            "prenom": user.prenom,
+            "role": role_code,
+        },
+        "server_time": datetime.now(timezone.utc).isoformat(),
+        "referentiel": referentiel,
+    }
 
 
 @router.post("/refresh", response_model=Token)
@@ -200,92 +357,215 @@ async def register(data: RegisterRequest, db: DbSession):
 
 
 @router.post("/register-entreprise", response_model=RegisterEntrepriseResponse, status_code=status.HTTP_201_CREATED)
-async def register_entreprise(data: RegisterEntrepriseRequest, db: DbSession, request: Request):
+async def register_entreprise(
+    data: RegisterEntrepriseRequest,
+    db: DbSession,
+    request: Request,
+    background_tasks: BackgroundTasks,
+):
     from app.crud.role import RoleCRUD
     from app.models.entreprise import Entreprise
 
-    existing_email = await db.execute(select(Utilisateur).where(Utilisateur.email == data.admin_email))
-    if existing_email.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email déjà utilisé")
+    try:
+        existing_email = await db.execute(select(Utilisateur).where(Utilisateur.email == data.admin_email))
+        if existing_email.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Un utilisateur avec cette adresse email existe déjà.",
+            )
 
-    entreprise = Entreprise(
-        nom=data.nom_entreprise,
-        email=data.entreprise_email or data.admin_email,
-        adresse=data.adresse,
-        telephone=data.telephone,
-    )
-    db.add(entreprise)
-    await db.flush()
-    # Pas de db.refresh(entreprise) : l'id est disponible après le flush. Un refresh
-    # chargerait en eager la relation selectin "pointages" (et tout le graphe), ce qui
-    # provoque un 500 "Unknown column" si la table pointages (ou une table liée) est
-    # désynchronisée du modèle ORM. Voir scripts/fix_missing_columns.py.
-
-    role_crud = RoleCRUD()
-    admin_role = await role_crud.get_by_code(db, Role.ADMIN_ENTREPRISE)
-    if not admin_role:
-        admin_role = Role(
-            code=Role.ADMIN_ENTREPRISE,
-            nom="Admin Entreprise",
-            description="Administrateur de l'entreprise",
-            permissions={"*": True},
-            is_system=True,
+        entreprise = Entreprise(
+            nom=data.nom_entreprise,
+            email=data.entreprise_email or data.admin_email,
+            adresse=data.adresse,
+            telephone=data.telephone,
+            abonnement="essai",
         )
-        db.add(admin_role)
+        db.add(entreprise)
         await db.flush()
-        # Pas de db.refresh(admin_role) : admin_role.code / .id sont déjà disponibles
-        # après le flush. Un refresh chargerait en eager la relation selectin "utilisateurs".
 
-    role_code = admin_role.code
-    permissions = PERMISSION_MAP.get(role_code, [])
-    hashed_password = hash_password(data.password)
-    admin_user = Utilisateur(
-        entreprise_id=entreprise.id,
-        role_id=admin_role.id,
-        nom=data.admin_nom,
-        prenom=data.admin_prenom,
-        email=data.admin_email,
-        mot_de_passe_hash=hashed_password,
-        statut="actif",
-    )
-    db.add(admin_user)
-    await db.flush()
-    # Pas de db.refresh(admin_user) : admin_user.id / .email sont déjà disponibles
-    # après le flush. Un refresh rechargerait tout le graphe de relations selectin.
+        # Essai gratuit automatique (30 jours, accès complet) — anti-essai infini
+        # intégré : une entreprise ne repart jamais un 2e essai.
+        from app.services.subscription_state import demarrer_essai
+        await demarrer_essai(db, entreprise.id)
 
-    access_token = create_access_token(
-        subject=admin_user.id,
-        role_code=role_code,
-        entreprise_id=entreprise.id,
-        permissions=permissions,
-    )
-    refresh_token = create_refresh_token(admin_user.id)
-    refresh_hash = hash_password(refresh_token)
-    refresh_expires = datetime.now() + timedelta(days=settings.refresh_token_expire_days)
-    db_refresh = RefreshToken(utilisateur_id=admin_user.id, token_hash=refresh_hash, expires_at=refresh_expires)
-    db.add(db_refresh)
-    admin_user.derniere_connexion = datetime.now()
-    await db.execute(
-        HistoriqueConnexion.__table__.insert().values(
+        role_crud = RoleCRUD()
+        admin_role = await role_crud.get_by_code(db, Role.ADMIN_ENTREPRISE)
+        if not admin_role:
+            admin_role = Role(
+                code=Role.ADMIN_ENTREPRISE,
+                nom="Admin Entreprise",
+                description="Administrateur de l'entreprise",
+                permissions={"*": True},
+                is_system=True,
+            )
+            db.add(admin_role)
+            await db.flush()
+
+        role_code = admin_role.code
+        hashed_password = hash_password(data.password)
+        admin_user = Utilisateur(
+            entreprise_id=entreprise.id,
+            role_id=admin_role.id,
+            nom=data.admin_nom,
+            prenom=data.admin_prenom,
+            email=data.admin_email,
+            mot_de_passe_hash=hashed_password,
+            statut="actif",
+            is_email_verified=False,
+        )
+        db.add(admin_user)
+        await db.flush()
+
+        await db.commit()
+
+        # Envoi de l'email de confirmation en tâche de fond (non bloquant)
+        # Config SMTP résolue AVANT la tâche (la session db est fermée dans BackgroundTasks)
+        from app.services.mail_config import get_effective_smtp_config
+        verification_token = create_email_verification_token(admin_user.email)
+        admin_fullname = f"{admin_user.prenom or ''} {admin_user.nom or ''}".strip()
+        try:
+            _smtp_cfg = await get_effective_smtp_config(db)
+        except Exception:
+            _smtp_cfg = await get_effective_smtp_config(None)
+        background_tasks.add_task(
+            send_email_verification_email,
+            to_email=admin_user.email,
+            verification_token=verification_token,
+            admin_nom=admin_fullname,
+            entreprise_nom=entreprise.nom,
+            smtp_config=_smtp_cfg,
+        )
+
+        return RegisterEntrepriseResponse(
+            entreprise_id=entreprise.id,
             utilisateur_id=admin_user.id,
-            ip_address=request.client.host if request.client else None,
-            user_agent=request.headers.get("user-agent"),
-            reussi=True,
-            date_connexion=datetime.now(),
+            email=admin_user.email,
+            role_code=role_code,
+            message="Entreprise créée avec succès. Un email de confirmation vous a été envoyé pour activer votre compte.",
+        )
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as exc:
+        await db.rollback()
+        import logging, traceback
+        logging.getLogger(__name__).error(f"Erreur lors de la création d'entreprise: {exc}\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Impossible de créer l'entreprise : {str(exc)}",
+        )
+
+
+@router.post("/forgot-password")
+async def forgot_password(payload: ForgotPasswordRequest, db: DbSession, background_tasks: BackgroundTasks):
+    """Demande un lien de réinitialisation de mot de passe envoyé par email."""
+    result = await db.execute(
+        select(Utilisateur).where(
+            Utilisateur.email == payload.email,
+            Utilisateur.is_deleted == False,
         )
     )
-    await db.commit()
-    # Pas de db.refresh(admin_user) : les champs retournés (email, id) sont déjà
-    # chargés. Un refresh rechargerait tout le graphe de relations selectin de
-    # l'utilisateur et échouerait en 500 sur une colonne manquante d'une table liée.
+    user = result.scalar_one_or_none()
 
-    return RegisterEntrepriseResponse(
-        entreprise_id=entreprise.id,
-        utilisateur_id=admin_user.id,
-        email=admin_user.email,
-        role_code=role_code,
-        message="Entreprise créée avec succès",
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Aucun compte enregistré avec cette adresse email.",
+        )
+
+    if user.statut != "actif":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Ce compte est désactivé. Veuillez contacter votre administrateur.",
+        )
+
+    reset_token = create_password_reset_token(user.email)
+    user_name = f"{user.prenom or ''} {user.nom or ''}".strip()
+    from app.services.mail_config import get_effective_smtp_config as _get_cfg
+    try:
+        _smtp_cfg2 = await _get_cfg(db)
+    except Exception:
+        _smtp_cfg2 = await _get_cfg(None)
+    background_tasks.add_task(
+        send_reset_password_email,
+        to_email=user.email,
+        reset_token=reset_token,
+        user_name=user_name,
+        smtp_config=_smtp_cfg2,
     )
+
+    return {
+        "message": "Un lien de réinitialisation vous a été envoyé par email. Veuillez vérifier votre boîte de réception."
+    }
+
+
+@router.post("/reset-password")
+async def reset_password(payload: ResetPasswordRequest, db: DbSession):
+    """Réinitialise le mot de passe via un token JWT valide."""
+    email = verify_password_reset_token(payload.token)
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le lien de réinitialisation est invalide ou a expiré.",
+        )
+
+    result = await db.execute(
+        select(Utilisateur).where(
+            Utilisateur.email == email,
+            Utilisateur.is_deleted == False,
+        )
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Utilisateur non trouvé ou compte désactivé.",
+        )
+
+    user.mot_de_passe_hash = hash_password(payload.new_password)
+    user.must_change_password = False
+    await db.commit()
+
+    return {
+        "message": "Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter."
+    }
+
+
+@router.get("/verify-email")
+async def verify_email(token: str, db: DbSession):
+    """Valide l'adresse email d'un utilisateur grâce au token JWT de vérification."""
+    email = verify_email_verification_token(token)
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le lien de confirmation est invalide ou a expiré.",
+        )
+
+    result = await db.execute(
+        select(Utilisateur).where(
+            Utilisateur.email == email,
+            Utilisateur.is_deleted == False,
+        )
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Utilisateur non trouvé ou compte supprimé.",
+        )
+
+    if user.is_email_verified:
+        return {"message": "Votre adresse email est déjà confirmée. Vous pouvez vous connecter."}
+
+    user.is_email_verified = True
+    await db.commit()
+
+    return {
+        "message": "Votre adresse email a été confirmée avec succès. Vous pouvez maintenant vous connecter."
+    }
 
 
 @router.post("/change-password")
@@ -313,10 +593,11 @@ async def change_password(payload: ChangePasswordRequest, db: DbSession, current
 
 
 @router.get("/me")
-async def get_me(current_user: CurrentUser):
+async def get_me(current_user: CurrentUser, db: DbSession):
     user = current_user.get("user")
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur non trouvé")
+    user_photo = await resolve_user_photo(user, db)
     return {
         "user": {
             "id": user.id,
@@ -327,6 +608,7 @@ async def get_me(current_user: CurrentUser):
             "entreprise_id": current_user.get("entreprise_id"),
             "statut": user.statut,
             "must_change_password": user.must_change_password,
+            "photo": user_photo,
             "date_creation": user.date_creation.isoformat() if user.date_creation else None,
             "derniere_connexion": user.derniere_connexion.isoformat() if user.derniere_connexion else None,
         }

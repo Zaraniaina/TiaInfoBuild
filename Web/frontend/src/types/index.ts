@@ -80,6 +80,7 @@ export interface Chantier {
   entreprise_id: number;
   client_id?: number;
   chef_chantier_id?: number;
+  chef_projet_id?: number;
   numero?: string;
   nom: string;
   adresse?: string;
@@ -95,6 +96,8 @@ export interface Chantier {
   tva: number;
   statut: StatutChantier;
   description?: string;
+  /** Région/zone du chantier — utilisée pour croiser avec les périodes à risque climatique. */
+  region?: string | null;
   phases?: Phase[];
   incidents?: Incident[];
   is_deleted: boolean;
@@ -127,6 +130,34 @@ export interface Incident {
   date_incident: string;
   gravite: GraviteIncident;
   statut: string;
+  /** Aléa climatique (optionnel) : cyclone, inondation, pluies_intenses, secheresse, route_coupee, coupure_electricite, autre */
+  type_alea?: string | null;
+  date_fin?: string | null;
+  /** Jours d'arrêt de chantier documentés pour cet aléa */
+  impact_arret_jours?: number | null;
+  /** Imputabilité : 'climatique' (retard négociable) | 'entreprise' | 'client' | 'indetermine' */
+  imputabilite?: string | null;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Impact climatique d'un chantier (aléas documentés) */
+export interface ImpactClimatique {
+  jours_arret_climatique: number;
+  retard_brut_jours: number;
+  retard_net_jours: number;
+}
+
+/** Période à risque climatique pré-marquée (saison cyclonique, pluies...) */
+export interface PeriodeRisqueClimatique {
+  id: number;
+  entreprise_id: number;
+  region: string;
+  type_risque: string;
+  date_debut: string;
+  date_fin: string;
+  description?: string | null;
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
@@ -141,6 +172,114 @@ export interface AffectationRessource {
   date_fin?: string;
   role?: string;
   is_deleted: boolean;
+}
+
+// ============================================================
+// ACHATS FOURNISSEURS (cycle commande → réception → facture → paiement)
+// ============================================================
+
+export type StatutCommandeFournisseur =
+  | "brouillon" | "envoyee" | "confirmee" | "partiellement_recue" | "recue" | "annulee";
+
+export interface LigneCommandeFournisseur {
+  id: number;
+  commande_id: number;
+  article_id?: number | null;
+  designation: string;
+  quantite: number;
+  quantite_recue: number;
+  prix_unitaire: number;
+  montant_ht: number;
+  notes?: string | null;
+}
+
+export interface CommandeFournisseur {
+  id: number;
+  entreprise_id: number;
+  fournisseur_id: number;
+  fournisseur_nom?: string | null;
+  chantier_id?: number | null;
+  chantier_nom?: string | null;
+  numero: string;
+  date_commande: string;
+  date_livraison_prevue?: string | null;
+  statut: StatutCommandeFournisseur;
+  montant_ht: number;
+  taux_tva: number;
+  montant_tva: number;
+  montant_ttc: number;
+  notes?: string | null;
+  lignes: LigneCommandeFournisseur[];
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReceptionFournisseur {
+  id: number;
+  entreprise_id: number;
+  commande_id: number;
+  numero?: string | null;
+  date_reception: string;
+  depot_id?: number | null;
+  chantier_id?: number | null;
+  complete: boolean;
+  notes?: string | null;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type StatutFactureFournisseur =
+  | "a_payer" | "partiellement_payee" | "payee" | "litige" | "annulee";
+
+export interface FactureFournisseur {
+  id: number;
+  entreprise_id: number;
+  fournisseur_id: number;
+  fournisseur_nom?: string | null;
+  commande_id?: number | null;
+  chantier_id?: number | null;
+  chantier_nom?: string | null;
+  numero: string;
+  date_facture: string;
+  date_echeance?: string | null;
+  statut: StatutFactureFournisseur;
+  montant_ht: number;
+  taux_tva: number;
+  montant_tva: number;
+  montant_ttc: number;
+  montant_paye: number;
+  restant_a_payer?: number;
+  notes?: string | null;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaiementFournisseur {
+  id: number;
+  entreprise_id: number;
+  facture_id: number;
+  montant: number;
+  date_paiement: string;
+  mode_paiement: string;
+  reference?: string | null;
+  notes?: string | null;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ImpactAchatsChantier {
+  chantier_id: number;
+  budget_prevu: number;
+  achats_commandes: number;
+  achats_factures: number;
+  achats_payes: number;
+  budget_restant: number;
+  taux_consommation: number | null;
+  depassement: boolean;
 }
 
 // ============================================================
@@ -254,6 +393,7 @@ export interface Pointage {
   heure_fin?: string;
   heures_total: number;
   type: TypePointage;
+  statut_validation?: 'valide' | 'en_attente' | 'refuse';
   notes?: string;
   is_deleted: boolean;
   methode_pointage?: string;
@@ -345,6 +485,7 @@ export interface Fournisseur {
   id: number;
   entreprise_id: number;
   nom: string;
+  code?: string;
   contact?: string;
   email?: string;
   telephone?: string;
@@ -525,6 +666,15 @@ export interface ClientAdresse {
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/** Réponse de l'envoi (ou renvoi) des identifiants d'accès au client. */
+export interface ClientIdentifiantsEnvoi {
+  client_id: number;
+  email?: string;
+  email_envoye: boolean;
+  utilisateur_id?: number;
+  message: string;
 }
 
 export interface Devis {
@@ -1297,10 +1447,14 @@ export interface Plan {
   description?: string;
   prix_mensuel: number;
   prix_annuel: number;
-  utilisateurs_max: number;
-  chantiers_max: number;
-  stockage_go: number;
+  /** Limite d'EMPLOYÉS actifs. null = illimité (les clients portail sont toujours illimités). */
+  utilisateurs_max: number | null;
+  chantiers_max: number | null;
+  /** Nombre d'entreprises abonnées à ce plan (renvoyé par GET /plans admin). */
+  entreprises_actives?: number | null;
   duree_essai_jours: number;
+  /** @deprecated plus utilisé — le quota de stockage a été retiré de la stratégie */
+  stockage_go?: number;
   actif: boolean;
   created_at?: string;
   updated_at?: string;

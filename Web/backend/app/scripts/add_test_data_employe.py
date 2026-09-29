@@ -24,7 +24,7 @@ async def add_test_data():
             print('Aucun chantier trouve')
             return
         
-        await conn.execute(text('INSERT INTO pointages (entreprise_id, employe_id, chantier_id, date_jour, heure_debut, heure_fin, type, methode_pointage, statut_validation, is_deleted) VALUES (1, :employe_id, :chantier_id, CURDATE(), :debut, :fin, :type, :methode, :statut, 0)'), {'employe_id': employe_id, 'chantier_id': chantier_id, 'debut': '08:00', 'fin': '17:00', 'type': 'present', 'methode': 'qr', 'statut': 'valide'})
+        await conn.execute(text('INSERT INTO pointages (entreprise_id, employe_id, chantier_id, date_jour, heure_debut, heure_fin, type, methode_pointage, statut_validation, is_deleted) VALUES (1, :employe_id, :chantier_id, CURDATE(), :debut, :fin, :type, :methode, :statut, 0)'), {'employe_id': employe_id, 'chantier_id': chantier_id, 'debut': '08:00', 'fin': '17:00', 'type': 'present', 'methode': 'manuel', 'statut': 'valide'})
         print('Pointage de test ajoute')
         
         result = await conn.execute(text('SELECT id FROM materiaux WHERE entreprise_id = 1 LIMIT 1'))

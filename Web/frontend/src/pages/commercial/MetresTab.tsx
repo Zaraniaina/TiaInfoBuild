@@ -139,12 +139,12 @@ return (
           <input
             type="text"
             className="form-control form-control-sm"
-            style={{ width: 240 }}
+            style={{ width: 'min(240px, 100%)' }}
             placeholder="Rechercher..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <select className="form-select form-select-sm" style={{ width: 200 }} value={projetFilter} onChange={(e) => setProjetFilter(e.target.value)}>
+          <select className="form-select form-select-sm" style={{ width: 'min(200px, 100%)' }} value={projetFilter} onChange={(e) => setProjetFilter(e.target.value)}>
             <option value="tous">Tous projets</option>
             {projets.map((p) => <option key={p.id} value={p.id}>{p.reference || p.nom}</option>)}
           </select>
@@ -207,7 +207,7 @@ return (
       )}
 {/* Modal création / édition */}
       {showModal && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }} onClick={() => setShowModal(false)}>
+        <div className="modal show d-block" style={{ backgroundColor: 'var(--overlay)' }} onClick={() => setShowModal(false)}>
           <div className="modal-dialog modal-lg" onClick={(e) => e.stopPropagation()}>
             <div className="modal-content">
               <div className="modal-header">

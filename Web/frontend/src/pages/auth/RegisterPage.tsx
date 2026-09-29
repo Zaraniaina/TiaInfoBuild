@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -7,6 +7,8 @@ import { api } from '@/services/api'
 import { useToastStore } from '@/stores/toast.store'
 import { formatErrorMessage } from '@/utils/errorMessage'
 import { AuthVisualPanel } from '@/components/auth/AuthVisualPanel'
+import { useSeo } from '@/hooks/useSeo'
+import { registerSeo } from '@/utils/seo'
 
 const passwordPolicy = z
   .string()
@@ -42,11 +44,15 @@ function normalizePayload(data: RegisterFormData) {
 }
 
 export function RegisterPage() {
+  // SEO vitrine : page publique indexable (le formulaire reste fonctionnel, inchangé).
+  useSeo(useMemo(() => registerSeo(), []))
+
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null)
 
   const { register: registerField, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -57,13 +63,13 @@ export function RegisterPage() {
     setLoading(true)
     try {
       await api.post('/auth/register-entreprise', normalizePayload(data))
+      setSubmittedEmail(data.admin_email)
       useToastStore.getState().addToast({
         type: 'success',
         title: 'Entreprise créée',
-        message: 'Votre entreprise et votre compte administrateur ont été créés avec succès. Veuillez vous connecter.',
-        duration: 5000,
+        message: 'Un email de confirmation a été envoyé à l\'adresse ' + data.admin_email + '.',
+        duration: 6000,
       })
-      navigate('/pricing')
     } catch (err: unknown) {
       const msg = formatErrorMessage(err, 'Erreur lors de la création de l\'entreprise.')
       setError(msg)
@@ -90,19 +96,50 @@ export function RegisterPage() {
 
       {/* Formulaire d'inscription */}
       <div className="auth-form-side">
-        <div className="auth-card auth-card-wide">
-          <div className="auth-card-header mb-4">
-            <div className="eyebrow mb-2">Création de compte</div>
-            <h1 className="auth-card-title">Inscrire votre entreprise</h1>
-            <p className="auth-card-subtitle">Remplissez les informations ci-dessous pour créer votre espace administrateur.</p>
-          </div>
-
-          {error && (
-            <div className="alert alert-danger auth-alert" role="alert">
-              <i className="bi bi-exclamation-circle me-2"></i>
-              {error}
+        {submittedEmail ? (
+          <div className="auth-card text-center py-4">
+            <div className="mb-4">
+              <div className="mx-auto rounded-circle bg-primary bg-opacity-10 p-3 d-inline-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px' }}>
+                <i className="bi bi-envelope-check-fill display-4 text-primary"></i>
+              </div>
             </div>
-          )}
+            <h2 className="h3 fw-bold text-gray-900 mb-2">Vérifiez votre boîte mail !</h2>
+            <p className="text-muted mb-4 fs-6">
+              Un email de confirmation a été envoyé à <strong className="text-dark">{submittedEmail}</strong>.
+              Veuillez cliquer sur le lien dans cet email pour valider votre compte administrateur avant de vous connecter.
+            </p>
+            <div className="alert alert-info border-0 shadow-sm rounded-3 text-start mb-4">
+              <div className="d-flex align-items-center mb-1">
+                <i className="bi bi-info-circle-fill text-info me-2 fs-5"></i>
+                <strong className="text-gray-900">Email non reçu ?</strong>
+              </div>
+              <p className="small text-muted mb-0">
+                Pensez à vérifier vos courriers indésirables (spams) ou la boîte Mailpit locale si vous êtes en environnement de développement.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/login')}
+              className="btn btn-auth-primary py-2.5 px-4 fw-bold w-100 mb-2"
+            >
+              <i className="bi bi-box-arrow-in-right me-2"></i>
+              Aller à la page de connexion
+            </button>
+          </div>
+        ) : (
+          <div className="auth-card auth-card-wide">
+            <div className="auth-card-header mb-4">
+              <div className="eyebrow mb-2">Création de compte</div>
+              <h1 className="auth-card-title">Inscrire votre entreprise</h1>
+              <p className="auth-card-subtitle">Remplissez les informations ci-dessous pour créer votre espace administrateur.</p>
+            </div>
+
+            {error && (
+              <div className="alert alert-danger auth-alert" role="alert">
+                <i className="bi bi-exclamation-circle me-2"></i>
+                {error}
+              </div>
+            )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
             <div className="auth-section-label mb-2">Informations Entreprise</div>
@@ -309,7 +346,8 @@ export function RegisterPage() {
             </p>
           </div>
         </div>
-      </div>
+      )}
     </div>
-  )
+  </div>
+)
 }

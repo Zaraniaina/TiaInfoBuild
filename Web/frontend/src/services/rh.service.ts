@@ -33,6 +33,29 @@ export const rhService = {
     return res.data
   },
 
+  /** Upload de la photo de l'employé (badge QR + profil). */
+  async uploadEmployePhoto(id: number, file: File) {
+    const form = new FormData()
+    form.append('fichier', file)
+    const res = await api.post<{ photo: string }>(`/rh/employes/${id}/photo`, form)
+    return res.data
+  },
+
+  /** Upload d'un document administratif (CV, lettre de motivation, diplôme...). */
+  async uploadEmployeDocument(
+    id: number,
+    file: File,
+    meta: { categorie: string; nom?: string; description?: string },
+  ) {
+    const form = new FormData()
+    form.append('fichier', file)
+    form.append('categorie', meta.categorie)
+    if (meta.nom) form.append('nom', meta.nom)
+    if (meta.description) form.append('description', meta.description)
+    const res = await api.post<Document>(`/rh/employes/${id}/documents/upload`, form)
+    return res.data
+  },
+
   async updateEmploye(id: number, data: Partial<Employe>) {
     const res = await api.put<Employe>(`/rh/employes/${id}`, data)
     return res.data
@@ -54,8 +77,13 @@ export const rhService = {
     return res.data
   },
 
-  async qrCheckin(data: { employe_id: number; chantier_id?: number; qr_code_token: string; latitude?: number; longitude?: number; mode?: string }) {
-    const res = await api.post<Pointage>('/rh/pointages/qr-checkin', data)
+  async validerPointage(id: number) {
+    const res = await api.post<Pointage>(`/rh/pointages/${id}/valider`, {})
+    return res.data
+  },
+
+  async refuserPointage(id: number, commentaire?: string) {
+    const res = await api.post<Pointage>(`/rh/pointages/${id}/refuser`, { commentaire })
     return res.data
   },
 

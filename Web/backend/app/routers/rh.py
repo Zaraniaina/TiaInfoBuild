@@ -2,19 +2,23 @@
 from datetime import date, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 import csv
 import io
+import json
 
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, func
 
+from app.core import file_storage
 from app.crud.employe import EmployeCRUD
 from app.crud.pointage import PointageCRUD
 from app.crud.equipe import EquipeCRUD
 from app.crud.base import BaseCRUD
 from app.models.employe import Employe
+from app.models.entreprise import Entreprise
+from app.models.utilisateur import Utilisateur
 from app.models.pointage import Pointage
 from app.models.equipe import Equipe
 from app.models.membre_equipe import MembreEquipe
@@ -163,6 +167,63 @@ async def list_employes(
     }
 
 
+async def _sync_employe_user_photo(db, employe: Employe):
+    if employe and employe.email and employe.entreprise_id:
+        res = await db.execute(
+            select(Utilisateur).where(
+                func.lower(Utilisateur.email) == employe.email.strip().lower(),
+                Utilisateur.entreprise_id == employe.entreprise_id
+            )
+        )
+        user = res.scalar_one_or_none()
+        if user:
+            user.photo = employe.photo
+            await db.flush()
+
+
+async def _generer_matricule(db: Any, entreprise_id: int | None, type_contrat: str | None) -> str:
+    """Génère le matricule automatiquement : PREFIXE-ANNÉE-NNN (ex. EMP-2026-001).
+
+    100 % backend : aucune saisie ni bouton côté utilisateur. Le préfixe est
+    configurable par entreprise (`prefixe_employe`, ou `prefixe_employe_journalier`
+    pour les JOURNALIER), sur le modèle des prefixes devis/facture/contrat.
+    La séquence repose sur le MAX des numéros existants (même préfixe/année) avec
+    une vérification d'unicité et un retry anti-collision.
+    """
+    prefixe = "EMP"
+    if entreprise_id is not None:
+        entreprise = await db.get(Entreprise, entreprise_id)
+        if entreprise:
+            prefixe = (
+                entreprise.prefixe_employe_journalier
+                if (type_contrat or "").upper() == "JOURNALIER"
+                else entreprise.prefixe_employe
+            ) or "EMP"
+    prefixe = (prefixe or "EMP").upper()[:10]
+    annee = datetime.now().year
+    motif = f"{prefixe}-{annee}-%"
+
+    res = await db.execute(
+        select(Employe.matricule).where(Employe.matricule.like(motif), Employe.is_deleted == False)  # noqa: E712
+    )
+    dernier_num = 0
+    for (mat,) in res.all():
+        try:
+            dernier_num = max(dernier_num, int(str(mat).rsplit("-", 1)[1]))
+        except (ValueError, IndexError):
+            continue
+
+    for num in range(dernier_num + 1, dernier_num + 51):
+        candidat = f"{prefixe}-{annee}-{num:03d}"
+        existant = await db.execute(
+            select(Employe.id).where(Employe.matricule == candidat, Employe.is_deleted == False)  # noqa: E712
+        )
+        if existant.scalar_one_or_none() is None:
+            return candidat
+    # Improbable (50 tentatives) : suffixe horodaté pour garantir l'unicité.
+    return f"{prefixe}-{annee}-{datetime.now().strftime('%H%M%S')}"
+
+
 @router.post("/employes", response_model=EmployeResponse, status_code=status.HTTP_201_CREATED)
 async def create_employe(
     payload: CurrentUserPayload,
@@ -170,12 +231,17 @@ async def create_employe(
     db: DbDep,
 ):
     _require_permission(payload, "rh:write")
+    from app.services.subscription_state import assert_quota_utilisateurs
+    await assert_quota_utilisateurs(db, payload)
     entreprise_id = payload.get("entreprise_id")
     data = obj_in.model_dump(exclude_unset=True)
     if entreprise_id is not None and not data.get("entreprise_id"):
         data["entreprise_id"] = entreprise_id
+    # Matricule TOUJOURS auto-généré : toute valeur fournie est ignorée.
+    data["matricule"] = await _generer_matricule(db, data.get("entreprise_id"), data.get("type_contrat"))
     crud = EmployeCRUD()
     employe = await crud.create(db, data)
+    await _sync_employe_user_photo(db, employe)
     await db.refresh(employe)
     return EmployeResponse.model_validate(employe)
 
@@ -218,9 +284,66 @@ async def update_employe(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
 
     data = obj_in.model_dump(exclude_unset=True)
+    # Matricule verrouillé : identifiant auto-généré, jamais modifiable.
+    data.pop("matricule", None)
     updated = await crud.update(db, employe, data)
+    await _sync_employe_user_photo(db, updated)
     await db.refresh(updated)
     return EmployeResponse.model_validate(updated)
+
+
+@router.post("/employes/{id}/photo", response_model=dict)
+async def upload_employe_photo(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+    fichier: UploadFile = File(...)
+):
+    _require_permission(payload, "rh:write")
+    entreprise_id = payload.get("entreprise_id")
+    employe = await db.get(Employe, id)
+    if not employe or employe.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employé non trouvé")
+    if entreprise_id is not None and employe.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    try:
+        url = await file_storage.save_upload(
+            fichier, "badge-photos", file_storage.ALLOWED_PHOTO_EXT, file_storage.MAX_PHOTO_MB
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    if employe.photo and employe.photo.startswith("/api/uploads/"):
+        await file_storage.delete_upload(employe.photo)
+
+    employe.photo = url
+    await _sync_employe_user_photo(db, employe)
+    await db.flush()
+    return {"photo": url}
+
+
+@router.delete("/employes/{id}/photo", response_model=dict)
+async def delete_employe_photo(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+):
+    _require_permission(payload, "rh:write")
+    entreprise_id = payload.get("entreprise_id")
+    employe = await db.get(Employe, id)
+    if not employe or employe.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employé non trouvé")
+    if entreprise_id is not None and employe.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    if employe.photo and employe.photo.startswith("/api/uploads/"):
+        await file_storage.delete_upload(employe.photo)
+
+    employe.photo = None
+    await _sync_employe_user_photo(db, employe)
+    await db.flush()
+    return {"photo": None}
 
 
 @router.delete("/employes/{id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -329,6 +452,62 @@ async def list_pointages(
     }
 
 
+STATUTS_POINTAGE = {"valide", "en_attente", "refuse"}
+
+
+class PointageValidation(BaseModel):
+    """Corps optionnel pour la validation/refus d'un pointage."""
+
+    commentaire: str | None = None
+
+
+@router.post("/pointages/{id}/valider", response_model=PointageResponse)
+async def valider_pointage(payload: CurrentUserPayload, db: DbDep, id: int,
+                           body: PointageValidation | None = None):
+    """RH valide un pointage : statut_validation passe à 'valide'."""
+    return await _decide_pointage(payload, db, id, "valide", (body or PointageValidation()).commentaire)
+
+
+@router.post("/pointages/{id}/refuser", response_model=PointageResponse)
+async def refuser_pointage(payload: CurrentUserPayload, db: DbDep, id: int,
+                           body: PointageValidation | None = None):
+    """RH refuse un pointage : statut_validation passe à 'refuse'."""
+    return await _decide_pointage(payload, db, id, "refuse", (body or PointageValidation()).commentaire)
+
+
+async def _decide_pointage(payload: CurrentUserPayload, db: DbDep, id: int,
+                           statut_validation: str, commentaire: str | None) -> PointageResponse:
+    _require_permission(payload, "rh:write")
+    if statut_validation not in STATUTS_POINTAGE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Statut invalide. Valeurs: {sorted(STATUTS_POINTAGE)}")
+    entreprise_id = payload.get("entreprise_id")
+    pt = await db.get(Pointage, id)
+    if not pt or pt.is_deleted or (entreprise_id is not None and pt.entreprise_id != entreprise_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pointage non trouvé")
+    if pt.statut_validation == statut_validation:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail=f"Pointage déjà {statut_validation}")
+    pt.statut_validation = statut_validation
+    if commentaire:
+        pt.notes = commentaire
+    user = payload.get("user")
+    pt.scanne_par_id = getattr(user, "id", None)  # traçabilité de la décision
+    await db.commit()
+    await db.refresh(pt)
+    return PointageResponse.model_validate(pt)
+
+
+async def _entreprise_infos(db: DbDep, entreprise_id: int | None) -> dict:
+    """Nom + logo de l'entreprise (affichés sur le badge QR de l'employé)."""
+    if entreprise_id is None:
+        return {"entreprise_nom": None, "entreprise_logo": None}
+    ent = await db.get(Entreprise, entreprise_id)
+    if not ent:
+        return {"entreprise_nom": None, "entreprise_logo": None}
+    return {"entreprise_nom": ent.nom, "entreprise_logo": ent.logo}
+
+
 @router.get("/employes/{id}/badge-qr", response_model=dict)
 async def get_employe_badge_qr(
     payload: CurrentUserPayload,
@@ -348,6 +527,29 @@ async def get_employe_badge_qr(
         employe.code_qr_badge = f"TIA-EMP-{employe.entreprise_id or 1}-{employe.id}-{uuid.uuid4().hex[:8].upper()}"
         await db.flush()
 
+    ent_infos = await _entreprise_infos(db, employe.entreprise_id)
+
+    # Couleur thématique du badge : charte `couleurs_roles` de l'entreprise,
+    # résolue via le rôle du compte Utilisateur lié à l'employé (par email).
+    ent = await db.get(Entreprise, employe.entreprise_id) if employe.entreprise_id else None
+    couleur_role = None
+    if ent is not None and ent.couleurs_roles:
+        try:
+            charte = json.loads(ent.couleurs_roles) if isinstance(ent.couleurs_roles, str) else ent.couleurs_roles
+            if employe.email:
+                u = (await db.execute(
+                    select(Utilisateur).where(
+                        func.lower(Utilisateur.email) == employe.email.strip().lower(),
+                        Utilisateur.entreprise_id == employe.entreprise_id,
+                        Utilisateur.is_deleted == False,
+                    )
+                )).scalar_one_or_none()
+                role_code = getattr(u, "role_code", None)
+                if role_code:
+                    couleur_role = charte.get(role_code)
+        except (ValueError, TypeError):
+            couleur_role = None
+
     return {
         "id": employe.id,
         "matricule": employe.matricule or f"EMP-{employe.id:04d}",
@@ -356,6 +558,9 @@ async def get_employe_badge_qr(
         "poste": employe.poste,
         "photo": employe.photo,
         "code_qr_badge": employe.code_qr_badge,
+        "couleur_role": couleur_role,
+        "entete_badge": ent.entete_badge if ent else None,
+        **ent_infos,
         "date_generation": datetime.now().isoformat(),
     }
 
@@ -383,6 +588,29 @@ async def get_mon_badge(payload: CurrentUserPayload, db: DbDep):
         employe.code_qr_badge = f"TIA-EMP-{employe.entreprise_id or 1}-{employe.id}-{uuid.uuid4().hex[:8].upper()}"
         await db.flush()
 
+    ent_infos = await _entreprise_infos(db, employe.entreprise_id)
+
+    # Couleur thématique du badge : charte `couleurs_roles` de l'entreprise,
+    # résolue via le rôle du compte Utilisateur lié à l'employé (par email).
+    ent = await db.get(Entreprise, employe.entreprise_id) if employe.entreprise_id else None
+    couleur_role = None
+    if ent is not None and ent.couleurs_roles:
+        try:
+            charte = json.loads(ent.couleurs_roles) if isinstance(ent.couleurs_roles, str) else ent.couleurs_roles
+            if employe.email:
+                u = (await db.execute(
+                    select(Utilisateur).where(
+                        func.lower(Utilisateur.email) == employe.email.strip().lower(),
+                        Utilisateur.entreprise_id == employe.entreprise_id,
+                        Utilisateur.is_deleted == False,
+                    )
+                )).scalar_one_or_none()
+                role_code = getattr(u, "role_code", None)
+                if role_code:
+                    couleur_role = charte.get(role_code)
+        except (ValueError, TypeError):
+            couleur_role = None
+
     return {
         "id": employe.id,
         "matricule": employe.matricule or f"EMP-{employe.id:04d}",
@@ -391,6 +619,9 @@ async def get_mon_badge(payload: CurrentUserPayload, db: DbDep):
         "poste": employe.poste,
         "photo": employe.photo,
         "code_qr_badge": employe.code_qr_badge,
+        "couleur_role": couleur_role,
+        "entete_badge": ent.entete_badge if ent else None,
+        **ent_infos,
         "date_generation": datetime.now().isoformat(),
     }
 
@@ -502,42 +733,6 @@ async def scan_badge_pointage(
             "heure_fin": now_time.strftime("%H:%M:%S"),
             "heures_total": existing_pt.heures_total,
         }
-
-
-class QRPointageCheckinRequest(BaseModel):
-    employe_id: int
-    chantier_id: int | None = None
-    qr_code_token: str
-    latitude: float | None = None
-    longitude: float | None = None
-    mode: str = Field(default="qr_scan", description="qr_scan | gps_auto | fixed_qr")
-
-
-@router.post("/pointages/qr-checkin", response_model=PointageResponse, status_code=status.HTTP_201_CREATED)
-async def qr_pointage_checkin(
-    payload: CurrentUserPayload,
-    obj_in: QRPointageCheckinRequest,
-    db: DbDep,
-):
-    _require_permission(payload, "rh:write")
-    entreprise_id = payload.get("entreprise_id")
-    pointage_data = {
-        "entreprise_id": entreprise_id,
-        "employe_id": obj_in.employe_id,
-        "chantier_id": obj_in.chantier_id,
-        "date_jour": date.today(),
-        "heure_debut": datetime.now().time(),
-        "heures_total": 8.0,
-        "type": "present",
-        "methode_pointage": obj_in.mode,
-        "latitude": obj_in.latitude,
-        "longitude": obj_in.longitude,
-        "notes": f"Pointage {obj_in.mode} (Token: {obj_in.qr_code_token[:10]}... Lat: {obj_in.latitude or 'N/A'}, Lon: {obj_in.longitude or 'N/A'})",
-    }
-    crud = PointageCRUD()
-    pointage = await crud.create(db, pointage_data)
-    await db.refresh(pointage)
-    return PointageResponse.model_validate(pointage)
 
 
 @router.post("/pointages", response_model=PointageResponse, status_code=status.HTTP_201_CREATED)
@@ -882,7 +1077,11 @@ async def get_solde_conges(payload: CurrentUserPayload, db: DbDep, employe_id: i
 
 # --- Documents RH ---
 
-CATEGORIES_DOCUMENTS_RH = {"contrat_travail", "cnaps", "ostie", "certificat", "autre"}
+CATEGORIES_DOCUMENTS_RH = {
+    "contrat_travail", "cnaps", "ostie", "certificat", "autre",
+    # Dossiers administratifs d'embauche
+    "cv", "lettre_motivation", "diplome", "cni",
+}
 
 
 class DocumentRHCreate(BaseModel):
@@ -943,6 +1142,50 @@ async def create_document_rh(
         categorie=obj_in.categorie,
         fichier_url=obj_in.fichier_url,
         description=obj_in.description,
+    )
+    db.add(doc)
+    await db.flush()
+    await db.refresh(doc)
+    return DocumentRHResponse.model_validate(doc)
+
+
+@router.post("/employes/{employe_id}/documents/upload", response_model=DocumentRHResponse, status_code=status.HTTP_201_CREATED)
+async def upload_document_rh(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    employe_id: int,
+    fichier: UploadFile = File(...),
+    nom: str | None = Form(default=None),
+    categorie: str = Form(default="autre"),
+    description: str | None = Form(default=None),
+):
+    """Upload d'un document administratif (CV, lettre de motivation, diplôme, CNI...).
+
+    Le fichier est stocké sur disque via file_storage ; la fiche Document
+    référence l'URL relative servie par l'API (/api/uploads/documents-rh/...).
+    """
+    _require_permission(payload, "rh:write")
+    if categorie not in CATEGORIES_DOCUMENTS_RH:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Catégorie invalide. Valeurs autorisées: {sorted(CATEGORIES_DOCUMENTS_RH)}",
+        )
+    employe = await _get_employe_rh(db, employe_id, payload.get("entreprise_id"))
+
+    try:
+        url = await file_storage.save_upload(
+            fichier, "documents-rh", file_storage.ALLOWED_DOC_EXT, file_storage.MAX_DOC_MB
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    doc = Document(
+        entreprise_id=employe.entreprise_id,
+        employe_id=employe.id,
+        nom=(nom or "").strip() or fichier.filename or f"Document {categorie}",
+        categorie=categorie,
+        fichier_url=url,
+        description=description,
     )
     db.add(doc)
     await db.flush()

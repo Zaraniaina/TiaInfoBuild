@@ -7,6 +7,7 @@ import { useToastStore } from "@/stores/toast.store";
 import { ROLE_NAMES, getRolePermissions } from "@/config/roles.config";
 import { formatErrorMessage } from "@/utils/errorMessage";
 import { TableSkeleton } from '@/components/ui/Skeleton'
+import { WorkerBadgeCard } from '@/components/pointage/WorkerBadgeCard'
 
 type UserRole =
   | "admin_entreprise"
@@ -86,7 +87,7 @@ export function SettingsPage() {
   const perms = getRolePermissions(roleCode)
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<
-    "utilisateurs" | "parametres" | "audit" | "profil"
+    "utilisateurs" | "parametres" | "badges" | "audit" | "profil"
   >("utilisateurs");
   const [saving, setSaving] = useState(false);
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -101,6 +102,7 @@ export function SettingsPage() {
     role_code: "employe" as UserRole,
     password: "",
     telephone: "",
+    photo: "",
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [logs, setLogs] = useState<AlerteLog[]>([]);
@@ -114,13 +116,41 @@ export function SettingsPage() {
     adresse: "",
     ville: "",
     code_postal: "",
+    logo: "",
     devise: "MGA",
     tva_defaut: 20,
     delai_paiement_jours: 30,
     prefixe_devis: "DEV",
     prefixe_facture: "FAC",
     prefixe_contrat: "CTR",
+    entete_badge: "BADGE OFFICIEL POINTAGE TERRAIN",
+    couleurs_roles: JSON.stringify({
+      directeur: "#1e3a8a",
+      chef_projet: "#4338ca",
+      chef_chantier: "#ea580c",
+      comptable: "#0d9488",
+      rh: "#7e22ce",
+      materiel: "#475569",
+      magasinier: "#d97706",
+      commercial: "#059669",
+      employe: "#2563eb",
+      client: "#6d28d9",
+    }),
   });
+
+  const [roleColors, setRoleColors] = useState<Record<string, string>>({
+    directeur: "#1e3a8a",
+    chef_projet: "#4338ca",
+    chef_chantier: "#ea580c",
+    comptable: "#0d9488",
+    rh: "#7e22ce",
+    materiel: "#475569",
+    magasinier: "#d97706",
+    commercial: "#059669",
+    employe: "#2563eb",
+    client: "#6d28d9",
+  });
+
   const [usersLoading, setUsersLoading] = useState(true)
   const [logsLoading, setLogsLoading] = useState(true)
   const [entrepriseLoaded, setEntrepriseLoaded] = useState(false);
@@ -131,6 +161,7 @@ export function SettingsPage() {
     nom: user?.nom || "",
     prenom: user?.prenom || "",
     email: user?.email || "",
+    photo: (user as any)?.photo || "",
     password_actuel: "",
     nouveau_password: "",
   });
@@ -148,6 +179,15 @@ export function SettingsPage() {
             data.entreprise) ||
           (data as EntrepriseSettings) ||
           {};
+        const anyE = e as any;
+        if (anyE.couleurs_roles) {
+          try {
+            const parsed = typeof anyE.couleurs_roles === 'string' ? JSON.parse(anyE.couleurs_roles) : anyE.couleurs_roles;
+            setRoleColors(prev => ({ ...prev, ...parsed }));
+          } catch {
+            // fallback
+          }
+        }
         setEntrepriseForm({
           nom: e.nom || "",
           nom_commercial: e.nom_commercial || "",
@@ -157,12 +197,15 @@ export function SettingsPage() {
           adresse: e.adresse || "",
           ville: e.ville || "",
           code_postal: e.code_postal || "",
+          logo: anyE.logo || "",
           devise: e.devise || "MGA",
           tva_defaut: e.tva_defaut ?? 20,
           delai_paiement_jours: e.delai_paiement_defaut ?? 30,
           prefixe_devis: e.prefixe_devis || "DEV",
           prefixe_facture: e.prefixe_facture || "FAC",
           prefixe_contrat: e.prefixe_contrat || "CTR",
+          entete_badge: anyE.entete_badge || "BADGE OFFICIEL POINTAGE TERRAIN",
+          couleurs_roles: typeof anyE.couleurs_roles === 'string' ? anyE.couleurs_roles : JSON.stringify(roleColors),
         });
         setEntrepriseLoaded(true);
       })
@@ -261,11 +304,129 @@ export function SettingsPage() {
     }
   };
 
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const isEmploye = user?.role_code === 'employe';
+
+  const handlePhotoUploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('fichier', file);
+      const res = await api.post<{ photo: string }>('/parametres/profile/photo', formData);
+      const newPhoto = res.data.photo;
+      setProfilForm(prev => ({ ...prev, photo: newPhoto }));
+      if (user) {
+        useAuthStore.getState().setUser({ ...user, photo: newPhoto });
+      }
+      useToastStore.getState().addToast({
+        type: 'success',
+        title: 'Photo mise à jour',
+        message: 'Votre photo de profil a été mise à jour avec succès.',
+        duration: 3000,
+      });
+    } catch (err) {
+      useToastStore.getState().addToast({
+        type: 'error',
+        title: 'Erreur',
+        message: formatErrorMessage(err, "Erreur lors de l'envoi de la photo."),
+        duration: 5000,
+      });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleDeletePhoto = async () => {
+    if (!confirm('Voulez-vous vraiment supprimer votre photo de profil ?')) return;
+    setUploadingPhoto(true);
+    try {
+      await api.delete('/parametres/profile/photo');
+      setProfilForm(prev => ({ ...prev, photo: '' }));
+      if (user) {
+        useAuthStore.getState().setUser({ ...user, photo: null });
+      }
+      useToastStore.getState().addToast({
+        type: 'success',
+        title: 'Photo supprimée',
+        message: 'Votre photo de profil a été supprimée.',
+        duration: 3000,
+      });
+    } catch (err) {
+      useToastStore.getState().addToast({
+        type: 'error',
+        title: 'Erreur',
+        message: formatErrorMessage(err, 'Erreur lors de la suppression de la photo.'),
+        duration: 5000,
+      });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleLogoUploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append('fichier', file);
+      const res = await api.post<{ logo: string }>('/parametres/entreprise/logo', formData);
+      const newLogo = res.data.logo;
+      setEntrepriseForm(prev => ({ ...prev, logo: newLogo }));
+      useToastStore.getState().addToast({
+        type: 'success',
+        title: 'Logo mis à jour',
+        message: "Le logo de l'entreprise a été téléversé avec succès.",
+        duration: 3000,
+      });
+    } catch (err) {
+      useToastStore.getState().addToast({
+        type: 'error',
+        title: 'Erreur',
+        message: formatErrorMessage(err, "Erreur lors du téléversement du logo."),
+        duration: 5000,
+      });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleDeleteLogo = async () => {
+    if (!confirm("Voulez-vous vraiment supprimer le logo de l'entreprise ?")) return;
+    setUploadingLogo(true);
+    try {
+      await api.delete('/parametres/entreprise/logo');
+      setEntrepriseForm(prev => ({ ...prev, logo: '' }));
+      useToastStore.getState().addToast({
+        type: 'success',
+        title: 'Logo supprimé',
+        message: "Le logo de l'entreprise a été supprimé.",
+        duration: 3000,
+      });
+    } catch (err) {
+      useToastStore.getState().addToast({
+        type: 'error',
+        title: 'Erreur',
+        message: formatErrorMessage(err, "Erreur lors de la suppression du logo."),
+        duration: 5000,
+      });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   const handleSaveProfil = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.put("/parametres/profile", profilForm);
+      const res = await api.put("/parametres/profile", profilForm);
+      if (res.data?.utilisateur && user) {
+        useAuthStore.getState().setUser({ ...user, ...res.data.utilisateur });
+      }
       useToastStore.getState().addToast({
         type: "success",
         title: "Profil mis à jour",
@@ -293,6 +454,7 @@ export function SettingsPage() {
       role_code: "employe",
       password: "",
       telephone: "",
+      photo: "",
     });
     setFormError(null);
     setShowUserModal(true);
@@ -307,6 +469,7 @@ export function SettingsPage() {
       role_code: u.role_code,
       password: "",
       telephone: u.telephone || "",
+      photo: (u as any).photo || "",
     });
     setFormError(null);
     setShowUserModal(true);
@@ -488,6 +651,14 @@ export function SettingsPage() {
         </li>
         <li className="nav-item">
           <button
+            className={`nav-link ${activeTab === "badges" ? "active" : ""}`}
+            onClick={() => setActiveTab("badges")}
+          >
+            <i className="bi bi-palette me-2"></i>Logo & Badges QR
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
             className={`nav-link ${activeTab === "audit" ? "active" : ""}`}
             onClick={() => setActiveTab("audit")}
           >
@@ -619,7 +790,7 @@ export function SettingsPage() {
               </div>
               <div>
                 {perms.canManageSubscription ? (
-                  <button className="btn btn-outline-secondary" onClick={() => navigate('/pricing')}>
+                  <button className="btn btn-outline-secondary" onClick={() => navigate('/app/pricing')}>
                     Gérer l'abonnement
                   </button>
                 ) : (
@@ -940,8 +1111,200 @@ export function SettingsPage() {
          </div>
        )}
 
+       {activeTab === "badges" && (
+         <div className="row g-4">
+           <div className="col-lg-7">
+             <div className="card border-0 shadow-sm p-4 rounded-4 mb-4">
+               <h5 className="fw-bold mb-3 border-bottom pb-2">
+                 <i className="bi bi-palette me-2 text-primary"></i>Personnalisation & Logo de l'Entreprise
+               </h5>
+               
+               <div className="mb-4">
+                  <label className="form-label fw-semibold d-block">Logo de l'Entreprise</label>
+                  <div className="d-flex align-items-center gap-3">
+                    {entrepriseForm.logo ? (
+                      <img
+                        src={entrepriseForm.logo}
+                        alt="Logo Entreprise"
+                        className="rounded-3 border p-1 bg-white shadow-sm"
+                        style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+                      />
+                    ) : (
+                      <div
+                        className="rounded-3 bg-light border d-flex align-items-center justify-content-center text-muted"
+                        style={{ width: '80px', height: '80px', fontSize: '1.8rem' }}
+                      >
+                        <i className="bi bi-building"></i>
+                      </div>
+                    )}
+                    <div>
+                      <div className="d-flex align-items-center gap-2 mb-1">
+                        <label className={`btn btn-sm btn-outline-primary mb-0 ${uploadingLogo ? 'disabled' : ''}`}>
+                          <i className="bi bi-upload me-1"></i>{uploadingLogo ? 'Chargement...' : 'Téléverser le logo'}
+                          <input type="file" accept="image/jpeg,image/png" hidden onChange={handleLogoUploadFile} disabled={uploadingLogo} />
+                        </label>
+                        {entrepriseForm.logo && (
+                          <button type="button" className="btn btn-sm btn-outline-danger mb-0" onClick={handleDeleteLogo} disabled={uploadingLogo}>
+                            <i className="bi bi-trash me-1"></i>Supprimer
+                          </button>
+                        )}
+                      </div>
+                      <div className="form-text" style={{ fontSize: '0.78rem' }}>Ce logo apparaîtra sur tous les Badges QR, Devis, Factures et Contrats.</div>
+                    </div>
+                  </div>
+                </div>
+
+               <div className="mb-4">
+                 <label className="form-label fw-semibold">En-tête des Badges QR de Pointage</label>
+                 <input
+                   type="text"
+                   className="form-control"
+                   value={entrepriseForm.entete_badge}
+                   onChange={(e) => setEntrepriseForm({ ...entrepriseForm, entete_badge: e.target.value })}
+                 />
+                 <div className="form-text">Ex: BADGE OFFICIEL POINTAGE TERRAIN</div>
+               </div>
+
+               <h5 className="fw-bold mb-3 border-bottom pb-2 pt-2">
+                 <i className="bi bi-paint-bucket me-2 text-primary"></i>Couleurs Thématiques par Rôle
+               </h5>
+               <p className="small text-muted mb-3">Personnalisez la couleur de la carte badge pour chaque fonction métier :</p>
+
+               <div className="row g-3">
+                 {[
+                   { code: 'chef_chantier', label: 'Chef de Chantier' },
+                   { code: 'chef_projet', label: 'Chef de Projet' },
+                   { code: 'directeur', label: 'Direction Générale' },
+                   { code: 'comptable', label: 'Comptable / DAF' },
+                   { code: 'rh', label: 'Responsable RH' },
+                   { code: 'materiel', label: 'Responsable Matériel' },
+                   { code: 'magasinier', label: 'Magasinier / Stocks' },
+                   { code: 'commercial', label: 'Commercial' },
+                   { code: 'employe', label: 'Employé de Terrain / Ouvrier' },
+                   { code: 'client', label: 'Client' },
+                 ].map((r) => (
+                   <div className="col-md-6" key={r.code}>
+                     <div className="d-flex align-items-center justify-content-between p-2 bg-light rounded border">
+                       <span className="small fw-semibold">{r.label}</span>
+                       <div className="d-flex align-items-center gap-2">
+                         <input
+                           type="color"
+                           className="form-control form-control-color"
+                           value={roleColors[r.code] || '#2563eb'}
+                           onChange={(e) => setRoleColors({ ...roleColors, [r.code]: e.target.value })}
+                           title={`Couleur pour ${r.label}`}
+                         />
+                         <span className="font-monospace small text-muted" style={{ width: '60px' }}>{roleColors[r.code] || '#2563eb'}</span>
+                       </div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+
+               <button
+                 type="button"
+                 className="btn btn-primary fw-bold mt-4 px-4 shadow-sm"
+                 disabled={saving}
+                 onClick={async () => {
+                   setSaving(true);
+                   try {
+                     const payload = {
+                       ...entrepriseForm,
+                       couleurs_roles: JSON.stringify(roleColors),
+                       delai_paiement_defaut: entrepriseForm.delai_paiement_jours,
+                     };
+                     await api.put("/parametres/entreprise", payload);
+                     useToastStore.getState().addToast({
+                       type: "success",
+                       title: "Personnalisation enregistrée",
+                       message: "Le logo et la charte graphique des badges ont été sauvegardés !",
+                       duration: 4000,
+                     });
+                   } catch (err) {
+                     useToastStore.getState().addToast({
+                       type: "error",
+                       title: "Erreur",
+                       message: formatErrorMessage(err, "Erreur lors de l'enregistrement de la charte."),
+                       duration: 5000,
+                     });
+                   } finally {
+                     setSaving(false);
+                   }
+                 }}
+               >
+                 <i className="bi bi-check-lg me-2"></i>Enregistrer la charte & badges
+               </button>
+             </div>
+           </div>
+
+           <div className="col-lg-5">
+             <div className="card border-0 shadow-sm p-4 rounded-4 sticky-top" style={{ top: '90px' }}>
+               <h6 className="fw-bold mb-3 text-muted text-uppercase tracking-wider">Aperçu en Direct du Badge QR</h6>
+
+               {/* Même composant que le badge réel imprimé (RH, planche, dashboard) : WYSIWYG */}
+               <WorkerBadgeCard
+                 employe={{
+                   id: 42,
+                   nom: 'Rakoto',
+                   prenom: 'Olona',
+                   poste: 'Chef de Chantier',
+                   matricule: 'EMP-042',
+                   code_qr_badge: 'TIA-EMP-042-SAMPLE',
+                   couleur_role: roleColors['chef_chantier'] || undefined,
+                 }}
+                 entrepriseLogo={entrepriseForm.logo || undefined}
+                 entrepriseNom={entrepriseForm.nom || undefined}
+                 enteteBadge={entrepriseForm.entete_badge || undefined}
+               />
+
+               <p className="small text-muted mt-3 mb-0 text-center">
+                 Aperçu identique au badge imprimé. Couleur, logo et en-tête appliqués automatiquement.
+               </p>
+             </div>
+           </div>
+         </div>
+       )}
+
       {activeTab === "profil" && (
-        <form onSubmit={handleSaveProfil}>
+        <form onSubmit={handleSaveProfil} className="card border-0 shadow-sm p-4 rounded-4" style={{ maxWidth: '700px' }}>
+          <h5 className="fw-bold mb-4 border-bottom pb-2"><i className="bi bi-person-circle me-2 text-primary"></i>Mon Profil Personnel</h5>
+          
+          <div className="d-flex align-items-center gap-4 mb-4 pb-3 border-bottom">
+            <div>
+              {profilForm.photo ? (
+                <img src={profilForm.photo} alt="Avatar" className="rounded-circle border border-3 border-primary shadow-sm" style={{ width: '96px', height: '96px', objectFit: 'cover' }} />
+              ) : (
+                <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold fs-2 shadow-sm" style={{ width: '96px', height: '96px' }}>
+                  {profilForm.prenom?.[0] || 'U'}{profilForm.nom?.[0] || ''}
+                </div>
+              )}
+            </div>
+            <div className="flex-grow-1">
+              <label className="form-label fw-semibold">Photo de profil</label>
+              {isEmploye ? (
+                <div className="alert alert-info py-2 px-3 small d-flex align-items-center mb-0 border-0 bg-info-subtle text-info-emphasis rounded-3">
+                  <i className="bi bi-info-circle-fill me-2 fs-5"></i>
+                  <span>Votre photo de profil est gérée exclusivement par le service RH via votre badge professionnel.</span>
+                </div>
+              ) : (
+                <div>
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <label className={`btn btn-sm btn-outline-primary mb-0 ${uploadingPhoto ? 'disabled' : ''}`}>
+                      <i className="bi bi-upload me-1"></i>{uploadingPhoto ? 'Chargement...' : 'Téléverser une image'}
+                      <input type="file" accept="image/jpeg,image/png" hidden onChange={handlePhotoUploadFile} disabled={uploadingPhoto} />
+                    </label>
+                    {profilForm.photo && (
+                      <button type="button" className="btn btn-sm btn-outline-danger mb-0" onClick={handleDeletePhoto} disabled={uploadingPhoto}>
+                        <i className="bi bi-trash me-1"></i>Supprimer
+                      </button>
+                    )}
+                  </div>
+                  <div className="form-text mt-1" style={{ fontSize: '0.78rem' }}>Cette photo apparaîtra sur votre profil et l'ensemble de la plateforme.</div>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="row g-3">
             <div className="col-md-6">
               <label className="form-label fw-semibold">Prénom</label>
@@ -979,10 +1342,10 @@ export function SettingsPage() {
           </div>
           <button
             type="submit"
-            className="btn btn-outline-secondary fw-bold mt-4"
+            className="btn btn-primary fw-bold mt-4 shadow-sm"
             disabled={saving}
           >
-            Mettre à jour le profil
+            <i className="bi bi-check-lg me-2"></i>Mettre à jour le profil
           </button>
         </form>
       )}

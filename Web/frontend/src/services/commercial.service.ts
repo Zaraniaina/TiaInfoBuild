@@ -1,6 +1,7 @@
 import { api } from './api'
 import type {
   Client,
+  ClientIdentifiantsEnvoi,
   Devis,
   Contrat,
   Facture,
@@ -43,6 +44,25 @@ export const commercialService = {
     const url = `/utilisateurs/${utilisateurId}/bon-de-creation${query ? `?${query}` : ''}`
     const res = await api.get(url, { responseType: 'blob' })
     return res.data
+  },
+
+  /** Envoie (ou renvoie) au client sa fiche d'accès : identifiants + lien de connexion. */
+  async envoyerIdentifiantsClient(clientId: number) {
+    const res = await api.post<ClientIdentifiantsEnvoi>(
+      `/commercial/clients/${clientId}/envoyer-identifiants`
+    )
+    return { data: res.data, headers: res.headers }
+  },
+
+  /** Télécharge la fiche d'accès PDF du client (repli manuel si l'email n'est pas parti). */
+  async telechargerFicheAccesClient(clientId: number, tempPassword?: string, loginUrl?: string) {
+    const params = new URLSearchParams()
+    if (tempPassword) params.set('temp_password', tempPassword)
+    if (loginUrl) params.set('login_url', loginUrl)
+    const query = params.toString()
+    const url = `/commercial/clients/${clientId}/fiche-acces${query ? `?${query}` : ''}`
+    const res = await api.get(url, { responseType: 'blob' })
+    return res.data as Blob
   },
 
   async updateClient(id: number, data: Partial<Client>) {

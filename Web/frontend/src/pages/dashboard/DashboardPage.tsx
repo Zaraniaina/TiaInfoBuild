@@ -1,5 +1,5 @@
 import { useAuthStore } from "@/stores/auth.store";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { RoleBadge } from "@/components/layout/RoleBadge";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -21,6 +21,7 @@ import { ROLE_DASHBOARD_TITLE } from "@/config/roles.config";
 import { QRScannerModal } from "@/components/pointage/QRScannerModal";
 import { WorkerBadgeCard } from "@/components/pointage/WorkerBadgeCard";
 import { PageSkeleton } from "@/components/ui/Skeleton"
+import { useToast } from "@/stores/toast.store";
 
 const ROLE_META: Record<
   string,
@@ -60,7 +61,7 @@ const ROLE_META: Record<
       type: "info",
       icon: "bi-building",
       title: "Gestion Terrain",
-      text: "Scannez le badge des ouvriers ou validez votre pointage GPS.",
+      text: "Scannez le badge des ouvriers pour pointer votre équipe.",
     },
   },
   chef_projet: {
@@ -95,6 +96,8 @@ const ROLE_META: Record<
 export function DashboardPage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { showToast } = useToast();
   const roleCode = user?.role_code || "employe";
   const [loading, setLoading] = useState(true);
   const [showScannerModal, setShowScannerModal] = useState(false);
@@ -105,6 +108,28 @@ export function DashboardPage() {
     queryKey: ["dashboard", "stats"],
     queryFn: () => api.get("/dashboard/stats").then((res) => res.data),
   })
+
+  // Abonnement de l'entreprise (admin uniquement) : état + abonnement courant avec son plan
+  const { data: subState } = useQuery({
+    queryKey: ["subscription", "state"],
+    queryFn: () => api.get("/subscriptions/entreprise/subscription/state").then((res) => res.data),
+    enabled: roleCode === "admin_entreprise",
+  })
+  const { data: mySub } = useQuery({
+    queryKey: ["subscription", "current"],
+    queryFn: () => api.get("/subscriptions/entreprise/subscription").then((res) => res.data),
+    enabled: roleCode === "admin_entreprise",
+  })
+
+  // Toast transmis depuis /pricing via location.state (abonnement activé / erreur)
+  const navState = location.state as { toast?: { type: "success" | "error" | "warning" | "info"; title: string; message: string } } | null;
+  useEffect(() => {
+    if (navState?.toast) {
+      showToast(navState.toast.type, navState.toast.title, navState.toast.message);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { data: charts, isLoading: chartsLoading } = useQuery({
     queryKey: ["dashboard", "charts"],
     queryFn: () => api.get("/dashboard/charts").then((res) => res.data),
@@ -271,6 +296,79 @@ export function DashboardPage() {
             "Système entreprise opérationnel",
             "text-success",
           )}
+        </div>
+        <div className="card border-0 shadow-sm p-4 mb-4" aria-labelledby="abonnement-titre">
+          <div className="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+            <h5 className="fw-bold mb-0 text-secondary" id="abonnement-titre">
+              <i className="bi bi-credit-card-2-front me-2"></i>Abonnement actif
+            </h5>
+            {(() => {
+              const s = subState as { state: string; days_remaining: number | null; plan_nom: string | null } | undefined;
+              if (!s) return null;
+              const badge = (cls: string, txt: string) => (
+                <span className={`badge ${cls} border`}>{txt}</span>
+              );
+              if (s.state === "essai")
+                return badge("bg-info bg-opacity-10 text-info", `🎁 Essai — ${s.days_remaining} jour${(s.days_remaining ?? 0) > 1 ? "s" : ""} restant${(s.days_remaining ?? 0) > 1 ? "s" : ""}`);
+              if (s.state === "actif") return badge("bg-success bg-opacity-10 text-success", "Actif");
+              if (s.state === "expire") return badge("bg-danger bg-opacity-10 text-danger", "Expiré — lecture seule");
+              if (s.state === "sans") return badge("bg-secondary bg-opacity-10 text-dark", "Aucun abonnement");
+              return null;
+            })()}
+          </div>
+          {(() => {
+            const sub = mySub as { plan?: { nom: string; code: string; utilisateurs_max: number | null; chantiers_max: number | null; duree_essai_jours?: number }; date_fin?: string | null; periode?: string | null; statut?: string } | null;
+            const s = subState as { state: string; days_remaining: number | null; date_fin: string | null; plan_nom: string | null } | undefined;
+            const planNom = sub?.plan?.nom || s?.plan_nom;
+            if (!s || s.state === "sans" || !planNom) {
+              return (
+                <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                  <p className="text-muted small mb-0">Aucun abonnement actif pour le moment.</p>
+                  <button className="btn btn-outline-secondary btn-sm fw-bold" onClick={() => navigate("/pricing")}>
+                    Voir les formules <i className="bi bi-arrow-right ms-1"></i>
+                  </button>
+                </div>
+              );
+            }
+            const dateFin = s.date_fin ? new Date(s.date_fin).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : null;
+            return (
+              <div className="row g-3 align-items-center">
+                <div className="col-md-4">
+                  <span className="text-muted small d-block">Formule</span>
+                  <span className="fw-bold fs-5">{planNom}</span>
+                  {sub?.periode && sub.periode !== "essai" && (
+                    <span className="badge bg-light text-dark border ms-2">{sub.periode}</span>
+                  )}
+                </div>
+                <div className="col-md-4">
+                  <span className="text-muted small d-block">Quotas inclus</span>
+                  <span className="small">
+                    <i className="bi bi-people me-1"></i>{sub?.plan?.utilisateurs_max ?? "Illimité"} employés
+                    <span className="text-muted mx-2">·</span>
+                    <i className="bi bi-diagram-3 me-1"></i>{sub?.plan?.chantiers_max ?? "Illimités"} chantiers
+                    <span className="text-muted mx-2">·</span>
+                    <i className="bi bi-people-fill me-1"></i>Clients illimités
+                  </span>
+                </div>
+                <div className="col-md-4">
+                  <span className="text-muted small d-block">
+                    {s.state === "expire" ? "Expiré le" : "Valable jusqu'au"}
+                  </span>
+                  <span className="fw-semibold">{dateFin || "Sans échéance"}</span>
+                  {s.state === "expire" && (
+                    <div className="mt-1">
+                      <button className="btn btn-sm btn-primary fw-bold" onClick={() => navigate("/pricing")}>Réactiver</button>
+                    </div>
+                  )}
+                  {s.state === "essai" && (s.days_remaining ?? 0) <= 7 && (
+                    <div className="mt-1">
+                      <button className="btn btn-sm btn-primary fw-bold" onClick={() => navigate("/pricing")}>Choisir une formule</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
         <div className="row g-4 mb-4">
           <div className="col-lg-8">
@@ -798,16 +896,6 @@ export function DashboardPage() {
             >
               <i className="bi bi-qr-code-scan me-2"></i>Scanner Badges Ouvriers
             </button>
-            <button
-              className="btn btn-outline-secondary fw-bold"
-              onClick={() =>
-                alert(
-                  "Auto-déclaration GPS enregistrée pour le Chef de Chantier (Catégorie B).",
-                )
-              }
-            >
-              <i className="bi bi-geo-alt-fill me-2"></i>Mon Auto-Pointage GPS
-            </button>
           </div>
         </div>
 
@@ -1223,7 +1311,7 @@ export function DashboardPage() {
       {showBadgeModal && (
         <div
           className="modal fade show d-block"
-          style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+          style={{ backgroundColor: "var(--overlay-strong)" }}
           tabIndex={-1}
         >
           <div className="modal-dialog modal-dialog-centered">

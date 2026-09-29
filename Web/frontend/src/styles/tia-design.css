@@ -49,6 +49,8 @@
   --tia-info: #2563EB;
   --tia-info-soft: rgba(37, 99, 235, 0.08);
 
+  --overlay: rgba(15, 23, 42, 0.5);        /* backdrop modal doux */
+  --overlay-strong: rgba(15, 23, 42, 0.6); /* backdrop modals critiques (impression, scan) */
   --tia-selection-bg: var(--tia-accent-soft);
   --tia-selection-text: var(--tia-text-primary);
   --tia-focus-ring: rgba(37, 99, 235, 0.22);
@@ -99,6 +101,8 @@
    ============================================================ */
 [data-theme="dark"] {
   --tia-bg-base: #0F172A;
+  --overlay: rgba(0, 0, 0, 0.55);
+  --overlay-strong: rgba(0, 0, 0, 0.65);
   --tia-bg-surface: #1E293B;
   --tia-bg-raised: #334155;
   --tia-bg-sidebar: #0F172A;
@@ -949,6 +953,12 @@ h1, h2, h3, h4, h5, h6, .font-display {
   pointer-events: auto;
   z-index: 1055;
 }
+
+/* Tailles Bootstrap : laisser sm/lg/xl s'exprimer tout en restant fluides
+   (min() = jamais plus large que l'écran, même à 320px). */
+.modal-dialog.modal-sm { max-width: min(300px, 100%); }
+.modal-dialog.modal-lg { max-width: min(800px, 100%); }
+.modal-dialog.modal-xl { max-width: min(1140px, 100%); }
 
 .modal-content {
   background-color: var(--tia-bg-surface);

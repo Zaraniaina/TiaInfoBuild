@@ -9,7 +9,7 @@ from typing_extensions import Annotated
 from app.database import get_db
 from app.security import get_current_user
 from app.dependencies.auth import get_current_active_user
-from app.dependencies.permissions import require_permission
+from app.dependencies.permissions import require_permission, require_any_permission
 from app.crud.utilisateur import UtilisateurCRUD
 from app.security import hash_password, generate_temp_password
 from app.models.utilisateur import Utilisateur
@@ -30,6 +30,14 @@ router = APIRouter(tags=["utilisateurs"])
 CurrentUser = Annotated[dict[str, Any], Depends(get_current_active_user)]
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 AdminCheck = Annotated[dict[str, Any], Depends(require_permission("parametres:write"))]
+# Le "bon de création" est utile aux deux populations qui manipulent des comptes :
+# l'admin d'entreprise (parametres:write) et le commercial qui crée les fiches
+# clients (commercial:write). Élargissement non restrictif : aucune permission
+# existante n'est retirée.
+AdminOrCommercialCheck = Annotated[
+    dict[str, Any],
+    Depends(require_any_permission("parametres:write", "commercial:write")),
+]
 
 
 async def _resolve_admin_role_id(db: DbSession) -> int | None:
@@ -128,7 +136,7 @@ async def create_utilisateur(payload: AdminCheck, db: DbSession, data: Utilisate
 
 @router.get("/{id}/bon-de-creation", response_class=Response)
 @router.get("/{id}/bon-de-creation/", response_class=Response)
-async def get_bon_creation(payload: AdminCheck, db: DbSession, id: int, temp_password: str | None = Query(default=None), login_url: str | None = Query(default=None)):
+async def get_bon_creation(payload: AdminOrCommercialCheck, db: DbSession, id: int, temp_password: str | None = Query(default=None), login_url: str | None = Query(default=None)):
     """Génère un PDF 'Bon de création' contenant le login, le rôle de l'utilisateur,
     les rôles de l'entreprise et le mot de passe temporaire défini par l'administrateur.
 

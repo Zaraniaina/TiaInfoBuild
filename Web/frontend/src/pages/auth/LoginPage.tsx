@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '@/hooks/useAuth'
 import { formatErrorMessage } from '@/utils/errorMessage'
+import { isDesktop } from '@/utils/buildMode'
+import { loginDesktop, DesktopAuthError } from '@/services/desktopAuth'
 import { AuthVisualPanel } from '@/components/auth/AuthVisualPanel'
 
 const loginSchema = z.object({
@@ -16,6 +18,7 @@ type LoginFormData = z.infer<typeof loginSchema>
 
 export function LoginPage() {
   const { loginUser } = useAuth()
+  const navigate = useNavigate()
   const [serverError, setServerError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -28,8 +31,20 @@ export function LoginPage() {
     setServerError(null)
     setIsLoading(true)
     try {
-      await loginUser(data)
+      if (isDesktop()) {
+        // Desktop : login via Tauri (online d'abord, fallback session locale).
+        await loginDesktop(data.email, data.password)
+        navigate('/app', { replace: true })
+      } else {
+        // Web : comportement strictement inchangé.
+        await loginUser(data)
+      }
     } catch (err: unknown) {
+      if (isDesktop() && err instanceof DesktopAuthError && err.code === 'ACTIVATION_REQUISE') {
+        // Poste jamais activé → écran d'activation (online requis).
+        navigate('/activation')
+        return
+      }
       const message = formatErrorMessage(err, 'Identifiants invalides ou problème de connexion.')
       setServerError(message)
     } finally {
@@ -123,6 +138,9 @@ export function LoginPage() {
                   Se souvenir de moi
                 </label>
               </div>
+              <Link to="/forgot-password" className="auth-link text-muted small">
+                Mot de passe oublié ?
+              </Link>
             </div>
 
             <button

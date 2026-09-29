@@ -37,6 +37,7 @@ class ChantierCreate(BaseModel):
     tva: float | None = Field(default=20.0)
     statut: str | None = Field(default="planification", max_length=20)
     description: str | None = None
+    region: str | None = Field(default=None, max_length=80)
 
     @field_validator("budget_prevu", "budget_previsionnel", "budget_reel", "marge_cible")
     @classmethod
@@ -79,6 +80,7 @@ class ChantierUpdate(BaseModel):
     tva: float | None = None
     statut: str | None = None
     description: str | None = None
+    region: str | None = Field(default=None, max_length=80)
     client_id: int | None = None
     chef_chantier_id: int | None = None
 
@@ -130,12 +132,16 @@ class ChantierResponse(BaseModel):
     tva: float | None = None
     statut: str | None = None
     description: str | None = None
+    region: str | None = None
     is_deleted: bool | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
     phases: list[dict[str, Any]] | None = None
     incidents: list[dict[str, Any]] | None = None
     affectations: list[dict[str, Any]] | None = None
+    # Impact climatique (aléas documentés) : jours d'arrêt climatiques,
+    # retard brut et retard net — voir app/routers/aleas_climatiques.py.
+    impact_climatique: dict[str, Any] | None = None
 
 
 class ChantierList(BaseModel):
@@ -157,5 +163,6 @@ class ChantierList(BaseModel):
     budget_reel: float | None = None
     marge_cible: float | None = None
     statut: str | None = None
+    region: str | None = None
     is_deleted: bool | None = None
     created_at: datetime | None = None

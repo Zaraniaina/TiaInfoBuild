@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { employeTerrainService } from '@/services/employeTerrain.service'
 import type { ProfilTerrain } from '@/types'
+import { BrandLogo } from '@/components/brand/BrandLogo'
 
 export function EmployeProfilPage() {
   const [profil, setProfil] = useState<ProfilTerrain | null>(null)
@@ -79,11 +80,11 @@ export function EmployeProfilPage() {
           {profil.badge_qr ? (
             <div className="text-center">
               <div className="border rounded p-3 d-inline-block bg-white">
-                <div className="fw-bold small">TIA INFO BUILD</div>
+                <div className="fw-bold small d-flex align-items-center justify-content-center gap-1"><BrandLogo size={16} /> TIA INFO BUILD</div>
                 <div className="fw-semibold">{profil.prenom} {profil.nom}</div>
                 <div className="text-muted small">{profil.matricule}</div>
                 <div className="text-muted small">{profil.poste}</div>
-                <div className="mt-2" style={{ width: 120, height: 120, margin: '0 auto', background: '#f8f9fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem' }}>
+                <div className="mt-2 rounded-3" style={{ width: 'min(120px, 100%)', height: 120, margin: '0 auto', background: 'var(--tia-bg-raised)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem' }}>
                   <i className="bi bi-qr-code"></i>
                 </div>
                 <div className="small text-muted mt-1">QR: {profil.badge_qr}</div>

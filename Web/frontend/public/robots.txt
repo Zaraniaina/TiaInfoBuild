@@ -1,0 +1,22 @@
+User-agent: *
+Allow: /
+
+# Zones d'authentification, espaces privés et API — jamais indexées.
+Disallow: /api/
+Disallow: /app/
+Disallow: /login
+Disallow: /client-login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /dashboard
+Disallow: /commercial
+Disallow: /client/
+Disallow: /employe/
+Disallow: /super-admin/
+
+# Page d'inscription entreprise : vitrine publique, indexable (voir sitemap.xml).
+Allow: /register-entreprise
+
+Sitemap: https://tia.mg/sitemap.xml

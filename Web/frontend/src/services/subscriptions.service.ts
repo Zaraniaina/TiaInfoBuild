@@ -41,6 +41,17 @@ export const subscriptionsService = {
     return res.data as SubscriptionWithPlan | null
   },
 
+  async getMySubscriptionState() {
+    const res = await api.get('/subscriptions/entreprise/subscription/state')
+    return res.data as {
+      state: 'essai' | 'actif' | 'expire' | 'sans'
+      days_remaining: number | null
+      date_fin: string | null
+      plan_code: string | null
+      plan_nom: string | null
+    }
+  },
+
   async createSubscription(data: { plan_id: number; periode?: 'mensuel' | 'annuel'; mode_paiement?: string }) {
     const res = await api.post('/subscriptions/entreprise/subscription', {
       plan_id: data.plan_id,

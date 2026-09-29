@@ -11,79 +11,91 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/super-admin/abonnements',
     '/super-admin/facturation',
     '/super-admin/logs',
+    '/super-admin/email',
+    '/super-admin/paiement',
     '/super-admin/parametres',
     '/dashboard',
-  ],
+    // NB : pas de '/risques-climatiques' — donnée métier des entreprises BTP,
+    // gérée par leurs rôles responsables (directeur, chef_projet, chef_chantier,
+    // admin_entreprise). Le super admin est propriétaire du SaaS, pas du chantier.
+  ].map((p) => `/app${p}`),
   admin_entreprise: [
     // Restreint selon roles_tia_builds/01_admin_entreprise.md :
     // accès uniquement à l'administration (utilisateurs, paramètres), KPI/dashboard,
     // historique de connexion et page tarifs (pricing).
+    // + Risques climatiques : responsable de l'entreprise (pénalités de retard
+    // contractuelles liées aux aléas — sujet de direction).
     '/dashboard',
+    '/risques-climatiques',
     '/historique-logins',
     '/settings',
     '/pricing',
-  ],
+  ].map((p) => `/app${p}`),
   directeur: [
     '/dashboard',
     '/chantiers',
+    '/risques-climatiques',
+    '/achats',
     '/finance',
     '/commercial',
     '/rh',
     '/materiels',
     '/stocks',
     '/alertes',
-  ],
+  ].map((p) => `/app${p}`),
   comptable: [
     '/dashboard',
     '/finance',
     '/commercial',
     '/chantiers',
+    '/achats',
     '/rh',
     '/alertes',
-  ],
+  ].map((p) => `/app${p}`),
   chef_projet: [
     '/dashboard',
     '/chantiers',
+    '/risques-climatiques',
+    '/achats',
     '/rh',
     '/materiels',
     '/stocks',
-    '/finance',
     '/alertes',
-  ],
+  ].map((p) => `/app${p}`),
   chef_chantier: [
     '/dashboard',
     '/chantiers',
+    '/risques-climatiques',
     '/rh',
     '/materiels',
     '/stocks',
-    '/finance',
     '/alertes',
-  ],
+  ].map((p) => `/app${p}`),
   rh: [
     '/dashboard',
     '/rh',
     '/chantiers',
     '/alertes',
-  ],
+  ].map((p) => `/app${p}`),
   materiel: [
     '/dashboard',
     '/materiels',
     '/chantiers',
     '/alertes',
-  ],
+  ].map((p) => `/app${p}`),
   magasinier: [
     '/dashboard',
     '/stocks',
+    '/achats',
     '/chantiers',
     '/alertes',
-  ],
+  ].map((p) => `/app${p}`),
   commercial: [
     '/dashboard',
     '/commercial',
     '/chantiers',
-    '/finance',
     '/alertes',
-  ],
+  ].map((p) => `/app${p}`),
   employe: [
     '/employe',
     '/employe/profil',
@@ -93,12 +105,12 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/employe/rapports',
     '/employe/photos',
     '/employe/signalements',
-        '/employe/notifications',
+    '/employe/notifications',
     '/employe/planning',
     '/employe/documents',
     '/employe/badge',
     '/employe/conges',
-  ],
+  ].map((p) => `/app${p}`),
   client: [
     '/client',
     '/client/profil',
@@ -115,7 +127,7 @@ export const ROLE_MODULES: Record<string, string[]> = {
     '/client/documents',
     '/client/notifications',
     '/client/parametres',
-  ],
+  ].map((p) => `/app${p}`),
 }
 
 export const ROLE_NAMES: Record<string, string> = {
@@ -175,11 +187,9 @@ export interface RolePermissions {
   canEditEmploye: boolean
   canDeleteEmploye: boolean
   canValidatePointage: boolean
-  canScanQR: boolean
   // Actions terrain & tâches
   canReportTask: boolean
   canDeclareConsumption: boolean
-  canGenerateQR: boolean
 
   // Finance & Dépenses
   canCreateDepense: boolean
@@ -234,7 +244,6 @@ export function getRolePermissions(roleCode: string): RolePermissions {
       canEditEmploye: false,
       canDeleteEmploye: false,
       canValidatePointage: false,
-      canScanQR: false,
 
       // Finance & Dépenses
       canCreateDepense: false,
@@ -273,7 +282,6 @@ export function getRolePermissions(roleCode: string): RolePermissions {
       // Actions terrain non autorisées
       canReportTask: false,
       canDeclareConsumption: false,
-      canGenerateQR: false,
     }
   }
   const isAdmin = ['super_admin'].includes(role)
@@ -300,12 +308,9 @@ export function getRolePermissions(roleCode: string): RolePermissions {
     canEditEmploye: isAdmin || isRH,
     canDeleteEmploye: isAdmin || isRH,
     canValidatePointage: isAdmin || isRH || isChefProjet || isChefChantier,
-    // L'ouvrier doit pouvoir scanner le QR code depuis son mobile
-    canScanQR: isEmploye || isAdmin || isRH || isChefChantier || isChefProjet,
     // Actions terrain & tâches
     canReportTask: isChefChantier || isChefProjet || isEmploye,
     canDeclareConsumption: isChefChantier || isMagasinier || isEmploye,
-    canGenerateQR: isChefChantier || isMagasinier || isChefProjet || isAdmin,
 
     // Finance
     // Saisie opérationnelle : Comptable, Chef de Chantier et Chef de Projet peuvent créer
@@ -328,9 +333,9 @@ export function getRolePermissions(roleCode: string): RolePermissions {
     canCreateClient: isAdmin || isCommercial,
     // Le Directeur valide mais ne crée pas les devis courants
     canCreateDevis: isAdmin || isCommercial,
-    canCreateFacture: isAdmin || isCommercial,
+    canCreateFacture: isAdmin || isCommercial || isComptable,
     canValidateDevis: isAdmin || isDirecteur || isCommercial,
-    canAddPaiement: isAdmin || isCommercial || isComptable,
+    canAddPaiement: isAdmin || isDirecteur || isComptable,
 
     // Cycle commercial
     canCreateDemande: isAdmin || isCommercial,

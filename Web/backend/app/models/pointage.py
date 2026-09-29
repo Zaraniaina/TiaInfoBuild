@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, String, Text, Boolean, Numeric, DateTime, Date, Time, ForeignKey, UniqueConstraint, Index, func
+from sqlalchemy import BigInteger, String, Text, Boolean, Numeric, DateTime, Date, Time, ForeignKey, UniqueConstraint, Index, func, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -29,6 +29,17 @@ class Pointage(Base):
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    # --- Sync desktop (offline-first, web = maître) ---
+    # client_ref : identité desktop (UUID généré côté client) ; le serveur mappe
+    #   ce UUID sur la PK BIGINT autoincrement.
+    # sync_version : version serveur, incrémentée à chaque écriture (hook
+    #   app.core.sync_cols) → détection de conflit « le web gagne ».
+    # sync_created_at/sync_updated_at : horodatage UTC serveur ; sync_updated_at
+    #   est le curseur du GET /api/sync/pull.
+    client_ref: Mapped[str | None] = mapped_column(Text)
+    sync_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    sync_updated_at: Mapped[datetime | None] = mapped_column(DateTime, server_default=func.now())
+    sync_created_at: Mapped[datetime | None] = mapped_column(DateTime, server_default=func.now())
 
     __table_args__ = (
         UniqueConstraint("employe_id", "date_jour", name="uq_pointages_employe_date_jour"),
@@ -36,6 +47,8 @@ class Pointage(Base):
         Index("idx_pointages_date_jour", "date_jour"),
         Index("idx_pointages_chantier_id", "chantier_id"),
         Index("idx_pointages_entreprise_id_is_deleted", "entreprise_id", "is_deleted"),
+        Index("idx_pointages_client_ref", "client_ref"),
+        Index("idx_pointages_sync_updated_at", "sync_updated_at"),
     )
 
     entreprise: Mapped["Entreprise"] = relationship("Entreprise", back_populates="pointages", lazy="selectin")

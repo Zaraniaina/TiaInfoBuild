@@ -1,8 +1,9 @@
 """Routers pour le module commercial: clients, devis, contrats, factures, paiements."""
+import logging
 from datetime import date, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,7 +22,7 @@ from app.models.ligne_facture import LigneFacture
 from app.models.facture import Facture
 from app.models.contrat import Contrat
 from app.models.paiement import Paiement
-from app.schemas.client import ClientCreate, ClientUpdate, ClientResponse, ClientList
+from app.schemas.client import ClientCreate, ClientUpdate, ClientResponse, ClientList, ClientIdentifiantsEnvoiResponse
 from app.schemas.devis import (
     DevisCreate,
     DevisUpdate,
@@ -58,8 +59,18 @@ from app.crud.projet import projet_crud
 from app.crud.metre import metre_crud
 from app.crud.situation_travaux import situation_travaux_crud, ligne_situation_crud
 from app.models.notification import Notification
+from app.models.entreprise import Entreprise
+from app.services.client_credentials import (
+    charger_config_smtp,
+    envoyer_fiche_acces_client,
+    pdf_filename as fiche_acces_pdf_filename,
+    render_fiche_acces_client_pdf,
+    resolve_login_url,
+)
 
 router = APIRouter(tags=["commercial"])
+
+logger = logging.getLogger(__name__)
 
 
 async def _notifier_client(
@@ -160,6 +171,84 @@ async def _recalculer_facture(db: AsyncSession, facture_id: int) -> None:
 
 client_crud = ClientCRUD()
 
+async def _charger_entreprise(db: AsyncSession, entreprise_id: int | None):
+    """Charge l'entreprise émettrice (affichée sur la fiche d'accès client)."""
+    if entreprise_id is None:
+        return None
+    result = await db.execute(select(Entreprise).where(Entreprise.id == entreprise_id))
+    return result.scalar_one_or_none()
+
+
+async def _creer_compte_client(
+    db: AsyncSession,
+    client: Client,
+    entreprise_id: int | None,
+) -> tuple[Utilisateur | None, str | None]:
+    """Crée le compte utilisateur (rôle client) rattaché à la fiche client.
+
+    Retourne `(utilisateur, mot_de_passe_temporaire)` ou `(None, None)` si la
+    création échoue : la création de la fiche client ne doit jamais être bloquée
+    par un problème de compte ou d'email.
+    """
+    if client is None or not getattr(client, "email", None):
+        return None, None
+
+    # Pré-contrôle : un email déjà utilisé par un autre compte est le cas d'échec
+    # réaliste. On l'écarte AVANT tout flush pour ne pas invalider la transaction.
+    try:
+        existant = (await db.execute(
+            select(Utilisateur).where(
+                Utilisateur.email == client.email,
+                Utilisateur.is_deleted == False,  # noqa: E712
+            )
+        )).scalar_one_or_none()
+    except Exception as exc:
+        logger.warning("Vérification du compte client impossible pour %s : %s", client.email, exc)
+        existant = None
+    if existant is not None:
+        logger.warning(
+            "Aucun compte client créé pour %s : cet email est déjà utilisé par l'utilisateur %s",
+            client.email, existant.id,
+        )
+        return None, None
+
+    temp_pwd = generate_temp_password()
+    try:
+        role_client = (await db.execute(
+            select(Role).where(Role.code == "client")
+        )).scalar_one_or_none()
+        if role_client is None:
+            logger.warning(
+                "Rôle 'client' introuvable : le compte de %s sera créé sans rôle", client.email
+            )
+        user = Utilisateur(
+            entreprise_id=entreprise_id,
+            email=client.email,
+            nom=client.nom or "",
+            prenom=client.prenom or "",
+            mot_de_passe_hash=hash_password(temp_pwd),
+            must_change_password=True,
+            role_id=role_client.id if role_client else None,
+            client_id=client.id,
+        )
+        db.add(user)
+        await db.flush()
+        await db.refresh(user)
+        logger.info("Compte client créé pour %s (utilisateur_id=%s)", client.email, user.id)
+        return user, temp_pwd
+    except Exception as exc:
+        # Ne jamais bloquer la création du client : on annule uniquement l'insertion
+        # du compte (la fiche client est commitée séparément par l'appelant).
+        logger.warning("Création du compte client impossible pour %s : %s", client.email, exc)
+        try:
+            await db.rollback()
+            await db.refresh(client)
+        except Exception:  # pragma: no cover - reprise best effort
+            logger.debug("Reprise de la session impossible après rollback", exc_info=True)
+        return None, None
+
+
+
 
 @router.get("/clients", response_model=list[ClientList])
 async def list_clients(
@@ -188,37 +277,38 @@ async def create_client(
     if obj_in.get("adresses") is None:
         obj_in["adresses"] = []
     client = await client_crud.create(db, obj_in)
+    # La fiche client est validée indépendamment du compte d'accès et de l'envoi
+    # des identifiants : un échec SMTP ne doit jamais annuler la création du client.
+    await db.commit()
 
     # Création automatique d'un compte utilisateur pour le client si email fourni
-    try:
-        if client and client.email:
-            temp_pwd = generate_temp_password()
-            role_client = (await db.execute(
-                select(Role).where(Role.code == "client")
-            )).scalar_one_or_none()
-            user_obj = {
-                "entreprise_id": entreprise_id,
-                "email": client.email,
-                "nom": client.nom or "",
-                "prenom": client.prenom or "",
-                "mot_de_passe_hash": hash_password(temp_pwd),
-                "must_change_password": True,
-                "role_id": role_client.id if role_client else None,
-                "client_id": client.id,
-            }
-            user = Utilisateur(**user_obj)
-            db.add(user)
-            await db.flush()
-            await db.refresh(user)
-            # Exposer de façon temporaire l'id utilisateur et le mot de passe généré
-            # via des en-têtes HTTP (usage immédiat par l'UI/admin). Attention: ces en-têtes
-            # doivent être consommés immédiatement et ne sont pas conservés côté serveur.
-            response.headers["X-Utilisateur-Cree"] = str(user.id)
+    utilisateur, temp_pwd = (None, None)
+    if client.email:
+        utilisateur, temp_pwd = await _creer_compte_client(db, client, entreprise_id)
+        if utilisateur is not None:
+            await db.commit()
+            # Exposer l'id du compte créé (usage immédiat par l'UI, non conservé).
+            response.headers["X-Utilisateur-Cree"] = str(utilisateur.id)
+
+    response.headers["X-Fiche-Access-Email"] = client.email or ""
+    response.headers["X-Fiche-Access-Email-Envoye"] = "false"
+    if utilisateur is not None and temp_pwd:
+        entreprise = await _charger_entreprise(db, entreprise_id)
+        email_envoye, erreur = await envoyer_fiche_acces_client(
+            db=db,
+            client=client,
+            utilisateur=utilisateur,
+            entreprise=entreprise,
+            temp_password=temp_pwd,
+        )
+        response.headers["X-Fiche-Access-Email-Envoye"] = "true" if email_envoye else "false"
+        if not email_envoye:
+            # Repli manuel : le mot de passe n'est transmis par en-tête que si la
+            # fiche n'a pas pu être envoyée (l'admin la remet alors en main propre).
             response.headers["X-Utilisateur-TempPwd"] = temp_pwd
-            print(f"Compte utilisateur créé pour le client {client.email} (utilisateur_id={user.id})")
-    except Exception as e:
-        # Ne pas bloquer la création du client si la création du compte échoue
-        print("Erreur création compte client automatique:", e)
+            logger.warning(
+                "Fiche d'accès client non envoyée à %s : %s", client.email, erreur
+            )
 
     return client
 
@@ -265,6 +355,132 @@ async def delete_client(
     await db.flush()
     await db.refresh(client)
     return None
+
+
+@router.get("/clients/{id}/fiche-acces", response_class=Response)
+async def telecharger_fiche_acces_client(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+    temp_password: str | None = Query(default=None),
+    login_url: str | None = Query(default=None),
+):
+    """Télécharge la fiche d'accès PDF du client (identifiants + lien de connexion).
+
+    `temp_password` sert au repli manuel (envoi email impossible) : à défaut, la
+    fiche est générée sans mot de passe en clair.
+    """
+    _require_permission(payload, "commercial:write")
+    client = await client_crud.get(db, id)
+    if not client or client.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client non trouvé")
+    entreprise_id = _get_entreprise_id(payload)
+    if entreprise_id is not None and client.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    utilisateur = (await db.execute(
+        select(Utilisateur).where(
+            Utilisateur.client_id == client.id,
+            Utilisateur.is_deleted == False,  # noqa: E712
+        )
+    )).scalars().first()
+    if utilisateur is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Aucun compte d'accès n'est rattaché à ce client",
+        )
+
+    cfg = await charger_config_smtp(db)
+    pdf_bytes = render_fiche_acces_client_pdf(
+        client=client,
+        utilisateur=utilisateur,
+        entreprise=await _charger_entreprise(db, client.entreprise_id),
+        temp_password=temp_password or "(defini lors de la creation)",
+        login_url=resolve_login_url(cfg, login_url),
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{fiche_acces_pdf_filename(client)}"'
+        },
+    )
+
+
+@router.post("/clients/{id}/envoyer-identifiants", response_model=ClientIdentifiantsEnvoiResponse)
+async def envoyer_identifiants_client(
+    payload: CurrentUserPayload,
+    db: DbDep,
+    id: int,
+    response: Response,
+):
+    """(Re)génère un mot de passe temporaire et envoie la fiche d'accès au client."""
+    _require_permission(payload, "commercial:write")
+    client = await client_crud.get(db, id)
+    if not client or client.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client non trouvé")
+    entreprise_id = _get_entreprise_id(payload)
+    if entreprise_id is not None and client.entreprise_id != entreprise_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+    if not client.email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ce client n'a pas d'adresse email : impossible d'envoyer ses identifiants",
+        )
+
+    utilisateur = (await db.execute(
+        select(Utilisateur).where(
+            Utilisateur.client_id == client.id,
+            Utilisateur.is_deleted == False,  # noqa: E712
+        )
+    )).scalars().first()
+
+    if utilisateur is None:
+        utilisateur, temp_pwd = await _creer_compte_client(db, client, client.entreprise_id)
+        if utilisateur is None or not temp_pwd:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Impossible de créer le compte d'accès : cet email est déjà "
+                    "utilisé par un autre utilisateur"
+                ),
+            )
+    else:
+        temp_pwd = generate_temp_password()
+        utilisateur.mot_de_passe_hash = hash_password(temp_pwd)
+        utilisateur.must_change_password = True
+        if utilisateur.statut == "inactif":
+            utilisateur.statut = "actif"
+    await db.flush()
+
+    email_envoye, erreur = await envoyer_fiche_acces_client(
+        db=db,
+        client=client,
+        utilisateur=utilisateur,
+        entreprise=await _charger_entreprise(db, client.entreprise_id),
+        temp_password=temp_pwd,
+    )
+
+    response.headers["X-Utilisateur-Cree"] = str(utilisateur.id)
+    response.headers["X-Fiche-Access-Email-Envoye"] = "true" if email_envoye else "false"
+    response.headers["X-Fiche-Access-Email"] = client.email
+    if not email_envoye:
+        response.headers["X-Utilisateur-TempPwd"] = temp_pwd
+
+    return ClientIdentifiantsEnvoiResponse(
+        client_id=client.id,
+        email=client.email,
+        email_envoye=email_envoye,
+        utilisateur_id=utilisateur.id,
+        message=(
+            f"Identifiants envoyés à {client.email}"
+            if email_envoye
+            else (
+                f"Envoi de l'email impossible ({erreur}). Téléchargez la fiche d'accès "
+                "et transmettez-la manuellement au client."
+            )
+        ),
+    )
 
 
 # ==================== DEVIS ====================

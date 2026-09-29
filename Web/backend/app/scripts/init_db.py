@@ -32,7 +32,7 @@ ROLES_SYSTEME = [
     {"id": 8, "nom": "Responsable Matériel", "code": "materiel", "description": "Gestion du parc engins et maintenance", "is_system": True},
     {"id": 9, "nom": "Magasinier", "code": "magasinier", "description": "Gestion des stocks et entrepôts", "is_system": True},
     {"id": 10, "nom": "Commercial", "code": "commercial", "description": "Gestion clients et rédaction des devis", "is_system": True},
-    {"id": 11, "nom": "Employé / Ouvrier", "code": "employe", "description": "Exécution terrain, tâches et pointage", "is_system": True},
+    {"id": 11, "nom": "Employé / Ouvrier", "code": "employe", "description": "Exécution terrain et tâches", "is_system": True},
     {"id": 12, "nom": "Client", "code": "client", "description": "Accès lecture devis/factures", "is_system": True},
 ]
 
@@ -76,11 +76,28 @@ ADMIN_ENTREPRISE = {
 MOT_DE_PASSE_DEMO = "Admin123!"
 
 PLANS_DEFAUT = [
-    {"nom": "Essai Gratuit", "code": "essai", "description": "Accès complet 30 jours", "prix_mensuel": 1, "prix_annuel": 1, "utilisateurs_max": 2, "chantiers_max": 1, "stockage_go": 1, "duree_essai_jours": 30, "actif": 1},
-    {"nom": "Starter", "code": "starter", "description": "Pour les petites entreprises", "prix_mensuel": 15000, "prix_annuel": 150000, "utilisateurs_max": 5, "chantiers_max": 3, "stockage_go": 10, "duree_essai_jours": 30, "actif": 1},
-    {"nom": "Pro", "code": "pro", "description": "Le plus populaire", "prix_mensuel": 40000, "prix_annuel": 400000, "utilisateurs_max": 20, "chantiers_max": 10, "stockage_go": 50, "duree_essai_jours": 30, "actif": 1},
-    {"nom": "Business", "code": "business", "description": "Entreprises établies", "prix_mensuel": 100000, "prix_annuel": 1000000, "utilisateurs_max": 50, "chantiers_max": 25, "stockage_go": 200, "duree_essai_jours": 30, "actif": 1},
-    {"nom": "Enterprise", "code": "enterprise", "description": "Sur devis", "prix_mensuel": 1, "prix_annuel": 1, "utilisateurs_max": 999, "chantiers_max": 999, "stockage_go": 999, "duree_essai_jours": 30, "actif": 1},
+    # Plan système d'essai : requis par demarrer_essai() à chaque inscription entreprise.
+    # Ne pas le renommer ni le supprimer. Indestructible (409 côté API).
+    {"nom": "Gratuit — Essai 30 jours", "code": "essai", "description": "Accès complet pendant 30 jours : toutes les fonctionnalités, 10 employés, clients illimités.", "prix_mensuel": 0, "prix_annuel": 0, "utilisateurs_max": 10, "chantiers_max": 5, "duree_essai_jours": 30, "actif": 1},
+    # Plan gratuit permanent : filet de sécurité (entreprises sans abonnement, backfill).
+    {"nom": "Gratuit", "code": "gratuit", "description": "Formule gratuite permanente : 10 employés, clients illimités.", "prix_mensuel": 0, "prix_annuel": 0, "utilisateurs_max": 10, "chantiers_max": 3, "duree_essai_jours": 0, "actif": 1},
+    # Les formules payantes (Starter / Pro / Business…) se créent et se règlent
+    # librement depuis l'interface Super Admin > Abonnements (vrai CRUD).
+]
+
+# Comptes de test par rôle métier (partagés avec le sidecar desktop : importable au niveau module).
+TEST_ACCOUNTS = [
+    (3,  "directeur@btppro.mg",      "Direction",  "Jean",     "directeur"),
+    (6,  "comptable@btppro.mg",      "Comptable",  "Marie",    "comptable"),
+    (5,  "chefprojet@btppro.mg",     "ChefProjet", "Ahmed",    "chef_projet"),
+    (4,  "chefchantier@btppro.mg",   "ChefChantier","Bruno",   "chef_chantier"),
+    (7,  "rh@btppro.mg",             "RH",         "Claire",   "rh"),
+    (8,  "materiel@btppro.mg",       "Materiel",   "David",    "materiel"),
+    (9,  "magasinier@btppro.mg",     "Magasinier", "Elsa",     "magasinier"),
+    (10, "commercial@btppro.mg",     "Commercial", "Frank",    "commercial"),
+    (11, "ouvrier@btppro.mg",        "Ouvrier",    "Gilbert",  "employe"),
+    (11, "employe@btppro.mg",        "Employe",    "Gerard",   "employe"),
+    (12, "client@btppro.mg",         "Client",     "Hugo",     "client"),
 ]
 
 
@@ -119,14 +136,15 @@ async def seed():
         entreprise_id = ent[0]
         print(f"    Entreprise ID: {entreprise_id}")
 
-        # 3. Seed des plans d'abonnement
-        print(" Creation des plans d'abonnement...")
+        # 3. Seed des plans d'abonnement (essai + gratuit uniquement ; le reste se
+        # gère via le CRUD Super Admin). INSERT IGNORE : ne réveille pas les existants.
+        print(" Creation des plans d'abonnement (essai + gratuit)...")
         for plan in PLANS_DEFAUT:
             await db.execute(text("""
                 INSERT IGNORE INTO plans (nom, code, description, prix_mensuel, prix_annuel,
                     utilisateurs_max, chantiers_max, stockage_go, duree_essai_jours, actif)
                 VALUES (:nom, :code, :description, :prix_mensuel, :prix_annuel,
-                    :utilisateurs_max, :chantiers_max, :stockage_go, :duree_essai_jours, :actif)
+                    :utilisateurs_max, :chantiers_max, 5, :duree_essai_jours, :actif)
             """), plan)
 
         # 3. Créer le super admin (entreprise_id = NULL)
@@ -159,19 +177,6 @@ async def seed():
 
         # 4b. Créer les comptes de test pour chaque rôle métier de l'entreprise
         print(" Creation des comptes de test par role...")
-        TEST_ACCOUNTS = [
-            (3,  "directeur@btppro.mg",      "Direction",  "Jean",     "directeur"),
-            (6,  "comptable@btppro.mg",      "Comptable",  "Marie",    "comptable"),
-            (5,  "chefprojet@btppro.mg",     "ChefProjet", "Ahmed",    "chef_projet"),
-            (4,  "chefchantier@btppro.mg",   "ChefChantier","Bruno",   "chef_chantier"),
-            (7,  "rh@btppro.mg",             "RH",         "Claire",   "rh"),
-            (8,  "materiel@btppro.mg",       "Materiel",   "David",    "materiel"),
-            (9,  "magasinier@btppro.mg",     "Magasinier", "Elsa",     "magasinier"),
-            (10, "commercial@btppro.mg",     "Commercial", "Frank",    "commercial"),
-            (11, "ouvrier@btppro.mg",        "Ouvrier",    "Gilbert",  "employe"),
-            (11, "employe@btppro.mg",        "Employe",    "Gerard",   "employe"),
-            (12, "client@btppro.mg",         "Client",     "Hugo",     "client"),
-        ]
         for role_id, email, nom, prenom, code in TEST_ACCOUNTS:
             result = await db.execute(text(
                 "SELECT id FROM utilisateurs WHERE email = :email LIMIT 1"
@@ -196,8 +201,9 @@ async def seed():
         await db.commit()
         print("    Role_id comptable/chef_corriges si necessaire")
 
-        # 4c-bis. Fiches employes de demo (badge QR / pointage des comptes employe,
-        # rattachees aux comptes utilisateurs par email)
+        # 4c-bis. Fiches employes de demo (badge QR d'identite rattache aux comptes
+        # utilisateurs par email ; le pointage est fait par le chef de chantier / RH
+        # via le scan de ce badge)
         print("    Seed fiches employes demo...")
         EMPLOYES_DEMO = [
             ("ouvrier@btppro.mg", "Ouvrier", "Gilbert", "Ouvrier polyvalent"),

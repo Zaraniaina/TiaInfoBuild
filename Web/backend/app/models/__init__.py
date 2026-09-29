@@ -7,6 +7,14 @@ from app.models.affectation_ressource import AffectationRessource
 from app.models.alerte import Alerte
 from app.models.alerte_materiel import AlerteMateriel
 from app.models.article import Article
+from app.models.achats import (
+    CommandeFournisseur,
+    LigneCommandeFournisseur,
+    ReceptionFournisseur,
+    LigneReceptionFournisseur,
+    FactureFournisseur,
+    PaiementFournisseur,
+)
 from app.models.avenant import Avenant
 from app.models.chantier import Chantier
 from app.models.client import Client
@@ -39,6 +47,8 @@ from app.models.metre import Metre
 from app.models.mouvement_stock import MouvementStock
 from app.models.notification import Notification
 from app.models.paiement import Paiement
+from app.models.parametre_paiement import ParametrePaiement
+from app.models.periode_risque_climatique import PeriodeRisqueClimatique
 from app.models.phase import Phase
 from app.models.photo_chantier import PhotoChantier
 from app.models.plan import Plan
@@ -47,11 +57,14 @@ from app.models.situation_travaux import SituationTravaux, LigneSituation
 from app.models.subscription import Subscription
 from app.models.pointage import Pointage
 from app.models.preference import Preference
+from app.models.platform_settings import PlatformSettings
+from app.models.mail_settings import MailSettings
 from app.models.rapport_financier import RapportFinancier
 from app.models.rapport_journalier import RapportJournalier
 from app.models.refresh_token import RefreshToken
 from app.models.role import Role
 from app.models.signalement import Signalement
+from app.models.sync_applied import SyncApplied
 from app.models.sync_queue import SyncQueue
 from app.models.tache import Tache
 from app.models.travail_realise import TravailRealise
@@ -65,6 +78,12 @@ __all__ = [
     "AlerteMateriel",
     "Article",
     "Avenant",
+    "CommandeFournisseur",
+    "LigneCommandeFournisseur",
+    "ReceptionFournisseur",
+    "LigneReceptionFournisseur",
+    "FactureFournisseur",
+    "PaiementFournisseur",
     "Chantier",
     "Client",
     "ClientAdresse",
@@ -93,8 +112,11 @@ __all__ = [
     "MouvementMateriel",
     "MembreEquipe",
     "Metre",
-    "MouvementStock",
-    "Notification",
+    "MouvementStock",    "Notification",
+    "ParametrePaiement",
+    "PeriodeRisqueClimatique",
+
+
     "Paiement",
     "Phase",
     "PhotoChantier",
@@ -104,13 +126,21 @@ __all__ = [
     "Subscription",
     "Pointage",
     "Preference",
+    "PlatformSettings",
+    "MailSettings",
     "RapportFinancier",
     "RapportJournalier",
     "RefreshToken",
     "Role",
     "Signalement",
+    "SyncApplied",
     "SyncQueue",
     "Tache",
     "TravailRealise",
     "Utilisateur",
 ]
+
+# Hooks d'horodatage/version de sync (pointages, chantiers, employes) :
+# importés EN DERNIER pour que tous les modèles soient chargés.
+# Toute écriture serveur (insert/update) met à jour sync_updated_at/sync_version.
+from app.core.sync_cols import SYNC_MODELS as _SYNC_MODELS  # noqa: E402, F401

@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/auth.store'
 export function EmployeLayout() {
   const { user } = useAuthStore()
   if (user?.role_code !== 'employe') {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/app/dashboard" replace />
   }
   return <Outlet />
 }

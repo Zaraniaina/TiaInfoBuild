@@ -398,7 +398,7 @@ export function FinancePage() {
 
       {/* Modal Nouvelle Dépense */}
       {showModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex={-1}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }} tabIndex={-1}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
               <form onSubmit={handleCreate}>

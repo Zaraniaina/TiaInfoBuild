@@ -4,12 +4,35 @@ import {
   EtatChargement, EtatErreur, Vide, fmtDate, fmtMontant,
 } from './shared'
 import { useState } from 'react'
+import { PrintableDocumentModal, PrintableDocumentData } from '@/components/documents/PrintableDocumentModal'
 
 export function ClientFacturesPage() {
   const { items, loading, error, recharger } = useListePage<Facture>(
     () => espaceClientService.getFactures()
   )
   const [selection, setSelection] = useState<Facture | null>(null)
+  const [printDoc, setPrintDoc] = useState<{ show: boolean; data: PrintableDocumentData }>({
+    show: false,
+    data: {},
+  })
+
+  const ouvrirPrint = (f: Facture) => {
+    setPrintDoc({
+      show: true,
+      data: {
+        numero: f.numero,
+        date: fmtDate(f.date_creation),
+        date_echeance: fmtDate(f.date_echeance),
+        chantier_nom: f.projet_nom || 'Chantier Client',
+        total_ht: (f.montant_ttc || 0) / 1.2,
+        tva_montant: (f.montant_ttc || 0) - (f.montant_ttc || 0) / 1.2,
+        total_ttc: f.montant_ttc || 0,
+        acompte: f.montant_paye || 0,
+        reste_a_payer: f.reste_a_payer || 0,
+        conditions_paiement: f.conditions_paiement || 'Paiement à réception',
+      },
+    })
+  }
 
   if (loading) return <EtatChargement />
   if (error) return <EtatErreur message={error} onRetry={recharger} />
@@ -33,7 +56,7 @@ export function ClientFacturesPage() {
                   <th className="text-end">Paye</th>
                   <th className="text-end">Reste a payer</th>
                   <th>Statut</th>
-                  <th></th>
+                  <th className="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -47,10 +70,15 @@ export function ClientFacturesPage() {
                     <td className="text-end text-success">{fmtMontant(f.montant_paye)}</td>
                     <td className="text-end text-danger fw-semibold">{fmtMontant(f.reste_a_payer)}</td>
                     <td><StatutBadge statut={f.statut} /></td>
-                    <td>
-                      <button className="btn btn-sm btn-outline-primary" onClick={() => setSelection(f)}>
-                        <i className="bi bi-eye"></i>
-                      </button>
+                    <td className="text-end">
+                      <div className="d-flex gap-1 justify-content-end">
+                        <button className="btn btn-sm btn-outline-primary" title="Détails" onClick={() => setSelection(f)}>
+                          <i className="bi bi-eye"></i>
+                        </button>
+                        <button className="btn btn-sm btn-outline-secondary" title="Imprimer / Télécharger PDF" onClick={() => ouvrirPrint(f)}>
+                          <i className="bi bi-printer"></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -60,7 +88,18 @@ export function ClientFacturesPage() {
         </div>
       )}
 
-      <DetailModal show={!!selection} onClose={() => setSelection(null)} title={selection ? `Facture ${selection.numero}` : ''}>
+      <DetailModal
+        show={!!selection}
+        onClose={() => setSelection(null)}
+        title={selection ? `Facture ${selection.numero}` : ''}
+        footer={
+          selection ? (
+            <button className="btn btn-primary" onClick={() => { setSelection(null); ouvrirPrint(selection); }}>
+              <i className="bi bi-printer me-2"></i>Imprimer / Télécharger PDF
+            </button>
+          ) : null
+        }
+      >
         {selection && (
           <dl className="row mb-0">
             <dt className="col-sm-4">Projet</dt>
@@ -82,6 +121,13 @@ export function ClientFacturesPage() {
           </dl>
         )}
       </DetailModal>
+
+      <PrintableDocumentModal
+        show={printDoc.show}
+        onClose={() => setPrintDoc({ show: false, data: {} })}
+        type="facture"
+        data={printDoc.data}
+      />
     </div>
   )
 }

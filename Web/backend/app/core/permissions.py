@@ -82,9 +82,9 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
         "rh:read", "rh:write",
         "materiels:read",
         "stocks:read", "stocks:write",
-        "finance:read",
         "alertes:read",
-        # pointage et déclarations terrain
+        # pointage de l'équipe sur site (scan du badge QR employé) et
+        # déclarations terrain
         "pointage:write", "taches:write", "consommation:write",
     ],
     Role.CHEF_PROJET: [
@@ -111,7 +111,8 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
         "rh:read", "rh:write", "rh:delete",
         "chantiers:read",
         "alertes:read",
-        # validation des pointages et gestion des heures
+        # enregistrement/validation du pointage de l'équipe sur site
+        # (scan du badge QR employé) et gestion des heures
         "pointage:write",
     ],
     Role.MATERIEL: [
@@ -125,8 +126,9 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
         "stocks:read", "stocks:write", "stocks:delete",
         "chantiers:read",
         "alertes:read",
-        # pointage dépôt (QR code fixe) et déclarations de sortie
-        "pointage:write", "consommation:write",
+        # déclarations de sortie (le pointage de l'équipe est fait par le
+        # chef de chantier / RH via scan du badge)
+        "consommation:write",
     ],
     Role.COMMERCIAL: [
         "dashboard:read",
@@ -136,13 +138,18 @@ PERMISSION_MAP: Final[dict[str, list[str]]] = {
         "alertes:read",
     ],
     Role.EMPLOYE: [
-        "rh:read",
+        # PAS de rh:read : la liste du personnel et les paies passent par
+        # /rh/* (usage interne RH). Le portail employé lit ses données via
+        # le routeur dédié employe_terrain.py (employe_terrain:*).
         "chantiers:read",
         "materiels:read",
         "stocks:read",
         "alertes:read",
-        # actions limitées au niveau individuel : pointage, tâches, consommation
-        "pointage:write", "taches:write", "consommation:write",
+        # actions limitées au niveau individuel : tâches et consommation.
+        # PAS de pointage:write : l'employé ne se pointe pas lui-même, le
+        # chef de chantier / RH enregistre le pointage sur site via le scan
+        # du badge QR de l'employé.
+        "taches:write", "consommation:write",
         # espace employe terrain : consultation + declarations
         "employe_terrain:read", "employe_terrain:write",
     ],

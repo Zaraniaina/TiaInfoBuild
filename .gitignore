@@ -27,4 +27,12 @@ roles_tia_builds
 AGENTS.md
 outputs
 graphify-out
-docs
+/docs/
+.kilocode
+.superpowers
+.vscode
+.freebuff
+# Sidecar PyInstaller (artefacts de build)
+Web/backend/dist_sidecar/
+Web/backend/build_sidecar/
+desktop/src-tauri/binaries/

@@ -4,7 +4,7 @@ from typing import Any
 from typing_extensions import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +19,8 @@ from app.models.projet import Projet
 from app.models.devis import Devis
 from app.models.contrat import Contrat
 from app.models.rapport_journalier import RapportJournalier
+from app.models.periode_risque_climatique import PeriodeRisqueClimatique
+from app.routers.aleas_climatiques import calculer_impact_climatique, notifier_alea_climatique
 from app.schemas.chantier import (
     ChantierCreate,
     ChantierUpdate,
@@ -52,11 +54,40 @@ class PhaseCreate(BaseModel):
     ordre: int = Field(default=0, ge=0)
 
 
+TYPES_ALEA = {
+    "cyclone",
+    "inondation",
+    "pluies_intenses",
+    "secheresse",
+    "route_coupee",
+    "coupure_electricite",
+    "autre",
+}
+IMPUTABILITES = {"climatique", "entreprise", "client", "indetermine"}
+
+
 class IncidentCreate(BaseModel):
     titre: str = Field(..., min_length=1, max_length=255)
     description: str | None = None
     gravite: str = Field(default="moyenne", max_length=20)
     statut: str = Field(default="signale", max_length=20)
+    # Aléa climatique (optionnel)
+    type_alea: str | None = Field(default=None, max_length=30)
+    date_fin: date | None = None
+    impact_arret_jours: int | None = Field(default=None, ge=0)
+    imputabilite: str | None = Field(default=None, max_length=20)
+
+    @field_validator("type_alea", "imputabilite")
+    @classmethod
+    def validate_alea_fields(cls, v: str | None, info) -> str | None:
+        if v is None or v == "":
+            return None
+        v = v.strip()
+        if info.field_name == "type_alea" and v not in TYPES_ALEA:
+            raise ValueError(f"Type d'aléa invalide. Valeurs autorisées: {sorted(TYPES_ALEA)}")
+        if info.field_name == "imputabilite" and v not in IMPUTABILITES:
+            raise ValueError(f"Imputabilité invalide. Valeurs autorisées: {sorted(IMPUTABILITES)}")
+        return v
 
 
 @router.get("")
@@ -112,6 +143,8 @@ async def create_chantier(
     db: DbDep,
 ):
     _require_permission(payload, "chantiers:write")
+    from app.services.subscription_state import assert_quota_chantiers
+    await assert_quota_chantiers(db, payload)
     entreprise_id = payload.get("entreprise_id")
     user = payload.get("user")
     data = obj_in.model_dump(exclude_unset=True)
@@ -282,6 +315,16 @@ async def get_chantier(
     response.phases = [{c.name: getattr(p, c.name) for c in p.__table__.columns} for p in phases]
     response.incidents = [{c.name: getattr(i, c.name) for c in i.__table__.columns} for i in incidents]
     response.affectations = [{c.name: getattr(a, c.name) for c in a.__table__.columns} for a in affectations]
+
+    # Impact climatique : jours d'arrêt documentés + retard net (négociable vs
+    # imputable à l'entreprise).
+    response.impact_climatique = calculer_impact_climatique(
+        list(incidents),
+        chantier.date_debut,
+        chantier.date_fin_prevue,
+        chantier.date_fin_reelle,
+        date.today(),
+    )
     return response
 
 
@@ -371,6 +414,10 @@ async def add_incident(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
 
     incident = Incident(
+        # Tenantissé via le chantier mère (vérifié contre le JWT ci-dessus) :
+        # sans cela, le pull desktop (filtre `entreprise_id`) ne voit jamais
+        # les incidents créés côté web — voir app/routers/sync.py.
+        entreprise_id=chantier.entreprise_id,
         chantier_id=id,
         declare_par=user.id if user else None,
         **obj_in.model_dump(),
@@ -378,6 +425,10 @@ async def add_incident(
     db.add(incident)
     await db.flush()
     await db.refresh(incident)
+    # Aléa climatique critique -> alerte plateforme (best effort, ne fait jamais
+    # échouer le signalement).
+    if incident.type_alea and incident.gravite == "critique":
+        await notifier_alea_climatique(db, chantier, incident)
     return {"id": incident.id, "message": "Incident ajouté"}
 
 
@@ -401,74 +452,6 @@ async def update_chantier_statut(
     await db.flush()
     await db.refresh(chantier)
     return ChantierResponse.model_validate(chantier)
-
-
-# ============================================================
-# QR CODE POINTAGE (Politique de pointage)
-# ============================================================
-
-import secrets
-from datetime import date as date_type
-
-
-class QRPointageResponse(BaseModel):
-    qr_token: str
-    chantier_id: int
-    chantier_nom: str
-    date_validite: str
-    message: str
-
-
-@router.post("/{id}/qr-pointage", response_model=QRPointageResponse, status_code=status.HTTP_201_CREATED)
-async def generer_qr_pointage(
-    payload: CurrentUserPayload,
-    db: DbDep,
-    id: int,
-):
-    _require_permission(payload, "chantiers:write")
-    entreprise_id = payload.get("entreprise_id")
-    crud = ChantierCRUD()
-    chantier = await crud.get(db, id)
-    if not chantier or chantier.is_deleted:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chantier non trouvé")
-    if entreprise_id is not None and chantier.entreprise_id != entreprise_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
-
-    qr_token = secrets.token_urlsafe(32)
-    aujourd_hui = date_type.today().isoformat()
-    return QRPointageResponse(
-        qr_token=qr_token,
-        chantier_id=id,
-        chantier_nom=chantier.nom,
-        date_validite=aujourd_hui,
-        message=f"QR Code généré pour le chantier {chantier.nom}. Valide pour la journée du {aujourd_hui}.",
-    )
-
-
-@router.get("/{id}/qr-pointage", response_model=QRPointageResponse)
-async def get_qr_pointage(
-    payload: CurrentUserPayload,
-    db: DbDep,
-    id: int,
-):
-    _require_permission(payload, "chantiers:read")
-    entreprise_id = payload.get("entreprise_id")
-    crud = ChantierCRUD()
-    chantier = await crud.get(db, id)
-    if not chantier or chantier.is_deleted:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chantier non trouvé")
-    if entreprise_id is not None and chantier.entreprise_id != entreprise_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
-
-    qr_token = secrets.token_urlsafe(32)
-    aujourd_hui = date_type.today().isoformat()
-    return QRPointageResponse(
-        qr_token=qr_token,
-        chantier_id=id,
-        chantier_nom=chantier.nom,
-        date_validite=aujourd_hui,
-        message=f"QR Code pour le chantier {chantier.nom}. Valide pour la journée du {aujourd_hui}.",
-    )
 
 
 # ============================================================

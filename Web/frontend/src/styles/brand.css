@@ -1,0 +1,106 @@
+/* =========================================================================
+   TIA INFO BUILD — Logo de marque adaptatif au thème
+   Le composant <BrandLogo/> superpose les deux variantes (fond transparent) ;
+   celle affichée dépend de data-theme sur <html>. Bascule instantanée,
+   sans re-render.
+   ========================================================================= */
+
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  position: relative;
+  line-height: 1;
+}
+
+.brand-logo-img {
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+/* Par défaut : variante light visible (thème clair), dark cachée */
+.brand-logo .brand-logo-dark { display: none; }
+.brand-logo .brand-logo-light { display: inline-block; }
+
+/* Thème sombre : on inverse */
+[data-theme='dark'] .brand-logo .brand-logo-dark { display: inline-block; }
+[data-theme='dark'] .brand-logo .brand-logo-light { display: none; }
+
+/* Variantes forcées (inchangées par le thème) */
+.brand-logo--only-light .brand-logo-dark { display: none !important; }
+.brand-logo--only-light .brand-logo-light { display: inline-block !important; }
+.brand-logo--only-dark .brand-logo-dark { display: inline-block !important; }
+.brand-logo--only-dark .brand-logo-light { display: none !important; }
+
+.brand-logo-name {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: var(--tia-text, inherit);
+}
+
+/* Topbar : le logo remplace le titre texte, alignement vertical fin */
+.topbar-brand img {
+  margin: -0.25rem 0;
+}
+
+/* Sur fond de marque sombre (sidebar / panneau visuel auth), toujours la
+   variante blanche pour le contraste, quel que soit le thème. */
+.on-brand-surface .brand-logo-dark { display: inline-block !important; }
+.on-brand-surface .brand-logo-light { display: none !important; }
+
+/* =========================================================================
+   Écran de chargement initial (index.html, avant React)
+   Le CSS critique de #loading-screen vit en inline dans index.html (visible
+   avant le bundle). Ci-dessous : le fallback React de même design
+   (main.tsx <LoadingFallback/>) — data-theme est déjà posé sur <html>.
+   ========================================================================= */
+
+.app-boot .loading-logo {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  animation: loading-pulse 1.8s ease-in-out infinite;
+}
+
+.app-boot .loading-logo-dark { display: none; }
+[data-theme='dark'] .app-boot .loading-logo-dark { display: block; }
+[data-theme='dark'] .app-boot .loading-logo-light { display: none; }
+
+.app-boot .loading-bar {
+  width: 168px;
+  height: 3px;
+  margin-top: 24px;
+  border-radius: 999px;
+  background: var(--tia-border);
+  overflow: hidden;
+}
+
+.app-boot .loading-bar-fill {
+  width: 40%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--tia-accent);
+  animation: loading-slide 1.4s ease-in-out infinite;
+}
+
+.app-boot .loading-msg {
+  margin: 14px 0 0;
+  font-size: 0.9rem;
+  color: var(--tia-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-boot .loading-logo,
+  .app-boot .loading-bar-fill { animation: none; }
+}
+
+@keyframes loading-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+@keyframes loading-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.94); opacity: 0.85; }
+}

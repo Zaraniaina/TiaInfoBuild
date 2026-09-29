@@ -128,6 +128,7 @@ CREATE TABLE IF NOT EXISTS chantiers (
     tva                NUMERIC(5,2) DEFAULT 20.00,
     statut             VARCHAR(20) DEFAULT 'planification',
     description        TEXT,
+    region             VARCHAR(80),
     is_deleted         TINYINT(1) DEFAULT 0,
     created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -158,8 +159,27 @@ CREATE TABLE IF NOT EXISTS incidents (
     titre         VARCHAR(255) NOT NULL,
     description   TEXT,
     date_incident DATE DEFAULT CURRENT_DATE,
+    date_fin      DATE,
     gravite       VARCHAR(20) DEFAULT 'moyenne',
     statut        VARCHAR(20) DEFAULT 'signale',
+    type_alea     VARCHAR(30),
+    impact_arret_jours INTEGER,
+    imputabilite  VARCHAR(20),
+    is_deleted    TINYINT(1) DEFAULT 0,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 9b. Periode a risque climatique (Madagascar : cyclones dec.-mars,
+-- saison des pluies nov.-mars, secheresse au Sud)
+CREATE TABLE IF NOT EXISTS periodes_risque_climatique (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entreprise_id BIGINT NOT NULL REFERENCES entreprises(id) ON DELETE CASCADE,
+    region        VARCHAR(80) NOT NULL,
+    type_risque   VARCHAR(30) NOT NULL,
+    date_debut    DATE NOT NULL,
+    date_fin      DATE NOT NULL,
+    description   TEXT,
     is_deleted    TINYINT(1) DEFAULT 0,
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP

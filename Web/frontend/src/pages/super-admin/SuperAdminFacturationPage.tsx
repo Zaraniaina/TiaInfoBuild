@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
 import { TableSkeleton } from '@/components/ui/Skeleton'
+import { downloadCsv } from '@/utils/csv'
 
 export function SuperAdminFacturationPage() {
   const [items, setItems] = useState<any[]>([])
@@ -29,7 +30,11 @@ export function SuperAdminFacturationPage() {
           <h2 className="fw-bold mb-1 text-secondary"><i className="bi bi-receipt me-2"></i>Facturation SaaS</h2>
           <p className="text-secondary mb-0">Suivi des paiements d'abonnement par entreprise cliente.</p>
         </div>
-        <button className="btn btn-outline-secondary fw-bold" onClick={() => alert('Export des factures disponible prochainement')}><i className="bi bi-download me-2"></i>Exporter</button>
+        <button
+          className="btn btn-outline-secondary fw-bold"
+          onClick={() => downloadCsv('facturation-saas.csv', items, ['entreprise', 'montant', 'statut', 'date_echeance', 'date_paiement', 'moyen'])}
+          disabled={!items.length}
+        ><i className="bi bi-download me-2"></i>Exporter</button>
       </div>
 
       {loading ? (

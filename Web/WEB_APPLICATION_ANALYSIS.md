@@ -342,8 +342,8 @@ Web/frontend/
 | Page | Module | Fonctionnalités Clés |
 |------|--------|---------------------|
 | `DashboardPage` | Dashboard | 11 vues par rôle, statistiques, graphiques |
-| `ChantiersPage` | Chantiers | CRUD, phases, incidents, QR pointage, export CSV |
-| `RhPage` | RH | Employés, pointages (QR scanner), équipes, heures sup |
+| `ChantiersPage` | Chantiers | CRUD, phases, incidents, scan badge employé, export CSV |
+| `RhPage` | RH | Employés, pointages (scan de badge), équipes, heures sup |
 | `StocksPage` | Stocks | Articles, mouvements, fournisseurs, alertes rupture |
 | `CommercialPage` | Commercial | Devis (TTC auto), factures, clients, contrats, paiements |
 | `FinancePage` | Finance | Dépenses, budgets, rapports, dépassements, retards |
@@ -364,7 +364,7 @@ Web/frontend/
 | `ToastContainer` | `components/ui/` | Notifications toast globales |
 | `DashboardCharts` | `components/charts/` | 11 graphiques Chart.js |
 | `WorkerBadgeCard` | `components/pointage/` | Badge QR employé |
-| `QRScannerModal` | `components/pointage/` | Scan QR pour pointage |
+| `QRScannerModal` | `components/pointage/` | Scan du badge QR employé pour le pointage |
 
 ### 4.5 Stores Zustand
 
@@ -380,7 +380,7 @@ Web/frontend/
 |---------|-----------|---------|
 | Core | Intercepteurs auth + refresh token | `services/api.ts` |
 | Dashboard | `/dashboard/stats`, `/dashboard/ca-evolution`, `/dashboard/top-chantiers` | `services/dashboard.service.ts` |
-| Chantiers | CRUD + phases, incidents, QR pointage | `services/chantiers.service.ts` |
+| Chantiers | CRUD + phases, incidents, scan badge employé | `services/chantiers.service.ts` |
 | RH | Employés, pointages, équipes, heures sup | `services/rh.service.ts` |
 | Stocks | Articles, mouvements, fournisseurs | `services/stocks.service.ts` |
 | Commercial | Clients, devis, contrats, factures, paiements | `services/commercial.service.ts` |
@@ -633,14 +633,14 @@ Il vérifie :
 - Gestion des équipes et membres
 - Affectations ressources et matériels
 - Incidents avec gravité
-- QR code pour pointage
+- Pointage de l'équipe par scan du badge QR employé (chef de chantier / RH)
 - Export CSV
 
 ### 9.2 Ressources Humaines
 
 - CRUD employés (contrat, poste, salaire)
 - Historique des postes
-- Pointages avec QR scanner
+- Pointages avec scan de badge employé (chef de chantier / RH) & saisie manuelle
 - Équipes et affectations chantiers
 - Heures supplémentaires (validation/rejet)
 - Badge employé (QR)

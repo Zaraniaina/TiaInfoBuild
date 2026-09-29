@@ -11,6 +11,7 @@ from app.crud.article import ArticleCRUD
 from app.crud.fournisseur import FournisseurCRUD
 from app.crud.mouvement_stock import MouvementStockCRUD
 from app.crud.depot import DepotCRUD
+from app.core.numerotation import generate_code
 from app.crud.base import BaseCRUD
 from app.models.article import Article
 from app.models.fournisseur import Fournisseur
@@ -120,6 +121,9 @@ async def create_article(
     data = obj_in.model_dump(exclude_unset=True)
     if entreprise_id is not None and not data.get("entreprise_id"):
         data["entreprise_id"] = entreprise_id
+    # Référence auto si absente (séquentielle, zéro saisie)
+    if not data.get("reference"):
+        data["reference"] = await generate_code(db, Article, "reference", "ART")
     crud = ArticleCRUD()
     article = await crud.create(db, data)
     await db.refresh(article)
@@ -413,10 +417,9 @@ async def create_depot(
     data = obj_in.model_dump(exclude_unset=True)
     if entreprise_id is not None and not data.get("entreprise_id"):
         data["entreprise_id"] = entreprise_id
-    # Génération auto du code si absent
+    # Génération auto du code si absent (séquentiel, zéro saisie)
     if not data.get("code"):
-        import random
-        data["code"] = f"DEP-{random.randint(10, 99)}-{random.randint(100, 999)}"
+        data["code"] = await generate_code(db, Depot, "code", "DEP")
     crud = DepotCRUD()
     depot = await crud.create(db, data)
     await db.refresh(depot)

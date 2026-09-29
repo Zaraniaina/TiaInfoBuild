@@ -308,36 +308,102 @@ export function CommercialPage() {
     })
   }
 
+  const telechargerBlob = (blob: Blob, nomFichier: string) => {
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', nomFichier)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  }
+
   const handleSaveClient = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
       const result = await commercialService.createClient(clientForm)
       // result contains { data, headers }
-      const headers = (result && (result as any).headers) || {}
-      const userId = headers['x-utilisateur-cree'] || headers['X-Utilisateur-Cree'] || headers['x-utilisateur-cree'.toLowerCase()]
-      const tempPwd = headers['x-utilisateur-temppwd'] || headers['X-Utilisateur-TempPwd'] || headers['x-utilisateur-temppwd'.toLowerCase()]
+      const headers = ((result && (result as any).headers) || {}) as Record<string, string>
+      const clientId = Number((result as any)?.data?.id || 0)
+      const tempPwd = headers['x-utilisateur-temppwd'] || headers['X-Utilisateur-TempPwd']
+      const emailEnvoye = String(headers['x-fiche-access-email-envoye'] || '').toLowerCase() === 'true'
+      const email = headers['x-fiche-access-email'] || clientForm.email || ''
+
       setShowClientModal(false)
       await loadData()
-      if (userId) {
+
+      // Cas nominal : le backend a généré le PDF et l'a envoyé au client.
+      if (emailEnvoye) {
+        addToast({
+          type: 'success',
+          title: 'Client créé',
+          message: `Fiche d'accès (identifiants + lien de connexion) envoyée par email à ${email}.`
+        })
+        return
+      }
+
+      // Repli : l'email n'a pas pu partir (SMTP indisponible ou client sans email).
+      if (clientId && tempPwd) {
         try {
-          const blob = await commercialService.downloadUtilisateurBonCreation(Number(userId), tempPwd, `${window.location.origin}/client-login`)
-          const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
-          const link = document.createElement('a')
-          link.href = url
-          link.setAttribute('download', `bon-creation-${userId}.pdf`)
-          document.body.appendChild(link)
-          link.click()
-          link.remove()
-          window.URL.revokeObjectURL(url)
-          addToast({ type: 'success', title: 'Client créé', message: 'Bon de création téléchargé.' })
+          const blob = await commercialService.telechargerFicheAccesClient(
+            clientId,
+            tempPwd,
+            `${window.location.origin}/client-login`
+          )
+          telechargerBlob(new Blob([blob], { type: 'application/pdf' }), `fiche-acces-client-${clientId}.pdf`)
+          addToast({
+            type: 'warning',
+            title: 'Email non envoyé',
+            message: "Fiche d'accès téléchargée : transmettez-la manuellement au client."
+          })
         } catch {
-          addToast({ type: 'warning', title: 'Client créé', message: 'Client créé mais impossible de télécharger le PDF.' })
+          addToast({
+            type: 'warning',
+            title: 'Client créé',
+            message: "Email non envoyé et fiche d'accès indisponible."
+          })
         }
       } else {
         addToast({ type: 'success', title: 'Client créé', message: 'Le client a été créé.' })
       }
     } catch {
       addToast({ type: 'error', title: 'Erreur', message: 'Impossible de créer le client.' })
+    }
+  }
+
+  const handleResendIdentifiants = async (client: Client) => {
+    if (!client.email) {
+      addToast({
+        type: 'warning',
+        title: 'Envoi impossible',
+        message: "Ce client n'a pas d'adresse email : impossible de lui envoyer ses identifiants."
+      })
+      return
+    }
+    try {
+      const { data, headers } = await commercialService.envoyerIdentifiantsClient(client.id)
+      const tempPwd = headers['x-utilisateur-temppwd'] || headers['X-Utilisateur-TempPwd']
+      addToast({
+        type: data.email_envoye ? 'success' : 'warning',
+        title: 'Identifiants',
+        message: data.message
+      })
+      // Repli : la fiche est téléchargée pour transmission manuelle.
+      if (!data.email_envoye && tempPwd) {
+        try {
+          const blob = await commercialService.telechargerFicheAccesClient(
+            client.id,
+            tempPwd,
+            `${window.location.origin}/client-login`
+          )
+          telechargerBlob(new Blob([blob], { type: 'application/pdf' }), `fiche-acces-client-${client.id}.pdf`)
+        } catch {
+          // Repli silencieux : le toast précédent informe déjà l'utilisateur.
+        }
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Erreur', message: "Impossible d'envoyer les identifiants du client." })
     }
   }
 
@@ -700,6 +766,17 @@ export function CommercialPage() {
                     <p className="text-muted small mb-1"><i className="bi bi-envelope me-2"></i>{c.email || '-'}</p>
                     <p className="text-muted small mb-0"><i className="bi bi-telephone me-2"></i>{c.telephone || '-'}</p>
                   </div>
+                  {perms.canCreateClient && (
+                    <div className="card-footer bg-transparent border-0 pb-3 d-flex justify-content-end">
+                      <button
+                        className="btn btn-sm btn-outline-secondary fw-semibold"
+                        onClick={() => handleResendIdentifiants(c)}
+                        title="Régénère un mot de passe temporaire et renvoie la fiche d'accès par email"
+                      >
+                        <i className="bi bi-envelope-arrow-up me-1"></i>Renvoyer les identifiants
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -841,7 +918,7 @@ export function CommercialPage() {
 
       {/* Modal Devis Builder */}
       {showDevisModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -1011,7 +1088,7 @@ export function CommercialPage() {
           ? [champDef('SIRET', 'siret', clientForm.siret || ''), champDef('No TVA', 'numero_tva', clientForm.numero_tva || '')]
           : []
         return (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -1047,7 +1124,7 @@ export function CommercialPage() {
         )})()}
       {/* Modal Facture Builder */}
       {showFactureModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -1175,7 +1252,7 @@ export function CommercialPage() {
 
       {/* Modal Paiement Builder */}
       {showPaiementModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -1252,7 +1329,7 @@ export function CommercialPage() {
 
       {/* Modal Chantier Builder */}
       {showChantierModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -1322,7 +1399,7 @@ export function CommercialPage() {
       )}
       {/* Modal Avenant Builder */}
       {showAvenantModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'var(--overlay)' }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">

@@ -30,10 +30,14 @@ class EntrepriseCreate(BaseModel):
     prefixe_devis: str | None = Field(default="DEV", max_length=10)
     prefixe_facture: str | None = Field(default="FAC", max_length=10)
     prefixe_contrat: str | None = Field(default="CTR", max_length=10)
+    prefixe_employe: str | None = Field(default="EMP", max_length=10)
+    prefixe_employe_journalier: str | None = Field(default="JRN", max_length=10)
     tva_defaut: float | None = Field(default=20.0)
     delai_paiement_defaut: int | None = Field(default=30)
     validite_devis: int | None = Field(default=30)
     mentions_legales: str | None = None
+    couleurs_roles: str | None = None
+    entete_badge: str | None = Field(default=None, max_length=255)
     actif: bool | None = True
     admin_nom: str | None = Field(default=None, max_length=100)
     admin_prenom: str | None = Field(default=None, max_length=100)
@@ -94,10 +98,14 @@ class EntrepriseUpdate(BaseModel):
     prefixe_devis: str | None = Field(default=None, max_length=10)
     prefixe_facture: str | None = Field(default=None, max_length=10)
     prefixe_contrat: str | None = Field(default=None, max_length=10)
+    prefixe_employe: str | None = Field(default=None, max_length=10)
+    prefixe_employe_journalier: str | None = Field(default=None, max_length=10)
     tva_defaut: float | None = None
     delai_paiement_defaut: int | None = None
     validite_devis: int | None = None
     mentions_legales: str | None = None
+    couleurs_roles: str | None = None
+    entete_badge: str | None = None
     actif: bool | None = None
 
 
@@ -124,10 +132,14 @@ class EntrepriseResponse(BaseModel):
     prefixe_devis: str | None = None
     prefixe_facture: str | None = None
     prefixe_contrat: str | None = None
+    prefixe_employe: str | None = None
+    prefixe_employe_journalier: str | None = None
     tva_defaut: float | None = None
     delai_paiement_defaut: int | None = None
     validite_devis: int | None = None
     mentions_legales: str | None = None
+    couleurs_roles: str | None = None
+    entete_badge: str | None = None
     actif: bool | None = None
     date_creation: datetime | None = None
     created_at: datetime | None = None

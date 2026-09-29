@@ -1,18 +1,44 @@
 import { useEffect, lazy, Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { scheduleTokenRefresh, cancelTokenRefresh } from '@/services/api'
 import { useAuthStore } from '@/stores/auth.store'
+import { isDesktop } from '@/utils/buildMode'
+import { startSyncEngine, stopSyncEngine } from '@/services/syncEngine'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { ClientLoginPage } from '@/pages/auth/ClientLoginPage'
+import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
+import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage'
+import { OnlineRequiredGate } from '@/components/auth/OnlineRequiredGate'
 import { RoleRedirect } from '@/components/auth/RoleRedirect'
 import { PricingPage } from '@/pages/pricing/PricingPage'
 
+/* Condition de build PURE (VITE_BUILD_TARGET), testée uniquement à la
+   compilation : en build desktop, la LandingPage n'est jamais importée →
+   absente du bundle (règle « pas de vitrine », plan §8) ; en build web,
+   ActivationPage suit la règle inverse.
+   NOTE : expression littérale (et non `isDesktopBuild()`) pour que Vite la
+   remplace statiquement et que Rollup élimine l'import dynamique inutilisé. */
+const IS_DESKTOP_BUILD = import.meta.env.VITE_BUILD_TARGET === 'desktop'
+
+const LandingPage = IS_DESKTOP_BUILD
+  ? null
+  : lazy(() => import('@/pages/landing/LandingPage').then((m) => ({ default: m.LandingPage })))
+
+/* ActivationPage n'existe QUE dans le build desktop (règle inverse de la
+   vitrine) : en build web, l'import dynamique est éliminé à la compilation. */
+const ActivationPage = IS_DESKTOP_BUILD
+  ? lazy(() => import('@/pages/auth/ActivationPage').then((m) => ({ default: m.ActivationPage })))
+  : null
+
 const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const ChantiersPage = lazy(() => import('@/pages/chantiers/ChantiersPage').then((m) => ({ default: m.ChantiersPage })))
+const RisquesClimatiquesPage = lazy(() => import('@/pages/chantiers/RisquesClimatiquesPage').then((m) => ({ default: m.RisquesClimatiquesPage })))
 const RhPage = lazy(() => import('@/pages/rh/RhPage').then((m) => ({ default: m.RhPage })))
 const StocksPage = lazy(() => import('@/pages/stocks/StocksPage').then((m) => ({ default: m.StocksPage })))
+const AchatsPage = lazy(() => import('@/pages/achats/AchatsPage').then((m) => ({ default: m.AchatsPage })))
 const CommercialPage = lazy(() => import('@/pages/commercial/CommercialPage').then((m) => ({ default: m.CommercialPage })))
 const FinancePage = lazy(() => import('@/pages/finance/FinancePage').then((m) => ({ default: m.FinancePage })))
 const MaterielsPage = lazy(() => import('@/pages/materiels/MaterielsPage').then((m) => ({ default: m.MaterielsPage })))
@@ -26,6 +52,8 @@ const SuperAdminAbonnementsPage = lazy(() => import('@/pages/super-admin/SuperAd
 const SuperAdminFacturationPage = lazy(() => import('@/pages/super-admin/SuperAdminFacturationPage').then((m) => ({ default: m.SuperAdminFacturationPage })))
 const SuperAdminLogsPage = lazy(() => import('@/pages/super-admin/SuperAdminLogsPage').then((m) => ({ default: m.SuperAdminLogsPage })))
 const SuperAdminParametresPage = lazy(() => import('@/pages/super-admin/SuperAdminParametresPage').then((m) => ({ default: m.SuperAdminParametresPage })))
+const SuperAdminMailPage = lazy(() => import('@/pages/super-admin/SuperAdminMailPage').then((m) => ({ default: m.SuperAdminMailPage })))
+const SuperAdminPaiementPage = lazy(() => import('@/pages/super-admin/SuperAdminPaiementPage').then((m) => ({ default: m.SuperAdminPaiementPage })))
 const ClientLayout = lazy(() => import('@/pages/client/ClientLayout').then((m) => ({ default: m.ClientLayout })))
 const EmployeLayout = lazy(() => import('@/pages/employe/EmployeLayout').then((m) => ({ default: m.EmployeLayout })))
 const EmployeDashboard = lazy(() => import('@/pages/employe/EmployePage').then((m) => ({ default: m.EmployePage })))
@@ -60,7 +88,12 @@ const ClientNotificationsPage = lazy(() => import('@/pages/client/ClientNotifica
 const ClientParametresPage = lazy(() => import('@/pages/client/ClientParametresPage').then((m) => ({ default: m.ClientParametresPage })))
 
 
+import { DesktopLoadingScreen } from '@/components/desktop/DesktopLoadingScreen'
+
 function PageFallback() {
+  if (IS_DESKTOP_BUILD) {
+    return <DesktopLoadingScreen />
+  }
   return (
     <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
       <div className="spinner-border text-primary" role="status">
@@ -68,6 +101,21 @@ function PageFallback() {
       </div>
     </div>
   )
+}
+
+/* Anciennes URLs de l'app (ex. /dashboard) -> /app/dashboard.
+   Préserve les favoris et liens partagés d'avant la vitrine. */
+const LEGACY_APP_PREFIXES = [
+  '/dashboard', '/chantiers', '/rh', '/stocks', '/commercial', '/finance',
+  '/materiels', '/alertes', '/historique-logins', '/settings', '/super-admin',
+  '/employe', '/client',
+]
+
+function LegacyAppRedirect() {
+  const { pathname } = useLocation()
+  const isAppPath = LEGACY_APP_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))
+  if (isAppPath) return <Navigate to={`/app${pathname}`} replace />
+  return <Navigate to="/" replace />
 }
 
 function App() {
@@ -78,13 +126,77 @@ function App() {
     return () => cancelTokenRefresh()
   }, [token])
 
+  // Moteur de synchronisation : démarrage uniquement dans la WebView Tauri.
+  useEffect(() => {
+    if (isDesktop()) startSyncEngine()
+    return () => stopSyncEngine()
+  }, [])
+
   return (
     <Routes>
+      {/* ===== Site vitrine public (web) / connexion directe (desktop) ===== */}
+      <Route
+        path="/"
+        element={
+          IS_DESKTOP_BUILD ? (
+            <Navigate to="/login" replace />
+          ) : (
+            <Suspense fallback={<PageFallback />}>{LandingPage ? <LandingPage /> : null}</Suspense>
+          )
+        }
+      />
       <Route path="/login" element={<LoginPage />} />
+      {IS_DESKTOP_BUILD && (
+        <Route
+          path="/activation"
+          element={
+            <Suspense fallback={<PageFallback />}>{ActivationPage ? <ActivationPage /> : null}</Suspense>
+          }
+        />
+      )}
       <Route path="/client-login" element={<ClientLoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+      <Route
+        path="/register"
+        element={
+          <OnlineRequiredGate>
+            <RegisterPage />
+          </OnlineRequiredGate>
+        }
+      />
+      <Route
+        path="/register-entreprise"
+        element={
+          <OnlineRequiredGate>
+            <RegisterPage />
+          </OnlineRequiredGate>
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          <OnlineRequiredGate>
+            <ForgotPasswordPage />
+          </OnlineRequiredGate>
+        }
+      />
+      <Route
+        path="/reset-password"
+        element={
+          <OnlineRequiredGate>
+            <ResetPasswordPage />
+          </OnlineRequiredGate>
+        }
+      />
+      <Route
+        path="/verify-email"
+        element={
+          <OnlineRequiredGate>
+            <VerifyEmailPage />
+          </OnlineRequiredGate>
+        }
+      />
       <Route path="/pricing" element={<PricingPage />} />
-      <Route path="/" element={<ProtectedRoute />}>
+      <Route path="/app" element={<ProtectedRoute />}>
         <Route index element={<RoleRedirect />} />
         <Route path="dashboard" element={<Suspense fallback={<PageFallback />}><DashboardPage /></Suspense>} />
         <Route path="chantiers" element={<Suspense fallback={<PageFallback />}><ChantiersPage /></Suspense>} />
@@ -94,6 +206,8 @@ function App() {
         <Route path="finance" element={<Suspense fallback={<PageFallback />}><FinancePage /></Suspense>} />
         <Route path="materiels" element={<Suspense fallback={<PageFallback />}><MaterielsPage /></Suspense>} />
         <Route path="alertes" element={<Suspense fallback={<PageFallback />}><AlertesPage /></Suspense>} />
+        <Route path="risques-climatiques" element={<Suspense fallback={<PageFallback />}><RisquesClimatiquesPage /></Suspense>} />
+        <Route path="achats" element={<Suspense fallback={<PageFallback />}><AchatsPage /></Suspense>} />
         <Route path="historique-logins" element={<Suspense fallback={<PageFallback />}><HistoriqueLoginsPage /></Suspense>} />
         <Route path="settings" element={<Suspense fallback={<PageFallback />}><SettingsPage /></Suspense>} />
         <Route path="client" element={<Suspense fallback={<PageFallback />}><ClientLayout /></Suspense>}>
@@ -138,9 +252,11 @@ function App() {
           <Route path="facturation" element={<Suspense fallback={<PageFallback />}><SuperAdminFacturationPage /></Suspense>} />
           <Route path="logs" element={<Suspense fallback={<PageFallback />}><SuperAdminLogsPage /></Suspense>} />
           <Route path="parametres" element={<Suspense fallback={<PageFallback />}><SuperAdminParametresPage /></Suspense>} />
+          <Route path="email" element={<Suspense fallback={<PageFallback />}><SuperAdminMailPage /></Suspense>} />
+          <Route path="paiement" element={<Suspense fallback={<PageFallback />}><SuperAdminPaiementPage /></Suspense>} />
         </Route>
       </Route>
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<LegacyAppRedirect />} />
     </Routes>
   )
 }

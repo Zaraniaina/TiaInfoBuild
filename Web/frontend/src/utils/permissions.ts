@@ -52,6 +52,8 @@ export const PERMISSION_MODULES = {
   historique_connexions: "historique_connexions",
   dashboard: "dashboard",
   sync: "sync",
+  espace_client: "espace_client",
+  employe_terrain: "employe_terrain",
 } as const;
 
 // Permission map - identique Desktop + super_admin global
@@ -90,6 +92,8 @@ export const PERMISSION_MAP: Record<RoleCode, Record<string, string>> = {
     historique_connexions: "*",
     dashboard: "*",
     sync: "*",
+    espace_client: "*",
+    employe_terrain: "*",
   },
   admin_entreprise: {
     // Toutes permissions entreprise (sauf gestion entreprises)
@@ -159,8 +163,7 @@ export const PERMISSION_MAP: Record<RoleCode, Record<string, string>> = {
     materiels: "read",
     affectations: "read,write",
     articles: "read",
-    mouvements_stock: "read",
-    depenses: "read",
+    mouvements_stock: "read,write",
     alertes: "read",
     dashboard: "read",
   },
@@ -169,6 +172,7 @@ export const PERMISSION_MAP: Record<RoleCode, Record<string, string>> = {
     phases: "read,write",
     incidents: "read,write",
     employes: "read",
+    pointages: "read,write",
     equipes: "read",
     affectations: "read,write",
     clients: "read",
@@ -220,7 +224,7 @@ export const PERMISSION_MAP: Record<RoleCode, Record<string, string>> = {
     mouvements_stock: "read,write",
     fournisseurs: "read,write",
     chantiers: "read",
-    clients: "read",
+    pointages: "read",
     alertes: "read",
     depenses: "read",
     rapport_financier: "read",
@@ -232,8 +236,8 @@ export const PERMISSION_MAP: Record<RoleCode, Record<string, string>> = {
     devis: "read,write",
     lignes_devis: "read,write",
     contrats: "read,write",
-    factures: "read,write",
-    paiements: "read,write",
+    factures: "read",
+    paiements: "read",
     chantiers: "read",
     fournisseurs: "read",
     articles: "read",
@@ -241,15 +245,17 @@ export const PERMISSION_MAP: Record<RoleCode, Record<string, string>> = {
     dashboard: "read",
   },
   employe: {
+    employe_terrain: "read,write",
     rh: "read",
     chantiers: "read",
-    pointages: "read,write",
+    // L'employé ne se pointe plus lui-même : le pointage est fait par le chef de
+    // chantier / le RH (scan du badge) ou en saisie manuelle → lecture seule.
+    pointages: "read",
     heures_sup: "read,write",
   },
   client: {
-    commercial: "read",
-    devis: "read",
-    factures: "read",
+    // Espace Client uniquement : pas d'accès aux modules d'administration internes
+    espace_client: "read,write",
   },
 };
 

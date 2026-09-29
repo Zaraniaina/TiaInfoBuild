@@ -2,66 +2,151 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/png" href="/favicon-32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/favicon-16.png" sizes="16x16" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="mask-icon" href="/favicon.svg" color="#146ef5" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TIA INFO BUILD</title>
+    <title>TIA INFO BUILD — Logiciel de gestion BTP à Madagascar</title>
+    <meta
+      name="description"
+      content="TIA INFO BUILD : la plateforme SaaS qui pilote vos chantiers BTP de bout en bout — devis, pointages QR, stocks, matériels, factures et portail client. Essai gratuit 30 jours."
+    />
+    <!-- Par défaut : aucune page de l'app n'est indexée. Les pages vitrine
+         publiques (/, /pricing, /register-entreprise) autorisent
+         explicitement l'indexation via l'utilitaire SEO (src/utils/seo.ts). -->
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://tia.mg/" />
+    <meta name="theme-color" content="#146ef5" />
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="TIA INFO BUILD" />
+    <meta property="og:title" content="TIA INFO BUILD — Logiciel de gestion BTP à Madagascar" />
+    <meta
+      property="og:description"
+      content="Chantiers, pointages QR, RH, matériels, stocks, finances et portail client : TIA INFO BUILD réunit toute votre entreprise BTP dans un espace unique."
+    />
+    <meta property="og:url" content="https://tia.mg/" />
+    <meta property="og:image" content="https://tia.mg/og-cover.png" />
+    <meta property="og:locale" content="fr_MG" />
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="TIA INFO BUILD — Logiciel de gestion BTP à Madagascar" />
+    <meta
+      name="twitter:description"
+      content="Chantiers, pointages QR, RH, matériels, stocks, finances et portail client : TIA INFO BUILD réunit toute votre entreprise BTP dans un espace unique."
+    />
+    <meta name="twitter:image" content="https://tia.mg/og-cover.png" />
+    <script>
+      // Thème AVANT le premier paint : même source de vérité que l'app
+      // (localStorage 'tia-theme', défaut light) — supprime tout flash.
+      try {
+        var t = localStorage.getItem('tia-theme');
+        if (t !== 'dark' && t !== 'light') t = 'light';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    </script>
     <style>
-      body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-      #loading-screen {
+      /* CSS critique : visible avant le bundle. Source de vérité documentée
+         dans src/styles/brand.css (section écran de chargement). */
+      html, body { margin: 0; height: 100%; }
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #F8FAFC;
+        color: #64748B;
+      }
+      html[data-theme='dark'] body { background: #0F172A; color: #94A3B8; }
+
+      #loading-screen, .app-boot {
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
         height: 100vh;
-        background: #f8f9fa;
-        color: #333;
+        text-align: center;
       }
-      #loading-screen .spinner {
-        width: 50px;
-        height: 50px;
-        border: 4px solid #e9ecef;
-        border-top: 4px solid #0d6efd;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin-bottom: 20px;
+
+      /* Logo : une seule variante visible selon le thème, aucun texte dupliqué */
+      .loading-logo { width: 88px; height: 88px; object-fit: contain; animation: boot-pulse 1.8s ease-in-out infinite; }
+      .loading-logo-dark { display: none; }
+      html[data-theme='dark'] .loading-logo-dark { display: block; }
+      html[data-theme='dark'] .loading-logo-light { display: none; }
+
+      /* Barre de progression fine, indéterminée */
+      .loading-bar {
+        width: 168px;
+        height: 3px;
+        margin-top: 24px;
+        border-radius: 999px;
+        background: #E2E8F0;
+        overflow: hidden;
       }
-      #loading-screen h2 { font-size: 1.5rem; margin: 0 0 10px; color: #495057; }
-      #loading-screen p { font-size: 1rem; color: #6c757d; margin: 0; }
-      #loading-screen .retry-btn {
+      html[data-theme='dark'] .loading-bar { background: rgba(255, 255, 255, 0.08); }
+      .loading-bar-fill {
+        width: 40%;
+        height: 100%;
+        border-radius: inherit;
+        background: #2563EB;
+        animation: boot-slide 1.4s ease-in-out infinite;
+      }
+      html[data-theme='dark'] .loading-bar-fill { background: #3B82F6; }
+
+      .loading-msg { margin: 14px 0 0; font-size: 0.9rem; }
+
+      .retry-btn {
         display: none;
-        margin-top: 20px;
-        padding: 10px 24px;
-        background: #0d6efd;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        font-size: 1rem;
+        margin-top: 24px;
+        padding: 9px 22px;
+        font: inherit;
+        font-size: 0.9rem;
+        color: #475569;
+        background: transparent;
+        border: 1px solid #CBD5E1;
+        border-radius: 8px;
         cursor: pointer;
       }
-      #loading-screen .retry-btn:hover { background: #0b5ed7; }
-      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      .retry-btn:hover { background: #F1F5F9; }
+      html[data-theme='dark'] .retry-btn { color: #CBD5E1; border-color: rgba(255, 255, 255, 0.16); }
+      html[data-theme='dark'] .retry-btn:hover { background: rgba(255, 255, 255, 0.06); }
+      .retry-note { display: none; margin: 10px 0 0; font-size: 0.85rem; }
+
+      @keyframes boot-pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(0.97); opacity: 0.88; }
+      }
+      @keyframes boot-slide {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(350%); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .loading-logo, .loading-bar-fill { animation: none; }
+      }
     </style>
   </head>
   <body>
     <div id="root">
-      <div id="loading-screen">
-        <div class="spinner"></div>
-        <h2>TIA INFO BUILD</h2>
-        <p>Chargement de l'application...</p>
-        <button class="retry-btn" onclick="window.location.reload()">Recharger</button>
+      <div id="loading-screen" role="status" aria-live="polite" aria-busy="true">
+        <img class="loading-logo loading-logo-light" src="/logo-loading-light.png" alt="TIA INFO BUILD" width="88" height="88" />
+        <img class="loading-logo loading-logo-dark" src="/logo-loading-dark.png" alt="" aria-hidden="true" width="88" height="88" />
+        <div class="loading-bar" aria-hidden="true"><div class="loading-bar-fill"></div></div>
+        <p class="loading-msg">Chargement de l'application…</p>
+        <p class="retry-note">Le chargement prend plus de temps que prévu. Vérifiez votre connexion.</p>
+        <button class="retry-btn" type="button" onclick="window.location.reload()">Recharger</button>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      // Afficher le bouton "Recharger" après 15 secondes si l'application n'a pas démarré
-      setTimeout(function() {
+      // Bouton « Recharger » après 15 s si l'application n'a pas démarré
+      setTimeout(function () {
         var loadingScreen = document.getElementById('loading-screen');
-        var root = document.getElementById('root');
-        if (root && root.querySelector('#loading-screen')) {
-          var retryBtn = document.querySelector('.retry-btn');
-          if (retryBtn) retryBtn.style.display = 'block';
-          var msg = document.querySelector('#loading-screen p');
-          if (msg) msg.textContent = 'Le chargement prend plus de temps que prévu. Vérifiez votre connexion.';
+        if (loadingScreen) {
+          var note = loadingScreen.querySelector('.retry-note');
+          var btn = loadingScreen.querySelector('.retry-btn');
+          if (note) note.style.display = 'block';
+          if (btn) btn.style.display = 'inline-block';
         }
       }, 15000);
     </script>

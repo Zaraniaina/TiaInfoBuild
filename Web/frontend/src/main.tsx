@@ -30,19 +30,34 @@ function LoadingFallback() {
   }, [])
 
   return (
-    <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
-      <div className="text-center p-5">
-        <div className="spinner-border text-primary mb-4" role="status" style={{ width: '3rem', height: '3rem' }}>
-          <span className="visually-hidden">Chargement...</span>
+    <div className="app-boot d-flex justify-content-center align-items-center vh-100" role="status" aria-live="polite" aria-busy="true">
+      <div className="text-center">
+        <img
+          className="loading-logo loading-logo-light"
+          src="/logo-loading-light.png"
+          alt="TIA INFO BUILD"
+          width={88}
+          height={88}
+        />
+        <img
+          className="loading-logo loading-logo-dark"
+          src="/logo-loading-dark.png"
+          alt=""
+          aria-hidden="true"
+          width={88}
+          height={88}
+        />
+        <div className="loading-bar" aria-hidden="true">
+          <div className="loading-bar-fill" />
         </div>
-        <h4 className="text-secondary mb-3">Chargement de l'application...</h4>
+        <p className="loading-msg">Chargement de l'application…</p>
         {showTimeout && (
-          <div className="alert alert-warning mt-4" style={{ maxWidth: '400px', margin: '0 auto' }}>
-            <p className="mb-2">Le chargement prend plus de temps que prévu.</p>
+          <>
+            <p className="loading-msg">Le chargement prend plus de temps que prévu.</p>
             <button className="btn btn-primary btn-sm" onClick={() => window.location.reload()}>
               Recharger la page
             </button>
-          </div>
+          </>
         )}
       </div>
     </div>

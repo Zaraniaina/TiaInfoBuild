@@ -14,6 +14,21 @@ if (-not $mysqlActive) {
     Write-Host " MySQL detecte sur le port 3306." -ForegroundColor Green
 }
 
+# 1bis. Vérifier/Lancer Mailpit (SMTP Local sur port 1025)
+$mailpitActive = Get-NetTCPConnection -LocalPort 1025 -ErrorAction SilentlyContinue
+if (-not $mailpitActive) {
+    $mailpitCmd = Get-Command mailpit -ErrorAction SilentlyContinue
+    if ($mailpitCmd) {
+        Write-Host " Lancement de Mailpit (SMTP: localhost:1025, Web UI: http://localhost:8025)..." -ForegroundColor Green
+        Start-Process powershell -ArgumentList "-NoExit", "-Command", "mailpit"
+    } else {
+        Write-Host "  INFO Mailpit non trouve dans le PATH. Pour recevoir les emails en dev :" -ForegroundColor Yellow
+        Write-Host " Telechargez Mailpit (https://github.com/axllent/mailpit/releases) et lancez-le sur le port 1025." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host " Mailpit actif sur le port 1025 (Interface Web: http://localhost:8025)." -ForegroundColor Green
+}
+
 # 2. Appliquer les migrations Alembic (garde-fou : synchro du schema MySQL avec
 #    les modèles SQLAlchemy pour eviter les erreurs 500 au login apres une mise a jour du code)
 Write-Host " Application des migrations Alembic (alembic upgrade head)..." -ForegroundColor Green

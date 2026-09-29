@@ -146,6 +146,59 @@ python app/scripts/create_super_admin.py
 
 ---
 
+## 🖥️ Mode Desktop — sidecar FastAPI embarqué (offline)
+
+`app/scripts/desktop_sidecar.py` permet d'embarquer **cette même API** dans
+l'application desktop Tauri (binaire `tia-api.exe` compilé avec PyInstaller) :
+toutes les routes métier tournent alors **100 % offline** sur une SQLite
+locale, avec le même RBAC et les mêmes comptes de test.
+
+```powershell
+# Démarrer l'API locale à la main (port auto, ou --port 8765) :
+env\Scripts\python.exe -m app.scripts.desktop_sidecar --port 8765
+# → affiche « TIA_API_READY port=8765 » quand l'API écoute
+
+# Base temporaire de test (override) :
+$env:TIA_DB_URL = "./tia_poc_test.db"   # préfixe sqlite+aiosqlite:/// ajouté automatiquement
+
+# Mode CHIFFRÉ — base SQLCipher partagée avec l'app desktop :
+$env:TIA_DB_KEY = "<64 caractères hexadécimaux>"   # ou reçu par stdin depuis le Rust
+$env:TIA_SEED  = "1"                                # seed des comptes de démo (opt-in en chiffré)
+# Sans TIA_DB_URL, la base utilisée est %APPDATA%/tia-info-build/tia.db (celle du Rust).
+# Une base claire héritée est convertie automatiquement (sqlcipher_export).
+# Dépendance : pip install sqlcipher3-wheels
+
+# Reconstruire l'exe embarqué (onefile ≈ 43 Mo) :
+env\Scripts\pyinstaller.exe --noconfirm --clean --onefile --console `
+  --name tia-api --distpath dist_sidecar --workpath build_sidecar `
+  --specpath build_sidecar `
+  --hidden-import aiosqlite --hidden-import greenlet --hidden-import email_validator `
+  --hidden-import uvicorn.logging --hidden-import uvicorn.loops.auto `
+  --hidden-import uvicorn.loops.asyncio --hidden-import uvicorn.protocols.http.auto `
+  --hidden-import uvicorn.protocols.http.h11_impl `
+  --hidden-import uvicorn.protocols.websockets.auto `
+  --hidden-import uvicorn.protocols.websockets.websockets_impl `
+  --hidden-import uvicorn.lifespan.on --collect-all argon2 `
+  app/scripts/desktop_sidecar.py
+```
+
+* Base par défaut : `%APPDATA%/tia-info-build/local_api.db` (override
+  `TIA_DB_URL`) ; tables créées depuis les modèles + seed idempotent via ORM
+  (rôles, entreprise, plans, comptes de test `Admin123!`).
+* Piège SQLite géré dans le script : PK `BigInteger` → `INTEGER`
+  (auto-incrément rowid) — process sidecar uniquement, modèles inchangés.
+* Mode chiffré : `sqlcipher3-wheels` remplace `sqlite3` (`sys.modules`) et
+  `PRAGMA key = 'x''<clé>'''` est posé sur chaque connexion (clé reçue par
+  stdin depuis le Rust, ou `TIA_DB_KEY`) ; base par défaut `tia.db`, seed
+  opt-in (`TIA_SEED=1`), conversion claire→chiffrée automatique.
+* L'app desktop lance ce binaire automatiquement et lit la ligne
+  `TIA_API_READY port=N` (voir `desktop/README.md`, section « Sidecar »).
+* Notes PyInstaller : hidden-imports (uvicorn/aiosqlite/greenlet/argon2)
+  obligatoires ; fausses alertes antivirus fréquentes sur l'exe (signer en
+  production).
+
+---
+
 ## 📁 Structure
 
 ```
@@ -308,12 +361,6 @@ Le Super Admin n'a pas d'entreprise_id, la route échouait.
 
 ---
 
----
-
-
-
----
-
 ## ⚡ Bonnes pratiques de performance (pour les agents IA)
 
 ### 1. Requêtes SQL : éviter le N+1
@@ -398,33 +445,6 @@ result = await db.execute(
     select(Entreprise).options(selectinload(Entreprise.utilisateurs))
 )
 ```
-
-
-### Erreur : `Can't connect to MySQL`
-- Vérifier que **MySQL est démarré** (XAMPP / WAMP / service)
-- Vérifier le `DATABASE_URL` dans `.env`
-- Vérifier que la base `tia_build_db` existe
-
-### Erreur : `CORS` côté frontend
-- Vérifier que `CORS_ORIGINS` dans `.env` contient l'URL exacte du frontend (ex: `http://localhost:5174`)
-
-### Port 8000 déjà occupé
-- Changer `APP_PORT` dans `.env` ET adapter le frontend (`VITE_API_URL`)
-
-### Réinitialisation complète
-```powershell
-# 1. Supprimer la base
-DROP DATABASE tia_build_db;
-# 2. Recréer
-CREATE DATABASE tia_build_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-# 3. Migrations
-alembic upgrade head
-# 4. Init données
-python app/scripts/init_db.py
-```
-
-### 404 sur les routes
-Vérifier que le backend a bien redémarré après les correctifs de préfixes de routes.
 
 ---
 

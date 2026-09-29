@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -120,6 +121,9 @@ export function ClientLoginPage() {
                   Se souvenir de moi
                 </label>
               </div>
+              <Link to="/forgot-password" className="auth-link text-muted small">
+                Mot de passe oublié ?
+              </Link>
             </div>
 
             <button

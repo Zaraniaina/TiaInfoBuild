@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, String, Text, Boolean, Numeric, DateTime, Date, ForeignKey, Index, func
+from sqlalchemy import BigInteger, String, Text, Boolean, Numeric, DateTime, Date, ForeignKey, Index, Integer, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -39,10 +39,18 @@ class Materiel(Base):
     certificat_vgp_url: Mapped[str | None] = mapped_column(String(500))
     qr_code_key: Mapped[str | None] = mapped_column(String(100))
 
+    # --- Sync desktop (offline-first, web = maître) — voir app.core.sync_cols ---
+    client_ref: Mapped[str | None] = mapped_column(Text)
+    sync_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    sync_updated_at: Mapped[datetime | None] = mapped_column(DateTime, server_default=func.now())
+    sync_created_at: Mapped[datetime | None] = mapped_column(DateTime, server_default=func.now())
+
     __table_args__ = (
         Index("idx_materiaux_entreprise_id", "entreprise_id"),
         Index("idx_materiaux_statut", "statut"),
         Index("idx_materiaux_statut_vgp", "statut_vgp"),
+        Index("idx_materiaux_client_ref", "client_ref"),
+        Index("idx_materiaux_sync_updated_at", "sync_updated_at"),
     )
 
     entreprise: Mapped["Entreprise"] = relationship("Entreprise", back_populates="materiaux", lazy="selectin")

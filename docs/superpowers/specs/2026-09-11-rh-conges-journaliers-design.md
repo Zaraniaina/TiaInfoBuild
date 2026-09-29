@@ -68,9 +68,11 @@ et statut `valide` dont l'année de `date_debut` = année courante. Aucune table
 ### 3.4 `Pointage` — aucun changement de schéma
 
 `statut_validation` existe (dft `valide`). Nouvelle règle applicative :
-- pointage créé par l'employé (terrain) → `attente`
-- pointage créé par RH/scan badge (rh.py `scan_badge_pointage`) → `valide` (inchangé)
+- [2026-09-24] pointage créé par l'employé (terrain) → `attente` : **ligne obsolète** — l'auto-pointage employé a été supprimé, ce n'est plus un chemin du produit.
+- pointage créé par RH/scan badge (rh.py `scan_badge_pointage`) → `valide` (inchangé) [2026-09-24] **mécanisme conservé** : c'est le scan du badge QR employé fait par le chef de chantier/RH.
 - validation RH : `POST /rh/pointages/{id}/valider|refuser` → `valide` / `refuse`
+
+> **[2026-09-24] Ménage :** qr-checkin, QR chantier et auto-pointage supprimés ; le pointage employé de terrain se fait par scan du badge (chef de chantier/RH) ou saisie manuelle.
 
 ### 3.5 `HistoriquePoste` — aucun changement de schéma
 

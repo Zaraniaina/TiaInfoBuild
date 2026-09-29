@@ -9,7 +9,7 @@ export function ClientLayout() {
   }
 
   if (user.role_code !== 'client') {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/app/dashboard" replace />
   }
 
   return <Outlet />

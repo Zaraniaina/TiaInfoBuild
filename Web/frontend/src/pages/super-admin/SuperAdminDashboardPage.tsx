@@ -4,6 +4,7 @@ import { SaasTenantsGrowthChart } from "@/components/charts/DashboardCharts";
 import type { SuperAdminStats } from "@/types";
 import { useNavigate } from "react-router-dom";
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { downloadCsv } from "@/utils/csv";
 
 interface Tenant {
   id: number;
@@ -58,10 +59,18 @@ export function SuperAdminDashboardPage() {
           <p className="text-secondary mb-0">Vue globale sur les tenants, abonnements, santé et revenus de la plateforme TIA INFO BUILD.</p>
         </div>
         <div className="d-flex gap-2">
-          <button className="btn btn-outline-secondary btn-sm" onClick={() => alert('Export en cours de préparation')}>
+          <button
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => downloadCsv(
+              'tenants-plateforme.csv',
+              recentTenants.map((t) => ({ id: t.id, nom: t.nom, actif: t.actif, abonnement: t.abonnement, date_creation: t.date_creation })),
+              ['id', 'nom', 'actif', 'abonnement', 'date_creation'],
+            )}
+            disabled={!recentTenants.length}
+          >
             <i className="bi bi-download me-1"></i>Exporter
           </button>
-          <button className="btn btn-outline-secondary fw-bold" onClick={() => navigate('/super-admin/entreprises')}>
+          <button className="btn btn-outline-secondary fw-bold" onClick={() => navigate('/app/super-admin/entreprises')}>
             <i className="bi bi-plus-circle me-1"></i>Nouvelle Entreprise
           </button>
         </div>
@@ -234,7 +243,7 @@ export function SuperAdminDashboardPage() {
           </h5>
           <button
             className="btn btn-sm btn-outline-secondary"
-            onClick={() => navigate('/super-admin/entreprises')}
+            onClick={() => navigate('/app/super-admin/entreprises')}
           >
             Voir tout
           </button>

@@ -5,10 +5,26 @@ import { TableSkeleton } from '@/components/ui/Skeleton'
 interface LogEntry {
   id: number
   utilisateur_id: number
+  nom?: string | null
+  prenom?: string | null
+  email?: string | null
+  role?: string | null
+  poste?: string | null
   ip_address?: string
   user_agent?: string
   reussi: boolean
   date_connexion: string
+}
+
+const initiales = (l: LogEntry): string => {
+  const n = (l.nom || '?').charAt(0)
+  const p = (l.prenom || '').charAt(0)
+  return (n + p).toUpperCase()
+}
+
+const identite = (l: LogEntry): string => {
+  const nom = [l.prenom, l.nom].filter(Boolean).join(' ')
+  return nom || `Utilisateur #${l.utilisateur_id}`
 }
 
 export function HistoriqueLoginsPage() {
@@ -40,7 +56,7 @@ export function HistoriqueLoginsPage() {
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
-                  <th>Utilisateur ID</th>
+                  <th>Utilisateur</th>
                   <th>Adresse IP</th>
                   <th>Navigateur / OS</th>
                   <th>Statut</th>
@@ -50,7 +66,19 @@ export function HistoriqueLoginsPage() {
               <tbody>
                 {logs.map(l => (
                   <tr key={l.id}>
-                    <td className="fw-semibold">Utilisateur #{l.utilisateur_id}</td>
+                    <td>
+                      <div className="d-flex align-items-center gap-2">
+                        <span className="rounded-circle bg-light border d-inline-flex align-items-center justify-content-center fw-bold text-secondary" style={{ width: 34, height: 34, fontSize: '.75rem', flexShrink: 0 }} aria-hidden="true">
+                          {initiales(l)}
+                        </span>
+                        <div className="lh-sm">
+                          <span className="fw-semibold d-block">{identite(l)}</span>
+                          <small className="text-muted">
+                            {[l.poste || l.role, l.email].filter(Boolean).join(' · ') || `ID ${l.utilisateur_id}`}
+                          </small>
+                        </div>
+                      </div>
+                    </td>
                     <td className="font-monospace">{l.ip_address || '127.0.0.1'}</td>
                     <td className="small text-muted">{l.user_agent || '-'}</td>
                     <td>
