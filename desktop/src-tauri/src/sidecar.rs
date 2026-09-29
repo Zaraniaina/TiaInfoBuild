@@ -82,14 +82,44 @@ fn chemin_sidecar(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> 
 
 /// Lance le sidecar et attend la ligne `TIA_API_READY port=N`.
 pub async fn demarrer(app: tauri::AppHandle) -> Result<SidecarActif, String> {
+    // Base partagée : le Rust ouvre `tia.db` AVANT de lancer le sidecar —
+    // conversion claire→chiffrée si héritage, clé posée au keyring au premier
+    // lancement. Le même littéral `x'…'` (rusqlite pragma_update) sert au
+    // Rust et au Python : même dérivation de clé des deux côtés.
+    let cle = crate::secret::cle_db().map_err(|e| e.to_string())?;
+    {
+        let chemin_base = crate::db::chemin_base(&app).map_err(|e| e.to_string())?;
+        let _conn =
+            crate::db::ouvrir_connexion(&chemin_base).map_err(|e| e.to_string())?;
+        // Connexion refermée immédiatement : le fichier n'est plus verrouillé
+        // par le Rust quand le process Python l'ouvre à son tour (WAL):
+        // multi-process assumé, busy_timeout des deux côtés.
+    }
+
     let chemin = chemin_sidecar(&app)?;
     let mut enfant = tokio::process::Command::new(&chemin)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
-        .stdin(std::process::Stdio::null())
+        .stdin(std::process::Stdio::piped())
+        // Filet de sécurité : le script lit aussi TIA_DB_KEY depuis l'env.
+        .env("TIA_DB_KEY", &cle)
         .kill_on_drop(true)
         .spawn()
         .map_err(|e| format!("lancement de {} impossible : {e}", chemin.display()))?;
+
+    // Clé transmise par stdin (1ʳᵉ ligne) : le sidecar la lit au démarrage.
+    // Le pipe tamponne l'écriture : aucun ordre imposé avec la lecture stdout.
+    if let Some(mut stdin) = enfant.stdin.take() {
+        use tokio::io::AsyncWriteExt;
+        let ecriture = async {
+            stdin.write_all(cle.as_bytes()).await?;
+            stdin.write_all(b"\n").await?;
+            stdin.shutdown().await
+        };
+        if let Err(e) = ecriture.await {
+            return Err(format!("transmission de la clé au sidecar impossible : {e}"));
+        }
+    }
 
     let stdout = enfant
         .stdout

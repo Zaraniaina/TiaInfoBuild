@@ -161,6 +161,13 @@ env\Scripts\python.exe -m app.scripts.desktop_sidecar --port 8765
 # Base temporaire de test (override) :
 $env:TIA_DB_URL = "./tia_poc_test.db"   # préfixe sqlite+aiosqlite:/// ajouté automatiquement
 
+# Mode CHIFFRÉ — base SQLCipher partagée avec l'app desktop :
+$env:TIA_DB_KEY = "<64 caractères hexadécimaux>"   # ou reçu par stdin depuis le Rust
+$env:TIA_SEED  = "1"                                # seed des comptes de démo (opt-in en chiffré)
+# Sans TIA_DB_URL, la base utilisée est %APPDATA%/tia-info-build/tia.db (celle du Rust).
+# Une base claire héritée est convertie automatiquement (sqlcipher_export).
+# Dépendance : pip install sqlcipher3-wheels
+
 # Reconstruire l'exe embarqué (onefile ≈ 43 Mo) :
 env\Scripts\pyinstaller.exe --noconfirm --clean --onefile --console `
   --name tia-api --distpath dist_sidecar --workpath build_sidecar `
@@ -180,6 +187,10 @@ env\Scripts\pyinstaller.exe --noconfirm --clean --onefile --console `
   (rôles, entreprise, plans, comptes de test `Admin123!`).
 * Piège SQLite géré dans le script : PK `BigInteger` → `INTEGER`
   (auto-incrément rowid) — process sidecar uniquement, modèles inchangés.
+* Mode chiffré : `sqlcipher3-wheels` remplace `sqlite3` (`sys.modules`) et
+  `PRAGMA key = 'x''<clé>'''` est posé sur chaque connexion (clé reçue par
+  stdin depuis le Rust, ou `TIA_DB_KEY`) ; base par défaut `tia.db`, seed
+  opt-in (`TIA_SEED=1`), conversion claire→chiffrée automatique.
 * L'app desktop lance ce binaire automatiquement et lit la ligne
   `TIA_API_READY port=N` (voir `desktop/README.md`, section « Sidecar »).
 * Notes PyInstaller : hidden-imports (uvicorn/aiosqlite/greenlet/argon2)

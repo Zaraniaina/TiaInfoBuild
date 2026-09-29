@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { isDesktop, isDesktopBuild } from '@/utils/buildMode'
+import { apiLocaleUrl, redirectionSidecarActivee } from '@/services/sidecar'
 import {
   dbQuery,
   getSyncStatus,
@@ -47,6 +48,7 @@ export function SyncStatusBadge() {
   const [file, setFile] = useState<LigneJournal[]>([])
   const [conflits, setConflits] = useState<LigneJournal[]>([])
   const [journalErreur, setJournalErreur] = useState<string | null>(null)
+  const [apiLocale, setApiLocale] = useState<string | null | 'sonde'>(null)
   const conteneurRef = useRef<HTMLDivElement>(null)
 
   const rafraichir = useCallback(async () => {
@@ -106,6 +108,15 @@ export function SyncStatusBadge() {
       setEnCours(false)
     }
   }
+
+  // Diagnostic sidecar (API locale `tia-api.exe`) : état de préparation
+  // revérifié à chaque ouverture du menu (le démarrage prend plusieurs
+  // dizaines de secondes : extraction onefile + uvicorn).
+  const sonderApiLocale = useCallback(async () => {
+    if (!isDesktop()) return
+    setApiLocale('sonde')
+    setApiLocale((await apiLocaleUrl()) ?? null)
+  }, [])
 
   const chargerJournal = async () => {
     const ouvrir = !journalOuvert
@@ -167,7 +178,10 @@ export function SyncStatusBadge() {
       <button
         type="button"
         className="btn btn-link sync-status-btn"
-        onClick={() => setOuvert((v) => !v)}
+        onClick={() => {
+          setOuvert((v) => !v)
+          void sonderApiLocale()
+        }}
         aria-label="État de la synchronisation"
         aria-expanded={ouvert}
         title="Synchronisation des données"
@@ -203,7 +217,40 @@ export function SyncStatusBadge() {
               <span className="text-muted">Conflits</span>
               <span className="fw-semibold">{statut.conflicts}</span>
             </div>
+            <div className="d-flex justify-content-between">
+              <span
+                className="text-muted"
+                title="Backend FastAPI embarqué (tia-api.exe) — API locale offline"
+              >
+                API locale
+              </span>
+              <span
+                className={
+                  apiLocale && apiLocale !== 'sonde'
+                    ? 'fw-semibold text-success'
+                    : 'fw-semibold'
+                }
+              >
+                {apiLocale === 'sonde' ? 'Vérification…' : apiLocale ? 'Prête' : 'Indisponible'}
+              </span>
+            </div>
           </div>
+
+          {redirectionSidecarActivee() && (
+            <div className="mx-3 mb-2 small text-muted border-top pt-2">
+              <i className="bi bi-flask me-1" aria-hidden="true"></i>
+              Expérimental : UI pilotée par l'API locale
+              {apiLocale && apiLocale !== 'sonde' ? ` — ${apiLocale}` : ''}
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="dropdown-item"
+            onClick={() => void sonderApiLocale()}
+          >
+            <i className="bi bi-arrow-clockwise me-2"></i>Revérifier l'API locale
+          </button>
 
           {dernierCycleAffiche && (
             <div className="mx-3 mb-2 small text-muted border-top pt-2">{dernierCycleAffiche}</div>

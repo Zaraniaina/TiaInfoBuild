@@ -127,19 +127,31 @@ cp dist_sidecar/tia-api.exe ..\..\desktop\src-tauri\binaries\tia-api-x86_64-pc-w
 * `src/sidecar.rs` spawn `tia-api.exe`, lit la ligne contractuelle
   **`TIA_API_READY port=N`** (timeout 180 s : extraction onefile + uvicorn
   froid sont lents) et arrête le process à la fermeture de l'app.
-* Le sidecar crée/seed sa base **`%APPDATA%/tia-info-build/local_api.db`**
-  (SQLite, WAL, FK ON) — distincte de la base SQLCipher du Rust (`tia.db`).
-  Override de test : variable `TIA_DB_URL` (préfixe `sqlite+aiosqlite:///
-  ` ajouté automatiquement).
-* Comptes de démonstration identiques au web (seed ORM idempotent, mot de
-  passe `Admin123!`) ; le RBAC s'applique à l'identique (`demo@` n'a pas
-  `chantiers:write`, `chefprojet@` oui).
-* **Base SQLCipher partagée avec le sidecar : pas encore branché** — la
-  transmission de la clé au process Python est l'étape suivante (voir
-  `docs/plan-desktop-tauri.md`).
+* **Base partagée SQLCipher (`tia.db`)** : le Rust ouvre la base avant le
+  spawn (conversion claire→chiffrée au premier passage, clé au keyring) puis
+  transmet la clé au process Python **par stdin** (1ʳᵉ ligne, env
+  `TIA_DB_KEY` en filet). Côté Python, le driver `sqlcipher3-wheels` remplace
+  `sqlite3` (`sys.modules`) avant tout import d'aiosqlite et `PRAGMA key`
+  est appliqué sur **chaque connexion** — l'API FastAPI complète (JWT, RBAC)
+  travaille donc directement sur la même base chiffrée que les hubs Rust.
+  Une base claire héritée est convertie par `sqlcipher_export` (base
+  d'origine conservée en cas d'échec). Sans clé (tests/démo) : comportement
+  historique sur `local_api.db` en clair.
+* **Seed** : automatique en mode clair (démo/POC) ; **opt-in** en mode
+  chiffré (`TIA_SEED=1`) — la base partagée contient les vraies données,
+  on n'y injecte pas les comptes de démo sans demande explicite.
+* **Branchement UI (opt-in, OFF par défaut)** : `Web/frontend/src/services/
+sidecar.ts` résout `invoke("api_url")` et réécrit les URLs axios ; actif
+  uniquement avec `VITE_SIDECAR_HTTP=1` (`.env.desktop`). Le badge de
+  synchronisation affiche l'état de l'**API locale** (Prête/Indisponible,
+  bouton « Revérifier ») pour diagnostiquer le démarrage (extraction
+  onefile lente). CORS WebView préconfiguré dans le sidecar
+  (`localhost:5199`, `tauri://localhost`).
 * Dépannage : fausses alertes antivirus fréquentes sur un exe PyInstaller
   (signer le binaire en production) ; antivirus bloquant l'extraction
-  onefile → ajouter une exclusion.
+  onefile → ajouter une exclusion ; `clé de chiffrement invalide` ou
+  « file is not a database » → clé du keyring ≠ clé du fichier, voir
+  `secret.rs`.
 
 ## Activation (1ʳᵉ connexion — **online requis**)
 
