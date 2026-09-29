@@ -146,6 +146,48 @@ python app/scripts/create_super_admin.py
 
 ---
 
+## 🖥️ Mode Desktop — sidecar FastAPI embarqué (offline)
+
+`app/scripts/desktop_sidecar.py` permet d'embarquer **cette même API** dans
+l'application desktop Tauri (binaire `tia-api.exe` compilé avec PyInstaller) :
+toutes les routes métier tournent alors **100 % offline** sur une SQLite
+locale, avec le même RBAC et les mêmes comptes de test.
+
+```powershell
+# Démarrer l'API locale à la main (port auto, ou --port 8765) :
+env\Scripts\python.exe -m app.scripts.desktop_sidecar --port 8765
+# → affiche « TIA_API_READY port=8765 » quand l'API écoute
+
+# Base temporaire de test (override) :
+$env:TIA_DB_URL = "./tia_poc_test.db"   # préfixe sqlite+aiosqlite:/// ajouté automatiquement
+
+# Reconstruire l'exe embarqué (onefile ≈ 43 Mo) :
+env\Scripts\pyinstaller.exe --noconfirm --clean --onefile --console `
+  --name tia-api --distpath dist_sidecar --workpath build_sidecar `
+  --specpath build_sidecar `
+  --hidden-import aiosqlite --hidden-import greenlet --hidden-import email_validator `
+  --hidden-import uvicorn.logging --hidden-import uvicorn.loops.auto `
+  --hidden-import uvicorn.loops.asyncio --hidden-import uvicorn.protocols.http.auto `
+  --hidden-import uvicorn.protocols.http.h11_impl `
+  --hidden-import uvicorn.protocols.websockets.auto `
+  --hidden-import uvicorn.protocols.websockets.websockets_impl `
+  --hidden-import uvicorn.lifespan.on --collect-all argon2 `
+  app/scripts/desktop_sidecar.py
+```
+
+* Base par défaut : `%APPDATA%/tia-info-build/local_api.db` (override
+  `TIA_DB_URL`) ; tables créées depuis les modèles + seed idempotent via ORM
+  (rôles, entreprise, plans, comptes de test `Admin123!`).
+* Piège SQLite géré dans le script : PK `BigInteger` → `INTEGER`
+  (auto-incrément rowid) — process sidecar uniquement, modèles inchangés.
+* L'app desktop lance ce binaire automatiquement et lit la ligne
+  `TIA_API_READY port=N` (voir `desktop/README.md`, section « Sidecar »).
+* Notes PyInstaller : hidden-imports (uvicorn/aiosqlite/greenlet/argon2)
+  obligatoires ; fausses alertes antivirus fréquentes sur l'exe (signer en
+  production).
+
+---
+
 ## 📁 Structure
 
 ```

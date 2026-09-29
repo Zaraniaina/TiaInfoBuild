@@ -85,6 +85,21 @@ PLANS_DEFAUT = [
     # librement depuis l'interface Super Admin > Abonnements (vrai CRUD).
 ]
 
+# Comptes de test par rôle métier (partagés avec le sidecar desktop : importable au niveau module).
+TEST_ACCOUNTS = [
+    (3,  "directeur@btppro.mg",      "Direction",  "Jean",     "directeur"),
+    (6,  "comptable@btppro.mg",      "Comptable",  "Marie",    "comptable"),
+    (5,  "chefprojet@btppro.mg",     "ChefProjet", "Ahmed",    "chef_projet"),
+    (4,  "chefchantier@btppro.mg",   "ChefChantier","Bruno",   "chef_chantier"),
+    (7,  "rh@btppro.mg",             "RH",         "Claire",   "rh"),
+    (8,  "materiel@btppro.mg",       "Materiel",   "David",    "materiel"),
+    (9,  "magasinier@btppro.mg",     "Magasinier", "Elsa",     "magasinier"),
+    (10, "commercial@btppro.mg",     "Commercial", "Frank",    "commercial"),
+    (11, "ouvrier@btppro.mg",        "Ouvrier",    "Gilbert",  "employe"),
+    (11, "employe@btppro.mg",        "Employe",    "Gerard",   "employe"),
+    (12, "client@btppro.mg",         "Client",     "Hugo",     "client"),
+]
+
 
 async def seed():
     print("[SEED] Démarrage du seed de la base de données...")
@@ -162,19 +177,6 @@ async def seed():
 
         # 4b. Créer les comptes de test pour chaque rôle métier de l'entreprise
         print(" Creation des comptes de test par role...")
-        TEST_ACCOUNTS = [
-            (3,  "directeur@btppro.mg",      "Direction",  "Jean",     "directeur"),
-            (6,  "comptable@btppro.mg",      "Comptable",  "Marie",    "comptable"),
-            (5,  "chefprojet@btppro.mg",     "ChefProjet", "Ahmed",    "chef_projet"),
-            (4,  "chefchantier@btppro.mg",   "ChefChantier","Bruno",   "chef_chantier"),
-            (7,  "rh@btppro.mg",             "RH",         "Claire",   "rh"),
-            (8,  "materiel@btppro.mg",       "Materiel",   "David",    "materiel"),
-            (9,  "magasinier@btppro.mg",     "Magasinier", "Elsa",     "magasinier"),
-            (10, "commercial@btppro.mg",     "Commercial", "Frank",    "commercial"),
-            (11, "ouvrier@btppro.mg",        "Ouvrier",    "Gilbert",  "employe"),
-            (11, "employe@btppro.mg",        "Employe",    "Gerard",   "employe"),
-            (12, "client@btppro.mg",         "Client",     "Hugo",     "client"),
-        ]
         for role_id, email, nom, prenom, code in TEST_ACCOUNTS:
             result = await db.execute(text(
                 "SELECT id FROM utilisateurs WHERE email = :email LIMIT 1"

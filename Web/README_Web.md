@@ -177,9 +177,57 @@ curl.exe http://localhost:8000/api/super-admin/entreprises
 
 ## Synchronisation Desktop ↔ Web
 
-- **Push (Desktop ➔ Web)** : `POST /api/sync/import-sqlite`
-- **Pull (Web ➔ Desktop)** : `GET /api/sync/export`
+- **Push (Desktop ➔ Web)** : `POST /api/sync/push` (lots de 200)
+- **Pull (Web ➔ Desktop)** : `GET /api/sync/pull?since=…&limit=200`
 - **Statut** : `GET /api/sync/status`
+- Compatibilité historique (desktop SQLite hérité) : `POST /api/sync/import-sqlite` et `GET /api/sync/export`
+- Conflits : **le web gagne** — le payload local rejeté est archivé dans `_sync_conflicts` côté desktop
+
+---
+
+## Application Desktop (Tauri 2) — offline-first
+
+L'app desktop (`desktop/`) embarque le frontend React **et la vraie API
+FastAPI en local** via un sidecar `tia-api.exe` (backend compilé avec
+PyInstaller) : même API, même RBAC, même JWT que ce backend web, mais 100 %
+offline sur une SQLite locale. Guide complet :
+[`desktop/README.md`](../desktop/README.md).
+
+### Lancer en développement
+
+```powershell
+# Terminal 1 — l'app desktop (lance Vite :5199 + le sidecar FastAPI local)
+cd desktop ; npm run dev
+
+# Terminal 2 (optionnel) — backend web, requis seulement pour l'activation
+# (1ʳᵉ connexion) et la synchronisation
+cd Web ; .\start-dev.ps1
+```
+
+Le log de l'app affiche `[sidecar] API locale prête sur
+http://127.0.0.1:<port>` ; le frontend récupère l'URL via
+`invoke("api_url")`. Base locale du sidecar :
+`%APPDATA%/tia-info-build/local_api.db` — seed des comptes de test
+automatique (mêmes identifiants que le web, mot de passe `Admin123!`).
+
+### Tester l'API locale (hors interface)
+
+```powershell
+# Health (remplacer 51006 par le port affiché dans le log)
+curl http://127.0.0.1:51006/health
+
+# Login + création de chantier (RBAC réel) — PowerShell :
+$login = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:51006/api/auth/login" `
+  -ContentType "application/json" -Body '{"email":"chefprojet@btppro.mg","password":"Admin123!"}'
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:51006/api/chantiers" `
+  -Headers @{ Authorization = "Bearer $($login.access_token)" } `
+  -ContentType "application/json" -Body '{"nom":"Chantier offline","date_debut":"2026-10-05"}'
+```
+
+> Après une modification du backend, reconstruire le sidecar (PyInstaller) :
+> procédure complète dans [`desktop/README.md`](../desktop/README.md),
+> section « Sidecar — API FastAPI locale », et
+> [`Web/backend/README.md`](backend/README.md), section « Mode Desktop ».
 
 ---
 

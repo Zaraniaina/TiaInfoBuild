@@ -30,6 +30,9 @@ password-hash = { version = "0.5", features = ["getrandom"] }
 getrandom = "0.2"
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2"
+# Runtime async pour le spawn/supervision du sidecar (tia-api.exe) : réutilise
+# le runtime déjà embarqué par tauri (`tauri::async_runtime`).
+tokio = { version = "1", default-features = false, features = ["process", "io-util", "sync", "time"] }
 
 [profile.dev]
 opt-level = 0

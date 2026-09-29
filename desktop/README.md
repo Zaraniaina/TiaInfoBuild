@@ -1,9 +1,11 @@
 # TIA INFO BUILD — Desktop (Tauri 2 + Rust + SQLite)
 
-Application desktop **offline-first** du SaaS BTP TIA Info Build : elle embarque le
-frontend React existant (`Web/frontend`) dans une WebView et remplace la couche
+Application desktop **offline-first** du SaaS BTP TIA Info Build : elle embarque
+le frontend React existant (`Web/frontend`) dans une WebView, remplace la couche
 API par une **SQLite locale** + un cycle de synchronisation vers le backend
-FastAPI (qui reste le **maître des données**).
+FastAPI (qui reste le **maître des données**), et fait désormais tourner la
+**vraie API FastAPI en local** via un sidecar (`tia-api.exe`, backend compilé
+avec PyInstaller).
 
 Plan complet : `docs/plan-desktop-tauri.md`.
 
@@ -16,12 +18,14 @@ desktop/
 ├── migrations/
 │   └── 0001_initial.sql    # colonnes sync_version (suivies via PRAGMA user_version)
 └── src-tauri/
-    ├── Cargo.toml          # tauri 2, rusqlite bundled SQLCipher (OpenSSL vendored), reqwest (rustls), keyring 3, argon2
-    ├── tauri.conf.json     # fenêtre 1440×900, dev sur :5199, bundle NSIS
+    ├── Cargo.toml          # tauri 2, rusqlite bundled SQLCipher (OpenSSL vendored), reqwest (rustls), keyring 3, argon2, tokio
+    ├── tauri.conf.json     # fenêtre 1440×900, dev sur :5199, bundle NSIS + externalBin (sidecar)
+    ├── binaries/           # tia-api-<triple>.exe — sidecar FastAPI (artefact gitignoré, voir « Sidecar »)
     ├── capabilities/       # core:default (les commandes custom n'exigent aucune permission)
-    ├── generate_icons.py   # icônes placeholder (PNG 256 + ICO) — Phase 5 : vraies icônes
+    ├── generate_icons.py   # icônes du logo (PNG 16→256 + ICO, embarquées dans l'exe)
     └── src/
-        ├── main.rs         # builder Tauri + handler des 8 commandes
+        ├── main.rs         # builder Tauri + commandes + spawn/arrêt du sidecar
+        ├── sidecar.rs      # lancement tia-api.exe, lecture « TIA_API_READY port=N », commande api_url
         ├── db.rs           # connexion unique chiffrée (PRAGMA key/rekey), boot/schéma/migrations, query/exec
         ├── secret.rs       # clé de chiffrement : TIA_DB_KEY ou keyring OS (32 octets, générée au 1er lancement)
         ├── auth.rs         # activation online, login online→offline (Argon2id, keyring)
@@ -34,9 +38,6 @@ desktop/
 # Dépendances de la CLI (une fois)
 cd desktop ; npm install
 
-# Backend FastAPI requis (login/sync) — dans un autre terminal :
-cd Web ; .\start-dev.ps1
-
 # L'app desktop (lance aussi Vite :5199 via beforeDevCommand)
 cd desktop ; npm run dev
 
@@ -46,6 +47,16 @@ $env:PATH = 'C:\xampp\perl\bin;' + $env:PATH   # Perl requis par OpenSSL vendore
 cargo check        # première exécution longue (dépendances compilées)
 cargo test         # tests de boot/schéma/transactions/chiffrement
 ```
+
+Au démarrage, l'app **lance elle-même le sidecar** `tia-api.exe` (backend
+FastAPI compilé) : le log affiche `[sidecar] API locale prête sur
+http://127.0.0.1:<port>` quand l'API locale répond. Le port est **choisi
+automatiquement** (aucune collision) — le frontend le récupère via
+`invoke("api_url")`.
+
+> **Backend web requis ?** Seulement pour l'activation (1ʳᵉ connexion) et la
+> synchronisation : `cd Web ; .\start-dev.ps1` dans un autre terminal. Sans
+> lui, l'app démarre et fonctionne 100 % offline (API locale).
 
 > **Perl / OpenSSL vendored** : la feature `bundled-sqlcipher-vendored-openssl`
 > compile OpenSSL depuis les sources — `C:\xampp\perl\bin` doit être dans le
@@ -66,6 +77,69 @@ npm run build      # = tauri build -> installeur NSIS (Windows)
 
 `beforeBuildCommand` exécute `npm --prefix ../Web/frontend run build:desktop`
 (le bundle Windows doit exister dans `Web/frontend/dist`).
+
+Le **sidecar est embarqué automatiquement** dans l'installeur via
+`bundle.externalBin` : l'exe installé déploie `tia-api.exe` à côté de
+`tia-desktop.exe` (avec le nom triple attendu à la compilation, sans suffixe
+une fois installé). Prérequis : le binaire doit exister dans
+`src-tauri/binaries/` (section « Sidecar » ci-dessus) avant `npm run build`.
+
+> **Production** : signer `tia-api.exe` (comme l'exe principal) pour éviter
+> les fausses alertes antivirus liées à PyInstaller, et vérifier que
+> l'antivirus cible n'empêche pas l'extraction onefile au premier lancement.
+
+## Sidecar — API FastAPI locale (`tia-api.exe`)
+
+L'app embarque le **backend FastAPI complet** compilé en un exécutable
+autonome (PyInstaller onefile, ≈ 43 Mo) : toutes les routes métier, le JWT et
+le RBAC fonctionnent **100 % offline** sur une base SQLite locale — plus de
+double maintenance des routes locales (`services/local/*.routes.ts`).
+
+### (Re)construire le sidecar
+
+```powershell
+cd Web\backend
+env\Scripts\python.exe -m pip install pyinstaller        # une seule fois
+
+env\Scripts\pyinstaller.exe --noconfirm --clean --onefile --console `
+  --name tia-api --distpath dist_sidecar --workpath build_sidecar `
+  --specpath build_sidecar `
+  --hidden-import aiosqlite --hidden-import greenlet --hidden-import email_validator `
+  --hidden-import uvicorn.logging --hidden-import uvicorn.loops.auto `
+  --hidden-import uvicorn.loops.asyncio --hidden-import uvicorn.protocols.http.auto `
+  --hidden-import uvicorn.protocols.http.h11_impl `
+  --hidden-import uvicorn.protocols.websockets.auto `
+  --hidden-import uvicorn.protocols.websockets.websockets_impl `
+  --hidden-import uvicorn.lifespan.on --collect-all argon2 `
+  app/scripts/desktop_sidecar.py
+
+# Déployer pour Tauri (nom attendu : tia-api-<triple>.exe) :
+cp dist_sidecar/tia-api.exe ..\..\desktop\src-tauri\binaries\tia-api-x86_64-pc-windows-msvc.exe
+```
+
+> `desktop/src-tauri/binaries/` est **gitignoré** (artefact de build). Après
+> toute modification du backend : reconstruire le sidecar puis relancer
+> `npm run dev` — pas besoin de recompiler le Rust, le binaire est copié dans
+> `target/debug` par le build Tauri.
+
+### Fonctionnement
+
+* `src/sidecar.rs` spawn `tia-api.exe`, lit la ligne contractuelle
+  **`TIA_API_READY port=N`** (timeout 180 s : extraction onefile + uvicorn
+  froid sont lents) et arrête le process à la fermeture de l'app.
+* Le sidecar crée/seed sa base **`%APPDATA%/tia-info-build/local_api.db`**
+  (SQLite, WAL, FK ON) — distincte de la base SQLCipher du Rust (`tia.db`).
+  Override de test : variable `TIA_DB_URL` (préfixe `sqlite+aiosqlite:///
+  ` ajouté automatiquement).
+* Comptes de démonstration identiques au web (seed ORM idempotent, mot de
+  passe `Admin123!`) ; le RBAC s'applique à l'identique (`demo@` n'a pas
+  `chantiers:write`, `chefprojet@` oui).
+* **Base SQLCipher partagée avec le sidecar : pas encore branché** — la
+  transmission de la clé au process Python est l'étape suivante (voir
+  `docs/plan-desktop-tauri.md`).
+* Dépannage : fausses alertes antivirus fréquentes sur un exe PyInstaller
+  (signer le binaire en production) ; antivirus bloquant l'extraction
+  onefile → ajouter une exclusion.
 
 ## Activation (1ʳᵉ connexion — **online requis**)
 
@@ -132,6 +206,7 @@ Erreurs : `RESEAU_REQUIS: …`, `IDENTIFIANTS_INVALIDES: …`, `EMAIL_NON_LIE: �
 | `db_exec_batch` | `([{sql, args}]) -> { rows_changed, last_id }` — transaction unique |
 | `auth_activate` | `({serverUrl, email, password, deviceId}) -> {access_token, refresh_token, entreprise_id, user, offline:false}` |
 | `auth_login` | `({serverUrl, email, password}) -> {access_token\|null, refresh_token\|null, entreprise_id, user, offline}` |
+| `api_url` | `() -> string` — URL de l'API locale (`http://127.0.0.1:<port>`) ou erreur `SIDECAR_INDISPONIBLE: …` |
 | `net_online` | `() -> bool` — TCP 2 s vers l'hôte connu (défaut `1.1.1.1:443`) |
 | `sync_status` | `() -> { online, pending, last_sync_at, conflicts }` |
 | `sync_run` | `({serverUrl}) -> { pushed, pulled, conflicts, cursor, error }` |
@@ -159,4 +234,5 @@ Puis **incrémenter** une migration dans `desktop/migrations/` (jamais éditer
 | `ENTITE_NON_PRISE_EN_CHARGE` | entité absente de `table_pour_entite()` → Phase 4 |
 | `déchiffrement de la base impossible` | `TIA_DB_KEY` différente de la clé du keyring (ou fichier corrompu) |
 | build échoue sur OpenSSL / SQLCipher | Perl absent du PATH → `$env:PATH='C:\xampp\perl\bin;'+$env:PATH` puis relancer |
+| `SIDECAR_INDISPONIBLE` (via `api_url`) | le sidecar n'a pas fini de démarrer (extraction onefile lente) → attendre/réessayer ; persistant = binaire absent de `src-tauri/binaries/` → le reconstruire (section « Sidecar ») |
 | `cargo check` échoue sur les icônes | `python src-tauri/generate_icons.py` |

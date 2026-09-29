@@ -18,6 +18,18 @@ cd Web
 - **Guide complet** : [`Web/README_Web.md`](Web/README_Web.md)
 - **Backend** : [`Web/backend/README.md`](Web/backend/README.md)
 - **Frontend** : [`Web/frontend/README.md`](Web/frontend/README.md)
+- **Desktop (Tauri 2, offline-first)** : [`desktop/README.md`](desktop/README.md)
+
+## Application Desktop (Tauri 2) — offline-first
+
+L'app desktop (`desktop/`) embarque le frontend React et **la vraie API
+FastAPI en local** (sidecar `tia-api.exe`, backend compilé via PyInstaller) :
+même API, même RBAC, 100 % offline sur SQLite locale + synchronisation
+web ↔ desktop.
+
+```powershell
+cd desktop ; npm run dev
+```
 
 ## Comptes de test
 
