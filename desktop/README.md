@@ -146,6 +146,14 @@ cp dist_sidecar/tia-api.exe ..\..\desktop\src-tauri\binaries\tia-api-x86_64-pc-w
   `client_ref` UUID posé à l'INSERT — identité stable desktop↔web que le
   serveur adopte au push et que le pull Rust utilise pour réconcilier les
   ids (aucun doublon). Tables `_sync_*` créées par le sidecar si absentes.
+* **Auth locale** : `POST /api/auth/local-login` vérifie (email, mot de passe)
+  contre `local_session` (hash Argon2id écrit par le hub Rust) puis le compte
+  `utilisateurs` local, et délivre un JWT signé par le process (7 j). Le
+  `get_current_user` de `app.security` est overridé (ainsi que ses alias
+  `CurrentUserPayload`/`SuperAdminDep`) pour charger l'identité depuis la base
+  locale — le JWT web reste toléré (ID devant exister localement). Le frontend
+  obtient ce token via `ensureTokenLocal` (non bloquant) et le stocke dans
+  `access_token_local`, jamais envoyé au web.
 * **Branchement UI (ON par défaut)** : `Web/frontend/src/services/sidecar.ts`
   résout `invoke("api_url")` et réécrit les URLs axios vers l'API locale
   (routers montés sous `/api`) ; kill switch `VITE_SIDECAR_HTTP=0` pour
@@ -166,6 +174,7 @@ cp dist_sidecar/tia-api.exe ..\..\desktop\src-tauri\binaries\tia-api-x86_64-pc-w
 |---|---|---|
 | 1ʳᵉ connexion (activation du poste) | **Web requis** | `auth_activate` → `POST /api/auth/desktop/activate` (offline : `RESEAU_REQUIS`) |
 | Connexion suivante | Local d'abord, online si dispo | `auth_login` : online puis fallback Argon2id local (`offline: true`) |
+| Session UI ↔ API embarquée | Local | `POST /api/auth/local-login` : token signé par le process sidecar (identité `local_session`), posé par l'intercepteur axios — le JWT web n'authentifie pas l'API offline |
 | Usage métier (chantiers, RH, stocks…) | **100 % local** | UI → API locale (sidecar) sur la base partagée `tia.db` ; écritures journalisées dans `_sync_outbox` |
 | Synchronisation | Web (auto : démarrage / 5 min / retour réseau, ou manuelle) | `sync_run` : push outbox + pull curseur — **bidirectionnelle, les deux bases convergent** |
 | Inscription entreprise, mot de passe oublié/reset, vérification email, abonnements & paiements | **Web requis** | `estRequeteWebRequise()` dans `services/sidecar.ts` : jamais interceptées en local ; hors-ligne → erreur 503 avec message clair |

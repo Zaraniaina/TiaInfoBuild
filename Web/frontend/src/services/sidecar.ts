@@ -123,3 +123,68 @@ export function estRequeteWebRequise(url: string | undefined): boolean {
   const chemin = cheminSansBase(url)
   return MODELES_WEB_REQUIS.some((modele) => modele.test(chemin))
 }
+
+/* ---------------------------------------------------------------------------
+ * Token LOCAL (`POST /api/auth/local-login` du sidecar) : le JWT web n'est PAS
+ * accepté par l'API embarquée offline (clé secrète web ≠ base locale ; le
+ * compte peut ne pas exister localement). Ce token, signé par le process
+ * sidecar, authente tous les appels UI → API locale. Il est stocké à part
+ * (`access_token_local`) pour ne jamais fuiter vers le web.
+ * ------------------------------------------------------------------------- */
+const CLE_TOKEN_LOCAL = 'access_token_local'
+
+/** Token local courant, ou `null`. */
+export function tokenLocal(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(CLE_TOKEN_LOCAL)
+}
+
+/** Oublie le token local (logout / compte invalide). */
+export function supprimerTokenLocal(): void {
+  if (typeof window !== 'undefined') localStorage.removeItem(CLE_TOKEN_LOCAL)
+}
+
+/** Nombre de sondes du sidecar avant abandon (démarrage ≈ extraction onefile + uvicorn). */
+const TENTATIVES_MAX = 30
+const DELAI_ENTRE_TENTATIVES_MS = 5_000
+
+function attendre(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * Échange (email, mot de passe) contre un token local du sidecar. Sert
+ * systématiquement après un login/activation desktop réussi (hub Rust) : la
+ * session UI (web ou offline) obtient ainsi sa contrepartie locale.
+ * Retourne le token, ou `null` (sidecar pas prêt, redirection inactive,
+ * refus local) — non bloquant dans tous les cas.
+ */
+export async function ensureTokenLocal(email: string, password: string): Promise<string | null> {
+  if (!redirectionSidecarActivee()) return null
+  let base: string | null = null
+  // Le sidecar démarre lentement (extraction onefile + uvicorn froid) :
+  // sondage patient, l'UI n'attend PAS ce résultat pour ouvrir la session.
+  for (let tentative = 0; tentative < TENTATIVES_MAX; tentative += 1) {
+    base = await apiLocaleUrl()
+    if (base) break
+    await attendre(DELAI_ENTRE_TENTATIVES_MS)
+  }
+  if (!base) return null
+  try {
+    const reponse = await fetch(`${base}/api/auth/local-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    if (!reponse.ok) return null
+    const donnees = (await reponse.json()) as { access_token?: string }
+    const token = typeof donnees.access_token === 'string' ? donnees.access_token : null
+    if (token) {
+      localStorage.setItem(CLE_TOKEN_LOCAL, token)
+      return token
+    }
+    return null
+  } catch {
+    return null
+  }
+}
