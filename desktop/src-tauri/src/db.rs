@@ -666,13 +666,17 @@ fn identifier(nom: &str) -> String {
     format!("\"{}\"", nom.replace('"', "\"\""))
 }
 
-/// Construit la condition sur l'identifiant : `id` est INTEGER côté local alors
-/// que `entity_id` est TEXT côté sync -> comparaison CASTee si non numérique.
+/// Construit la condition sur l'identifiant d'une entité de sync :
+/// * `entity_id` numérique → PK locale (`id = ?1`) — lignes créées côté web ;
+/// * `entity_id` UUID (client_ref) → identité desktop↔web : `client_ref`
+///   d'abord, repli sur l'id texte (ligne adoptée sans ref). Jamais une
+///   comparaison numérique stricte sur un UUID : c'était la source de
+///   doublons/lignes introuvables avant l'alignement des ids.
 pub fn condition_id(entity_id: &str) -> (String, rusqlite::types::Value) {
     match entity_id.parse::<i64>() {
         Ok(n) => ("id = ?1".to_string(), rusqlite::types::Value::Integer(n)),
         Err(_) => (
-            "CAST(id AS TEXT) = ?1".to_string(),
+            "(client_ref = ?1 OR CAST(id AS TEXT) = ?1)".to_string(),
             rusqlite::types::Value::Text(entity_id.to_string()),
         ),
     }
@@ -702,6 +706,33 @@ pub fn upsert_ligne(
         JsonValue::Object(m) => m.clone(),
         _ => Map::new(),
     };
+
+    // --- Résolution d'identité (anti-doublon desktop ↔ web) ---
+    // Le payload du pull porte le client_ref (identité stable) et l'id web.
+    // Si une ligne locale existe DÉJÀ avec ce client_ref (créée hors-ligne via
+    // l'API locale ou le registre SQLite), on met CETTE ligne à jour en
+    // conservant son id local : le serveur « adopte » l'enregistrement au
+    // lieu d'en créer un doublon avec un autre id.
+    if let Some(JsonValue::String(r)) = objet.get("client_ref") {
+        let r = r.trim().to_string();
+        if !r.is_empty() {
+            let par_ref: Option<i64> = conn
+                .query_row(
+                    &format!("SELECT id FROM {table} WHERE client_ref = ?1 LIMIT 1"),
+                    [&r],
+                    |row| row.get(0),
+                )
+                .ok();
+            if let Some(id_local) = par_ref {
+                objet.insert("id".into(), JsonValue::from(id_local));
+            } else if !objet.contains_key("id") {
+                // Ligne inconnue localement sans id web exploitable : l'id
+                // local devient la référence (upsert rejouable, idempotent).
+                objet.insert("id".into(), JsonValue::String(r));
+            }
+        }
+    }
+
     // L'identifiant : payload.id, sinon entity_id
     if !objet.contains_key("id") {
         objet.insert(
@@ -717,6 +748,12 @@ pub fn upsert_ligne(
         if colonnes.contains("sync_version") {
             objet.insert("sync_version".into(), JsonValue::from(v));
         }
+    }
+    // Normalisation locale : `is_deleted` est NOT NULL dans le schéma desktop
+    // alors que le payload web peut l'omettre (colonne NULLable MySQL) — un
+    // INSERT local avec NULL échouerait sinon.
+    if colonnes.contains("is_deleted") && !objet.contains_key("is_deleted") {
+        objet.insert("is_deleted".into(), JsonValue::from(0));
     }
 
     for (cle, valeur) in &objet {
@@ -918,6 +955,86 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM _sync_state", [], |r| r.get(0))
             .unwrap();
         assert_eq!(n, 0, "la 1re instruction doit avoir été rollback");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn upsert_resout_le_client_ref_sans_doublon() {
+        use serde_json::json;
+        let _g = verrou_cle();
+        let path = chemin_temp("clientref");
+        let (conn, _, _) = ouvrir_et_boot(&path).expect("boot");
+
+        // Ligne créée hors-ligne (API locale) avec son identité client_ref.
+        // FK désactivées pour TOUT le test : la table `entreprises` n'existe
+        // pas dans le schéma local (le sujet est la mécanique d'identité
+        // client_ref, pas l'intégrité référentielle).
+        conn.execute_batch("PRAGMA foreign_keys = OFF;")
+            .expect("fk off");
+        conn.execute_batch(
+            "INSERT INTO chantiers (entreprise_id, numero, nom, statut, is_deleted, client_ref)
+             VALUES (1, 'C-001', 'Chantier local', 'en_cours', 0, 'ref-chantier-1');",
+        )
+        .expect("insert local");
+
+        // Pull : le serveur renvoie la MÊME ligne (client_ref + id web 77).
+        let payload = json!({
+            "id": 77,
+            "entreprise_id": 1,
+            "numero": "C-001",
+            "nom": "Chantier local",
+            "statut": "en_cours",
+            "client_ref": "ref-chantier-1",
+            "sync_version": 2,
+        });
+        upsert_ligne(&conn, "chantiers", &payload, "77", Some(2)).expect("upsert 1");
+
+        // La ligne locale existante est mise à jour : PAS de doublon, l'id
+        // local est conservé (le serveur a « adopté » l'enregistrement).
+        let n: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM chantiers WHERE client_ref = 'ref-chantier-1'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(n, 1, "un seul enregistrement après réconciliation");
+        let id: i64 = conn
+            .query_row(
+                "SELECT id FROM chantiers WHERE client_ref = 'ref-chantier-1'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(id, 1, "l'id LOCAL doit être conservé (pas l'id web)");
+
+        // Idempotence : un second pull identique ne duplique rien.
+        upsert_ligne(&conn, "chantiers", &payload, "77", Some(2)).expect("upsert 2");
+        let total: i64 = conn
+            .query_row("SELECT COUNT(*) FROM chantiers", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(total, 1, "le pull est idempotent");
+
+        // Ligne JAMAIS vue localement (créée sur le web) : elle arrive avec
+        // son client_ref mais sans équivalent local → insérée avec l'id web.
+        let payload_web = json!({
+            "id": 88,
+            "entreprise_id": 1,
+            "numero": "C-002",
+            "nom": "Chantier web",
+            "statut": "planifie",
+            "client_ref": "ref-chantier-2",
+            "sync_version": 1,
+        });
+        upsert_ligne(&conn, "chantiers", &payload_web, "88", Some(1)).expect("upsert web");
+        let id_web: i64 = conn
+            .query_row(
+                "SELECT id FROM chantiers WHERE client_ref = 'ref-chantier-2'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(id_web, 88, "une ligne purement web garde son id serveur");
         let _ = std::fs::remove_file(&path);
     }
 

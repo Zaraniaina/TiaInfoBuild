@@ -2,8 +2,13 @@ import axios from 'axios';
 import type { AxiosResponse } from 'axios'
 import { useAuthStore } from '@/stores/auth.store'
 import { isDesktop } from '@/utils/buildMode'
-import { handleLocalRequest } from './desktopClient'
-import { redirectionSidecarActivee, versUrlLocale } from './sidecar'
+import { checkOnline, handleLocalRequest, localError } from './desktopClient'
+import {
+  MESSAGE_WEB_REQUIS_HORS_LIGNE,
+  estRequeteWebRequise,
+  redirectionSidecarActivee,
+  versUrlLocale,
+} from './sidecar'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
@@ -74,11 +79,21 @@ api.interceptors.request.use((config) => {
      (les `catch` des pages existantes l'affichent tels quels). */
 if (isDesktop()) {
   api.interceptors.request.use(async (config) => {
-    // Opt-in sidecar (`VITE_SIDECAR_HTTP=1`) : l'UI appelle la vraie API
-    // FastAPI locale (tia-api.exe) — axios fait la requête HTTP vers
-    // 127.0.0.1:<port auto>. Inerte par défaut : tant que le sidecar garde
-    // sa propre base (local_api.db), distincte du magasin SQLCipher des hubs
-    // Rust, cette redirection créerait deux sources de vérité divergentes.
+    // RÈGLE PRODUIT « web cerveaux, desktop offline-first » : inscription
+    // entreprise, mot de passe oublié/réinitialisation, vérification email et
+    // abonnements/paiements sont gérés UNIQUEMENT par le serveur web. Hors
+    // ligne, on rejette AVANT toute autre logique avec un message clair
+    // (jamais une erreur réseau illisible).
+    if (estRequeteWebRequise(config.url) && !(await checkOnline())) {
+      throw localError(503, MESSAGE_WEB_REQUIS_HORS_LIGNE, config);
+    }
+
+    // Sidecar (`VITE_SIDECAR_HTTP=1`) : l'UI appelle la vraie API FastAPI
+    // locale (tia-api.exe) sur la base partagée SQLCipher — axios fait la
+    // requête HTTP vers 127.0.0.1:<port auto> (routers montés sous /api).
+    // Le mode est activé par défaut côté desktop : les écritures locales sont
+    // journalisées dans `_sync_outbox` par le sidecar lui-même (hooks) et la
+    // sync bidirectionnelle Rust entretient la parité avec le web.
     if (redirectionSidecarActivee()) {
       const locale = await versUrlLocale(config.url);
       if (locale) config.url = locale;

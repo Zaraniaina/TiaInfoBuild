@@ -7,7 +7,7 @@ interface ImportMetaEnv {
   readonly VITE_BUILD_TARGET?: string
   /** URL de base de l'API FastAPI (défaut : http://localhost:8000/api). */
   readonly VITE_API_URL?: string
-  /** '1' pour piloter l'UI desktop sur le sidecar FastAPI local (expérimental :
-   * requiert la base partagée avec les hubs Rust — OFF par défaut). */
+  /** '0' pour DÉSACTIVER la redirection de l'UI desktop vers le sidecar FastAPI
+   * local (actif par défaut ; la base partagée SQLCipher est requise). */
   readonly VITE_SIDECAR_HTTP?: string
 }

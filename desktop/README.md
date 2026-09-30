@@ -140,9 +140,16 @@ cp dist_sidecar/tia-api.exe ..\..\desktop\src-tauri\binaries\tia-api-x86_64-pc-w
 * **Seed** : automatique en mode clair (démo/POC) ; **opt-in** en mode
   chiffré (`TIA_SEED=1`) — la base partagée contient les vraies données,
   on n'y injecte pas les comptes de démo sans demande explicite.
-* **Branchement UI (opt-in, OFF par défaut)** : `Web/frontend/src/services/
-sidecar.ts` résout `invoke("api_url")` et réécrit les URLs axios ; actif
-  uniquement avec `VITE_SIDECAR_HTTP=1` (`.env.desktop`). Le badge de
+* **Outbox de synchronisation** : des hooks SQLAlchemy journalisent TOUTE
+  écriture métier de l'API locale dans `_sync_outbox` (même transaction :
+  un rollback métier annule aussi son opération de sync) avec un
+  `client_ref` UUID posé à l'INSERT — identité stable desktop↔web que le
+  serveur adopte au push et que le pull Rust utilise pour réconcilier les
+  ids (aucun doublon). Tables `_sync_*` créées par le sidecar si absentes.
+* **Branchement UI (ON par défaut)** : `Web/frontend/src/services/sidecar.ts`
+  résout `invoke("api_url")` et réécrit les URLs axios vers l'API locale
+  (routers montés sous `/api`) ; kill switch `VITE_SIDECAR_HTTP=0` pour
+  retomber sur le mode hybride (routes SQLite + relais web). Le badge de
   synchronisation affiche l'état de l'**API locale** (Prête/Indisponible,
   bouton « Revérifier ») pour diagnostiquer le démarrage (extraction
   onefile lente). CORS WebView préconfiguré dans le sidecar
@@ -152,6 +159,20 @@ sidecar.ts` résout `invoke("api_url")` et réécrit les URLs axios ; actif
   onefile → ajouter une exclusion ; `clé de chiffrement invalide` ou
   « file is not a database » → clé du keyring ≠ clé du fichier, voir
   `secret.rs`.
+
+## Modèle « web cerveaux, desktop offline-first »
+
+| Flux | Réseau | Implémentation |
+|---|---|---|
+| 1ʳᵉ connexion (activation du poste) | **Web requis** | `auth_activate` → `POST /api/auth/desktop/activate` (offline : `RESEAU_REQUIS`) |
+| Connexion suivante | Local d'abord, online si dispo | `auth_login` : online puis fallback Argon2id local (`offline: true`) |
+| Usage métier (chantiers, RH, stocks…) | **100 % local** | UI → API locale (sidecar) sur la base partagée `tia.db` ; écritures journalisées dans `_sync_outbox` |
+| Synchronisation | Web (auto : démarrage / 5 min / retour réseau, ou manuelle) | `sync_run` : push outbox + pull curseur — **bidirectionnelle, les deux bases convergent** |
+| Inscription entreprise, mot de passe oublié/reset, vérification email, abonnements & paiements | **Web requis** | `estRequeteWebRequise()` dans `services/sidecar.ts` : jamais interceptées en local ; hors-ligne → erreur 503 avec message clair |
+
+La règle « web requis » est appliquée dans l'intercepteur axios (`services/api.ts`)
+AVANT toute redirection locale : les fluxSMTP/comptes/abonnements ne peuvent pas
+diverger entre desktop et web.
 
 ## Activation (1ʳᵉ connexion — **online requis**)
 
@@ -194,14 +215,19 @@ Erreurs : `RESEAU_REQUIS: …`, `IDENTIFIANTS_INVALIDES: …`, `EMAIL_NON_LIE: �
 
 ## Synchronisation (web = maître)
 
-* **Écritures locales** : toujours via `db_exec_batch([...])` — **une seule
-  transaction** : métier + insertion dans `_sync_outbox` (jamais l'un sans l'autre).
+* **Écritures locales** : via l'API locale (sidecar — hooks `_sync_outbox`
+  automatiques) ou via `db_exec_batch([...])` (registre SQLite) — dans les
+  deux cas **une seule transaction** : métier + outbox (jamais l'un sans l'autre).
 * **`sync_run({ serverUrl })`** : push de l'outbox (lots de 200,
   `POST /api/sync/push`) puis pull (`GET /api/sync/pull?since=…&limit=200`).
 * **Conflits** : la version serveur gagne ; le payload local rejeté part dans
   `_sync_conflicts` et le record serveur est réappliqué localement (transaction).
 * **Curseur** : `_sync_state.cursor` n'avance que si tout le lot est applicable —
   une entité non mappée bloque l'avancée (rien n'est perdu, upserts idempotents).
+* **Convergence des ids** : le pull résout les lignes locales par `client_ref`
+  (`upsert_ligne`, test `upsert_resout_le_client_ref_sans_doublon`) — une
+  ligne créée hors-ligne est « adoptée » par le serveur et garde son id local,
+  jamais de doublon desktop↔web.
 * Entités mappées aujourd'hui : les **16** du contrat PHASE 4 — `pointage`,
   `chantier`, `employe` + les 13 étendues (`article`, `mouvement_stock`,
   `achat`, `depense`, `client`, `devis`, `facture`, `conge`,

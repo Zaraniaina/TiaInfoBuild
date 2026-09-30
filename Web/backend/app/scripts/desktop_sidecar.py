@@ -1,5 +1,6 @@
-# POC sidecar : lance la VRAIE API FastAPI du backend (tous les routers métier)
-# dans l'app desktop Tauri.
+# Sidecar desktop : lance la VRAIE API FastAPI du backend (tous les routers
+# métier) dans l'app desktop Tauri — moteur du mode « web cerveaux, desktop
+# offline-first ».
 #
 # Deux modes, choisis par la présence de TIA_DB_KEY :
 #   * CHIFFRÉ (TIA_DB_KEY = 64 hex, fourni par le Rust) : la base est SQLCipher,
@@ -10,6 +11,11 @@
 #   * CLAIR (sans clé — tests/démo, comportement historique du POC) : SQLite
 #     standard sur `%APPDATA%/tia-info-build/local_api.db`.
 #
+# Journal de synchronisation (_sync_outbox) : des hooks SQLAlchemy journalisent
+# toute écriture métier de l'API locale DANS LA MÊME transaction — le hub Rust
+# `sync_run` pousse ensuite ces opérations vers le web et tire le delta web →
+# desktop (contrat bidirectionnel, `desktop/src-tauri/src/sync.rs`).
+#
 # Contrat avec le Rust (`desktop/src-tauri/src/sidecar.rs`) :
 #   * la clé arrive par stdin (1re ligne) ET en env TIA_DB_KEY (filet) ;
 #   * ce process imprime `TIA_API_READY port=N` dès que l'API écoute.
@@ -19,10 +25,13 @@
 #   TIA_DB_URL  : override du chemin de la base.
 #   TIA_SEED=1  : forcer le seed des comptes de démo (mode chiffré : OFF car
 #                 la base réelle contient les données de l'entreprise).
+import json
 import os
 import sys
 import socket
 import asyncio
+import datetime as _dt
+import uuid as _uuid
 
 # 1) Pré-requis AVANT l'import de app.* : les variables d'environnement priment
 #    sur le .env lu par pydantic-settings.
@@ -155,6 +164,252 @@ def _convertir_si_claire(chemin: str, cle: str) -> None:
     os.rename(cible, chemin)
 
 
+# ============================================================
+# Journal de synchronisation desktop ↔ web (_sync_outbox)
+# ============================================================
+# Contrat avec les hubs Rust (desktop/src-tauri/src/sync.rs) :
+#   * toute écriture métier faite via l'API locale est journalisée dans
+#     `_sync_outbox` DANS LA MÊME transaction (rollback inclus) ;
+#   * `client_ref` = identité stable de la ligne (UUID client) : posé à
+#     l'INSERT s'il est absent, il voyage dans le push ; le serveur l'associe
+#     à sa ligne (`_trouve_ligne`), et le pull Rust réconcilie l'id local
+#     avec l'id web via cette même colonne → JAMAIS de doublon desktop↔web.
+
+# Tables `_sync_*` du shell Rust, créées ici si absentes (le schéma généré
+# depuis les modèles MySQL ne les connaît pas). Une instruction par entrée :
+# le driver sqlite3 n'accepte qu'un statement par execute().
+DDL_SYNC: list[str] = [
+    """CREATE TABLE IF NOT EXISTS _sync_outbox (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        op TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        client_ts TEXT NOT NULL,
+        pushed INTEGER NOT NULL DEFAULT 0
+    )""",
+    "CREATE TABLE IF NOT EXISTS _sync_state (key TEXT PRIMARY KEY, value TEXT)",
+    """CREATE TABLE IF NOT EXISTS _sync_conflicts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        local_payload TEXT,
+        server_payload TEXT,
+        detected_at TEXT
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_outbox_pushed ON _sync_outbox (pushed)",
+]
+
+# Entités synchronisées — MIROIR STRICT de ENTITES_SYNC (app/routers/sync.py)
+# et table_pour_entite (desktop/src-tauri/src/sync.rs) : toute entité ajoutée
+# aux deux listes doit l'être aussi ici, sinon ses écritures locales ne
+# seraient jamais poussées vers le web.
+_ENTITES_SYNC: dict[str, str] = {
+    "pointage": "pointages",
+    "chantier": "chantiers",
+    "employe": "employes",
+    # --- Stocks / achats / dépenses ---
+    "article": "articles",
+    "mouvement_stock": "mouvements_stock",
+    "achat": "commandes_fournisseur",
+    "depense": "depenses",
+    # --- Commercial (clients / devis / factures) ---
+    "client": "clients",
+    "devis": "devis",
+    "facture": "factures",
+    # --- RH ---
+    "conge": "conges",
+    "heure_supplementaire": "heures_supplementaires",
+    # --- Matériel / chantier ---
+    "materiel": "materiaux",
+    "maintenance": "maintenances",
+    "tache": "taches",
+    "incident": "incidents",
+}
+
+# Colonnes gérées par le serveur, exclues du payload journalisé : le router
+# /api/sync/push les ignore (COLONNES_SERVEUR) et le tenant est imposé par le
+# JWT. `id` est en revanche INCLUS (lookup de repli sur update, voir sync.py).
+_COLONNES_EXCLUES = {
+    "entreprise_id",
+    "client_ref",
+    "sync_version",
+    "sync_created_at",
+    "sync_updated_at",
+}
+
+
+def _etendre_modeles_sync() -> None:
+    """Garantit les colonnes de sync sur les métadonnées SQLAlchemy AVANT la
+    configuration des mappers : les modèles MySQL les déclarent normalement
+    (migrations 034/035), cette extension n'est qu'un filet de sécurité pour
+    tout modèle enregistré sans elles (sinon les hooks `client_ref` lèveraient
+    une AttributeError au flush)."""
+    from sqlalchemy import Column, DateTime, Integer, Text
+
+    import app.models  # noqa: F401
+    from app.database import Base
+
+    for table in _ENTITES_SYNC.values():
+        t = Base.metadata.tables.get(table)
+        if t is None:
+            continue
+        existantes = {c.name for c in t.columns}
+        if "client_ref" not in existantes:
+            t.append_column(Column("client_ref", Text, nullable=True))
+        if "sync_version" not in existantes:
+            t.append_column(Column("sync_version", Integer, nullable=True))
+        if "sync_created_at" not in existantes:
+            t.append_column(Column("sync_created_at", DateTime, nullable=True))
+        if "sync_updated_at" not in existantes:
+            t.append_column(Column("sync_updated_at", DateTime, nullable=True))
+
+
+def _assurer_tables_sync(chemin: str) -> None:
+    """Crée `_sync_*` et garantit `client_ref`/`sync_version` sur les tables
+    synchronisées déjà existantes (base créée par le shell Rust, par une
+    version antérieure, etc.). Idempotent.
+
+    Passé par le DRIVER BRUT (module sqlite3, remplacé par sqlcipher3 en mode
+    chiffré : le patch applique `PRAGMA key` à l'ouverture) : le moteur async
+    aiosqlite refuse l'IO synchrone (greenlet), les DDL/PRAGMA n'ont pas besoin
+    de SQLAlchemy."""
+    import sqlite3
+
+    conn = sqlite3.connect(chemin, timeout=10)
+    try:
+        conn.execute("PRAGMA busy_timeout=5000")
+        for ddl in DDL_SYNC:
+            conn.execute(ddl)
+        conn.commit()
+        for table in _ENTITES_SYNC.values():
+            noms = {
+                ligne[1]
+                for ligne in conn.execute(f'PRAGMA table_info("{table}")').fetchall()
+            }
+            if not noms:
+                continue  # table absente du schéma local : rien à faire
+            if "client_ref" not in noms:
+                conn.execute(f'ALTER TABLE "{table}" ADD COLUMN client_ref TEXT')
+            if "sync_version" not in noms:
+                conn.execute(
+                    f'ALTER TABLE "{table}" ADD COLUMN sync_version INTEGER NOT NULL DEFAULT 1'
+                )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _serialiser_json(valeur):
+    """Default de json.dumps : dates/heures → ISO, Decimal → float, UUID → str,
+    bytes → hex (les colonnes binaires sont de toute façon exclues)."""
+    if isinstance(valeur, (_dt.datetime, _dt.date, _dt.time)):
+        return valeur.isoformat()
+    if isinstance(valeur, _uuid.UUID):
+        return str(valeur)
+    if isinstance(valeur, (bytes, bytearray)):
+        return bytes(valeur).hex()
+    return str(valeur)
+
+
+def _brancher_outbox() -> None:
+    """Hooks SQLAlchemy : toute écriture métier de l'API locale alimente
+    `_sync_outbox` sur la MÊME connexion, donc dans la MÊME transaction —
+    un rollback métier annule aussi son opération de sync.
+
+    - INSERT → op `create`, identité = client_ref (UUID généré ici s'il est
+      absent : l'identité est créée à la naissance de la ligne) ;
+    - UPDATE → op `update` (soft-delete `is_deleted` → op `delete`) ; une
+      ligne encore sans client_ref (créée côté web, arrivée par le pull)
+      en reçoit un à sa première modification locale : le serveur pourra
+      l'adopter (`_trouve_ligne` par id du payload) au lieu de dupliquer ;
+    - payload = colonnes métier finales du modèle (hors colonnes serveur et
+      colonnes binaires : photos/documents ne transitent pas par la sync).
+    """
+    from decimal import Decimal
+
+    from sqlalchemy import LargeBinary, event, text as _text
+
+    import app.models  # noqa: F401
+    from app.database import Base
+
+    entite_par_table = {t: e for e, t in _ENTITES_SYNC.items()}
+
+    def _payload_de(target, table) -> str:
+        binaires = {
+            c.name
+            for c in table.columns
+            if isinstance(c.type, LargeBinary)
+            or "BLOB" in type(c.type).__name__.upper()
+        }
+        payload = {}
+        for col in table.columns:
+            nom = col.name
+            if nom in _COLONNES_EXCLUES or nom in binaires:
+                continue
+            valeur = getattr(target, nom, None)
+            if valeur is None:
+                continue  # payload compact : NULL = valeur par défaut
+            payload[nom] = valeur
+        return json.dumps(payload, default=_serialiser_json, ensure_ascii=False)
+
+    def _journaliser(connection, entity: str, entity_id, op: str, payload_txt: str) -> None:
+        connection.execute(
+            _text(
+                "INSERT INTO _sync_outbox (entity, entity_id, op, payload, client_ts, pushed) "
+                "VALUES (:entity, :entity_id, :op, :payload, :client_ts, 0)"
+            ),
+            {
+                "entity": entity,
+                "entity_id": str(entity_id),
+                "op": op,
+                "payload": payload_txt,
+                "client_ts": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+            },
+        )
+
+    for mapper in list(Base.registry.mappers):
+        table = mapper.local_table
+        entity = entite_par_table.get(table.name)
+        if entity is None:
+            continue
+        if "client_ref" not in {c.name for c in table.columns}:
+            continue  # modèle sans identité de sync : hors contrat
+        cls = mapper.class_
+
+        def _avant_insert(mapper_, connection, target, _entity=entity):
+            if getattr(target, "client_ref", None) is None:
+                target.client_ref = str(_uuid.uuid4())
+
+        def _apres_insert(mapper_, connection, target, _entity=entity):
+            _journaliser(
+                connection,
+                _entity,
+                getattr(target, "client_ref", None),
+                "create",
+                _payload_de(target, mapper_.local_table),
+            )
+
+        def _avant_update(mapper_, connection, target, _entity=entity):
+            if getattr(target, "client_ref", None) is None:
+                target.client_ref = str(_uuid.uuid4())
+
+        def _apres_update(mapper_, connection, target, _entity=entity):
+            op = "delete" if bool(getattr(target, "is_deleted", False)) else "update"
+            _journaliser(
+                connection,
+                _entity,
+                getattr(target, "client_ref", None),
+                op,
+                _payload_de(target, mapper_.local_table),
+            )
+
+        event.listens_for(cls, "before_insert")(_avant_insert)
+        event.listens_for(cls, "after_insert")(_apres_insert)
+        event.listens_for(cls, "before_update")(_avant_update)
+        event.listens_for(cls, "after_update")(_apres_update)
+
+
 _patch_sqlite_applique = False
 
 
@@ -180,6 +435,11 @@ def _assurer_patch_sqlite() -> None:
         for col in table.columns:
             if col.primary_key and isinstance(col.type, BigInteger):
                 col.type = Integer()
+
+    # (c) Colonnes de sync garanties sur les métadonnées (client_ref, sync_*)
+    #     AVANT la configuration des mappers (contrat desktop).
+    _etendre_modeles_sync()
+
     _patch_sqlite_applique = True
 
 
@@ -191,7 +451,8 @@ def _port_libre() -> int:
 
 
 async def _preparer_base() -> None:
-    """Crée les tables depuis les modèles (source de vérité) + PRAGMA SQLite + seed opt-in."""
+    """Crée les tables depuis les modèles (source de vérité) + PRAGMA SQLite
+    + tables/hooks de sync + seed opt-in."""
     _assurer_patch_sqlite()
     cle = (os.environ.get("TIA_DB_KEY") or "").strip().lower()
     chiffre = _cle_valide(cle)
@@ -213,6 +474,12 @@ async def _preparer_base() -> None:
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # Tables `_sync_*` + garanties client_ref/sync_version, puis hooks outbox :
+    # à partir d'ici, toute écriture de l'API locale est journalisée pour la
+    # synchronisation bidirectionnelle (push Rust vers le web, pull web→local).
+    _assurer_tables_sync(os.environ["TIA_DB_URL"])
+    _brancher_outbox()
 
     # Seed : automatique en mode clair (démo/POC), opt-in en mode chiffré
     # (la base partagée tia.db contient les vraies données de l'entreprise —
