@@ -191,6 +191,12 @@ env\Scripts\pyinstaller.exe --noconfirm --clean --onefile --console `
   `PRAGMA key = 'x''<clé>'''` est posé sur chaque connexion (clé reçue par
   stdin depuis le Rust, ou `TIA_DB_KEY`) ; base par défaut `tia.db`, seed
   opt-in (`TIA_SEED=1`), conversion claire→chiffrée automatique.
+* **Outbox de synchronisation** : des hooks SQLAlchemy journalisent toute
+  écriture métier dans `_sync_outbox` (même transaction, `client_ref` UUID
+  posé à l'INSERT) — c'est ce qui alimente la synchronisation bidirectionnelle
+  pilotée par le hub Rust `sync_run` (`push`/`pull`, conflits « web gagne »).
+  Tables `_sync_*` créées si absentes ; entités mappées dans `_ENTITES_SYNC`
+  (miroir de `ENTITES_SYNC` du router `/api/sync`).
 * L'app desktop lance ce binaire automatiquement et lit la ligne
   `TIA_API_READY port=N` (voir `desktop/README.md`, section « Sidecar »).
 * Notes PyInstaller : hidden-imports (uvicorn/aiosqlite/greenlet/argon2)
@@ -278,9 +284,19 @@ APP_DEBUG=True
 
 ## 🔄 Synchronisation Desktop ↔ Web
 
-- **Push Desktop → Web** : `POST /api/sync/import-sqlite`
-- **Pull Web → Desktop** : `GET /api/sync/export`
-- **Statut** : `GET /api/sync/status`
+Contrat principal (desktop Tauri, bidirectionnel) :
+
+- **Push Desktop → Web** : `POST /api/sync/push` (lots de 200, idempotence
+  `(device_id, seq)`, conflits « web gagne », `client_ref` = identité desktop)
+- **Pull Web → Desktop** : `GET /api/sync/pull?since=…&limit=200` (curseur
+  `sync_updated_at`, payload `model_to_dict`)
+- Endpoints legacy : `POST /api/sync/import-sqlite`, `GET /api/sync/export`,
+  `GET /api/sync/status`.
+
+Côté desktop, les écritures locales passent par l'API embarquée
+(`desktop_sidecar.py`, hooks `_sync_outbox`) : les deux bases convergent au
+cycle suivant — voir `desktop/README.md`, section « Modèle web cerveaux,
+desktop offline-first ».
 
 ---
 

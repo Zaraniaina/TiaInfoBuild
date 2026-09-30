@@ -2,8 +2,15 @@ import axios from 'axios';
 import type { AxiosResponse } from 'axios'
 import { useAuthStore } from '@/stores/auth.store'
 import { isDesktop } from '@/utils/buildMode'
-import { handleLocalRequest } from './desktopClient'
-import { redirectionSidecarActivee, versUrlLocale } from './sidecar'
+import { checkOnline, handleLocalRequest, localError } from './desktopClient'
+import {
+  MESSAGE_WEB_REQUIS_HORS_LIGNE,
+  estRequeteWebRequise,
+  redirectionSidecarActivee,
+  supprimerTokenLocal,
+  tokenLocal,
+  versUrlLocale,
+} from './sidecar'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
@@ -27,6 +34,13 @@ export async function performTokenRefresh(): Promise<string | null> {
   isRefreshing = true;
 
   try {
+    // Session desktop sidecar : pas de refresh web (token local de 7 jours,
+    // renouvelé à la prochaine connexion) — on ne déconnecte PAS l'utilisateur.
+    if (redirectionSidecarActivee() && useAuthStore.getState().offline) {
+      resolvePendingRequests(null);
+      return null;
+    }
+
     const refresh = useAuthStore.getState().refreshToken || localStorage.getItem('refresh_token');
     if (!refresh) {
       useAuthStore.getState().logout();
@@ -65,6 +79,14 @@ api.interceptors.request.use((config) => {
 
 /* Pont desktop (volet Tauri, plan §2) : UNIQUEMENT si l'app tourne dans la
    WebView Tauri — sans isDesktop(), zéro comportement nouveau pour le web.
+   - mode sidecar (défaut) : l'URL est réécrite vers l'API locale et le header
+     Authorization devient le TOKEN LOCAL (le JWT web n'est pas accepté par
+     l'API embarquée offline) ;
+   - mode hybride (VITE_SIDECAR_HTTP=0) : registre SQLite (réponse synthétique)
+     puis relais web online, erreur explicite hors-ligne. */
+
+/* Pont desktop (volet Tauri, plan §2) : UNIQUEMENT si l'app tourne dans la
+   WebView Tauri — sans isDesktop(), zéro comportement nouveau pour le web.
    - route locale (registre desktopClient) → réponse SQLite servie directement
      via un adaptateur axios synthétique {data, status, statusText, headers,
      config} : TanStack Query et les services ne voient aucune différence ;
@@ -74,14 +96,35 @@ api.interceptors.request.use((config) => {
      (les `catch` des pages existantes l'affichent tels quels). */
 if (isDesktop()) {
   api.interceptors.request.use(async (config) => {
-    // Opt-in sidecar (`VITE_SIDECAR_HTTP=1`) : l'UI appelle la vraie API
-    // FastAPI locale (tia-api.exe) — axios fait la requête HTTP vers
-    // 127.0.0.1:<port auto>. Inerte par défaut : tant que le sidecar garde
-    // sa propre base (local_api.db), distincte du magasin SQLCipher des hubs
-    // Rust, cette redirection créerait deux sources de vérité divergentes.
+    // RÈGLE PRODUIT « web cerveaux, desktop offline-first » : inscription
+    // entreprise, mot de passe oublié/réinitialisation, vérification email et
+    // abonnements/paiements sont gérés UNIQUEMENT par le serveur web. Hors
+    // ligne, on rejette AVANT toute autre logique avec un message clair
+    // (jamais une erreur réseau illisible).
+    if (estRequeteWebRequise(config.url) && !(await checkOnline())) {
+      throw localError(503, MESSAGE_WEB_REQUIS_HORS_LIGNE, config);
+    }
+
+    // Sidecar (défaut desktop) : l'UI appelle la vraie API FastAPI locale
+    // (tia-api.exe) sur la base partagée SQLCipher — axios fait la requête
+    // HTTP vers 127.0.0.1:<port auto> (routers montés sous /api), avec le
+    // TOKEN LOCAL en Authorization (le JWT web n'authentifie pas l'API
+    // embarquée offline). Les écritures locales sont journalisées dans
+    // `_sync_outbox` par le sidecar lui-même (hooks) et la sync
+    // bidirectionnelle Rust entretient la parité avec le web.
     if (redirectionSidecarActivee()) {
       const locale = await versUrlLocale(config.url);
-      if (locale) config.url = locale;
+      if (locale) {
+        config.url = locale;
+        const local = tokenLocal();
+        if (local) {
+          config.headers.Authorization = `Bearer ${local}`;
+        } else if (!config.url.includes('/auth/local-login')) {
+          // Aucun token local : les endpoints protégés renverront 401 (l'UI
+          // redemandera la connexion) ; les publics passent.
+          console.warn('[api] Token local absent — reconnectez-vous pour la session locale.');
+        }
+      }
       return config;
     }
 
@@ -163,6 +206,7 @@ if (typeof window !== 'undefined') {
   window.addEventListener('storage', (event) => {
     if (event.key === 'access_token' && event.newValue === null) {
       cancelTokenRefresh();
+      supprimerTokenLocal();
       useAuthStore.getState().logout();
     }
   });

@@ -15,6 +15,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { useAuthStore, type User } from '@/stores/auth.store'
 import { defaultServerUrl } from './desktopClient'
+import { ensureTokenLocal, supprimerTokenLocal } from './sidecar'
 
 /** Clé localStorage marquant une activation déjà effectuée sur ce poste. */
 export const DESKTOP_ACTIVATED_KEY = 'desktop_activated'
@@ -125,7 +126,8 @@ function mapperUser(u: DesktopUserPayload): User {
 
 /**
  * Activation du poste (ONLINE requis) : vérifie les identifiants côté serveur,
- * crée le device_id puis ouvre la session locale.
+ * crée le device_id puis ouvre la session locale. Ouvre aussi la session
+ * auprès de l'API embarquée (token local, non bloquant).
  */
 export async function activateDesktop(email: string, password: string): Promise<DesktopAuthResult> {
   try {
@@ -143,6 +145,14 @@ export async function activateDesktop(email: string, password: string): Promise<
     } else {
       store.loginOffline(mapperUser(resultat.user))
     }
+
+    // Session locale pour l'API embarquée (non bloquant) : le JWT web n'est
+    // pas accepté par le sidecar offline — on échange les mêmes identifiants
+    // contre un token local signé par le process (sondage patient inclus).
+    void ensureTokenLocal(email, password).then((token) => {
+      if (!token) console.warn('[auth] API locale : session locale indisponible pour le moment.')
+    })
+
     return resultat
   } catch (err) {
     throw versErreurAuth(err)
@@ -151,7 +161,8 @@ export async function activateDesktop(email: string, password: string): Promise<
 
 /**
  * Login desktop : online d'abord (JWT serveur), fallback offline via la session
- * locale (store marqué `offline`, sans token).
+ * locale (store marqué `offline`, sans token). Ouvre aussi la session auprès
+ * de l'API embarquée (token local, non bloquant).
  */
 export async function loginDesktop(email: string, password: string): Promise<DesktopAuthResult> {
   try {
@@ -166,6 +177,12 @@ export async function loginDesktop(email: string, password: string): Promise<Des
     } else {
       store.login(resultat.access_token, resultat.refresh_token || '', mapperUser(resultat.user))
     }
+
+    // Contrepartie locale (voir activateDesktop) — online comme offline.
+    void ensureTokenLocal(email, password).then((token) => {
+      if (!token) console.warn('[auth] API locale : session locale indisponible pour le moment.')
+    })
+
     return resultat
   } catch (err) {
     throw versErreurAuth(err)

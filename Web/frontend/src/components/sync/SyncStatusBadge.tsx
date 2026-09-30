@@ -133,12 +133,12 @@ export function SyncStatusBadge() {
         })),
       )
       const journals = await dbQuery(
-        'SELECT id, entity, entity_id, resolved_at FROM _sync_conflicts ORDER BY id DESC LIMIT 20',
+        'SELECT id, entity, entity_id, detected_at FROM _sync_conflicts ORDER BY id DESC LIMIT 20',
       )
       setConflits(
         journals.map((r) => ({
           cle: `conflit-${String(r.id)}`,
-          texte: `${String(r.entity)} #${String(r.entity_id)} — ${r.resolved_at ? String(r.resolved_at) : 'non résolu'}`,
+          texte: `${String(r.entity)} #${String(r.entity_id)} — ${r.detected_at ? String(r.detected_at) : 'non résolu'}`,
         })),
       )
       setJournalErreur(null)
@@ -239,7 +239,7 @@ export function SyncStatusBadge() {
           {redirectionSidecarActivee() && (
             <div className="mx-3 mb-2 small text-muted border-top pt-2">
               <i className="bi bi-flask me-1" aria-hidden="true"></i>
-              Expérimental : UI pilotée par l'API locale
+              UI pilotée par l'API locale (base partagée tia.db)
               {apiLocale && apiLocale !== 'sonde' ? ` — ${apiLocale}` : ''}
             </div>
           )}

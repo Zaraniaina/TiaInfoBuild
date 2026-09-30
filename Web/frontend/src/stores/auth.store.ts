@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { scheduleTokenRefresh, cancelTokenRefresh } from '@/services/api';
+import { supprimerTokenLocal } from '@/services/sidecar';
 
 export interface User {
   id: number;
@@ -72,6 +73,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_info');
     localStorage.removeItem(OFFLINE_SESSION_KEY);
+    // Token local de l'API embarquée (desktop sidecar) : purge systématique.
+    supprimerTokenLocal();
     set({ user: null, token: null, refreshToken: null, isAuthenticated: false, offline: false });
   },
   setUser: (user) => {
